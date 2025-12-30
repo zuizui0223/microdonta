@@ -1,0 +1,123 @@
+############################################################
+## Nectar guide analysis – Full script (brms)
+############################################################
+
+## =========================
+## 0. Packages
+## =========================
+library(brms)
+library(dplyr)
+library(tidyr)
+library(readr)
+
+## =========================
+## 1. Data
+## =========================
+## 想定CSV（例）
+## columns:
+## id        : flower or individual ID
+## island    : island ID (factor)
+## year      : year (factor)
+## isolation : isolation distance (numeric)
+## TAP       : total area proportion (0–1, 0 allowed)
+## FAR       : functional area ratio (0–1)
+## FS        : functional salience (0–1)
+
+df <- read_csv("nectar_guide_metrics.csv")
+
+df <- df %>%
+  mutate(
+    island = factor(island),
+    year   = factor(year),
+    TAP_present = ifelse(TAP > 0, 1, 0)
+  )
+
+## =========================
+## 2. TAP – hurdle (presence / continuous)
+## =========================
+
+## 2-1. Presence (0/1)
+m_TAP_pres <- brm(
+  TAP_present ~ isolation + (1 | island) + (1 | year),
+  data   = df,
+  family = bernoulli(),
+  chains = 4, cores = 4, iter = 4000
+)
+
+## 2-2. Continuous (TAP > 0)
+df_TAP_pos <- df %>% filter(TAP > 0)
+
+m_TAP_cont <- brm(
+  TAP ~ isolation + (1 | island) + (1 | year),
+  data   = df_TAP_pos,
+  family = Beta(),
+  chains = 4, cores = 4, iter = 4000
+)
+
+## =========================
+## 3. FAR – functional placement
+## =========================
+df_FAR <- df %>% filter(FAR > 0)
+
+m_FAR <- brm(
+  FAR ~ isolation + TAP + (1 | island) + (1 | year),
+  data   = df_FAR,
+  family = Beta(),
+  chains = 4, cores = 4, iter = 4000
+)
+
+## =========================
+## 4. FS – functional salience
+## =========================
+df_FS <- df %>% filter(FS > 0)
+
+m_FS <- brm(
+  FS ~ isolation + TAP + (1 | island) + (1 | year),
+  data   = df_FS,
+  family = Beta(),
+  chains = 4, cores = 4, iter = 4000
+)
+
+## =========================
+## 5. Link model (optional)
+## TAP explained by functional placement
+## =========================
+m_TAP_link <- brm(
+  TAP ~ FAR + FS + isolation + (1 | island) + (1 | year),
+  data   = df_TAP_pos,
+  family = Beta(),
+  chains = 4, cores = 4, iter = 4000
+)
+
+## =========================
+## 6. Summaries
+## =========================
+summary(m_TAP_pres)
+summary(m_TAP_cont)
+summary(m_FAR)
+summary(m_FS)
+summary(m_TAP_link)
+
+## Extract isolation effects
+fixef(m_TAP_pres)["isolation", ]
+fixef(m_TAP_cont)["isolation", ]
+fixef(m_FAR)["isolation", ]
+fixef(m_FS)["isolation", ]
+
+## =========================
+## 7. Model comparison (optional)
+## =========================
+loo(m_TAP_pres, m_TAP_cont, m_FAR, m_FS, m_TAP_link)
+
+## =========================
+## 8. Save models
+## =========================
+saveRDS(m_TAP_pres, "model_TAP_presence.rds")
+saveRDS(m_TAP_cont, "model_TAP_continuous.rds")
+saveRDS(m_FAR,      "model_FAR.rds")
+saveRDS(m_FS,       "model_FS.rds")
+saveRDS(m_TAP_link, "model_TAP_link.rds")
+
+############################################################
+## End
+############################################################
