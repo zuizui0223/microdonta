@@ -104,6 +104,10 @@ References:
 | `Fis` | SNP | chart |
 | `Fst` | SNP | chart |
 | `migration_rate` | 島間遺伝子流動の近似 | slider / CSV |
+| `Pst_nectar_guide` | 集団間/集団内の斑点面積率分散 | 診断 |
+| `Pst_flower_size` | 集団間/集団内の花サイズ分散 | 診断 |
+| `admixture_index` | SNP などからの交雑・混合度 | 診断 |
+| `colonization_history` | 移入経緯・植栽・創始者効果のメモ | 診断 |
 
 ## Threshold の考え方
 
@@ -121,3 +125,17 @@ effective_germination_selfed = min(germination_selfed, germination_outcrossed - 
 ```
 
 以前の実装では `germination_selfed` を低くしたうえでさらに `(1 - inbreeding_load)` を掛けており、近交弱勢が二重に効く可能性があったため修正しました。
+
+## Pst / Fst-Qst と移入・交雑履歴
+
+`Fst-Qst` は、形質分化が中立的な集団分化だけで説明できるか、それとも選択を考えるべきかを見るために重要です。ただし Qst には遺伝分散成分が必要なので、まずは表現型分散から `Pst` として始めます。
+
+このアプリでは、`Pst/Fst diagnostics` タブで `Pst` と `Fst` を比べます。これは ABM の fitness ルールには直接入れません。役割は、ABM の結果を解釈するときの診断です。
+
+- `Pst > Fst`: ネクターガイドや花サイズに分化選択がかかった可能性。
+- `Pst ≈ Fst`: 漂流、創始者効果、移入経緯、集団構造だけでも説明できる可能性。
+- `Pst < Fst`: 安定化選択、制約、強い遺伝子流動などの可能性。
+
+移入経緯と交雑履歴はかなり重要です。島ごとのネクターガイド差が、現在の送粉者環境への適応ではなく、過去の移入元、創始者効果、園芸由来、近縁分類群との交雑で生じた可能性があるからです。したがって、`colonization_history` と `admixture_index` を野外データ表に入れています。
+
+Qst に進むなら、common garden、reciprocal transplant、母株/家系構造を持つ種子採集が必要です。まず Pst で探索し、強いシグナルが出た形質に絞って Qst へ進むのが現実的です。

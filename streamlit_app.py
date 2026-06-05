@@ -29,15 +29,19 @@ FIELD_COLUMNS = [
     "migration_rate",
     "Fis_observed",
     "Fst_observed",
+    "Pst_nectar_guide",
+    "Pst_flower_size",
+    "admixture_index",
+    "colonization_history",
 ]
 
 
 DEFAULT_FIELD_DATA = pd.DataFrame(
     [
-        ["Mainland", 0.62, 0.72, 0.18, 0.22, 0.32, 0.46, 0.92, 0.54, 0.86, 0.100, np.nan, np.nan],
-        ["Oshima", 0.55, 0.45, 0.38, 0.36, 0.25, 0.55, 0.84, 0.57, 0.82, 0.050, np.nan, np.nan],
-        ["Kozu", 0.42, 0.00, 0.58, 0.52, 0.18, 0.64, 0.76, 0.60, 0.78, 0.025, np.nan, np.nan],
-        ["Hachijo", 0.28, 0.00, 0.74, 0.68, 0.12, 0.72, 0.68, 0.62, 0.74, 0.010, np.nan, np.nan],
+        ["Mainland", 0.62, 0.72, 0.18, 0.22, 0.32, 0.46, 0.92, 0.54, 0.86, 0.100, np.nan, np.nan, np.nan, np.nan, 0.00, "source/mainland"],
+        ["Oshima", 0.55, 0.45, 0.38, 0.36, 0.25, 0.55, 0.84, 0.57, 0.82, 0.050, np.nan, np.nan, np.nan, np.nan, 0.20, "island with Bombus ardens"],
+        ["Kozu", 0.42, 0.00, 0.58, 0.52, 0.18, 0.64, 0.76, 0.60, 0.78, 0.025, np.nan, np.nan, np.nan, np.nan, 0.35, "bumblebee-free island"],
+        ["Hachijo", 0.28, 0.00, 0.74, 0.68, 0.12, 0.72, 0.68, 0.62, 0.74, 0.010, np.nan, np.nan, np.nan, np.nan, 0.45, "bumblebee-free island"],
     ],
     columns=FIELD_COLUMNS,
 )
@@ -133,6 +137,11 @@ FIELD_CHECKLIST = [
     ["SNP", "葉サンプルを採る", "各集団 20-30 個体以上。シリカゲル保存など。"],
     ["SNP", "個体IDと表現型IDを対応させる", "Fis/Fst と斑点面積率・自殖能力を結びつける。"],
     ["SNP", "位置情報を記録する", "集団内空間構造や近縁個体の偏りを確認する。"],
+    ["Pst/Qst", "集団ごとの表現型平均と分散を記録する", "まず Pst。斑点面積率、花サイズ、花冠形状を対象にする。"],
+    ["Pst/Qst", "可能なら common garden 用の種子を採る", "環境効果を減らして Qst に近づける。母株IDを必ず残す。"],
+    ["Pst/Qst", "家系/母株構造を残す", "半きょうだい・母株内分散があると Qst 推定に進みやすい。"],
+    ["履歴", "移入経緯を記録する", "島・集団の由来、植栽/持ち込みの可能性、過去採集記録。"],
+    ["履歴", "交雑履歴を疑う証拠を記録する", "形態の中間性、SNP admixture、近隣分類群、園芸由来の可能性。"],
     ["データ管理", "欠測理由を記録する", "未開花、食害、袋破損、果実脱落、サンプル紛失など。"],
     ["データ管理", "写真ファイル名を個体ID/花IDに対応させる", "後から斑点面積率を再計算できるようにする。"],
     ["データ管理", "CSVを毎日バックアップする", "field template に合わせて入力する。"],
@@ -358,6 +367,66 @@ def field_row_to_params(row: pd.Series) -> dict[str, float]:
     }
 
 
+def estimate_pst_from_population_means(
+    data: pd.DataFrame,
+    trait_column: str,
+    within_variance: float = 0.02,
+    c_over_h2: float = 1.0,
+) -> float:
+    values = pd.to_numeric(data[trait_column], errors="coerce").dropna()
+    if len(values) < 2:
+        return np.nan
+    between_variance = float(np.var(values, ddof=1))
+    denominator = between_variance + 2.0 * c_over_h2 * within_variance
+    if denominator <= 0:
+        return np.nan
+    return between_variance / denominator
+
+
+def make_pst_fst_diagnostics(data: pd.DataFrame) -> pd.DataFrame:
+    observed_fst = pd.to_numeric(data.get("Fst_observed"), errors="coerce")
+    mean_fst = float(observed_fst.mean(skipna=True)) if observed_fst.notna().any() else np.nan
+    pst_ng_observed = pd.to_numeric(data.get("Pst_nectar_guide"), errors="coerce")
+    pst_flower_observed = pd.to_numeric(data.get("Pst_flower_size"), errors="coerce")
+    pst_ng = (
+        float(pst_ng_observed.mean(skipna=True))
+        if pst_ng_observed.notna().any()
+        else estimate_pst_from_population_means(data, "nectar_guide")
+    )
+    pst_flower = (
+        float(pst_flower_observed.mean(skipna=True))
+        if pst_flower_observed.notna().any()
+        else np.nan
+    )
+
+    rows = []
+    for trait, pst_value in [
+        ("nectar_guide", pst_ng),
+        ("flower_size", pst_flower),
+    ]:
+        if np.isnan(pst_value) or np.isnan(mean_fst):
+            interpretation = "need Pst/Qst and Fst data"
+            delta = np.nan
+        else:
+            delta = pst_value - mean_fst
+            if delta > 0.10:
+                interpretation = "Pst > Fst: divergent selection is plausible"
+            elif delta < -0.10:
+                interpretation = "Pst < Fst: stabilizing selection or constraint is plausible"
+            else:
+                interpretation = "Pst ~= Fst: drift/history cannot be rejected"
+        rows.append(
+            {
+                "trait": trait,
+                "Pst_or_Qst": pst_value,
+                "mean_Fst": mean_fst,
+                "Pst_minus_Fst": delta,
+                "interpretation": interpretation,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 st.title("シマホタルブクロ ネクターガイド進化 ABM")
 st.caption("実データをあとから穴埋めしながら、大島以外のマルハナバチ不在・自殖保証・近交弱勢・遺伝的多様性の仮説を検討する Streamlit アプリ")
 
@@ -380,8 +449,15 @@ generations = st.sidebar.slider("Generations", 10, 300, 80, 10)
 population_size = st.sidebar.slider("Population size", 50, 600, 180, 10)
 seed = st.sidebar.number_input("Random seed", value=20260605, step=1)
 
-data_tab, sim_tab, threshold_tab, evidence_tab, fieldwork_tab = st.tabs(
-    ["Data template", "ABM results", "Threshold sweep", "Literature", "Fieldwork plan"]
+data_tab, sim_tab, threshold_tab, pst_tab, evidence_tab, fieldwork_tab = st.tabs(
+    [
+        "Data template",
+        "ABM results",
+        "Threshold sweep",
+        "Pst/Fst diagnostics",
+        "Literature",
+        "Fieldwork plan",
+    ]
 )
 
 with data_tab:
@@ -399,6 +475,10 @@ with data_tab:
             "inbreeding_load": st.column_config.NumberColumn("自殖種子と自然種子の発芽率差", min_value=0.0, max_value=1.0),
             "Fis_observed": st.column_config.NumberColumn("Fis observed"),
             "Fst_observed": st.column_config.NumberColumn("Fst observed"),
+            "Pst_nectar_guide": st.column_config.NumberColumn("Pst nectar guide"),
+            "Pst_flower_size": st.column_config.NumberColumn("Pst flower size"),
+            "admixture_index": st.column_config.NumberColumn("admixture index", min_value=0.0, max_value=1.0),
+            "colonization_history": st.column_config.TextColumn("colonization / hybridization notes"),
         },
     )
     st.download_button(
@@ -515,6 +595,46 @@ with threshold_tab:
         "Download threshold sweep CSV",
         sweep.to_csv(index=False).encode("utf-8"),
         file_name=f"microdonta_threshold_sweep_{population_choice}.csv",
+        mime="text/csv",
+    )
+
+with pst_tab:
+    st.subheader("Pst/Fst-Qst diagnostics")
+    st.write(
+        "`Pst` や `Qst` は、いまの ABM の fitness ルールには直接入れず、"
+        "ネクターガイド分化が選択で説明できるのか、移入経緯・交雑履歴・漂流で説明すべきなのかを診断するために使います。"
+    )
+    st.caption(
+        "まずは population mean からの Pst を仮置きし、後で common garden / half-sib などのデータがあれば Qst に置き換えます。"
+    )
+    pst_diagnostics = make_pst_fst_diagnostics(working_data)
+    st.dataframe(pst_diagnostics, use_container_width=True)
+
+    st.subheader("移入経緯・交雑履歴メモ")
+    history_cols = [
+        "population",
+        "admixture_index",
+        "colonization_history",
+        "Fis_observed",
+        "Fst_observed",
+        "Pst_nectar_guide",
+    ]
+    st.dataframe(working_data[history_cols], use_container_width=True)
+    st.markdown(
+        """
+        **読み方**
+
+        - `Pst > Fst`: 形質分化が中立分化より大きい。ネクターガイドに分化選択がかかった可能性。
+        - `Pst ≈ Fst`: 漂流、創始者効果、移入経緯、集団構造だけでも説明できる可能性。
+        - `Pst < Fst`: 安定化選択、制約、強い遺伝子流動などの可能性。
+
+        **注意**: Pst は環境効果・可塑性を含むので、Qst そのものではありません。まず探索指標として使い、必要なら common garden / reciprocal transplant / 家系デザインで Qst に近づけます。
+        """
+    )
+    st.download_button(
+        "Download Pst/Fst diagnostics CSV",
+        pst_diagnostics.to_csv(index=False).encode("utf-8"),
+        file_name="microdonta_pst_fst_diagnostics.csv",
         mime="text/csv",
     )
 
