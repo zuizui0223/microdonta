@@ -36,8 +36,8 @@ DEFAULT_FIELD_DATA = pd.DataFrame(
     [
         ["Mainland", 0.62, 0.72, 0.18, 0.22, 0.32, 0.46, 0.92, 0.54, 0.86, 0.100, np.nan, np.nan],
         ["Oshima", 0.55, 0.45, 0.38, 0.36, 0.25, 0.55, 0.84, 0.60, 0.82, 0.050, np.nan, np.nan],
-        ["Kozu", 0.42, 0.18, 0.58, 0.52, 0.18, 0.64, 0.76, 0.66, 0.78, 0.025, np.nan, np.nan],
-        ["Hachijo", 0.28, 0.06, 0.74, 0.68, 0.12, 0.72, 0.68, 0.70, 0.74, 0.010, np.nan, np.nan],
+        ["Kozu", 0.42, 0.00, 0.58, 0.52, 0.18, 0.64, 0.76, 0.66, 0.78, 0.025, np.nan, np.nan],
+        ["Hachijo", 0.28, 0.00, 0.74, 0.68, 0.12, 0.72, 0.68, 0.70, 0.74, 0.010, np.nan, np.nan],
     ],
     columns=FIELD_COLUMNS,
 )
@@ -59,8 +59,8 @@ LITERATURE = [
         "url": "https://cir.nii.ac.jp/crid/2051714791885965312",
         "point": (
             "Bagging experiments across mainland Honshu and six Izu islands support "
-            "the hypothesis that reduced pollination efficiency without bumblebees "
-            "drives breeding-system evolution in Campanula."
+            "the hypothesis that bumblebee absence outside Oshima reduces pollination "
+            "efficiency and drives breeding-system evolution in Campanula."
         ),
     },
     {
@@ -252,14 +252,16 @@ def field_row_to_params(row: pd.Series) -> dict[str, float]:
 
 
 st.title("シマホタルブクロ ネクターガイド進化 ABM")
-st.caption("実データをあとから穴埋めしながら、マルハナバチ不在・自殖保証・近交弱勢・遺伝的多様性の仮説を検討する Streamlit アプリ")
+st.caption("実データをあとから穴埋めしながら、大島以外のマルハナバチ不在・自殖保証・近交弱勢・遺伝的多様性の仮説を検討する Streamlit アプリ")
 
 with st.expander("仮説", expanded=True):
     st.markdown(
         """
         **通常状態、本土**: マルハナバチあり → 他殖が成立 → ネクターガイド維持 → 遺伝的多様性維持
 
-        **島状態、伊豆諸島**: マルハナバチ減少・不在 → 他殖機会が不安定化 → 繁殖保証として自殖が重要になる → でも自殖は近交弱勢を生む → 完全自殖には移行できない → 他殖チャンスを残す個体ではネクターガイドが維持される → 他殖チャンスがほぼない場所ではネクターガイドが退化する
+        **島状態、大島**: `Bombus ardens` とコハナバチ類あり → 他殖機会は本土より変化するがゼロではない → ネクターガイド維持の余地が残る
+
+        **島状態、大島以外**: マルハナバチ不在・コハナバチ類優占 → 他殖機会が不安定化 → 繁殖保証として自殖が重要になる → でも自殖は近交弱勢を生む → 完全自殖には移行できない → 他殖チャンスを残す個体ではネクターガイドが維持される → 他殖チャンスがほぼない場所ではネクターガイドが退化する
         """
     )
 
@@ -271,7 +273,9 @@ generations = st.sidebar.slider("Generations", 10, 300, 80, 10)
 population_size = st.sidebar.slider("Population size", 50, 600, 180, 10)
 seed = st.sidebar.number_input("Random seed", value=20260605, step=1)
 
-data_tab, sim_tab, evidence_tab = st.tabs(["Data template", "ABM results", "Literature"])
+data_tab, sim_tab, evidence_tab, fieldwork_tab = st.tabs(
+    ["Data template", "ABM results", "Literature", "Fieldwork plan"]
+)
 
 with data_tab:
     st.subheader("野外データ穴埋めテンプレート")
@@ -362,4 +366,33 @@ with evidence_tab:
             columns=["ABM variable", "field data", "model role"],
         ),
         use_container_width=True,
+    )
+
+with fieldwork_tab:
+    st.subheader("野外で取るデータ")
+    st.dataframe(
+        pd.DataFrame(
+            [
+                ["斑点面積率", "nectar_guide", "各集団 30-50 個体、各個体 3-5 花", "目的形質。退化/維持の直接測定"],
+                ["訪花者の種類と訪花回数/時間", "bombus_frequency, small_bee_frequency", "各集団 20-30 時間以上", "送粉者相と他殖機会"],
+                ["自然結実率・種子数", "fitness baseline", "各集団 30-50 花以上", "自然条件での適応度"],
+                ["袋掛け結実率", "selfing_ability", "各集団 30-50 花以上", "送粉者なしの繁殖保証"],
+                ["人工自殖/人工他殖の種子数", "seed_set_selfing, seed_set_outcrossing", "各集団 20-30 母株、各処理 1-3 花", "繁殖様式ごとの種子生産"],
+                ["自殖/他殖種子の発芽率", "germination_selfed, germination_outcrossed, inbreeding_load", "各集団 20-30 母株", "近交弱勢"],
+                ["SNP", "Fis, Fst", "各集団 20-30 個体以上", "近交・集団分化・多様性"],
+            ],
+            columns=["データ", "ABM変数", "最低サンプル感", "目的"],
+        ),
+        use_container_width=True,
+    )
+    st.markdown(
+        """
+        **最小セット**: 各地域 1 集団、各集団 30 個体、訪花観察 20 時間。仮説の方向を見る。
+
+        **検定向け**: 各地域 2-3 集団、各集団 40-60 個体、訪花観察 30-50 時間、交配実験 30 母株程度。
+
+        **ABM パラメータ推定向け**: 各地域 3 集団以上、各集団 60 個体前後、訪花観察 50 時間以上、人工自殖/他殖/袋掛け/自然結実を同一個体群で揃え、SNP は各集団 30 個体以上。
+
+        優先順位は、1. 訪花者組成、2. 袋掛け結実率、3. 自殖/他殖の発芽率差、4. 斑点面積率、5. SNP。
+        """
     )

@@ -1,8 +1,21 @@
 # シマホタルブクロ ネクターガイド進化 ABM
 
-TenSnap で表示する Python ABM です。斑点面積率、訪花頻度、自殖能力、近交荷重、種子数、発芽率、SNP 指標に対応する説明変数を入れています。
+TenSnap/Python ABM と Streamlit ダッシュボードです。斑点面積率、訪花頻度、自殖能力、近交荷重、種子数、発芽率、SNP 指標に対応する説明変数を入れています。
 
-## 実行
+## Streamlit app
+
+Streamlit アプリは `streamlit_app.py` です。実データが揃うまでは表の仮値を編集し、CSV upload/download で穴埋めできます。
+
+ローカル実行:
+
+```powershell
+python -m pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+Streamlit Community Cloud では、このリポジトリを選び、main file path に `streamlit_app.py` を指定してください。
+
+## TenSnap ABM
 
 ```powershell
 cd abm
@@ -18,13 +31,17 @@ TenSnap renderer/client から `ws://localhost:8765` に接続してください
 
 マルハナバチあり -> 他殖が成立 -> ネクターガイド維持 -> 遺伝的多様性維持
 
-島状態、伊豆諸島:
+島状態、大島:
 
-マルハナバチ減少・不在 -> 他殖機会が不安定化 -> 繁殖保証として自殖が重要になる -> でも自殖は近交弱勢を生む -> 完全自殖には移行できない -> 他殖チャンスを残す個体ではネクターガイドが維持される -> 他殖チャンスがほぼない場所ではネクターガイドが退化する
+`Bombus ardens` とコハナバチ類あり -> 他殖機会は本土とは違うがゼロではない -> ネクターガイド維持の余地が残る
+
+島状態、大島以外:
+
+マルハナバチ不在・コハナバチ類優占 -> 他殖機会が不安定化 -> 繁殖保証として自殖が重要になる -> でも自殖は近交弱勢を生む -> 完全自殖には移行できない -> 他殖チャンスを残す個体ではネクターガイドが維持される -> 他殖チャンスがほぼない場所ではネクターガイドが退化する
 
 ## 先行文献による根拠
 
-- Inoue & Amano (1986) は、本州・大島・その他の伊豆諸島で `Campanula punctata` の送粉者相と繁殖システムが異なることを示した。本州では主な送粉者が `Bombus diversus`、大島では `Bombus ardens` とコハナバチ類、神津島・八丈島などではコハナバチ類が優占し、八丈島個体は自家和合性・潜在的自動自殖性を示す。
+- Inoue & Amano (1986) は、本州・大島・その他の伊豆諸島で `Campanula punctata` の送粉者相と繁殖システムが異なることを示した。本州では主な送粉者が `Bombus diversus`、大島では `Bombus ardens` とコハナバチ類、神津島・八丈島などではコハナバチ類が優占する。つまり、伊豆諸島すべてでマルハナバチがいないわけではなく、大島は例外である。
 - Inoue (1989) は、伊豆諸島でマルハナバチが大島を除いて存在せず、コハナバチ類が優占すること、そして本州・大島では多くが自家不和合、他の島ではほぼ自家和合であることを報告し、マルハナバチ不在による送粉効率低下が繁殖システム進化を促すという仮説を支持した。
 - Nagano et al. (2014) は、`C. punctata var. hondoensis` で地域ごとのマルハナバチ相が花サイズに対応し、花と送粉者サイズの一致が雄性適応度に影響することを示した。これは送粉者による花形質選択の根拠になる。
 - Leonard & Papaj (2011) および nectar guide 実験研究は、ネクターガイドがハナバチの探索・定位・花内での姿勢を変え、花粉移動効率や植物適応度に影響しうることを示す。
@@ -39,63 +56,49 @@ References:
 - Wright, S. I. et al. 2013. Evolutionary consequences of self-fertilization in plants. Proceedings of the Royal Society B. https://pmc.ncbi.nlm.nih.gov/articles/PMC3652455/
 - Barrett, S. C. H. 1996. The reproductive biology and genetics of island plants. https://barrett.eeb.utoronto.ca/publications/files/2020/06/schb_134.pdf
 
+## 野外で取るデータ
+
+最低限ほしいデータ:
+
+| データ | 目的 | 最低サンプル感 |
+|---|---|---|
+| 斑点面積率 `nectar_guide` | 目的形質。個体ごとのネクターガイド退化/維持を見る | 各集団 30-50 個体、各個体 3-5 花 |
+| 訪花者の種類と訪花回数/時間 | `bombus_frequency`, `small_bee_frequency` を作る | 各集団 20-30 時間以上、時間帯を分散 |
+| 訪花後の結実率・種子数 | 他殖機会が fitness に効くかを見る | 各集団 30-50 花以上 |
+| 袋掛け結実率 | `selfing_ability`。送粉者なしで自殖できるか | 各集団 30-50 花以上 |
+| 人工自殖・人工他殖の種子数と発芽率 | `inbreeding_load` と fitness 成分 | 各集団 20-30 母株、各処理 1-3 花 |
+| 自然条件の発芽率 | 自然繁殖の fitness baseline | 各集団 20-30 母株 |
+| SNP/ゲノムデータ | `Fis`, `Fst`, 遺伝的多様性、集団分化 | 各集団 20-30 個体以上 |
+
+強く推奨:
+
+- 本土・大島・神津島・八丈島を同じ年に調査する。
+- 開花期の前半・中盤・後半を分ける。
+- 訪花観察は晴天/曇天、午前/午後を偏らせない。
+- 同じ個体で「斑点面積率」「自然結実」「袋掛け」「人工交配」「SNP」をできるだけ結びつける。
+
+どれほどデータがほしいか:
+
+- 最小セット: 各地域 1 集団、各集団 30 個体、訪花観察 20 時間。仮説の方向を見るだけ。
+- まともに検定するセット: 各地域 2-3 集団、各集団 40-60 個体、訪花観察 30-50 時間、交配実験 30 母株程度。
+- ABM のパラメータ推定まで狙うセット: 各地域 3 集団以上、各集団 60 個体前後、訪花観察 50 時間以上、人工自殖/他殖/袋掛け/自然結実を同一個体群で揃え、SNP は各集団 30 個体以上。
+
+優先順位は、1. 訪花者組成、2. 袋掛け結実率、3. 自殖/他殖の発芽率差、4. 斑点面積率、5. SNP です。SNP は強いですが、最初からなくても ABM の主要仮説は動かせます。
+
 ## 野外データ対応
 
-| ABM変数 | 野外データ | TenSnapでの扱い |
+| ABM変数 | 野外データ | アプリでの扱い |
 |---|---|---|
-| `nectar_guide` | 斑点面積率 | Plant agent の色と chart |
-| `bombus_frequency` | マルハナバチ訪花回数/時間 | slider |
-| `small_bee_frequency` | 小型ハナバチ訪花回数/時間 | slider |
-| `selfing_ability` | 袋掛け結実率 | slider |
-| `inbreeding_load` | 自殖種子と自然種子の発芽率差 | slider |
-| `seed_set_selfing` | 自殖時の種子数 | slider |
-| `seed_set_outcrossing` | 他殖時の種子数 | slider |
-| `germination_selfed` | 自殖種子の発芽率 | slider |
-| `germination_outcrossed` | 自然/他殖種子の発芽率 | slider |
+| `nectar_guide` | 斑点面積率 | 個体形質、chart |
+| `bombus_frequency` | マルハナバチ訪花回数/時間 | slider / CSV |
+| `small_bee_frequency` | 小型ハナバチ訪花回数/時間 | slider / CSV |
+| `selfing_ability` | 袋掛け結実率 | slider / CSV |
+| `inbreeding_load` | 自殖種子と自然/他殖種子の発芽率差 | slider / CSV |
+| `seed_set_selfing` | 自殖時の種子数 | CSV |
+| `seed_set_outcrossing` | 他殖時の種子数 | CSV |
+| `germination_selfed` | 自殖種子の発芽率 | CSV |
+| `germination_outcrossed` | 自然/他殖種子の発芽率 | CSV |
 | `fitness` | 種子数・発芽率 | chart |
 | `Fis` | SNP | chart |
 | `Fst` | SNP | chart |
-| `migration_rate` | 島間遺伝子流動の近似 | slider |
-
-## TenSnap 表示
-
-- Agents: `Plant`
-  - `position`: 2D
-  - `nectar_guide`: 0-1
-  - `fitness`
-  - `seed_output`
-  - `germination`
-  - `neutral_diversity`
-  - `reproduction_mode`: `outcrossing` / `selfing` / `failed`
-- Charts:
-  - `mean_nectar_guide`
-  - `guide_threshold_0_5`: threshold line at 0.5
-  - `selfing_rate`
-  - `outcrossing_rate`
-  - `failed_rate`
-  - `mean_fitness`
-  - `seed_output`
-  - `germination`
-  - `mean_neutral_diversity`
-  - `Fis`
-  - `Fst`
-- Presets:
-  - `Mainland`
-  - `Oshima`
-  - `Kozu`
-  - `Hachijo`
-- CSV:
-  - `Export CSV` action writes `shimahotarubukuro_results.csv`.
-
-## Streamlit app
-
-Streamlit アプリは `streamlit_app.py` です。実データが揃うまでは表の仮値を編集し、CSV upload/download で穴埋めできます。
-
-ローカル実行:
-
-```powershell
-python -m pip install -r requirements.txt
-streamlit run streamlit_app.py
-```
-
-Streamlit Community Cloud では、このリポジトリを選び、main file path に `streamlit_app.py` を指定してください。
+| `migration_rate` | 島間遺伝子流動の近似 | slider / CSV |

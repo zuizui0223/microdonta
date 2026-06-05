@@ -65,7 +65,7 @@ PRESETS = {
         "migration_rate": 0.05,
     },
     "Kozu": {
-        "bombus_frequency": 0.18,
+        "bombus_frequency": 0.00,
         "small_bee_frequency": 0.58,
         "selfing_ability": 0.52,
         "inbreeding_load": 0.18,
@@ -77,7 +77,7 @@ PRESETS = {
         "migration_rate": 0.025,
     },
     "Hachijo": {
-        "bombus_frequency": 0.06,
+        "bombus_frequency": 0.00,
         "small_bee_frequency": 0.74,
         "selfing_ability": 0.68,
         "inbreeding_load": 0.12,
