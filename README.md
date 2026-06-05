@@ -6,6 +6,7 @@ TenSnap/Python ABM と Streamlit ダッシュボードです。斑点面積率�
 
 Streamlit アプリは `streamlit_app.py` です。実データが揃うまでは表の仮値を編集し、CSV upload/download で穴埋めできます。
 `Fieldwork plan` タブには、野外で取るデータの目安と、調査項目チェックリストがあります。
+`Threshold sweep` タブでは、`selfing_ability` と `bombus_frequency` をグリッド探索し、ネクターガイド維持に必要な最小マルハナバチ頻度と、その境界での自殖率/他殖率を確認できます。
 
 ローカル実行:
 
@@ -103,3 +104,18 @@ References:
 | `Fis` | SNP | chart |
 | `Fst` | SNP | chart |
 | `migration_rate` | 島間遺伝子流動の近似 | slider / CSV |
+
+## Threshold の考え方
+
+`mean_nectar_guide = 0.5` は、可視化上の形質値の目安です。本当に見たい threshold は、どの `selfing_ability`、どの `bombus_frequency`、どの `inbreeding_load` の組み合わせでネクターガイドが維持から退化へ切り替わるかです。
+
+Streamlit の `Threshold sweep` では、各 `selfing_ability` について `bombus_frequency` を 0-1 で動かし、最終世代の `mean_nectar_guide` が指定した `guide criterion` 以上になる最小 `bombus_frequency` を出します。これを「維持境界」として見ます。
+
+近交弱勢は入っています。ただし、`inbreeding_load` は自殖種子の発芽率低下として fitness に一回だけ反映します。自殖時の fitness は概念的には次の形です。
+
+```text
+selfing_fitness = seed_set_selfing * effective_germination_selfed - guide_cost * nectar_guide
+effective_germination_selfed = min(germination_selfed, germination_outcrossed - inbreeding_load)
+```
+
+以前の実装では `germination_selfed` を低くしたうえでさらに `(1 - inbreeding_load)` を掛けており、近交弱勢が二重に効く可能性があったため修正しました。

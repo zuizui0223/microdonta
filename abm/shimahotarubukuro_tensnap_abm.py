@@ -60,7 +60,7 @@ PRESETS = {
         "guide_cost": 0.07,
         "seed_set_selfing": 0.55,
         "seed_set_outcrossing": 0.84,
-        "germination_selfed": 0.60,
+        "germination_selfed": 0.57,
         "germination_outcrossed": 0.82,
         "migration_rate": 0.05,
     },
@@ -72,7 +72,7 @@ PRESETS = {
         "guide_cost": 0.05,
         "seed_set_selfing": 0.64,
         "seed_set_outcrossing": 0.76,
-        "germination_selfed": 0.66,
+        "germination_selfed": 0.60,
         "germination_outcrossed": 0.78,
         "migration_rate": 0.025,
     },
@@ -84,7 +84,7 @@ PRESETS = {
         "guide_cost": 0.04,
         "seed_set_selfing": 0.72,
         "seed_set_outcrossing": 0.68,
-        "germination_selfed": 0.70,
+        "germination_selfed": 0.62,
         "germination_outcrossed": 0.74,
         "migration_rate": 0.01,
     },
@@ -253,8 +253,14 @@ class NectarGuideModel:
                 inbreeding_penalty = 0.0
             elif selfing:
                 plant.seed_output = self.seed_set_selfing
-                plant.germination = self.germination_selfed
-                inbreeding_penalty = self.inbreeding_load
+                plant.germination = max(
+                    0.0,
+                    min(
+                        self.germination_selfed,
+                        self.germination_outcrossed - self.inbreeding_load,
+                    ),
+                )
+                inbreeding_penalty = 0.0
             else:
                 plant.seed_output = 0.02
                 plant.germination = 0.02

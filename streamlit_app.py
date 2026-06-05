@@ -35,9 +35,9 @@ FIELD_COLUMNS = [
 DEFAULT_FIELD_DATA = pd.DataFrame(
     [
         ["Mainland", 0.62, 0.72, 0.18, 0.22, 0.32, 0.46, 0.92, 0.54, 0.86, 0.100, np.nan, np.nan],
-        ["Oshima", 0.55, 0.45, 0.38, 0.36, 0.25, 0.55, 0.84, 0.60, 0.82, 0.050, np.nan, np.nan],
-        ["Kozu", 0.42, 0.00, 0.58, 0.52, 0.18, 0.64, 0.76, 0.66, 0.78, 0.025, np.nan, np.nan],
-        ["Hachijo", 0.28, 0.00, 0.74, 0.68, 0.12, 0.72, 0.68, 0.70, 0.74, 0.010, np.nan, np.nan],
+        ["Oshima", 0.55, 0.45, 0.38, 0.36, 0.25, 0.55, 0.84, 0.57, 0.82, 0.050, np.nan, np.nan],
+        ["Kozu", 0.42, 0.00, 0.58, 0.52, 0.18, 0.64, 0.76, 0.60, 0.78, 0.025, np.nan, np.nan],
+        ["Hachijo", 0.28, 0.00, 0.74, 0.68, 0.12, 0.72, 0.68, 0.62, 0.74, 0.010, np.nan, np.nan],
     ],
     columns=FIELD_COLUMNS,
 )
@@ -183,8 +183,14 @@ def evaluate_population(population: list[Plant], params: dict[str, float], rng: 
             inbreeding_penalty = 0.0
         elif selfing:
             plant.seed_output = params["seed_set_selfing"]
-            plant.germination = params["germination_selfed"]
-            inbreeding_penalty = params["inbreeding_load"]
+            plant.germination = max(
+                0.0,
+                min(
+                    params["germination_selfed"],
+                    params["germination_outcrossed"] - params["inbreeding_load"],
+                ),
+            )
+            inbreeding_penalty = 0.0
         else:
             plant.seed_output = 0.02
             plant.germination = 0.02
@@ -260,6 +266,64 @@ def run_abm(params: dict[str, float], generations: int, population_size: int, se
     return pd.DataFrame(history)
 
 
+def run_threshold_sweep(
+    base_params: dict[str, float],
+    generations: int,
+    population_size: int,
+    seed: int,
+    grid_size: int,
+    guide_criterion: float,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    rows = []
+    selfing_values = np.linspace(0.0, 1.0, grid_size)
+    bombus_values = np.linspace(0.0, 1.0, grid_size)
+    for selfing_ability in selfing_values:
+        for bombus_frequency in bombus_values:
+            params = {
+                **base_params,
+                "selfing_ability": float(selfing_ability),
+                "bombus_frequency": float(bombus_frequency),
+            }
+            result = run_abm(params, generations, population_size, seed)
+            final = result.iloc[-1]
+            rows.append(
+                {
+                    "selfing_ability": float(selfing_ability),
+                    "bombus_frequency": float(bombus_frequency),
+                    "final_mean_nectar_guide": float(final["mean_nectar_guide"]),
+                    "final_selfing_rate": float(final["selfing_rate"]),
+                    "final_outcrossing_rate": float(final["outcrossing_rate"]),
+                    "maintained": bool(final["mean_nectar_guide"] >= guide_criterion),
+                }
+            )
+    sweep = pd.DataFrame(rows)
+    boundary_rows = []
+    for selfing_ability, group in sweep.groupby("selfing_ability"):
+        maintained = group[group["maintained"]].sort_values("bombus_frequency")
+        if maintained.empty:
+            boundary_rows.append(
+                {
+                    "selfing_ability": selfing_ability,
+                    "min_bombus_for_guide_maintenance": np.nan,
+                    "selfing_rate_at_boundary": np.nan,
+                    "outcrossing_rate_at_boundary": np.nan,
+                    "threshold_interpretation": "not maintained even at Bombus=1",
+                }
+            )
+        else:
+            row = maintained.iloc[0]
+            boundary_rows.append(
+                {
+                    "selfing_ability": selfing_ability,
+                    "min_bombus_for_guide_maintenance": row["bombus_frequency"],
+                    "selfing_rate_at_boundary": row["final_selfing_rate"],
+                    "outcrossing_rate_at_boundary": row["final_outcrossing_rate"],
+                    "threshold_interpretation": "guide maintained above this Bombus frequency",
+                }
+            )
+    return sweep, pd.DataFrame(boundary_rows)
+
+
 def field_row_to_params(row: pd.Series) -> dict[str, float]:
     return {
         "nectar_guide": clamp(row["nectar_guide"]),
@@ -303,8 +367,8 @@ generations = st.sidebar.slider("Generations", 10, 300, 80, 10)
 population_size = st.sidebar.slider("Population size", 50, 600, 180, 10)
 seed = st.sidebar.number_input("Random seed", value=20260605, step=1)
 
-data_tab, sim_tab, evidence_tab, fieldwork_tab = st.tabs(
-    ["Data template", "ABM results", "Literature", "Fieldwork plan"]
+data_tab, sim_tab, threshold_tab, evidence_tab, fieldwork_tab = st.tabs(
+    ["Data template", "ABM results", "Threshold sweep", "Literature", "Fieldwork plan"]
 )
 
 with data_tab:
@@ -380,6 +444,47 @@ with sim_tab:
         mime="text/csv",
     )
     st.dataframe(results.tail(12), use_container_width=True)
+
+with threshold_tab:
+    st.subheader("維持/退化の ecological threshold")
+    st.write(
+        "ここでは `mean_nectar_guide >= guide criterion` を「ネクターガイド維持」と定義し、"
+        "`selfing_ability` ごとに、維持に必要な最小 `bombus_frequency` を探索します。"
+    )
+    sweep_cols = st.columns(4)
+    sweep_generations = sweep_cols[0].slider("sweep generations", 20, 180, 80, 10)
+    sweep_population = sweep_cols[1].slider("sweep population", 40, 260, 120, 20)
+    grid_size = sweep_cols[2].slider("grid size", 6, 21, 11, 1)
+    guide_criterion = sweep_cols[3].slider("guide criterion", 0.1, 0.9, 0.5, 0.05)
+    sweep, boundary = run_threshold_sweep(
+        base_params,
+        generations=sweep_generations,
+        population_size=sweep_population,
+        seed=int(seed),
+        grid_size=grid_size,
+        guide_criterion=guide_criterion,
+    )
+    st.dataframe(boundary, use_container_width=True)
+    st.caption(
+        "Interpretation: 自殖能力が高くても、マルハナバチ頻度が十分低いと他殖機会が減り、"
+        "ネクターガイドの維持境界を下回ります。近交弱勢が強いほど、完全自殖だけでは fitness が伸びにくくなります。"
+    )
+    heatmap = sweep.pivot(
+        index="selfing_ability",
+        columns="bombus_frequency",
+        values="final_mean_nectar_guide",
+    )
+    st.write("final_mean_nectar_guide heatmap")
+    st.dataframe(
+        heatmap.round(3),
+        use_container_width=True,
+    )
+    st.download_button(
+        "Download threshold sweep CSV",
+        sweep.to_csv(index=False).encode("utf-8"),
+        file_name=f"microdonta_threshold_sweep_{population_choice}.csv",
+        mime="text/csv",
+    )
 
 with evidence_tab:
     st.subheader("生態学的根拠")
