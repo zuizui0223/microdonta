@@ -351,12 +351,19 @@ with st.sidebar.expander("Manual parameter overrides", expanded=False):
 with sim_tab:
     results = run_abm(base_params, generations, population_size, int(seed))
     latest = results.iloc[-1]
-    cols = st.columns(5)
+    above_threshold = results["mean_nectar_guide"] >= results["guide_threshold_0_5"]
+    above_count = int(above_threshold.sum())
+    below_count = int((~above_threshold).sum())
+    threshold_status = "above 0.5" if latest["mean_nectar_guide"] >= latest["guide_threshold_0_5"] else "below 0.5"
+
+    cols = st.columns(6)
     cols[0].metric("mean_nectar_guide", f"{latest['mean_nectar_guide']:.3f}")
     cols[1].metric("selfing_rate", f"{latest['selfing_rate']:.3f}")
     cols[2].metric("outcrossing_rate", f"{latest['outcrossing_rate']:.3f}")
     cols[3].metric("Fis", f"{latest['Fis']:.3f}")
     cols[4].metric("Fst", f"{latest['Fst']:.3f}")
+    cols[5].metric("threshold status", threshold_status)
+    st.caption(f"Threshold check: mean_nectar_guide >= 0.5 for {above_count} generations; below 0.5 for {below_count} generations.")
 
     chart_left, chart_right = st.columns(2)
     with chart_left:
