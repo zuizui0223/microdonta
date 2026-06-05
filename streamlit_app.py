@@ -210,17 +210,6 @@ def clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
     return max(low, min(high, float(value)))
 
 
-def load_field_data() -> pd.DataFrame:
-    uploaded = st.sidebar.file_uploader("実データ CSV をアップロード", type=["csv"])
-    if uploaded is None:
-        return DEFAULT_FIELD_DATA.copy()
-    data = pd.read_csv(uploaded)
-    for column in FIELD_COLUMNS:
-        if column not in data.columns:
-            data[column] = np.nan if column != "population" else ""
-    return data[FIELD_COLUMNS].copy()
-
-
 def evaluate_population(population: list[Plant], params: dict[str, float], rng: np.random.Generator) -> None:
     for plant in population:
         pollinator_efficiency = (
@@ -584,7 +573,10 @@ def make_pst_fst_diagnostics(data: pd.DataFrame) -> pd.DataFrame:
 
 
 st.title("シマホタルブクロ ネクターガイド進化 ABM")
-st.caption("実データをあとから穴埋めしながら、大島以外のマルハナバチ不在・自殖保証・近交弱勢・遺伝的多様性の仮説を検討する Streamlit アプリ")
+st.caption(
+    "実データを入れて予測するモデルではなく、実データと比較するための仮説生成器です。"
+    "送粉者環境・自殖保証・近交弱勢・遺伝的多様性を動かし、どの条件で観察されそうな傾向が出るかを探索します。"
+)
 
 with st.expander("仮説", expanded=True):
     st.markdown(
@@ -597,17 +589,16 @@ with st.expander("仮説", expanded=True):
         """
     )
 
-field_data = load_field_data()
+scenario_data = DEFAULT_FIELD_DATA.copy()
 
 st.sidebar.header("Simulation")
-population_choice = st.sidebar.selectbox("Population preset", field_data["population"].astype(str).tolist())
+population_choice = st.sidebar.selectbox("Scenario preset", scenario_data["population"].astype(str).tolist())
 generations = st.sidebar.slider("Generations", 10, 300, 80, 10)
 population_size = st.sidebar.slider("Population size", 50, 600, 180, 10)
 seed = st.sidebar.number_input("Random seed", value=20260605, step=1)
 
-data_tab, sim_tab, threshold_tab, robustness_tab, pst_tab, evidence_tab, fieldwork_tab = st.tabs(
+sim_tab, threshold_tab, robustness_tab, pst_tab, evidence_tab, fieldwork_tab = st.tabs(
     [
-        "Data template",
         "ABM results",
         "Threshold sweep",
         "Robustness",
@@ -617,42 +608,7 @@ data_tab, sim_tab, threshold_tab, robustness_tab, pst_tab, evidence_tab, fieldwo
     ]
 )
 
-with data_tab:
-    st.subheader("野外データ穴埋めテンプレート")
-    edited_data = st.data_editor(
-        field_data,
-        num_rows="dynamic",
-        width="stretch",
-        column_config={
-            "population": st.column_config.TextColumn("population"),
-            "flower_size": st.column_config.NumberColumn("flower size index", min_value=0.0, max_value=1.0),
-            "herkogamy": st.column_config.NumberColumn("herkogamy index", min_value=0.0, max_value=1.0),
-            "pollen_ovule_ratio": st.column_config.NumberColumn("P/O ratio index", min_value=0.0, max_value=1.0),
-            "bombus_pollination_efficiency": st.column_config.NumberColumn("Bombus pollination efficiency", min_value=0.0, max_value=1.0),
-            "other_pollinator_efficiency": st.column_config.NumberColumn("other pollinator efficiency", min_value=0.0, max_value=1.0),
-            "nectar_guide": st.column_config.NumberColumn("斑点面積率", min_value=0.0, max_value=1.0),
-            "pollinator_environment": st.column_config.NumberColumn("送粉者環境/他殖機会", min_value=0.0, max_value=1.0),
-            "bombus_present": st.column_config.NumberColumn("マルハナバチ在/不在", min_value=0.0, max_value=1.0),
-            "bombus_guide_dependence": st.column_config.NumberColumn("Bombus guide dependence", min_value=0.0, max_value=1.0),
-            "other_pollinator_guide_use": st.column_config.NumberColumn("other pollinator guide use", min_value=0.0, max_value=1.0),
-            "selfing_ability": st.column_config.NumberColumn("袋掛け結実率", min_value=0.0, max_value=1.0),
-            "inbreeding_load": st.column_config.NumberColumn("自殖種子と自然種子の発芽率差", min_value=0.0, max_value=1.0),
-            "Fis_observed": st.column_config.NumberColumn("Fis observed"),
-            "Fst_observed": st.column_config.NumberColumn("Fst observed"),
-            "Pst_nectar_guide": st.column_config.NumberColumn("Pst nectar guide"),
-            "Pst_flower_size": st.column_config.NumberColumn("Pst flower size"),
-            "admixture_index": st.column_config.NumberColumn("admixture index", min_value=0.0, max_value=1.0),
-            "colonization_history": st.column_config.TextColumn("colonization / hybridization notes"),
-        },
-    )
-    st.download_button(
-        "Download filled template CSV",
-        edited_data.to_csv(index=False).encode("utf-8"),
-        file_name="microdonta_field_data_template.csv",
-        mime="text/csv",
-    )
-
-working_data = edited_data.copy()
+working_data = scenario_data.copy()
 matched_rows = working_data[working_data["population"].astype(str) == population_choice]
 selected_row = matched_rows.iloc[0] if not matched_rows.empty else working_data.iloc[0]
 base_params = field_row_to_params(selected_row)
@@ -696,6 +652,25 @@ with sim_tab:
         f"Selfing syndrome score: {latest['selfing_syndrome_score']:.3f}; "
         f"island syndrome score: {latest['island_syndrome_score']:.3f}."
     )
+    with st.expander("この値の出し方", expanded=False):
+        st.markdown(
+            f"""
+            表示値は、左の `Scenario preset`、手動パラメータ、`Generations = {generations}`、
+            `Population size = {population_size}`、`Random seed = {int(seed)}` で回した
+            ABM の最終世代の集計です。実測値を入力して予測した値ではありません。
+
+            - `mean_nectar_guide`: 最終世代の全個体の `nectar_guide` 平均。
+            - `outcrossing_rate`: 最終世代で他殖になった個体の割合。
+            - `selfing_rate`: 最終世代で自殖成功になった個体の割合。モデル内では、他殖しなかった個体だけが自殖判定に進みます。
+            - `Fis`: `selfing_rate * (1 - 0.5 * migration_rate)` を 0-1 に丸めた近交診断。
+            - `Fst`: `(1 - migration_rate) * (1 - outcrossing_rate) * (1 - mean_neutral_diversity)` を 0-1 に丸めた分化診断。
+            - `threshold status`: `mean_nectar_guide >= 0.5` なら `above 0.5`、下回れば `below 0.5`。
+
+            各個体の繁殖モードは、送粉者環境、Bombus チャンネル、ネクターガイド値から他殖確率を作り、
+            乱数で `outcrossing` / `selfing` / `failed` に分岐させています。次世代の親は、
+            種子数・発芽率・近交弱勢・ガイド維持コストから作った `fitness` を重みとして選ばれます。
+            """
+        )
 
     chart_left, chart_right = st.columns(2)
     with chart_left:
@@ -706,8 +681,8 @@ with sim_tab:
         st.line_chart(results.set_index("generation")[["mean_neutral_diversity", "Fis", "Fst"]])
         st.line_chart(results.set_index("generation")[["selfing_syndrome_score", "island_syndrome_score"]])
 
-    st.subheader("TenSnap-style agent view")
-    st.caption("Each point is a Plant. Color/size use nectar_guide and fitness; hover data remain in the table below.")
+    st.subheader("Agent scatter view")
+    st.caption("Streamlit 上の簡易可視化です。TenSnap 本体ではありません。各点は Plant 個体で、色は nectar_guide、サイズは fitness を表します。")
     view_agents = agents.copy()
     view_agents["guide_color_value"] = view_agents["nectar_guide"]
     view_agents["fitness_size"] = 60 + 220 * view_agents["fitness"]
