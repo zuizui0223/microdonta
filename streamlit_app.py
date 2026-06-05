@@ -18,8 +18,10 @@ st.set_page_config(
 FIELD_COLUMNS = [
     "population",
     "nectar_guide",
-    "bombus_frequency",
-    "small_bee_frequency",
+    "pollinator_environment",
+    "bombus_present",
+    "bombus_guide_dependence",
+    "other_pollinator_guide_use",
     "selfing_ability",
     "inbreeding_load",
     "seed_set_selfing",
@@ -38,10 +40,10 @@ FIELD_COLUMNS = [
 
 DEFAULT_FIELD_DATA = pd.DataFrame(
     [
-        ["Mainland", 0.62, 0.72, 0.18, 0.22, 0.32, 0.46, 0.92, 0.54, 0.86, 0.100, np.nan, np.nan, np.nan, np.nan, 0.00, "source/mainland"],
-        ["Oshima", 0.55, 0.45, 0.38, 0.36, 0.25, 0.55, 0.84, 0.57, 0.82, 0.050, np.nan, np.nan, np.nan, np.nan, 0.20, "island with Bombus ardens"],
-        ["Kozu", 0.42, 0.00, 0.58, 0.52, 0.18, 0.64, 0.76, 0.60, 0.78, 0.025, np.nan, np.nan, np.nan, np.nan, 0.35, "bumblebee-free island"],
-        ["Hachijo", 0.28, 0.00, 0.74, 0.68, 0.12, 0.72, 0.68, 0.62, 0.74, 0.010, np.nan, np.nan, np.nan, np.nan, 0.45, "bumblebee-free island"],
+        ["Mainland", 0.62, 0.78, 1.0, 0.75, 0.12, 0.22, 0.32, 0.46, 0.92, 0.54, 0.86, 0.100, np.nan, np.nan, np.nan, np.nan, 0.00, "source/mainland"],
+        ["Oshima", 0.55, 0.58, 1.0, 0.65, 0.16, 0.36, 0.25, 0.55, 0.84, 0.57, 0.82, 0.050, np.nan, np.nan, np.nan, np.nan, 0.20, "island with Bombus ardens"],
+        ["Kozu", 0.42, 0.42, 0.0, 0.00, 0.18, 0.52, 0.18, 0.64, 0.76, 0.60, 0.78, 0.025, np.nan, np.nan, np.nan, np.nan, 0.35, "bumblebee-free island"],
+        ["Hachijo", 0.28, 0.36, 0.0, 0.00, 0.18, 0.68, 0.12, 0.72, 0.68, 0.62, 0.74, 0.010, np.nan, np.nan, np.nan, np.nan, 0.45, "bumblebee-free island"],
     ],
     columns=FIELD_COLUMNS,
 )
@@ -86,6 +88,15 @@ LITERATURE = [
         ),
     },
     {
+        "title": "Lunau et al. 2006, Naturwissenschaften",
+        "url": "https://doi.org/10.1007/s00114-006-0105-2",
+        "point": (
+            "Flower-naive Bombus terrestris visually target components of floral colour "
+            "patterns, supporting the assumption that bumblebees can use guide-like "
+            "patterns during close-range orientation."
+        ),
+    },
+    {
         "title": "Goodwillie et al. 2010, floral signposts",
         "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3248739/",
         "point": (
@@ -122,7 +133,7 @@ FIELD_CHECKLIST = [
     ["斑点計測", "斑点面積率を測る", "nectar_guide。画像解析で斑点面積/花冠対象面積。"],
     ["斑点計測", "花サイズも測る", "花冠長、花冠幅、開口部径。送粉者サイズとの対応を見る。"],
     ["訪花観察", "訪花者を分類する", "マルハナバチ、コハナバチ類、その他に最低分類。可能なら種/属まで。"],
-    ["訪花観察", "訪花回数と観察時間を記録する", "bombus_frequency, small_bee_frequency。回数/花/時間または回数/パッチ/時間。"],
+    ["訪花観察", "訪花回数と観察時間を記録する", "pollinator_environment を作る材料。訪花者種別、回数、花粉接触、滞在時間を記録。"],
     ["訪花観察", "訪花行動を記録する", "正当訪花、盗蜜、接触部位、滞在時間、花粉接触の有無。"],
     ["訪花観察", "時間帯を分散する", "午前/午後、開花期前半/中盤/後半を偏らせない。"],
     ["自然結実", "無処理花をマークする", "自然条件での fruit set と seed set。"],
@@ -177,10 +188,17 @@ def load_field_data() -> pd.DataFrame:
 
 def evaluate_population(population: list[Plant], params: dict[str, float], rng: np.random.Generator) -> None:
     for plant in population:
+        guide_alignment = (
+            params["bombus_present"] * params["bombus_guide_dependence"]
+            + (1.0 - params["bombus_present"]) * params["other_pollinator_guide_use"]
+        )
         outcross_prob = clamp(
             params["base_outcross"]
-            + params["small_bee_frequency"] * params["pollinator_efficiency_small_bee"]
-            + params["bombus_frequency"] * params["pollinator_efficiency_bombus"] * plant.guide
+            + params["pollinator_environment"]
+            * (
+                params["pollinator_environment_outcross_effect"]
+                + guide_alignment * plant.guide
+            )
         )
         outcrossing = rng.random() < outcross_prob
         selfing = (not outcrossing) and (rng.random() < params["selfing_ability"])
@@ -349,8 +367,10 @@ def run_threshold_sweep(
 def field_row_to_params(row: pd.Series) -> dict[str, float]:
     return {
         "nectar_guide": clamp(row["nectar_guide"]),
-        "bombus_frequency": clamp(row["bombus_frequency"]),
-        "small_bee_frequency": clamp(row["small_bee_frequency"]),
+        "pollinator_environment": clamp(row["pollinator_environment"]),
+        "bombus_present": clamp(row["bombus_present"]),
+        "bombus_guide_dependence": clamp(row["bombus_guide_dependence"]),
+        "other_pollinator_guide_use": clamp(row["other_pollinator_guide_use"]),
         "selfing_ability": clamp(row["selfing_ability"]),
         "inbreeding_load": clamp(row["inbreeding_load"]),
         "seed_set_selfing": clamp(row["seed_set_selfing"]),
@@ -360,8 +380,7 @@ def field_row_to_params(row: pd.Series) -> dict[str, float]:
         "migration_rate": clamp(row["migration_rate"], 0.0, 0.25),
         "guide_cost": 0.06,
         "base_outcross": 0.10,
-        "pollinator_efficiency_small_bee": 0.22,
-        "pollinator_efficiency_bombus": 0.78,
+        "pollinator_environment_outcross_effect": 0.42,
         "mutation_sd": 0.055,
         "genetic_drift_strength": 0.035,
     }
@@ -469,8 +488,10 @@ with data_tab:
         column_config={
             "population": st.column_config.TextColumn("population"),
             "nectar_guide": st.column_config.NumberColumn("斑点面積率", min_value=0.0, max_value=1.0),
-            "bombus_frequency": st.column_config.NumberColumn("マルハナバチ訪花回数/時間", min_value=0.0, max_value=1.0),
-            "small_bee_frequency": st.column_config.NumberColumn("小型ハナバチ訪花回数/時間", min_value=0.0, max_value=1.0),
+            "pollinator_environment": st.column_config.NumberColumn("送粉者環境/他殖機会", min_value=0.0, max_value=1.0),
+            "bombus_present": st.column_config.NumberColumn("マルハナバチ在/不在", min_value=0.0, max_value=1.0),
+            "bombus_guide_dependence": st.column_config.NumberColumn("Bombus guide dependence", min_value=0.0, max_value=1.0),
+            "other_pollinator_guide_use": st.column_config.NumberColumn("other pollinator guide use", min_value=0.0, max_value=1.0),
             "selfing_ability": st.column_config.NumberColumn("袋掛け結実率", min_value=0.0, max_value=1.0),
             "inbreeding_load": st.column_config.NumberColumn("自殖種子と自然種子の発芽率差", min_value=0.0, max_value=1.0),
             "Fis_observed": st.column_config.NumberColumn("Fis observed"),
@@ -495,8 +516,10 @@ base_params = field_row_to_params(selected_row)
 
 with st.sidebar.expander("Manual parameter overrides", expanded=False):
     for key in [
-        "bombus_frequency",
-        "small_bee_frequency",
+        "pollinator_environment",
+        "bombus_present",
+        "bombus_guide_dependence",
+        "other_pollinator_guide_use",
         "selfing_ability",
         "inbreeding_load",
         "guide_cost",
@@ -540,25 +563,21 @@ with sim_tab:
 
 with threshold_tab:
     st.subheader("維持/退化の ecological threshold")
-    default_axis = (
-        "small_bee_frequency"
-        if str(population_choice) in {"Kozu", "Hachijo"}
-        else "bombus_frequency"
-    )
+    default_axis = "pollinator_environment"
     sweep_axis = st.radio(
         "sweep axis",
-        ["bombus_frequency", "small_bee_frequency"],
-        index=["bombus_frequency", "small_bee_frequency"].index(default_axis),
+        ["pollinator_environment", "bombus_guide_dependence"],
+        index=["pollinator_environment", "bombus_guide_dependence"].index(default_axis),
         horizontal=True,
     )
     st.write(
         "ここでは `mean_nectar_guide >= guide criterion` を「ネクターガイド維持」と定義し、"
         f"`selfing_ability` ごとに、維持に必要な最小 `{sweep_axis}` を探索します。"
     )
-    if sweep_axis == "bombus_frequency" and str(population_choice) in {"Kozu", "Hachijo"}:
+    if sweep_axis == "bombus_guide_dependence" and base_params["bombus_present"] == 0:
         st.warning(
-            "神津島・八丈島ではマルハナバチ不在が前提なので、この Bombus sweep は反実仮想です。"
-            "現実の閾値としては small_bee_frequency または outcrossing_rate を見てください。"
+            "この集団ではマルハナバチ不在が前提なので、Bombus guide dependence の sweep は反実仮想です。"
+            "現実の閾値としては pollinator_environment または実測 outcrossing_rate を見てください。"
         )
     sweep_cols = st.columns(5)
     sweep_generations = sweep_cols[0].slider("sweep generations", 20, 180, 80, 10)
@@ -649,8 +668,10 @@ with evidence_tab:
         pd.DataFrame(
             [
                 ["nectar_guide", "斑点面積率", "個体の guide trait と mean_nectar_guide"],
-                ["bombus_frequency", "マルハナバチ訪花回数/時間", "他殖確率の主要項"],
-                ["small_bee_frequency", "小型ハナバチ訪花回数/時間", "補助的な他殖機会"],
+                ["pollinator_environment", "訪花者組成・訪花頻度・花粉接触から作る他殖機会", "他殖確率の主要項"],
+                ["bombus_present", "マルハナバチ在/不在", "ネクターガイド選択の重み"],
+                ["bombus_guide_dependence", "Bombus がネクターガイドを利用する強さ", "guide trait が他殖に効く強さ"],
+                ["other_pollinator_guide_use", "コハナバチ類などの guide 利用", "Bombus 不在時の弱い guide 効果"],
                 ["selfing_ability", "袋掛け結実率", "他殖失敗時の自殖成功確率"],
                 ["inbreeding_load", "自殖種子と自然種子の発芽率差", "自殖 fitness penalty"],
                 ["fitness", "種子数・発芽率", "次世代親の重み"],
@@ -668,7 +689,7 @@ with fieldwork_tab:
         pd.DataFrame(
             [
                 ["斑点面積率", "nectar_guide", "各集団 30-50 個体、各個体 3-5 花", "目的形質。退化/維持の直接測定"],
-                ["訪花者の種類と訪花回数/時間", "bombus_frequency, small_bee_frequency", "各集団 20-30 時間以上", "送粉者相と他殖機会"],
+                ["訪花者の種類と訪花回数/時間", "pollinator_environment, bombus_present", "各集団 20-30 時間以上", "送粉者相と他殖機会"],
                 ["自然結実率・種子数", "fitness baseline", "各集団 30-50 花以上", "自然条件での適応度"],
                 ["袋掛け結実率", "selfing_ability", "各集団 30-50 花以上", "送粉者なしの繁殖保証"],
                 ["人工自殖/人工他殖の種子数", "seed_set_selfing, seed_set_outcrossing", "各集団 20-30 母株、各処理 1-3 花", "繁殖様式ごとの種子生産"],

@@ -41,8 +41,10 @@ CSV_PATH = OUTPUT_DIR / "shimahotarubukuro_results.csv"
 
 PRESETS = {
     "Mainland": {
-        "bombus_frequency": 0.72,
-        "small_bee_frequency": 0.18,
+        "pollinator_environment": 0.78,
+        "bombus_present": 1.0,
+        "bombus_guide_dependence": 0.75,
+        "other_pollinator_guide_use": 0.12,
         "selfing_ability": 0.22,
         "inbreeding_load": 0.32,
         "guide_cost": 0.08,
@@ -53,8 +55,10 @@ PRESETS = {
         "migration_rate": 0.10,
     },
     "Oshima": {
-        "bombus_frequency": 0.45,
-        "small_bee_frequency": 0.38,
+        "pollinator_environment": 0.58,
+        "bombus_present": 1.0,
+        "bombus_guide_dependence": 0.65,
+        "other_pollinator_guide_use": 0.16,
         "selfing_ability": 0.36,
         "inbreeding_load": 0.25,
         "guide_cost": 0.07,
@@ -65,8 +69,10 @@ PRESETS = {
         "migration_rate": 0.05,
     },
     "Kozu": {
-        "bombus_frequency": 0.00,
-        "small_bee_frequency": 0.58,
+        "pollinator_environment": 0.42,
+        "bombus_present": 0.0,
+        "bombus_guide_dependence": 0.0,
+        "other_pollinator_guide_use": 0.18,
         "selfing_ability": 0.52,
         "inbreeding_load": 0.18,
         "guide_cost": 0.05,
@@ -77,8 +83,10 @@ PRESETS = {
         "migration_rate": 0.025,
     },
     "Hachijo": {
-        "bombus_frequency": 0.00,
-        "small_bee_frequency": 0.74,
+        "pollinator_environment": 0.36,
+        "bombus_present": 0.0,
+        "bombus_guide_dependence": 0.0,
+        "other_pollinator_guide_use": 0.18,
         "selfing_ability": 0.68,
         "inbreeding_load": 0.12,
         "guide_cost": 0.04,
@@ -155,8 +163,10 @@ class NectarGuideModel:
         self.rng = random.Random(seed)
         self.generation = 0
 
-        self.bombus_frequency = PRESETS["Mainland"]["bombus_frequency"]
-        self.small_bee_frequency = PRESETS["Mainland"]["small_bee_frequency"]
+        self.pollinator_environment = PRESETS["Mainland"]["pollinator_environment"]
+        self.bombus_present = PRESETS["Mainland"]["bombus_present"]
+        self.bombus_guide_dependence = PRESETS["Mainland"]["bombus_guide_dependence"]
+        self.other_pollinator_guide_use = PRESETS["Mainland"]["other_pollinator_guide_use"]
         self.selfing_ability = PRESETS["Mainland"]["selfing_ability"]
         self.inbreeding_load = PRESETS["Mainland"]["inbreeding_load"]
         self.guide_cost = PRESETS["Mainland"]["guide_cost"]
@@ -167,8 +177,7 @@ class NectarGuideModel:
         self.migration_rate = PRESETS["Mainland"]["migration_rate"]
 
         self.base_outcross = 0.10
-        self.pollinator_efficiency_small_bee = 0.22
-        self.pollinator_efficiency_bombus = 0.78
+        self.pollinator_environment_outcross_effect = 0.42
         self.mutation_sd = 0.055
         self.genetic_drift_strength = 0.035
 
@@ -231,13 +240,15 @@ class NectarGuideModel:
         )
 
     def _outcross_probability(self, plant: Plant) -> float:
-        small_bee_effect = self.small_bee_frequency * self.pollinator_efficiency_small_bee
-        guide_bonus = (
-            self.bombus_frequency
-            * self.pollinator_efficiency_bombus
-            * plant.nectar_guide
+        guide_alignment = (
+            self.bombus_present * self.bombus_guide_dependence
+            + (1.0 - self.bombus_present) * self.other_pollinator_guide_use
         )
-        return clamp(self.base_outcross + small_bee_effect + guide_bonus)
+        return clamp(
+            self.base_outcross
+            + self.pollinator_environment
+            * (self.pollinator_environment_outcross_effect + guide_alignment * plant.nectar_guide)
+        )
 
     def _evaluate_generation(self) -> None:
         for plant in self.plants:
@@ -309,8 +320,10 @@ class NectarGuideModel:
                 "mean_neutral_diversity": self._mean_neutral_diversity_value(),
                 "Fis": self._fis_value(),
                 "Fst": self._fst_value(),
-                "bombus_frequency": self.bombus_frequency,
-                "small_bee_frequency": self.small_bee_frequency,
+                "pollinator_environment": self.pollinator_environment,
+                "bombus_present": self.bombus_present,
+                "bombus_guide_dependence": self.bombus_guide_dependence,
+                "other_pollinator_guide_use": self.other_pollinator_guide_use,
                 "selfing_ability": self.selfing_ability,
                 "inbreeding_load": self.inbreeding_load,
                 "guide_cost": self.guide_cost,
@@ -359,8 +372,10 @@ class NectarGuideModel:
             "mean_neutral_diversity",
             "Fis",
             "Fst",
-            "bombus_frequency",
-            "small_bee_frequency",
+            "pollinator_environment",
+            "bombus_present",
+            "bombus_guide_dependence",
+            "other_pollinator_guide_use",
             "selfing_ability",
             "inbreeding_load",
             "guide_cost",
@@ -490,8 +505,10 @@ async def main() -> None:
         model,
         BindParametersConfig(
             include=[
-                "bombus_frequency",
-                "small_bee_frequency",
+                "pollinator_environment",
+                "bombus_present",
+                "bombus_guide_dependence",
+                "other_pollinator_guide_use",
                 "selfing_ability",
                 "inbreeding_load",
                 "guide_cost",
@@ -502,20 +519,38 @@ async def main() -> None:
                 "migration_rate",
             ],
             custom_bindings={
-                "bombus_frequency": create_parameter(
-                    id="bombus_frequency",
+                "pollinator_environment": create_parameter(
+                    id="pollinator_environment",
                     type="number",
-                    label="bombus_frequency",
-                    value=model.bombus_frequency,
+                    label="pollinator_environment",
+                    value=model.pollinator_environment,
                     min=0,
                     max=1,
                     step=0.01,
                 ),
-                "small_bee_frequency": create_parameter(
-                    id="small_bee_frequency",
+                "bombus_present": create_parameter(
+                    id="bombus_present",
                     type="number",
-                    label="small_bee_frequency",
-                    value=model.small_bee_frequency,
+                    label="bombus_present",
+                    value=model.bombus_present,
+                    min=0,
+                    max=1,
+                    step=1.0,
+                ),
+                "bombus_guide_dependence": create_parameter(
+                    id="bombus_guide_dependence",
+                    type="number",
+                    label="bombus_guide_dependence",
+                    value=model.bombus_guide_dependence,
+                    min=0,
+                    max=1,
+                    step=0.01,
+                ),
+                "other_pollinator_guide_use": create_parameter(
+                    id="other_pollinator_guide_use",
+                    type="number",
+                    label="other_pollinator_guide_use",
+                    value=model.other_pollinator_guide_use,
                     min=0,
                     max=1,
                     step=0.01,

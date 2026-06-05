@@ -6,7 +6,7 @@ TenSnap/Python ABM と Streamlit ダッシュボードです。斑点面積率�
 
 Streamlit アプリは `streamlit_app.py` です。実データが揃うまでは表の仮値を編集し、CSV upload/download で穴埋めできます。
 `Fieldwork plan` タブには、野外で取るデータの目安と、調査項目チェックリストがあります。
-`Threshold sweep` タブでは、`selfing_ability` と送粉者頻度をグリッド探索し、ネクターガイド維持に必要な最小訪花頻度と、その境界での自殖率/他殖率を確認できます。神津島・八丈島ではマルハナバチ不在が前提なので、主に `small_bee_frequency` 側の threshold を見ます。
+`Threshold sweep` タブでは、`selfing_ability` と `pollinator_environment` をグリッド探索し、ネクターガイド維持に必要な他殖可能環境と、その境界での自殖率/他殖率を確認できます。ネクターガイドへの選択だけは、`bombus_present` と `bombus_guide_dependence` でマルハナバチ依存性を分けています。
 
 ローカル実行:
 
@@ -46,7 +46,7 @@ TenSnap renderer/client から `ws://localhost:8765` に接続してください
 - Inoue & Amano (1986) は、本州・大島・その他の伊豆諸島で `Campanula punctata` の送粉者相と繁殖システムが異なることを示した。本州では主な送粉者が `Bombus diversus`、大島では `Bombus ardens` とコハナバチ類、神津島・八丈島などではコハナバチ類が優占する。つまり、伊豆諸島すべてでマルハナバチがいないわけではなく、大島は例外である。
 - Inoue (1989) は、伊豆諸島でマルハナバチが大島を除いて存在せず、コハナバチ類が優占すること、そして本州・大島では多くが自家不和合、他の島ではほぼ自家和合であることを報告し、マルハナバチ不在による送粉効率低下が繁殖システム進化を促すという仮説を支持した。
 - Nagano et al. (2014) は、`C. punctata var. hondoensis` で地域ごとのマルハナバチ相が花サイズに対応し、花と送粉者サイズの一致が雄性適応度に影響することを示した。これは送粉者による花形質選択の根拠になる。
-- Leonard & Papaj (2011) および nectar guide 実験研究は、ネクターガイドがハナバチの探索・定位・花内での姿勢を変え、花粉移動効率や植物適応度に影響しうることを示す。
+- Leonard & Papaj (2011)、Lunau et al. (2006) および nectar guide 実験研究は、ネクターガイドがハナバチ、とくに Bombus の探索・定位・花内での姿勢を変え、花粉移動効率や植物適応度に影響しうることを示す。
 - 自殖は送粉者や交配相手が少ないとき繁殖保証として有利になりうるが、近交弱勢、ヘテロ接合度低下、集団間遺伝子流動低下を伴う。したがって、島では「完全自殖」ではなく、他殖機会と自殖保証の混合戦略が維持される可能性がある。
 
 References:
@@ -55,6 +55,7 @@ References:
 - Inoue, K. 1989. Pattern of Breeding-System Change in the Izu Islands in `Campanula punctata`: Bumblebee-Absence Hypothesis. Plant Species Biology. https://cir.nii.ac.jp/crid/2051714791885965312
 - Nagano, Y. et al. 2014. Changes in pollinator fauna affect altitudinal variation of floral size in a bumblebee-pollinated herb. Ecology and Evolution. https://pmc.ncbi.nlm.nih.gov/articles/PMC4228614/
 - Leonard, A. S. & Papaj, D. R. 2011. "X" marks the spot: The possible benefits of nectar guides to bees and plants. Functional Ecology. https://doi.org/10.1111/j.1365-2435.2011.01885.x
+- Lunau, K. et al. 2006. Visual targeting of components of floral colour patterns in flower-naive bumblebees. Naturwissenschaften. https://doi.org/10.1007/s00114-006-0105-2
 - Wright, S. I. et al. 2013. Evolutionary consequences of self-fertilization in plants. Proceedings of the Royal Society B. https://pmc.ncbi.nlm.nih.gov/articles/PMC3652455/
 - Barrett, S. C. H. 1996. The reproductive biology and genetics of island plants. https://barrett.eeb.utoronto.ca/publications/files/2020/06/schb_134.pdf
 
@@ -65,7 +66,7 @@ References:
 | データ | 目的 | 最低サンプル感 |
 |---|---|---|
 | 斑点面積率 `nectar_guide` | 目的形質。個体ごとのネクターガイド退化/維持を見る | 各集団 30-50 個体、各個体 3-5 花 |
-| 訪花者の種類と訪花回数/時間 | `bombus_frequency`, `small_bee_frequency` を作る | 各集団 20-30 時間以上、時間帯を分散 |
+| 訪花者の種類・訪花回数・花粉接触 | `pollinator_environment`, `bombus_present`, `bombus_guide_dependence` を作る | 各集団 20-30 時間以上、時間帯を分散 |
 | 訪花後の結実率・種子数 | 他殖機会が fitness に効くかを見る | 各集団 30-50 花以上 |
 | 袋掛け結実率 | `selfing_ability`。送粉者なしで自殖できるか | 各集団 30-50 花以上 |
 | 人工自殖・人工他殖の種子数と発芽率 | `inbreeding_load` と fitness 成分 | 各集団 20-30 母株、各処理 1-3 花 |
@@ -92,8 +93,10 @@ References:
 | ABM変数 | 野外データ | アプリでの扱い |
 |---|---|---|
 | `nectar_guide` | 斑点面積率 | 個体形質、chart |
-| `bombus_frequency` | マルハナバチ訪花回数/時間 | slider / CSV |
-| `small_bee_frequency` | 小型ハナバチ訪花回数/時間 | slider / CSV |
+| `pollinator_environment` | 訪花者組成・訪花頻度・花粉接触から作る他殖可能環境 | slider / CSV |
+| `bombus_present` | マルハナバチ在/不在 | slider / CSV |
+| `bombus_guide_dependence` | マルハナバチがネクターガイドを利用する強さ | slider / CSV |
+| `other_pollinator_guide_use` | コハナバチ類などがネクターガイドを利用する強さ | slider / CSV |
 | `selfing_ability` | 袋掛け結実率 | slider / CSV |
 | `inbreeding_load` | 自殖種子と自然/他殖種子の発芽率差 | slider / CSV |
 | `seed_set_selfing` | 自殖時の種子数 | CSV |
@@ -109,13 +112,33 @@ References:
 | `admixture_index` | SNP などからの交雑・混合度 | 診断 |
 | `colonization_history` | 移入経緯・植栽・創始者効果のメモ | 診断 |
 
+## 送粉者環境とネクターガイド選択
+
+ABM では、送粉者を `bombus_frequency` と `small_bee_frequency` のように横並びで直接使うのではなく、まず `pollinator_environment` として「他殖できる環境」を表します。これは訪花者の種類、訪花頻度、花粉接触、滞在時間、結実率などから作る合成変数です。
+
+一方で、ネクターガイドへの選択はマルハナバチに強く関係すると仮定します。そのため、`bombus_present` と `bombus_guide_dependence` を別に置きます。
+
+```text
+outcross_probability
+  = base_outcross
+  + pollinator_environment
+    * (pollinator_environment_outcross_effect
+       + guide_alignment * nectar_guide)
+
+guide_alignment
+  = bombus_present * bombus_guide_dependence
+    + (1 - bombus_present) * other_pollinator_guide_use
+```
+
+つまり、自殖率・繁殖保証・実際の近交度は送粉者不足全体に関係し、ネクターガイドの維持/退化はその中でも Bombus がいるか、Bombus がどれだけ guide を利用するかに強く関係する、という整理です。
+
 ## Threshold の考え方
 
 `mean_nectar_guide = 0.5` は、可視化上の形質値の目安です。本当に見たい threshold は、どの `selfing_ability`、どの送粉者頻度、どの `inbreeding_load` の組み合わせでネクターガイドが維持から退化へ切り替わるかです。
 
-Streamlit の `Threshold sweep` では、各 `selfing_ability` について `bombus_frequency` または `small_bee_frequency` を 0-1 で動かし、最終世代の `mean_nectar_guide` が指定した `guide criterion` 以上になる最小頻度を出します。これを「維持境界」として見ます。確率シミュレーションなので、`replicates` を増やして平均した境界を見るのが基本です。
+Streamlit の `Threshold sweep` では、各 `selfing_ability` について `pollinator_environment` を 0-1 で動かし、最終世代の `mean_nectar_guide` が指定した `guide criterion` 以上になる最小値を出します。これを「維持境界」として見ます。確率シミュレーションなので、`replicates` を増やして平均した境界を見るのが基本です。
 
-注意: 神津島・八丈島では `bombus_frequency = 0` が生態学的前提です。したがって、これらの島で `bombus_frequency` を sweep するのは「もしマルハナバチがいたら」という反実仮想です。現実的な threshold は、`small_bee_frequency`、実測 `outcrossing_rate`、または両者をまとめた effective outcrossing opportunity として読むべきです。
+注意: 神津島・八丈島では `bombus_present = 0` が生態学的前提です。したがって、これらの島で `bombus_guide_dependence` を sweep するのは「もしマルハナバチがいたら」という反実仮想です。現実的な threshold は、`pollinator_environment`、実測 `outcrossing_rate`、または両者をまとめた effective outcrossing opportunity として読むべきです。
 
 近交弱勢は入っています。ただし、`inbreeding_load` は自殖種子の発芽率低下として fitness に一回だけ反映します。自殖時の fitness は概念的には次の形です。
 
