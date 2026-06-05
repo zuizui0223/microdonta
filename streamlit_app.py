@@ -622,7 +622,7 @@ with data_tab:
     edited_data = st.data_editor(
         field_data,
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
         column_config={
             "population": st.column_config.TextColumn("population"),
             "flower_size": st.column_config.NumberColumn("flower size index", min_value=0.0, max_value=1.0),
@@ -717,7 +717,7 @@ with sim_tab:
         y="y",
         color="guide_color_value",
         size="fitness_size",
-        use_container_width=True,
+        width="stretch",
     )
     st.dataframe(
         view_agents[
@@ -730,7 +730,7 @@ with sim_tab:
                 "neutral_diversity",
             ]
         ].head(40),
-        use_container_width=True,
+        width="stretch",
     )
 
     st.download_button(
@@ -739,7 +739,7 @@ with sim_tab:
         file_name=f"microdonta_abm_{population_choice}.csv",
         mime="text/csv",
     )
-    st.dataframe(results.tail(12), use_container_width=True)
+    st.dataframe(results.tail(12), width="stretch")
 
 with threshold_tab:
     st.subheader("維持/退化の ecological threshold")
@@ -775,7 +775,7 @@ with threshold_tab:
         sweep_axis=sweep_axis,
         replicates=sweep_replicates,
     )
-    st.dataframe(boundary, use_container_width=True)
+    st.dataframe(boundary, width="stretch")
     st.caption(
         f"Interpretation: 自殖能力が高くても、`{sweep_axis}` が十分低いと他殖機会が減り、"
         "ネクターガイドの維持境界を下回ります。近交弱勢が強いほど、完全自殖だけでは fitness が伸びにくくなります。"
@@ -788,7 +788,7 @@ with threshold_tab:
     st.write("final_mean_nectar_guide heatmap")
     st.dataframe(
         heatmap.round(3),
-        use_container_width=True,
+        width="stretch",
     )
     st.download_button(
         "Download threshold sweep CSV",
@@ -830,7 +830,7 @@ with robustness_tab:
             mean_outcrossing_rate=("final_outcrossing_rate", "mean"),
         )
     )
-    st.dataframe(grouped, use_container_width=True)
+    st.dataframe(grouped, width="stretch")
     st.download_button(
         "Download robustness grid CSV",
         robustness.to_csv(index=False).encode("utf-8"),
@@ -848,7 +848,7 @@ with pst_tab:
         "まずは population mean からの Pst を仮置きし、後で common garden / half-sib などのデータがあれば Qst に置き換えます。"
     )
     pst_diagnostics = make_pst_fst_diagnostics(working_data)
-    st.dataframe(pst_diagnostics, use_container_width=True)
+    st.dataframe(pst_diagnostics, width="stretch")
 
     st.subheader("移入経緯・交雑履歴メモ")
     history_cols = [
@@ -859,7 +859,7 @@ with pst_tab:
         "Fst_observed",
         "Pst_nectar_guide",
     ]
-    st.dataframe(working_data[history_cols], use_container_width=True)
+    st.dataframe(working_data[history_cols], width="stretch")
     st.markdown(
         """
         **読み方**
@@ -901,7 +901,7 @@ with evidence_tab:
             ],
             columns=["ABM variable", "field data", "model role"],
         ),
-        use_container_width=True,
+        width="stretch",
     )
     st.subheader("Selfing / island syndrome variables added for diagnosis")
     st.dataframe(
@@ -917,7 +917,7 @@ with evidence_tab:
             ],
             columns=["variable", "field data to fill", "why it is included"],
         ),
-        use_container_width=True,
+        width="stretch",
     )
 
 with fieldwork_tab:
@@ -935,7 +935,7 @@ with fieldwork_tab:
             ],
             columns=["データ", "ABM変数", "最低サンプル感", "目的"],
         ),
-        use_container_width=True,
+        width="stretch",
     )
     st.markdown(
         """
@@ -959,7 +959,7 @@ with fieldwork_tab:
     filtered_checklist = checklist[checklist["カテゴリ"].isin(selected_categories)]
     st.data_editor(
         filtered_checklist.assign(完了=False),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "完了": st.column_config.CheckboxColumn("完了"),
