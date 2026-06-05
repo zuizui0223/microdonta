@@ -49,7 +49,7 @@ PRESETS = {
         "flower_size": 0.82,
         "herkogamy": 0.78,
         "pollen_ovule_ratio": 0.78,
-        "bombus_present": 1.0,
+        "bombus_frequency": 1.0,
         "bombus_pollination_efficiency": 0.86,
         "other_pollinator_efficiency": 0.34,
         "bombus_guide_dependence": 0.75,
@@ -68,7 +68,7 @@ PRESETS = {
         "flower_size": 0.72,
         "herkogamy": 0.62,
         "pollen_ovule_ratio": 0.64,
-        "bombus_present": 1.0,
+        "bombus_frequency": 1.0,
         "bombus_pollination_efficiency": 0.78,
         "other_pollinator_efficiency": 0.34,
         "bombus_guide_dependence": 0.65,
@@ -87,7 +87,7 @@ PRESETS = {
         "flower_size": 0.58,
         "herkogamy": 0.44,
         "pollen_ovule_ratio": 0.48,
-        "bombus_present": 0.0,
+        "bombus_frequency": 0.0,
         "bombus_pollination_efficiency": 0.86,
         "other_pollinator_efficiency": 0.30,
         "bombus_guide_dependence": 0.0,
@@ -106,7 +106,7 @@ PRESETS = {
         "flower_size": 0.46,
         "herkogamy": 0.30,
         "pollen_ovule_ratio": 0.34,
-        "bombus_present": 0.0,
+        "bombus_frequency": 0.0,
         "bombus_pollination_efficiency": 0.86,
         "other_pollinator_efficiency": 0.30,
         "bombus_guide_dependence": 0.0,
@@ -191,7 +191,7 @@ class NectarGuideModel:
         self.flower_size = PRESETS["Mainland"]["flower_size"]
         self.herkogamy = PRESETS["Mainland"]["herkogamy"]
         self.pollen_ovule_ratio = PRESETS["Mainland"]["pollen_ovule_ratio"]
-        self.bombus_present = PRESETS["Mainland"]["bombus_present"]
+        self.bombus_frequency = PRESETS["Mainland"]["bombus_frequency"]
         self.bombus_pollination_efficiency = PRESETS["Mainland"]["bombus_pollination_efficiency"]
         self.other_pollinator_efficiency = PRESETS["Mainland"]["other_pollinator_efficiency"]
         self.bombus_guide_dependence = PRESETS["Mainland"]["bombus_guide_dependence"]
@@ -213,6 +213,15 @@ class NectarGuideModel:
         self.plants: list[Plant] = []
         self.history: list[dict[str, float | int]] = []
         self.reset()
+
+    @property
+    def bombus_present(self) -> float:
+        """Backward-compatible alias for the former binary Bombus control."""
+        return self.bombus_frequency
+
+    @bombus_present.setter
+    def bombus_present(self, value: float) -> None:
+        self.bombus_frequency = clamp(value)
 
     def reset(self) -> None:
         self.rng = random.Random(self.seed)
@@ -269,13 +278,14 @@ class NectarGuideModel:
         )
 
     def _outcross_probability(self, plant: Plant) -> float:
+        bombus_channel = clamp(self.bombus_frequency)
         pollinator_efficiency = (
-            self.bombus_present * self.bombus_pollination_efficiency
-            + (1.0 - self.bombus_present) * self.other_pollinator_efficiency
+            bombus_channel * self.bombus_pollination_efficiency
+            + (1.0 - bombus_channel) * self.other_pollinator_efficiency
         )
         guide_alignment = (
-            self.bombus_present * self.bombus_guide_dependence
-            + (1.0 - self.bombus_present) * self.other_pollinator_guide_use
+            bombus_channel * self.bombus_guide_dependence
+            + (1.0 - bombus_channel) * self.other_pollinator_guide_use
         )
         return clamp(
             self.base_outcross
@@ -285,6 +295,8 @@ class NectarGuideModel:
         )
 
     def _evaluate_generation(self) -> None:
+        # Fitness is built only from reproduction, germination, inbreeding load,
+        # and nectar-guide cost. Syndrome scores are diagnostics, not selection inputs.
         for plant in self.plants:
             outcrossing = self.rng.random() < self._outcross_probability(plant)
             selfing = (not outcrossing) and (self.rng.random() < self.selfing_ability)
@@ -340,7 +352,8 @@ class NectarGuideModel:
     def _mean(self, values: list[float]) -> float:
         return sum(values) / len(values) if values else math.nan
 
-    def _record_history(self) -> None:
+    def _diagnostic_scores(self) -> dict[str, float]:
+        """Summarize syndrome-like patterns after fitness has already been evaluated."""
         selfing_syndrome_score = clamp(
             (
                 self._selfing_rate_value()
@@ -355,13 +368,20 @@ class NectarGuideModel:
         island_syndrome_score = clamp(
             (
                 (1.0 - self.pollinator_environment)
-                + (1.0 - self.bombus_present)
+                + (1.0 - self.bombus_frequency)
                 + self.selfing_ability
                 + (1.0 - self._mean_neutral_diversity_value())
                 + (1.0 - self.migration_rate / 0.25)
             )
             / 5.0
         )
+        return {
+            "selfing_syndrome_score": selfing_syndrome_score,
+            "island_syndrome_score": island_syndrome_score,
+        }
+
+    def _record_history(self) -> None:
+        diagnostic_scores = self._diagnostic_scores()
         self.history.append(
             {
                 "generation": self.generation,
@@ -375,12 +395,12 @@ class NectarGuideModel:
                 "mean_neutral_diversity": self._mean_neutral_diversity_value(),
                 "Fis": self._fis_value(),
                 "Fst": self._fst_value(),
-                "selfing_syndrome_score": selfing_syndrome_score,
-                "island_syndrome_score": island_syndrome_score,
+                **diagnostic_scores,
                 "pollinator_environment": self.pollinator_environment,
                 "flower_size": self.flower_size,
                 "herkogamy": self.herkogamy,
                 "pollen_ovule_ratio": self.pollen_ovule_ratio,
+                "bombus_frequency": self.bombus_frequency,
                 "bombus_present": self.bombus_present,
                 "bombus_pollination_efficiency": self.bombus_pollination_efficiency,
                 "other_pollinator_efficiency": self.other_pollinator_efficiency,
@@ -440,6 +460,7 @@ class NectarGuideModel:
             "flower_size",
             "herkogamy",
             "pollen_ovule_ratio",
+            "bombus_frequency",
             "bombus_present",
             "bombus_pollination_efficiency",
             "other_pollinator_efficiency",
@@ -578,7 +599,7 @@ async def main() -> None:
                 "flower_size",
                 "herkogamy",
                 "pollen_ovule_ratio",
-                "bombus_present",
+                "bombus_frequency",
                 "bombus_pollination_efficiency",
                 "other_pollinator_efficiency",
                 "bombus_guide_dependence",
@@ -629,14 +650,14 @@ async def main() -> None:
                     max=1,
                     step=0.01,
                 ),
-                "bombus_present": create_parameter(
-                    id="bombus_present",
+                "bombus_frequency": create_parameter(
+                    id="bombus_frequency",
                     type="number",
-                    label="bombus_present",
-                    value=model.bombus_present,
+                    label="bombus_frequency",
+                    value=model.bombus_frequency,
                     min=0,
                     max=1,
-                    step=1.0,
+                    step=0.01,
                 ),
                 "bombus_pollination_efficiency": create_parameter(
                     id="bombus_pollination_efficiency",
