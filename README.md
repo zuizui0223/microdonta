@@ -6,7 +6,7 @@ TenSnap/Python ABM と Streamlit ダッシュボードです。斑点面積率�
 
 Streamlit アプリは `streamlit_app.py` です。実データが揃うまでは表の仮値を編集し、CSV upload/download で穴埋めできます。
 `Fieldwork plan` タブには、野外で取るデータの目安と、調査項目チェックリストがあります。
-`Threshold sweep` タブでは、`selfing_ability` と `bombus_frequency` をグリッド探索し、ネクターガイド維持に必要な最小マルハナバチ頻度と、その境界での自殖率/他殖率を確認できます。
+`Threshold sweep` タブでは、`selfing_ability` と送粉者頻度をグリッド探索し、ネクターガイド維持に必要な最小訪花頻度と、その境界での自殖率/他殖率を確認できます。神津島・八丈島ではマルハナバチ不在が前提なので、主に `small_bee_frequency` 側の threshold を見ます。
 
 ローカル実行:
 
@@ -107,9 +107,11 @@ References:
 
 ## Threshold の考え方
 
-`mean_nectar_guide = 0.5` は、可視化上の形質値の目安です。本当に見たい threshold は、どの `selfing_ability`、どの `bombus_frequency`、どの `inbreeding_load` の組み合わせでネクターガイドが維持から退化へ切り替わるかです。
+`mean_nectar_guide = 0.5` は、可視化上の形質値の目安です。本当に見たい threshold は、どの `selfing_ability`、どの送粉者頻度、どの `inbreeding_load` の組み合わせでネクターガイドが維持から退化へ切り替わるかです。
 
-Streamlit の `Threshold sweep` では、各 `selfing_ability` について `bombus_frequency` を 0-1 で動かし、最終世代の `mean_nectar_guide` が指定した `guide criterion` 以上になる最小 `bombus_frequency` を出します。これを「維持境界」として見ます。
+Streamlit の `Threshold sweep` では、各 `selfing_ability` について `bombus_frequency` または `small_bee_frequency` を 0-1 で動かし、最終世代の `mean_nectar_guide` が指定した `guide criterion` 以上になる最小頻度を出します。これを「維持境界」として見ます。確率シミュレーションなので、`replicates` を増やして平均した境界を見るのが基本です。
+
+注意: 神津島・八丈島では `bombus_frequency = 0` が生態学的前提です。したがって、これらの島で `bombus_frequency` を sweep するのは「もしマルハナバチがいたら」という反実仮想です。現実的な threshold は、`small_bee_frequency`、実測 `outcrossing_rate`、または両者をまとめた effective outcrossing opportunity として読むべきです。
 
 近交弱勢は入っています。ただし、`inbreeding_load` は自殖種子の発芽率低下として fitness に一回だけ反映します。自殖時の fitness は概念的には次の形です。
 

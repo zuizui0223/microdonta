@@ -273,41 +273,54 @@ def run_threshold_sweep(
     seed: int,
     grid_size: int,
     guide_criterion: float,
+    sweep_axis: str,
+    replicates: int,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     rows = []
     selfing_values = np.linspace(0.0, 1.0, grid_size)
-    bombus_values = np.linspace(0.0, 1.0, grid_size)
+    pollinator_values = np.linspace(0.0, 1.0, grid_size)
     for selfing_ability in selfing_values:
-        for bombus_frequency in bombus_values:
+        for pollinator_frequency in pollinator_values:
             params = {
                 **base_params,
                 "selfing_ability": float(selfing_ability),
-                "bombus_frequency": float(bombus_frequency),
+                sweep_axis: float(pollinator_frequency),
             }
-            result = run_abm(params, generations, population_size, seed)
-            final = result.iloc[-1]
+            finals = [
+                run_abm(params, generations, population_size, seed + replicate).iloc[-1]
+                for replicate in range(replicates)
+            ]
             rows.append(
                 {
                     "selfing_ability": float(selfing_ability),
-                    "bombus_frequency": float(bombus_frequency),
-                    "final_mean_nectar_guide": float(final["mean_nectar_guide"]),
-                    "final_selfing_rate": float(final["selfing_rate"]),
-                    "final_outcrossing_rate": float(final["outcrossing_rate"]),
-                    "maintained": bool(final["mean_nectar_guide"] >= guide_criterion),
+                    sweep_axis: float(pollinator_frequency),
+                    "final_mean_nectar_guide": float(
+                        np.mean([final["mean_nectar_guide"] for final in finals])
+                    ),
+                    "final_selfing_rate": float(
+                        np.mean([final["selfing_rate"] for final in finals])
+                    ),
+                    "final_outcrossing_rate": float(
+                        np.mean([final["outcrossing_rate"] for final in finals])
+                    ),
+                    "maintained": bool(
+                        np.mean([final["mean_nectar_guide"] for final in finals])
+                        >= guide_criterion
+                    ),
                 }
             )
     sweep = pd.DataFrame(rows)
     boundary_rows = []
     for selfing_ability, group in sweep.groupby("selfing_ability"):
-        maintained = group[group["maintained"]].sort_values("bombus_frequency")
+        maintained = group[group["maintained"]].sort_values(sweep_axis)
         if maintained.empty:
             boundary_rows.append(
                 {
                     "selfing_ability": selfing_ability,
-                    "min_bombus_for_guide_maintenance": np.nan,
+                    f"min_{sweep_axis}_for_guide_maintenance": np.nan,
                     "selfing_rate_at_boundary": np.nan,
                     "outcrossing_rate_at_boundary": np.nan,
-                    "threshold_interpretation": "not maintained even at Bombus=1",
+                    "threshold_interpretation": f"not maintained even at {sweep_axis}=1",
                 }
             )
         else:
@@ -315,10 +328,10 @@ def run_threshold_sweep(
             boundary_rows.append(
                 {
                     "selfing_ability": selfing_ability,
-                    "min_bombus_for_guide_maintenance": row["bombus_frequency"],
+                    f"min_{sweep_axis}_for_guide_maintenance": row[sweep_axis],
                     "selfing_rate_at_boundary": row["final_selfing_rate"],
                     "outcrossing_rate_at_boundary": row["final_outcrossing_rate"],
-                    "threshold_interpretation": "guide maintained above this Bombus frequency",
+                    "threshold_interpretation": f"guide maintained above this {sweep_axis}",
                 }
             )
     return sweep, pd.DataFrame(boundary_rows)
@@ -447,15 +460,32 @@ with sim_tab:
 
 with threshold_tab:
     st.subheader("維持/退化の ecological threshold")
+    default_axis = (
+        "small_bee_frequency"
+        if str(population_choice) in {"Kozu", "Hachijo"}
+        else "bombus_frequency"
+    )
+    sweep_axis = st.radio(
+        "sweep axis",
+        ["bombus_frequency", "small_bee_frequency"],
+        index=["bombus_frequency", "small_bee_frequency"].index(default_axis),
+        horizontal=True,
+    )
     st.write(
         "ここでは `mean_nectar_guide >= guide criterion` を「ネクターガイド維持」と定義し、"
-        "`selfing_ability` ごとに、維持に必要な最小 `bombus_frequency` を探索します。"
+        f"`selfing_ability` ごとに、維持に必要な最小 `{sweep_axis}` を探索します。"
     )
-    sweep_cols = st.columns(4)
+    if sweep_axis == "bombus_frequency" and str(population_choice) in {"Kozu", "Hachijo"}:
+        st.warning(
+            "神津島・八丈島ではマルハナバチ不在が前提なので、この Bombus sweep は反実仮想です。"
+            "現実の閾値としては small_bee_frequency または outcrossing_rate を見てください。"
+        )
+    sweep_cols = st.columns(5)
     sweep_generations = sweep_cols[0].slider("sweep generations", 20, 180, 80, 10)
     sweep_population = sweep_cols[1].slider("sweep population", 40, 260, 120, 20)
     grid_size = sweep_cols[2].slider("grid size", 6, 21, 11, 1)
     guide_criterion = sweep_cols[3].slider("guide criterion", 0.1, 0.9, 0.5, 0.05)
+    sweep_replicates = sweep_cols[4].slider("replicates", 1, 10, 3, 1)
     sweep, boundary = run_threshold_sweep(
         base_params,
         generations=sweep_generations,
@@ -463,15 +493,17 @@ with threshold_tab:
         seed=int(seed),
         grid_size=grid_size,
         guide_criterion=guide_criterion,
+        sweep_axis=sweep_axis,
+        replicates=sweep_replicates,
     )
     st.dataframe(boundary, use_container_width=True)
     st.caption(
-        "Interpretation: 自殖能力が高くても、マルハナバチ頻度が十分低いと他殖機会が減り、"
+        f"Interpretation: 自殖能力が高くても、`{sweep_axis}` が十分低いと他殖機会が減り、"
         "ネクターガイドの維持境界を下回ります。近交弱勢が強いほど、完全自殖だけでは fitness が伸びにくくなります。"
     )
     heatmap = sweep.pivot(
         index="selfing_ability",
-        columns="bombus_frequency",
+        columns=sweep_axis,
         values="final_mean_nectar_guide",
     )
     st.write("final_mean_nectar_guide heatmap")
