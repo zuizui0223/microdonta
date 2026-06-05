@@ -5,6 +5,7 @@ TenSnap/Python ABM と Streamlit ダッシュボードです。斑点面積率�
 ## Streamlit app
 
 Streamlit アプリは `streamlit_app.py` です。実データが揃うまでは表の仮値を編集し、CSV upload/download で穴埋めできます。
+`Fieldwork plan` タブには、野外で取るデータの目安と、調査項目チェックリストがあります。
 
 ローカル実行:
 

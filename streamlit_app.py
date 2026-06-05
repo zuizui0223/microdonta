@@ -109,6 +109,36 @@ LITERATURE = [
 ]
 
 
+FIELD_CHECKLIST = [
+    ["準備", "調査集団を決める", "本土・大島・神津島・八丈島など。大島はマルハナバチありの島として別扱いする。"],
+    ["準備", "個体IDを振る", "各集団 30-60 個体。可能なら同じ個体で形質・交配・SNPを結びつける。"],
+    ["準備", "花IDを振る", "個体内で 3-5 花を目安。処理花と観察花を分ける。"],
+    ["準備", "天候・時刻・気温・風を記録する", "訪花頻度の補正に使う。"],
+    ["斑点計測", "花冠内面を撮影する", "スケールを入れ、花の向き・距離を揃える。"],
+    ["斑点計測", "斑点面積率を測る", "nectar_guide。画像解析で斑点面積/花冠対象面積。"],
+    ["斑点計測", "花サイズも測る", "花冠長、花冠幅、開口部径。送粉者サイズとの対応を見る。"],
+    ["訪花観察", "訪花者を分類する", "マルハナバチ、コハナバチ類、その他に最低分類。可能なら種/属まで。"],
+    ["訪花観察", "訪花回数と観察時間を記録する", "bombus_frequency, small_bee_frequency。回数/花/時間または回数/パッチ/時間。"],
+    ["訪花観察", "訪花行動を記録する", "正当訪花、盗蜜、接触部位、滞在時間、花粉接触の有無。"],
+    ["訪花観察", "時間帯を分散する", "午前/午後、開花期前半/中盤/後半を偏らせない。"],
+    ["自然結実", "無処理花をマークする", "自然条件での fruit set と seed set。"],
+    ["自然結実", "果実成熟後に回収する", "種子数、しいな率、果実成熟失敗も記録。"],
+    ["袋掛け", "開花前つぼみを袋掛けする", "selfing_ability。送粉者なしで結実するか。"],
+    ["袋掛け", "袋の破損・開閉を記録する", "処理失敗を除外できるようにする。"],
+    ["人工自殖", "同一花または同一個体花粉で授粉する", "seed_set_selfing, germination_selfed。"],
+    ["人工他殖", "別個体・可能なら別パッチ花粉で授粉する", "seed_set_outcrossing, germination_outcrossed。"],
+    ["交配実験", "処理ごとの花数を揃える", "各母株で袋掛け/自然/人工自殖/人工他殖をできるだけ揃える。"],
+    ["発芽試験", "処理別に種子を播く", "発芽率、発芽日、カビ/死亡を記録。"],
+    ["発芽試験", "同じ条件で管理する", "温度、光、培地、水分を揃える。"],
+    ["SNP", "葉サンプルを採る", "各集団 20-30 個体以上。シリカゲル保存など。"],
+    ["SNP", "個体IDと表現型IDを対応させる", "Fis/Fst と斑点面積率・自殖能力を結びつける。"],
+    ["SNP", "位置情報を記録する", "集団内空間構造や近縁個体の偏りを確認する。"],
+    ["データ管理", "欠測理由を記録する", "未開花、食害、袋破損、果実脱落、サンプル紛失など。"],
+    ["データ管理", "写真ファイル名を個体ID/花IDに対応させる", "後から斑点面積率を再計算できるようにする。"],
+    ["データ管理", "CSVを毎日バックアップする", "field template に合わせて入力する。"],
+]
+
+
 @dataclass
 class Plant:
     guide: float
@@ -395,4 +425,30 @@ with fieldwork_tab:
 
         優先順位は、1. 訪花者組成、2. 袋掛け結実率、3. 自殖/他殖の発芽率差、4. 斑点面積率、5. SNP。
         """
+    )
+
+    st.subheader("野外調査チェックリスト")
+    checklist = pd.DataFrame(FIELD_CHECKLIST, columns=["カテゴリ", "項目", "メモ"])
+    selected_categories = st.multiselect(
+        "表示するカテゴリ",
+        checklist["カテゴリ"].unique().tolist(),
+        default=checklist["カテゴリ"].unique().tolist(),
+    )
+    filtered_checklist = checklist[checklist["カテゴリ"].isin(selected_categories)]
+    st.data_editor(
+        filtered_checklist.assign(完了=False),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "完了": st.column_config.CheckboxColumn("完了"),
+            "カテゴリ": st.column_config.TextColumn("カテゴリ", disabled=True),
+            "項目": st.column_config.TextColumn("項目", disabled=True),
+            "メモ": st.column_config.TextColumn("メモ", disabled=True),
+        },
+    )
+    st.download_button(
+        "Download fieldwork checklist CSV",
+        checklist.to_csv(index=False).encode("utf-8"),
+        file_name="microdonta_fieldwork_checklist.csv",
+        mime="text/csv",
     )
