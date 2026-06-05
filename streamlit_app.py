@@ -18,8 +18,13 @@ st.set_page_config(
 FIELD_COLUMNS = [
     "population",
     "nectar_guide",
+    "flower_size",
+    "herkogamy",
+    "pollen_ovule_ratio",
     "pollinator_environment",
     "bombus_present",
+    "bombus_pollination_efficiency",
+    "other_pollinator_efficiency",
     "bombus_guide_dependence",
     "other_pollinator_guide_use",
     "selfing_ability",
@@ -40,10 +45,10 @@ FIELD_COLUMNS = [
 
 DEFAULT_FIELD_DATA = pd.DataFrame(
     [
-        ["Mainland", 0.62, 0.78, 1.0, 0.75, 0.12, 0.22, 0.32, 0.46, 0.92, 0.54, 0.86, 0.100, np.nan, np.nan, np.nan, np.nan, 0.00, "source/mainland"],
-        ["Oshima", 0.55, 0.58, 1.0, 0.65, 0.16, 0.36, 0.25, 0.55, 0.84, 0.57, 0.82, 0.050, np.nan, np.nan, np.nan, np.nan, 0.20, "island with Bombus ardens"],
-        ["Kozu", 0.42, 0.42, 0.0, 0.00, 0.18, 0.52, 0.18, 0.64, 0.76, 0.60, 0.78, 0.025, np.nan, np.nan, np.nan, np.nan, 0.35, "bumblebee-free island"],
-        ["Hachijo", 0.28, 0.36, 0.0, 0.00, 0.18, 0.68, 0.12, 0.72, 0.68, 0.62, 0.74, 0.010, np.nan, np.nan, np.nan, np.nan, 0.45, "bumblebee-free island"],
+        ["Mainland", 0.62, 0.82, 0.78, 0.78, 0.78, 1.0, 0.86, 0.34, 0.75, 0.12, 0.22, 0.32, 0.46, 0.92, 0.54, 0.86, 0.100, np.nan, np.nan, np.nan, np.nan, 0.00, "source/mainland"],
+        ["Oshima", 0.55, 0.72, 0.62, 0.64, 0.58, 1.0, 0.78, 0.34, 0.65, 0.16, 0.36, 0.25, 0.55, 0.84, 0.57, 0.82, 0.050, np.nan, np.nan, np.nan, np.nan, 0.20, "island with Bombus ardens"],
+        ["Kozu", 0.42, 0.58, 0.44, 0.48, 0.42, 0.0, 0.86, 0.30, 0.00, 0.18, 0.52, 0.18, 0.64, 0.76, 0.60, 0.78, 0.025, np.nan, np.nan, np.nan, np.nan, 0.35, "bumblebee-free island"],
+        ["Hachijo", 0.28, 0.46, 0.30, 0.34, 0.36, 0.0, 0.86, 0.30, 0.00, 0.18, 0.68, 0.12, 0.72, 0.68, 0.62, 0.74, 0.010, np.nan, np.nan, np.nan, np.nan, 0.45, "bumblebee-free island"],
     ],
     columns=FIELD_COLUMNS,
 )
@@ -105,6 +110,34 @@ LITERATURE = [
         ),
     },
     {
+        "title": "Sicard & Lenhard 2011, the selfing syndrome",
+        "url": "https://doi.org/10.1093/aob/mcr023",
+        "point": (
+            "Selfing syndrome evolution commonly involves reduced floral display, "
+            "changes in anther-stigma distance, and altered allocation to male versus "
+            "female function. The app therefore tracks flower_size, herkogamy, and "
+            "pollen_ovule_ratio as field-fillable syndrome traits."
+        ),
+    },
+    {
+        "title": "Shimizu & Tsuchimatsu 2022, selfing syndrome and beyond",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9149797/",
+        "point": (
+            "Transitions to selfing often reduce traits involved in pollinator attraction "
+            "and promote reproductive traits enabling autonomous selfing. This supports "
+            "treating nectar-guide decline as part of a broader syndrome, not as a lone trait."
+        ),
+    },
+    {
+        "title": "Pannell et al. 2015, Baker's law revisited",
+        "url": "https://academic.oup.com/evolut/article-pdf/52/3/657/47938066/evolut0657.pdf",
+        "point": (
+            "Baker's law links self-compatibility and uniparental reproduction to "
+            "successful colonization after long-distance dispersal, matching the island "
+            "syndrome part of the scenario."
+        ),
+    },
+    {
         "title": "Wright et al. 2013, evolutionary consequences of selfing",
         "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3652455/",
         "point": (
@@ -163,6 +196,8 @@ FIELD_CHECKLIST = [
 class Plant:
     guide: float
     diversity: float
+    x: float
+    y: float
     mode: str = "outcrossing"
     seed_output: float = 1.0
     germination: float = 1.0
@@ -188,6 +223,10 @@ def load_field_data() -> pd.DataFrame:
 
 def evaluate_population(population: list[Plant], params: dict[str, float], rng: np.random.Generator) -> None:
     for plant in population:
+        pollinator_efficiency = (
+            params["bombus_present"] * params["bombus_pollination_efficiency"]
+            + (1.0 - params["bombus_present"]) * params["other_pollinator_efficiency"]
+        )
         guide_alignment = (
             params["bombus_present"] * params["bombus_guide_dependence"]
             + (1.0 - params["bombus_present"]) * params["other_pollinator_guide_use"]
@@ -195,6 +234,7 @@ def evaluate_population(population: list[Plant], params: dict[str, float], rng: 
         outcross_prob = clamp(
             params["base_outcross"]
             + params["pollinator_environment"]
+            * pollinator_efficiency
             * (
                 params["pollinator_environment_outcross_effect"]
                 + guide_alignment * plant.guide
@@ -239,6 +279,28 @@ def record_generation(generation: int, population: list[Plant], params: dict[str
     failed_rate = np.mean([plant.mode == "failed" for plant in population])
     fis = clamp(selfing_rate * (1.0 - 0.5 * params["migration_rate"]))
     fst = clamp((1.0 - params["migration_rate"]) * (1.0 - outcrossing_rate) * (1.0 - np.mean(diversity)))
+    selfing_syndrome_score = clamp(
+        (
+            selfing_rate
+            + (1.0 - outcrossing_rate)
+            + (1.0 - params["nectar_guide"])
+            + (1.0 - params["flower_size"])
+            + (1.0 - params["herkogamy"])
+            + (1.0 - params["pollen_ovule_ratio"])
+        )
+        / 6.0
+    )
+    island_syndrome_score = clamp(
+        (
+            (1.0 - params["pollinator_environment"])
+            + (1.0 - params["bombus_present"])
+            + params["selfing_ability"]
+            + (1.0 - np.mean(diversity))
+            + (1.0 - params["migration_rate"] / 0.25)
+            + params["admixture_index"]
+        )
+        / 6.0
+    )
     return {
         "generation": generation,
         "mean_nectar_guide": float(np.mean(guides)),
@@ -252,16 +314,25 @@ def record_generation(generation: int, population: list[Plant], params: dict[str
         "mean_neutral_diversity": float(np.mean(diversity)),
         "Fis": fis,
         "Fst": fst,
+        "selfing_syndrome_score": float(selfing_syndrome_score),
+        "island_syndrome_score": float(island_syndrome_score),
     }
 
 
-def run_abm(params: dict[str, float], generations: int, population_size: int, seed: int) -> pd.DataFrame:
+def simulate_abm(
+    params: dict[str, float],
+    generations: int,
+    population_size: int,
+    seed: int,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     rng = np.random.default_rng(seed)
     guide_start = clamp(params["nectar_guide"])
     population = [
         Plant(
             guide=clamp(rng.normal(guide_start, 0.12)),
             diversity=clamp(rng.normal(0.78, 0.08)),
+            x=float(rng.uniform(0, 1)),
+            y=float(rng.uniform(0, 1)),
         )
         for _ in range(population_size)
     ]
@@ -285,12 +356,35 @@ def run_abm(params: dict[str, float], generations: int, population_size: int, se
                 diversity = parent.diversity * 0.96
             diversity += params["migration_rate"] * (0.82 - diversity)
             diversity += rng.normal(0.0, params["genetic_drift_strength"])
-            next_population.append(Plant(guide=guide, diversity=clamp(diversity)))
+            next_population.append(
+                Plant(
+                    guide=guide,
+                    diversity=clamp(diversity),
+                    x=clamp(parent.x + rng.normal(0.0, 0.055)),
+                    y=clamp(parent.y + rng.normal(0.0, 0.055)),
+                )
+            )
         population = next_population
         evaluate_population(population, params, rng)
         history.append(record_generation(generation, population, params))
 
-    return pd.DataFrame(history)
+    agent_rows = [
+        {
+            "x": plant.x,
+            "y": plant.y,
+            "nectar_guide": plant.guide,
+            "fitness": plant.fitness,
+            "reproduction_mode": plant.mode,
+            "neutral_diversity": plant.diversity,
+        }
+        for plant in population
+    ]
+    return pd.DataFrame(history), pd.DataFrame(agent_rows)
+
+
+def run_abm(params: dict[str, float], generations: int, population_size: int, seed: int) -> pd.DataFrame:
+    history, _ = simulate_abm(params, generations, population_size, seed)
+    return history
 
 
 def run_threshold_sweep(
@@ -364,11 +458,53 @@ def run_threshold_sweep(
     return sweep, pd.DataFrame(boundary_rows)
 
 
+def run_robustness_grid(
+    base_params: dict[str, float],
+    generations: int,
+    population_size: int,
+    seed: int,
+    guide_criterion: float,
+    grid_size: int,
+) -> pd.DataFrame:
+    guide_cost_values = np.linspace(0.01, 0.16, grid_size)
+    bombus_efficiency_values = np.linspace(0.55, 1.00, grid_size)
+    other_efficiency_values = np.linspace(0.10, 0.55, grid_size)
+    rows = []
+    for guide_cost in guide_cost_values:
+        for bombus_efficiency in bombus_efficiency_values:
+            for other_efficiency in other_efficiency_values:
+                params = {
+                    **base_params,
+                    "guide_cost": float(guide_cost),
+                    "bombus_pollination_efficiency": float(bombus_efficiency),
+                    "other_pollinator_efficiency": float(other_efficiency),
+                }
+                result = run_abm(params, generations, population_size, seed)
+                final = result.iloc[-1]
+                rows.append(
+                    {
+                        "guide_cost": float(guide_cost),
+                        "bombus_pollination_efficiency": float(bombus_efficiency),
+                        "other_pollinator_efficiency": float(other_efficiency),
+                        "final_mean_nectar_guide": float(final["mean_nectar_guide"]),
+                        "final_selfing_rate": float(final["selfing_rate"]),
+                        "final_outcrossing_rate": float(final["outcrossing_rate"]),
+                        "maintained": bool(final["mean_nectar_guide"] >= guide_criterion),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
 def field_row_to_params(row: pd.Series) -> dict[str, float]:
     return {
         "nectar_guide": clamp(row["nectar_guide"]),
+        "flower_size": clamp(row["flower_size"]),
+        "herkogamy": clamp(row["herkogamy"]),
+        "pollen_ovule_ratio": clamp(row["pollen_ovule_ratio"]),
         "pollinator_environment": clamp(row["pollinator_environment"]),
         "bombus_present": clamp(row["bombus_present"]),
+        "bombus_pollination_efficiency": clamp(row["bombus_pollination_efficiency"]),
+        "other_pollinator_efficiency": clamp(row["other_pollinator_efficiency"]),
         "bombus_guide_dependence": clamp(row["bombus_guide_dependence"]),
         "other_pollinator_guide_use": clamp(row["other_pollinator_guide_use"]),
         "selfing_ability": clamp(row["selfing_ability"]),
@@ -378,6 +514,7 @@ def field_row_to_params(row: pd.Series) -> dict[str, float]:
         "germination_selfed": clamp(row["germination_selfed"]),
         "germination_outcrossed": clamp(row["germination_outcrossed"]),
         "migration_rate": clamp(row["migration_rate"], 0.0, 0.25),
+        "admixture_index": clamp(row["admixture_index"]),
         "guide_cost": 0.06,
         "base_outcross": 0.10,
         "pollinator_environment_outcross_effect": 0.42,
@@ -468,11 +605,12 @@ generations = st.sidebar.slider("Generations", 10, 300, 80, 10)
 population_size = st.sidebar.slider("Population size", 50, 600, 180, 10)
 seed = st.sidebar.number_input("Random seed", value=20260605, step=1)
 
-data_tab, sim_tab, threshold_tab, pst_tab, evidence_tab, fieldwork_tab = st.tabs(
+data_tab, sim_tab, threshold_tab, robustness_tab, pst_tab, evidence_tab, fieldwork_tab = st.tabs(
     [
         "Data template",
         "ABM results",
         "Threshold sweep",
+        "Robustness",
         "Pst/Fst diagnostics",
         "Literature",
         "Fieldwork plan",
@@ -487,6 +625,11 @@ with data_tab:
         use_container_width=True,
         column_config={
             "population": st.column_config.TextColumn("population"),
+            "flower_size": st.column_config.NumberColumn("flower size index", min_value=0.0, max_value=1.0),
+            "herkogamy": st.column_config.NumberColumn("herkogamy index", min_value=0.0, max_value=1.0),
+            "pollen_ovule_ratio": st.column_config.NumberColumn("P/O ratio index", min_value=0.0, max_value=1.0),
+            "bombus_pollination_efficiency": st.column_config.NumberColumn("Bombus pollination efficiency", min_value=0.0, max_value=1.0),
+            "other_pollinator_efficiency": st.column_config.NumberColumn("other pollinator efficiency", min_value=0.0, max_value=1.0),
             "nectar_guide": st.column_config.NumberColumn("斑点面積率", min_value=0.0, max_value=1.0),
             "pollinator_environment": st.column_config.NumberColumn("送粉者環境/他殖機会", min_value=0.0, max_value=1.0),
             "bombus_present": st.column_config.NumberColumn("マルハナバチ在/不在", min_value=0.0, max_value=1.0),
@@ -518,8 +661,13 @@ with st.sidebar.expander("Manual parameter overrides", expanded=False):
     for key in [
         "pollinator_environment",
         "bombus_present",
+        "bombus_pollination_efficiency",
+        "other_pollinator_efficiency",
         "bombus_guide_dependence",
         "other_pollinator_guide_use",
+        "flower_size",
+        "herkogamy",
+        "pollen_ovule_ratio",
         "selfing_ability",
         "inbreeding_load",
         "guide_cost",
@@ -529,7 +677,7 @@ with st.sidebar.expander("Manual parameter overrides", expanded=False):
         base_params[key] = st.slider(key, 0.0, upper, float(base_params[key]), 0.01)
 
 with sim_tab:
-    results = run_abm(base_params, generations, population_size, int(seed))
+    results, agents = simulate_abm(base_params, generations, population_size, int(seed))
     latest = results.iloc[-1]
     above_threshold = results["mean_nectar_guide"] >= results["guide_threshold_0_5"]
     above_count = int(above_threshold.sum())
@@ -544,6 +692,10 @@ with sim_tab:
     cols[4].metric("Fst", f"{latest['Fst']:.3f}")
     cols[5].metric("threshold status", threshold_status)
     st.caption(f"Threshold check: mean_nectar_guide >= 0.5 for {above_count} generations; below 0.5 for {below_count} generations.")
+    st.caption(
+        f"Selfing syndrome score: {latest['selfing_syndrome_score']:.3f}; "
+        f"island syndrome score: {latest['island_syndrome_score']:.3f}."
+    )
 
     chart_left, chart_right = st.columns(2)
     with chart_left:
@@ -552,6 +704,34 @@ with sim_tab:
     with chart_right:
         st.line_chart(results.set_index("generation")[["mean_fitness", "seed_output", "germination"]])
         st.line_chart(results.set_index("generation")[["mean_neutral_diversity", "Fis", "Fst"]])
+        st.line_chart(results.set_index("generation")[["selfing_syndrome_score", "island_syndrome_score"]])
+
+    st.subheader("TenSnap-style agent view")
+    st.caption("Each point is a Plant. Color/size use nectar_guide and fitness; hover data remain in the table below.")
+    view_agents = agents.copy()
+    view_agents["guide_color_value"] = view_agents["nectar_guide"]
+    view_agents["fitness_size"] = 60 + 220 * view_agents["fitness"]
+    st.scatter_chart(
+        view_agents,
+        x="x",
+        y="y",
+        color="guide_color_value",
+        size="fitness_size",
+        use_container_width=True,
+    )
+    st.dataframe(
+        view_agents[
+            [
+                "x",
+                "y",
+                "nectar_guide",
+                "fitness",
+                "reproduction_mode",
+                "neutral_diversity",
+            ]
+        ].head(40),
+        use_container_width=True,
+    )
 
     st.download_button(
         "Download ABM results CSV",
@@ -617,6 +797,47 @@ with threshold_tab:
         mime="text/csv",
     )
 
+with robustness_tab:
+    st.subheader("Unobserved-parameter robustness")
+    st.write(
+        "野外で直接取りにくい `guide_cost`、送粉環境から他殖確率への変換、Bombus の guide 利用強度を範囲で振り、"
+        "ネクターガイド維持/退化の傾向がどれだけ安定かを見ます。"
+    )
+    robust_cols = st.columns(4)
+    robust_generations = robust_cols[0].slider("robust generations", 20, 160, 60, 10)
+    robust_population = robust_cols[1].slider("robust population", 40, 220, 100, 20)
+    robust_grid = robust_cols[2].slider("robust grid size", 3, 8, 5, 1)
+    robust_criterion = robust_cols[3].slider("robust guide criterion", 0.1, 0.9, 0.5, 0.05)
+    robustness = run_robustness_grid(
+        base_params,
+        generations=robust_generations,
+        population_size=robust_population,
+        seed=int(seed),
+        guide_criterion=robust_criterion,
+        grid_size=robust_grid,
+    )
+    maintained_fraction = robustness["maintained"].mean()
+    st.metric("fraction maintained across unobserved parameter grid", f"{maintained_fraction:.2f}")
+    st.caption(
+        "この値が本土・大島で高く、神津島・八丈島で低いなら、測れないパラメータを振ってもシナリオの傾向が比較的安定、という読み方ができます。"
+    )
+    grouped = (
+        robustness.groupby(["guide_cost", "bombus_pollination_efficiency", "other_pollinator_efficiency"], as_index=False)
+        .agg(
+            maintained_fraction=("maintained", "mean"),
+            mean_final_guide=("final_mean_nectar_guide", "mean"),
+            mean_selfing_rate=("final_selfing_rate", "mean"),
+            mean_outcrossing_rate=("final_outcrossing_rate", "mean"),
+        )
+    )
+    st.dataframe(grouped, use_container_width=True)
+    st.download_button(
+        "Download robustness grid CSV",
+        robustness.to_csv(index=False).encode("utf-8"),
+        file_name=f"microdonta_robustness_{population_choice}.csv",
+        mime="text/csv",
+    )
+
 with pst_tab:
     st.subheader("Pst/Fst-Qst diagnostics")
     st.write(
@@ -679,6 +900,22 @@ with evidence_tab:
                 ["Fst", "SNP", "多様性低下・移住率・他殖低下からの分化指標"],
             ],
             columns=["ABM variable", "field data", "model role"],
+        ),
+        use_container_width=True,
+    )
+    st.subheader("Selfing / island syndrome variables added for diagnosis")
+    st.dataframe(
+        pd.DataFrame(
+            [
+                ["flower_size", "corolla size / floral display", "selfing syndrome: reduced attraction traits"],
+                ["herkogamy", "anther-stigma separation", "selfing syndrome: reduced separation can enable autonomous selfing"],
+                ["pollen_ovule_ratio", "pollen grains per ovule", "selfing syndrome: reduced male allocation"],
+                ["bombus_pollination_efficiency", "Bombus seed/pollen-transfer efficiency", "efficient-pollinator channel; active only when bombus_present > 0"],
+                ["other_pollinator_efficiency", "halictid/small-bee efficiency", "uncertain non-Bombus channel; explored in robustness"],
+                ["selfing_syndrome_score", "combined diagnosis", "higher when selfing and reduced outcrossing floral traits co-occur"],
+                ["island_syndrome_score", "combined diagnosis", "higher when pollinator loss, isolation, selfing, and diversity loss co-occur"],
+            ],
+            columns=["variable", "field data to fill", "why it is included"],
         ),
         use_container_width=True,
     )

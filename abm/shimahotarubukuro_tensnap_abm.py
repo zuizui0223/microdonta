@@ -17,7 +17,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-for vendor_dir in (SCRIPT_DIR / "work" / "vendor", SCRIPT_DIR.parent / "work" / "vendor"):
+for vendor_dir in (
+    SCRIPT_DIR / "work" / "vendor",
+    SCRIPT_DIR.parent / "work" / "vendor",
+    SCRIPT_DIR.parent.parent / "vendor",
+):
     if vendor_dir.exists():
         sys.path.insert(0, str(vendor_dir))
         break
@@ -42,7 +46,12 @@ CSV_PATH = OUTPUT_DIR / "shimahotarubukuro_results.csv"
 PRESETS = {
     "Mainland": {
         "pollinator_environment": 0.78,
+        "flower_size": 0.82,
+        "herkogamy": 0.78,
+        "pollen_ovule_ratio": 0.78,
         "bombus_present": 1.0,
+        "bombus_pollination_efficiency": 0.86,
+        "other_pollinator_efficiency": 0.34,
         "bombus_guide_dependence": 0.75,
         "other_pollinator_guide_use": 0.12,
         "selfing_ability": 0.22,
@@ -56,7 +65,12 @@ PRESETS = {
     },
     "Oshima": {
         "pollinator_environment": 0.58,
+        "flower_size": 0.72,
+        "herkogamy": 0.62,
+        "pollen_ovule_ratio": 0.64,
         "bombus_present": 1.0,
+        "bombus_pollination_efficiency": 0.78,
+        "other_pollinator_efficiency": 0.34,
         "bombus_guide_dependence": 0.65,
         "other_pollinator_guide_use": 0.16,
         "selfing_ability": 0.36,
@@ -70,7 +84,12 @@ PRESETS = {
     },
     "Kozu": {
         "pollinator_environment": 0.42,
+        "flower_size": 0.58,
+        "herkogamy": 0.44,
+        "pollen_ovule_ratio": 0.48,
         "bombus_present": 0.0,
+        "bombus_pollination_efficiency": 0.86,
+        "other_pollinator_efficiency": 0.30,
         "bombus_guide_dependence": 0.0,
         "other_pollinator_guide_use": 0.18,
         "selfing_ability": 0.52,
@@ -84,7 +103,12 @@ PRESETS = {
     },
     "Hachijo": {
         "pollinator_environment": 0.36,
+        "flower_size": 0.46,
+        "herkogamy": 0.30,
+        "pollen_ovule_ratio": 0.34,
         "bombus_present": 0.0,
+        "bombus_pollination_efficiency": 0.86,
+        "other_pollinator_efficiency": 0.30,
         "bombus_guide_dependence": 0.0,
         "other_pollinator_guide_use": 0.18,
         "selfing_ability": 0.68,
@@ -164,7 +188,12 @@ class NectarGuideModel:
         self.generation = 0
 
         self.pollinator_environment = PRESETS["Mainland"]["pollinator_environment"]
+        self.flower_size = PRESETS["Mainland"]["flower_size"]
+        self.herkogamy = PRESETS["Mainland"]["herkogamy"]
+        self.pollen_ovule_ratio = PRESETS["Mainland"]["pollen_ovule_ratio"]
         self.bombus_present = PRESETS["Mainland"]["bombus_present"]
+        self.bombus_pollination_efficiency = PRESETS["Mainland"]["bombus_pollination_efficiency"]
+        self.other_pollinator_efficiency = PRESETS["Mainland"]["other_pollinator_efficiency"]
         self.bombus_guide_dependence = PRESETS["Mainland"]["bombus_guide_dependence"]
         self.other_pollinator_guide_use = PRESETS["Mainland"]["other_pollinator_guide_use"]
         self.selfing_ability = PRESETS["Mainland"]["selfing_ability"]
@@ -240,6 +269,10 @@ class NectarGuideModel:
         )
 
     def _outcross_probability(self, plant: Plant) -> float:
+        pollinator_efficiency = (
+            self.bombus_present * self.bombus_pollination_efficiency
+            + (1.0 - self.bombus_present) * self.other_pollinator_efficiency
+        )
         guide_alignment = (
             self.bombus_present * self.bombus_guide_dependence
             + (1.0 - self.bombus_present) * self.other_pollinator_guide_use
@@ -247,6 +280,7 @@ class NectarGuideModel:
         return clamp(
             self.base_outcross
             + self.pollinator_environment
+            * pollinator_efficiency
             * (self.pollinator_environment_outcross_effect + guide_alignment * plant.nectar_guide)
         )
 
@@ -307,6 +341,27 @@ class NectarGuideModel:
         return sum(values) / len(values) if values else math.nan
 
     def _record_history(self) -> None:
+        selfing_syndrome_score = clamp(
+            (
+                self._selfing_rate_value()
+                + (1.0 - self._outcrossing_rate_value())
+                + (1.0 - self._mean_nectar_guide_value())
+                + (1.0 - self.flower_size)
+                + (1.0 - self.herkogamy)
+                + (1.0 - self.pollen_ovule_ratio)
+            )
+            / 6.0
+        )
+        island_syndrome_score = clamp(
+            (
+                (1.0 - self.pollinator_environment)
+                + (1.0 - self.bombus_present)
+                + self.selfing_ability
+                + (1.0 - self._mean_neutral_diversity_value())
+                + (1.0 - self.migration_rate / 0.25)
+            )
+            / 5.0
+        )
         self.history.append(
             {
                 "generation": self.generation,
@@ -320,8 +375,15 @@ class NectarGuideModel:
                 "mean_neutral_diversity": self._mean_neutral_diversity_value(),
                 "Fis": self._fis_value(),
                 "Fst": self._fst_value(),
+                "selfing_syndrome_score": selfing_syndrome_score,
+                "island_syndrome_score": island_syndrome_score,
                 "pollinator_environment": self.pollinator_environment,
+                "flower_size": self.flower_size,
+                "herkogamy": self.herkogamy,
+                "pollen_ovule_ratio": self.pollen_ovule_ratio,
                 "bombus_present": self.bombus_present,
+                "bombus_pollination_efficiency": self.bombus_pollination_efficiency,
+                "other_pollinator_efficiency": self.other_pollinator_efficiency,
                 "bombus_guide_dependence": self.bombus_guide_dependence,
                 "other_pollinator_guide_use": self.other_pollinator_guide_use,
                 "selfing_ability": self.selfing_ability,
@@ -372,8 +434,15 @@ class NectarGuideModel:
             "mean_neutral_diversity",
             "Fis",
             "Fst",
+            "selfing_syndrome_score",
+            "island_syndrome_score",
             "pollinator_environment",
+            "flower_size",
+            "herkogamy",
+            "pollen_ovule_ratio",
             "bombus_present",
+            "bombus_pollination_efficiency",
+            "other_pollinator_efficiency",
             "bombus_guide_dependence",
             "other_pollinator_guide_use",
             "selfing_ability",
@@ -506,7 +575,12 @@ async def main() -> None:
         BindParametersConfig(
             include=[
                 "pollinator_environment",
+                "flower_size",
+                "herkogamy",
+                "pollen_ovule_ratio",
                 "bombus_present",
+                "bombus_pollination_efficiency",
+                "other_pollinator_efficiency",
                 "bombus_guide_dependence",
                 "other_pollinator_guide_use",
                 "selfing_ability",
@@ -528,6 +602,33 @@ async def main() -> None:
                     max=1,
                     step=0.01,
                 ),
+                "flower_size": create_parameter(
+                    id="flower_size",
+                    type="number",
+                    label="flower_size",
+                    value=model.flower_size,
+                    min=0,
+                    max=1,
+                    step=0.01,
+                ),
+                "herkogamy": create_parameter(
+                    id="herkogamy",
+                    type="number",
+                    label="herkogamy",
+                    value=model.herkogamy,
+                    min=0,
+                    max=1,
+                    step=0.01,
+                ),
+                "pollen_ovule_ratio": create_parameter(
+                    id="pollen_ovule_ratio",
+                    type="number",
+                    label="pollen_ovule_ratio",
+                    value=model.pollen_ovule_ratio,
+                    min=0,
+                    max=1,
+                    step=0.01,
+                ),
                 "bombus_present": create_parameter(
                     id="bombus_present",
                     type="number",
@@ -536,6 +637,24 @@ async def main() -> None:
                     min=0,
                     max=1,
                     step=1.0,
+                ),
+                "bombus_pollination_efficiency": create_parameter(
+                    id="bombus_pollination_efficiency",
+                    type="number",
+                    label="bombus_pollination_efficiency",
+                    value=model.bombus_pollination_efficiency,
+                    min=0,
+                    max=1,
+                    step=0.01,
+                ),
+                "other_pollinator_efficiency": create_parameter(
+                    id="other_pollinator_efficiency",
+                    type="number",
+                    label="other_pollinator_efficiency",
+                    value=model.other_pollinator_efficiency,
+                    min=0,
+                    max=1,
+                    step=0.01,
                 ),
                 "bombus_guide_dependence": create_parameter(
                     id="bombus_guide_dependence",
