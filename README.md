@@ -4,6 +4,22 @@
 
 実測値がまだ入っていない列は、あとで野外データを穴埋めするための仮値です。野外で直接一点推定しにくい送粉効率やガイド維持コストは、`Robustness` タブで範囲を振って、傾向がどれくらい安定かを見る設計にしています。
 
+## 設計思想
+
+このABMは一点予測器ではなく、伊豆諸島のネクターガイド勾配を説明する進化仮説デバッガーです。実測値をそのまま答えとして入れるのではなく、近交弱勢、送粉効率、ガイド維持コストなど野外で一点推定しにくい値を動かし、どの条件で観察パターンが再現されるかを調べます。
+
+モデル内の変数は次の層に分けます。
+
+| 層 | 役割 | 例 |
+|---|---|---|
+| 原因 | 環境側の入力 | `bombus_frequency`, `pollinator_environment`, 島距離、集団サイズ |
+| 制約 | 形質や遺伝子流動の状態 | `flower_size`, `herkogamy`, `pollen_ovule_ratio`, `migration_rate` |
+| 繁殖過程 | 繁殖モードの分岐 | 他殖確率、自殖確率、繁殖失敗 |
+| 適応度 | 次世代親選択に使う値 | 種子数、発芽率、近交弱勢、ネクターガイド維持コスト |
+| 診断 | 結果解釈に使う値 | `selfing_syndrome_score`, `island_syndrome_score`, `Fis`, `Fst`, `Pst` |
+
+重要な原則として、`selfing_syndrome_score` と `island_syndrome_score` は原因変数でも選択圧でもなく、結果を読むための診断指標です。適応度計算には直接入れず、「自殖シンドロームらしい形質群が同じ向きに動いているか」「島嶼化に伴う複数の兆候が同時に出ているか」を確認するために使います。詳しい方針は [`docs/abm_design_policy.md`](docs/abm_design_policy.md) にまとめています。
+
 ## 使い方
 
 Streamlit:
@@ -42,7 +58,7 @@ TenSnap renderer/client から `ws://localhost:8765` に接続してください
 | 変数 | 意味 |
 |---|---|
 | `pollinator_environment` | 訪花頻度、花粉接触、結実率などから作る「他殖できる環境」 |
-| `bombus_present` | マルハナバチの在/不在。大島は 1、神津島・八丈島は 0 |
+| `bombus_frequency` | マルハナバチの寄与率。0 は不在、1 は十分にいる状態。旧 `bombus_present` は後方互換の別名 |
 | `bombus_pollination_efficiency` | マルハナバチがいた場合の送粉効率。文献上は高い想定 |
 | `other_pollinator_efficiency` | コハナバチ類などの送粉効率。不確実なので感度分析対象 |
 | `bombus_guide_dependence` | マルハナバチがネクターガイドを利用する強さ |
@@ -52,12 +68,12 @@ TenSnap renderer/client から `ws://localhost:8765` に接続してください
 
 ```text
 pollinator_efficiency
-  = bombus_present * bombus_pollination_efficiency
-    + (1 - bombus_present) * other_pollinator_efficiency
+  = bombus_frequency * bombus_pollination_efficiency
+    + (1 - bombus_frequency) * other_pollinator_efficiency
 
 guide_alignment
-  = bombus_present * bombus_guide_dependence
-    + (1 - bombus_present) * other_pollinator_guide_use
+  = bombus_frequency * bombus_guide_dependence
+    + (1 - bombus_frequency) * other_pollinator_guide_use
 
 outcross_probability
   = base_outcross
@@ -67,7 +83,7 @@ outcross_probability
          + guide_alignment * nectar_guide)
 ```
 
-つまり、神津島・八丈島では `bombus_present = 0` なので、マルハナバチの高い送粉効率やガイド利用は計算に入りません。大島では `Bombus ardens` がいるため、Bombus チャンネルが残ります。
+つまり、神津島・八丈島では `bombus_frequency = 0` なので、マルハナバチの高い送粉効率やガイド利用は計算に入りません。大島では `Bombus ardens` がいるため、Bombus チャンネルが残ります。TenSnap ABM では 0/1 だけでなく 0.35 のような中間値も扱えるため、在/不在から頻度勾配へ拡張できます。
 
 ## 自殖シンドローム
 
@@ -120,7 +136,7 @@ effective_germination_selfed
 
 | 優先 | データ | 目的 |
 |---|---|---|
-| 1 | 訪花者の種類、訪花頻度、花粉接触、訪花後結実率 | `pollinator_environment` と Bombus在/不在を作る |
+| 1 | 訪花者の種類、訪花頻度、花粉接触、訪花後結実率 | `pollinator_environment` と `bombus_frequency` を作る |
 | 2 | 袋掛け結実率、自然結実率、人工自殖/他殖 | `selfing_ability`、自殖依存、繁殖保証を推定 |
 | 3 | 自殖種子と他殖/自然種子の発芽率差 | `inbreeding_load` |
 | 4 | 斑点面積率 | `nectar_guide` |
