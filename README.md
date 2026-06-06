@@ -149,6 +149,151 @@ effective_germination_selfed
 - 仮説検証: 各地域 2-3 集団、各集団 40-60 個体、訪花観察 30-50 時間、人工自殖/他殖 20-30 母株
 - ABMパラメータ推定まで狙う: 各地域 3 集団以上、各集団 60 個体前後、訪花観察 50 時間以上、SNP は各集団 30 個体以上
 
+## 実際の使い方：野外パターンとABMをつなぐ
+
+このABMでは、野外データを「正解ラベル」として入力するのではなく、**観察されたパターン**として扱います。野外で見えるのは、適応度やコストそのものではなく、それらが重なった結果です。
+
+```text
+observed patterns:
+  nectar_guide
+  flower_size
+  Bombus frequency
+  selfing ability
+  fruit set
+  seed set
+  germination
+  Fis / Fst / Pst / Ne
+  island-distance gradient
+```
+
+一方、野外で直接測りにくいものを、ABM上の不確実パラメータとして扱います。
+
+```text
+latent parameters:
+  guide_cost
+  outcrossing_benefit
+  inbreeding_depression
+  drift_strength
+  pollinator_efficiency
+  small_pollinator_efficiency
+  future reproductive benefit
+```
+
+基本的な使い方は以下です。
+
+```text
+1. 野外で観察されたパターンを整理する
+2. 複数の仮説シナリオをABMで走らせる
+3. 各シナリオの出力パターンを実測パターンと比較する
+4. 観察パターンを再現できる条件・再現できない条件を分ける
+5. 次の野外調査で測るべき変数を決める
+```
+
+つまり、このABMの役割は「ネクターガイドが退化したか」を示すことではなく、**どの条件なら退化が起きうるかを探索すること**です。
+
+## 方法論としての検証方法
+
+将来的には、このABMを `constraint-aware pattern-oriented ABM` として一般化することを目指します。検証は以下の段階で行います。
+
+### 1. Pattern reproduction
+
+まず、実測された複数パターンの方向性をABMが同時に再現できるかを見ます。
+
+```text
+nectar_guide: Mainland > Oshima > Kozu/Niijima > Hachijo
+Bombus_frequency: Mainland > Oshima > Kozu/Niijima ≈ Hachijo
+selfing_ability: Mainland < Oshima < Kozu/Niijima < Hachijo
+flower_size: Mainland > Oshima > Kozu/Niijima > Hachijo
+```
+
+最初は完全な数値一致ではなく、順位・方向性の再現を評価します。
+
+### 2. Scenario comparison
+
+次に、複数の仮説シナリオを比較します。
+
+```text
+H1: Pollinator loss only
+H2: Pollinator loss + selfing assurance
+H3: Pollinator loss + inbreeding depression
+H4: Pollinator loss + Ne decline / drift
+H5: Pollinator loss + small-pollinator adaptation + selfing syndrome
+```
+
+各シナリオがどのパターンを再現でき、どのパターンを再現できないかを見ます。
+
+### 3. Sensitivity analysis
+
+直接測れないパラメータを広い範囲で動かします。
+
+```text
+guide_cost
+inbreeding_depression
+pollinator_efficiency
+small_pollinator_efficiency
+drift_strength
+selfing_ability
+migration_rate
+```
+
+結果がどのパラメータに敏感かを調べることで、「どの見えない要素が退化条件を左右するか」を評価します。
+
+### 4. Parameter filtering / ABC-like matching
+
+ランダムにパラメータセットを生成し、ABMを繰り返し走らせます。
+
+```text
+sample parameters
+→ run ABM
+→ calculate distance to observed patterns
+→ retain good-fitting parameter sets
+```
+
+これにより、観察パターンを再現できる `guide_cost`, `inbreeding_depression`, `drift_strength` などのあり得る範囲を推定します。
+
+### 5. Null model / negative control
+
+選択を入れないモデルや、単一要因だけのモデルも走らせます。
+
+```text
+null 1: drift only
+null 2: pollinator loss only
+null 3: selfing only
+```
+
+もしnull modelでも同じパターンが出るなら、ネクターガイド退化を特定の選択圧で説明する根拠は弱くなります。
+
+## パッケージ化の方向
+
+将来的には、このリポジトリをホタルブクロ/シマホタルブクロのケーススタディ付きの汎用パッケージに発展させます。
+
+想定するAPI:
+
+```text
+define_observable_patterns()
+define_latent_parameters()
+define_constraints()
+run_abm_scenarios()
+compare_patterns()
+rank_mechanisms()
+plot_thresholds()
+export_odd_protocol()
+```
+
+このパッケージの目的は、研究者が自分の生態系に対して、
+
+```text
+測れるパターン
++
+測れない適応度・コスト・利益
++
+生態学的制約
+```
+
+を定義し、ABMで複数仮説を比較できるようにすることです。
+
+このリポジトリで提供する最初の例は、伊豆諸島のホタルブクロ/シマホタルブクロ系です。このケースでは、本土からの距離勾配に沿って、送粉者相、自殖化、遺伝的浮動、花サイズ、ネクターガイド退化がどのように重なるかを検証します。
+
 ## 文献根拠
 
 - Inoue, K. & Amano, M. 1986. Evolution of `Campanula punctata` Lam. in the Izu Islands: Changes of Pollinators and Evolution of Breeding Systems. Plant Species Biology. https://cir.nii.ac.jp/crid/1363388843410604032
