@@ -1,0 +1,95 @@
+# Campanula Izu Islands worked example
+
+This directory will contain the first worked example for the constraint-aware pattern-oriented ABM framework.
+
+## Biological question
+
+Under what conditions does the nectar guide decline or disappear in island populations of *Campanula punctata* / shimahotarubukuro?
+
+## Study gradient
+
+The case study uses the Izu Islands as an isolation gradient.
+
+```text
+Mainland
+↓
+Oshima
+↓
+Kozu / Niijima
+↓
+Hachijo
+```
+
+## Observable patterns
+
+The empirical data should be organized as observable patterns rather than as direct causal mechanisms.
+
+Core patterns:
+
+```text
+nectar_guide
+flower_size
+Bombus frequency
+other pollinator frequency
+selfing ability
+open fruit set
+bagged fruit set
+seed set
+germination
+Fis
+Fst
+Pst
+Ne
+island distance
+```
+
+## Latent mechanisms
+
+Latent mechanisms are not directly measured. They are explored as uncertain model parameters.
+
+```text
+nectar-guide maintenance cost
+outcrossing benefit
+inbreeding depression
+drift strength
+small-pollinator efficiency
+future reproductive benefit
+cost of waiting for pollinators
+```
+
+## Hypothesis scenarios
+
+```text
+H1: Pollinator loss only
+H2: Pollinator loss + reproductive assurance through selfing
+H3: Pollinator loss + inbreeding depression
+H4: Pollinator loss + Ne decline / drift
+H5: Pollinator loss + small-pollinator adaptation + selfing syndrome
+```
+
+## First validation target
+
+The first goal is not exact numerical prediction. It is ordinal pattern reproduction.
+
+```text
+nectar_guide: Mainland > Oshima > Kozu/Niijima > Hachijo
+Bombus_frequency: Mainland > Oshima > Kozu/Niijima ≈ Hachijo
+selfing_ability: Mainland < Oshima < Kozu/Niijima < Hachijo
+flower_size: Mainland > Oshima > Kozu/Niijima > Hachijo
+```
+
+## Future files
+
+Planned files:
+
+```text
+observed_patterns_template.csv
+run_case_study.py
+scenario_config.yaml
+figures/
+outputs/
+```
+
+## Manuscript use
+
+This example is designed to be used as the main case study for a methods-oriented manuscript. The broader framework should be presented as general, while this example demonstrates how the method works in a real ecological system.
