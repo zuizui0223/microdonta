@@ -484,9 +484,11 @@ with st.sidebar:
         replicates = 0
 
     seed = st.number_input("Random seed", 0, 999999, 42, 1)
+    _rules = available_rules()
     acceptance_rule = st.selectbox(
         "ABC acceptance rule",
-        available_rules(),
+        _rules,
+        index=_rules.index("strict_6_of_6") if "strict_6_of_6" in _rules else 0,
         format_func=lambda r: {
             "strict_6_of_6":   "strict (eps=0, all 6 must match)",
             "relaxed_5_of_6":  "relaxed (eps=1/6, >=5 must match)",
@@ -508,9 +510,9 @@ with st.sidebar:
         "Jointly samples binary switch states and latent parameters."
     )
     sp_n_attempts = st.slider(
-        "Switch inference draws", 100, 2000, 400, 100,
+        "Switch inference draws", 200, 3000, 1500, 100,
         key="sp_n",
-        help="Total joint (switch, parameter) draws from the prior",
+        help="More draws give sharper posteriors. 1500+ recommended for stable BF estimates.",
     )
     run_switch_button = st.button(
         "Run Switch Posterior", use_container_width=True
