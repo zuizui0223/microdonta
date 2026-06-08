@@ -691,9 +691,10 @@ if "research_result" in st.session_state:
         if long_values.empty:
             st.warning("No final simulated values available.")
         else:
-            sel_var = st.selectbox("Variable", sorted(long_values["variable"].unique()))
+            sel_var = st.selectbox("Variable", sorted(long_values["variable"].unique()), key="tab4_var")
             sel_hyp = st.selectbox(
-                "Causal hypothesis", sorted(long_values["causal_hypothesis"].unique())
+                "Causal hypothesis", sorted(long_values["causal_hypothesis"].unique()),
+                key="tab4_hyp",
             )
             sub = long_values[
                 (long_values["variable"] == sel_var) &
@@ -714,10 +715,10 @@ if "research_result" in st.session_state:
         else:
             col_ts1, col_ts2 = st.columns(2)
             with col_ts1:
-                var = st.selectbox("Variable", sorted(ts["variable"].unique()))
+                var = st.selectbox("Variable", sorted(ts["variable"].unique()), key="tab5_var")
             with col_ts2:
                 structure_ts = st.selectbox(
-                    "Hypothesis", sorted(ts["structure"].unique())
+                    "Hypothesis", sorted(ts["structure"].unique()), key="tab5_hyp",
                 )
             sub = ts[(ts["variable"] == var) & (ts["structure"] == structure_ts)]
             if not sub.empty:
