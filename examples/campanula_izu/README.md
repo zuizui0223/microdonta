@@ -85,11 +85,18 @@ Planned files:
 ```text
 observed_patterns_template.csv
 run_case_study.py
+run_causal_structure_comparison.py
 run_inoue_pattern_comparison.py
 scenario_config.yaml
 figures/
 outputs/
 ```
+
+`run_causal_structure_comparison.py` ranks the Issue #3 latent causal
+structures M1-M5 against observable Campanula pattern targets. This is a
+schema-level comparison: it checks whether each causal structure explicitly
+predicts each target pattern, before those structures are connected to the
+biological generator in Stage 4.
 
 `run_inoue_pattern_comparison.py` treats the Inoue-series literature information
 as observed CAPOM patterns, runs H1-H5 ABM scenarios, and ranks scenarios by how

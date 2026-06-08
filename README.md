@@ -95,6 +95,7 @@ See also:
 - [ODD protocol draft](paper/odd_protocol_draft.md)
 - [MEE submission plan](paper/mee_submission_plan.md)
 - [Campanula Izu worked example](examples/campanula_izu/README.md)
+- [Campanula causal structure comparison](examples/campanula_izu/run_causal_structure_comparison.py)
 
 このABMは、実データを入れて予測するモデルではなく、実データと比較するための仮説生成器です。野外で直接一点推定しにくい送粉効率やガイド維持コストは、`Robustness` タブで範囲を振って、どの条件で観察パターンに近い傾向が出るかを見ます。
 
