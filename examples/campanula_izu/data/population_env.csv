@@ -1,0 +1,5 @@
+population,distance_from_mainland,island_area_km2,Bombus_frequency,small_pollinator_frequency,effective_population_size_proxy,isolation,pollinator_environment,migration_rate
+mainland,0,9999,0.80,0.50,1.00,0.00,0.88,0.15
+Oshima,120,91,0.45,0.50,0.75,0.35,0.62,0.05
+Kozushima,170,18,0.20,0.55,0.45,0.60,0.44,0.02
+Hachijo,290,69,0.00,0.60,0.35,0.85,0.34,0.01

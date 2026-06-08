@@ -49,10 +49,22 @@ from examples.campanula_izu.observed_data import (
     load_observed_pattern_table,
     load_observed_patterns,
     load_pattern_weights,
+    load_population_env,
+    observed_gradient_patterns,
+    observed_pairwise_relations,
+    ordered_populations,
+)
+from examples.campanula_izu.pattern_evaluator import (
+    EvaluationResult,
+    evaluate_patterns,
+    weighted_pattern_distance,
 )
 from examples.campanula_izu.proxy_simulation import (
+    default_campanula_gradient_environments,
     default_campanula_proxy_environments,
+    environments_from_population_env,
     simulate_campanula_causal_structure,
+    simulate_campanula_gradient,
 )
 
 st.set_page_config(
@@ -83,6 +95,20 @@ except Exception:
          "source": "hard-coded fallback", "notes": ""}
         for k, v in OBSERVED_RELS.items()
     ]
+
+# ---------------------------------------------------------------------------
+# Gradient / multi-population data
+# ---------------------------------------------------------------------------
+try:
+    _POP_ENV = load_population_env()
+    _GRADIENT_PATTERNS = observed_gradient_patterns()
+    _PAIRWISE_RELS = observed_pairwise_relations()
+    _POP_ORDER = ordered_populations()
+except Exception:
+    _POP_ENV = {}
+    _GRADIENT_PATTERNS = []
+    _PAIRWISE_RELS = {}
+    _POP_ORDER = ["mainland", "Oshima", "Kozushima", "Hachijo"]
 
 LATENT_PARAMS = [
     "guide_cost",
@@ -518,6 +544,21 @@ with st.sidebar:
         "Run Switch Posterior", use_container_width=True
     )
 
+    st.divider()
+    st.subheader("Island Gradient Analysis")
+    st.caption(
+        "Simulates all four populations (mainland -> Oshima -> Kozushima -> Hachijo) "
+        "and evaluates gradient + pairwise + rank-order patterns."
+    )
+    grad_n_attempts = st.slider(
+        "Gradient inference draws", 200, 2000, 800, 100,
+        key="grad_n",
+        help="Random switch+parameter combinations to evaluate across the full gradient.",
+    )
+    run_gradient_button = st.button(
+        "Run Island Gradient", use_container_width=True
+    )
+
 preset = presets[preset_name]
 st.subheader("Ecological trade-off preset")
 st.caption(preset.description)
@@ -585,6 +626,61 @@ if run_button:
         "population_size": population_size,
         "replicates": replicates,
     }
+
+# ---------------------------------------------------------------------------
+# Run island gradient inference
+# ---------------------------------------------------------------------------
+if run_gradient_button:
+    with st.spinner("Simulating mainland -> Oshima -> Kozushima -> Hachijo..."):
+        import random as _random
+        from causal_model.parameter_constraints import sample_all_sets_with_rejection_log
+        from causal_model.parameter_sampling import param_set_to_model_parameters
+        from causal_model.switch_inference import CAMPANULA_SWITCHES
+
+        _preset = presets[preset_name]
+        _constraint_ok, _ = sample_all_sets_with_rejection_log(
+            _preset, int(grad_n_attempts), seed=int(seed) + 99
+        )
+        _all_patterns = load_observed_pattern_table()
+        _grad_envs = (
+            environments_from_population_env(_POP_ENV)
+            if _POP_ENV
+            else default_campanula_gradient_environments()
+        )
+
+        _grad_rows: list[dict] = []
+        _rng = _random.Random(int(seed) + 99)
+        for _pidx, _pset in enumerate(_constraint_ok):
+            _mp = param_set_to_model_parameters(_pset)
+            # Random binary switch state
+            _sw_state = {sw.name: (_rng.random() < 0.5) for sw in CAMPANULA_SWITCHES}
+            from causal_model.switch_inference import pathway_switches_from_state as _psfs
+            _sw = _psfs(_sw_state)
+            _outputs_dict = simulate_campanula_gradient(_sw, params=_mp, environments=_grad_envs)
+            _outputs_list = list(_outputs_dict.values())
+            _eval = evaluate_patterns(_outputs_list, _all_patterns, _POP_ENV)
+            _dist = weighted_pattern_distance(_eval)
+            _row: dict = {
+                "param_idx": _pidx,
+                "weighted_distance": round(_dist, 4),
+                "n_matched": _eval.n_matched,
+                "n_total": _eval.n_total,
+                "weighted_match_rate": round(_eval.weighted_match_rate, 4),
+                **{sw.name: _sw_state[sw.name] for sw in CAMPANULA_SWITCHES},
+                **{p: _pset.get(p) for p in LATENT_PARAMS},
+            }
+            for _pop, _out in _outputs_dict.items():
+                _row[f"{_pop}_nectar_guide"] = round(_out.nectar_guide, 4)
+                _row[f"{_pop}_selfing_rate"] = round(_out.selfing_rate, 4)
+                _row[f"{_pop}_herkogamy"] = round(_out.herkogamy, 4)
+                _row[f"{_pop}_flower_size"] = round(_out.flower_size, 4)
+                _row[f"{_pop}_Fis"] = round(_out.Fis, 4)
+                _row[f"{_pop}_Bombus_frequency"] = round(_out.Bombus_frequency, 4)
+            _grad_rows.append(_row)
+
+    st.session_state["grad_result"] = _grad_rows
+    st.session_state["grad_envs"] = _grad_envs
+    st.session_state["grad_outputs_last"] = _outputs_dict  # last run for display
 
 # ---------------------------------------------------------------------------
 # Run switch posterior inference
@@ -959,3 +1055,158 @@ if "sp_result" in st.session_state:
                     "rach_switch_posterior_table.csv",
                     "text/csv",
                 )
+
+# ============================================================================
+# Island Gradient Results
+# ============================================================================
+if "grad_result" in st.session_state:
+    _grad_rows = st.session_state["grad_result"]
+    st.divider()
+    st.header("Island Gradient Analysis")
+    st.info(
+        "Simulates mainland -> Oshima -> Kozushima -> Hachijo across random parameter "
+        "and switch combinations, then evaluates gradient-slope, rank-order, and pairwise "
+        "patterns jointly. Low weighted_distance = parameter region reproduces the gradient."
+    )
+
+    df_grad = pd.DataFrame(_grad_rows)
+    if df_grad.empty:
+        st.warning("No gradient results.")
+    else:
+        _best_frac = (df_grad["weighted_distance"] < 0.25).mean()
+        _median_dist = df_grad["weighted_distance"].median()
+        _n_accepted_grad = int((df_grad["weighted_distance"] == 0.0).sum())
+
+        gcol1, gcol2, gcol3, gcol4 = st.columns(4)
+        gcol1.metric("Total draws", len(df_grad))
+        gcol2.metric("Perfect match", _n_accepted_grad,
+                     help="weighted_distance == 0 (all patterns matched)")
+        gcol3.metric("Median distance", f"{_median_dist:.3f}")
+        gcol4.metric("Frac dist < 0.25", f"{_best_frac:.1%}")
+
+        _pop_list = _POP_ORDER if _POP_ORDER else ["mainland", "Oshima", "Kozushima", "Hachijo"]
+        _variables = ["nectar_guide", "selfing_rate", "herkogamy", "flower_size", "Fis", "Bombus_frequency"]
+
+        gtab1, gtab2, gtab3, gtab4 = st.tabs([
+            "Gradient profiles",
+            "Pattern match breakdown",
+            "Switch effect on gradient",
+            "Downloads",
+        ])
+
+        with gtab1:
+            st.markdown("### Simulated trait gradients (best-matching runs)")
+            st.caption(
+                "Each line is one parameter draw. Blue = low distance (good fit). "
+                "X-axis = island gradient from mainland (left) to Hachijo (right)."
+            )
+            _sel_var = st.selectbox(
+                "Variable", _variables, key="grad_var"
+            )
+            # Show gradient profiles for low-distance runs
+            _thresh_q = st.slider(
+                "Show runs with distance <=", 0.0, 1.0, 0.40, 0.05,
+                key="grad_thresh"
+            )
+            _good = df_grad[df_grad["weighted_distance"] <= _thresh_q]
+            if _good.empty:
+                st.info(f"No runs with distance <= {_thresh_q:.2f}. Try increasing the threshold.")
+            else:
+                _profile_cols = [f"{p}_{_sel_var}" for p in _pop_list if f"{p}_{_sel_var}" in df_grad.columns]
+                if _profile_cols:
+                    # Build long-form for line chart
+                    _profile_rows = []
+                    for _, r in _good.head(100).iterrows():
+                        for pc in _profile_cols:
+                            pop = pc.replace(f"_{_sel_var}", "")
+                            _profile_rows.append({
+                                "population": pop,
+                                "value": r[pc],
+                                "run": r["param_idx"],
+                                "distance": r["weighted_distance"],
+                            })
+                    _prof_df = pd.DataFrame(_profile_rows)
+                    # Show mean gradient
+                    _mean_profile = _prof_df.groupby("population")["value"].mean()
+                    # Order by pop list
+                    _mean_profile = _mean_profile.reindex(
+                        [p for p in _pop_list if p in _mean_profile.index]
+                    )
+                    st.markdown(f"**Mean {_sel_var} across {len(_good)} matching runs**")
+                    st.line_chart(_mean_profile.to_frame(), width="stretch")
+                    st.caption(
+                        "Mean simulated values. Expected pattern: "
+                        "nectar_guide / herkogamy / flower_size decreasing; "
+                        "selfing_rate / Fis increasing from mainland to Hachijo."
+                    )
+
+        with gtab2:
+            st.markdown("### Pattern match breakdown")
+            st.caption(
+                "Fraction of draws that matched each pattern type. "
+                "Higher = more robust gradient reproduction."
+            )
+            if "n_matched" in df_grad.columns and "n_total" in df_grad.columns:
+                _n_total_pat = int(df_grad["n_total"].iloc[0]) if len(df_grad) > 0 else 0
+                st.metric("Total patterns evaluated per draw", _n_total_pat)
+
+            # Distance distribution
+            st.markdown("**Weighted distance distribution**")
+            _dist_hist = df_grad["weighted_distance"].value_counts(bins=20, sort=False).sort_index()
+            st.bar_chart(_dist_hist, width="stretch")
+
+            # Pattern-level match rates from pattern details
+            st.markdown("**Weighted match rate distribution**")
+            _wr_hist = df_grad["weighted_match_rate"].value_counts(bins=10, sort=False).sort_index()
+            st.bar_chart(_wr_hist, width="stretch")
+
+        with gtab3:
+            st.markdown("### Switch effect on gradient reproduction")
+            st.caption(
+                "P(weighted_distance < 0.25 | switch ON) vs P(distance < 0.25 | switch OFF). "
+                "Higher ratio = switch being ON is important for reproducing the gradient."
+            )
+            from causal_model.switch_inference import CAMPANULA_SWITCHES as _CS
+            _sw_names = [sw.name for sw in _CS]
+            _sw_effect_rows = []
+            _thresh_sw = 0.25
+            for _swn in _sw_names:
+                if _swn not in df_grad.columns:
+                    continue
+                _on  = df_grad[df_grad[_swn] == True]["weighted_distance"]
+                _off = df_grad[df_grad[_swn] == False]["weighted_distance"]
+                _p_on  = (_on  < _thresh_sw).mean() if len(_on)  > 0 else 0.0
+                _p_off = (_off < _thresh_sw).mean() if len(_off) > 0 else 0.0
+                _ratio = (_p_on / _p_off) if _p_off > 0 else float("nan")
+                _sw_effect_rows.append({
+                    "switch": _swn,
+                    "P(match|ON)": round(_p_on, 3),
+                    "P(match|OFF)": round(_p_off, 3),
+                    "ratio ON/OFF": round(_ratio, 3) if _ratio == _ratio else "n/a",
+                })
+            if _sw_effect_rows:
+                _df_sw_eff = pd.DataFrame(_sw_effect_rows)
+                st.bar_chart(
+                    _df_sw_eff.set_index("switch")[["P(match|ON)", "P(match|OFF)"]],
+                    width="stretch",
+                )
+                stretch_df(_df_sw_eff, hide_index=True)
+            else:
+                st.info("Switch columns not found in gradient results.")
+
+        with gtab4:
+            st.download_button(
+                "gradient_all_runs.csv",
+                df_grad.to_csv(index=False).encode("utf-8"),
+                "rach_island_gradient_all_runs.csv",
+                "text/csv",
+            )
+            if _n_accepted_grad > 0:
+                _df_perfect = df_grad[df_grad["weighted_distance"] == 0.0]
+                st.download_button(
+                    "gradient_perfect_match.csv",
+                    _df_perfect.to_csv(index=False).encode("utf-8"),
+                    "rach_island_gradient_perfect_match.csv",
+                    "text/csv",
+                )
+            st.caption(f"Total gradient draws: {len(df_grad)}")

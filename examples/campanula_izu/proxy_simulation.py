@@ -4,8 +4,8 @@ Wraps the generic causal_model.simulation functions with campanula-specific
 default environments. Kept in examples/campanula_izu/ to leave causal_model/
 general-purpose.
 
-Two entry points
-----------------
+Entry points
+------------
 simulate_campanula_causal_structure(structure, ...)
     Original function. Accepts a pre-defined CausalStructure (M1–M5).
     Switches default to the structure's canonical pathway configuration.
@@ -14,6 +14,15 @@ simulate_campanula_with_switches(switches, ...)
     New function for switch posterior inference.
     Accepts an explicit PathwaySwitches object; no CausalStructure required.
     Used by causal_model.switch_inference.
+
+simulate_campanula_gradient(switches, ...)
+    Multi-population gradient simulation.
+    Runs all four populations (mainland, Oshima, Kozushima, Hachijo) and
+    returns outputs keyed by population name.
+
+environments_from_population_env(env_table)
+    Convert a population_env.csv dict (from observed_data.load_population_env)
+    into {population_name: Environment} for gradient simulation.
 """
 
 from __future__ import annotations
@@ -133,3 +142,119 @@ def simulate_campanula_with_switches(
     ]
     relations = relations_from_outputs(outputs, left="Oshima", right="Hachijo")
     return relations, outputs
+
+
+# ---------------------------------------------------------------------------
+# Multi-population gradient simulation (Tasks 5-6)
+# ---------------------------------------------------------------------------
+
+def environments_from_population_env(
+    env_table: dict[str, dict],
+) -> dict[str, Environment]:
+    """Convert population_env.csv data into Environment objects.
+
+    Parameters
+    ----------
+    env_table:
+        Dict returned by observed_data.load_population_env().
+        Keys are population names; values are dicts with numeric columns.
+
+    Returns
+    -------
+    dict
+        {population_name: Environment} in CSV row order.
+    """
+    result: dict[str, Environment] = {}
+    for pop_name, row in env_table.items():
+        result[pop_name] = Environment(
+            name=pop_name,
+            bombus_frequency=float(row.get("Bombus_frequency", 0.0)),
+            small_pollinator_frequency=float(row.get("small_pollinator_frequency", 0.5)),
+            pollinator_environment=float(row.get("pollinator_environment", 0.5)),
+            migration_rate=float(row.get("migration_rate", 0.05)),
+            effective_population_size=float(row.get("effective_population_size_proxy", 0.5)),
+            island_distance=float(row.get("isolation", 0.0)),
+        )
+    return result
+
+
+def default_campanula_gradient_environments() -> dict[str, Environment]:
+    """Return default mainland / Oshima / Kozushima / Hachijo environments."""
+    return {
+        "mainland": Environment(
+            name="mainland",
+            bombus_frequency=0.80,
+            small_pollinator_frequency=0.50,
+            pollinator_environment=0.88,
+            migration_rate=0.15,
+            effective_population_size=1.00,
+            island_distance=0.00,
+        ),
+        "Oshima": Environment(
+            name="Oshima",
+            bombus_frequency=0.45,
+            small_pollinator_frequency=0.50,
+            pollinator_environment=0.62,
+            migration_rate=0.05,
+            effective_population_size=0.75,
+            island_distance=0.35,
+        ),
+        "Kozushima": Environment(
+            name="Kozushima",
+            bombus_frequency=0.20,
+            small_pollinator_frequency=0.55,
+            pollinator_environment=0.44,
+            migration_rate=0.02,
+            effective_population_size=0.45,
+            island_distance=0.60,
+        ),
+        "Hachijo": Environment(
+            name="Hachijo",
+            bombus_frequency=0.00,
+            small_pollinator_frequency=0.60,
+            pollinator_environment=0.34,
+            migration_rate=0.01,
+            effective_population_size=0.35,
+            island_distance=0.85,
+        ),
+    }
+
+
+def simulate_campanula_gradient(
+    switches: PathwaySwitches,
+    params: ModelParameters | None = None,
+    environments: dict[str, Environment] | None = None,
+) -> dict[str, PopulationProxyOutput]:
+    """Simulate all gradient populations and return outputs by population name.
+
+    Parameters
+    ----------
+    switches:
+        PathwaySwitches specifying which pathways are active.
+    params:
+        Latent ecological parameters. Defaults to ModelParameters defaults.
+    environments:
+        {population_name: Environment}. Defaults to four-population gradient.
+
+    Returns
+    -------
+    dict
+        {population_name: PopulationProxyOutput} in population order.
+    """
+    params = params or ModelParameters()
+    environments = environments or default_campanula_gradient_environments()
+
+    _placeholder = CausalStructure(
+        name="gradient_inference",
+        description="Multi-population gradient simulation",
+        edges=[],
+        expected_patterns=[],
+        latent_parameters=[],
+    )
+
+    return {
+        pop_name: simulate_population_proxy(
+            _placeholder, env, params, switches=switches
+        )
+        for pop_name, env in environments.items()
+    }
