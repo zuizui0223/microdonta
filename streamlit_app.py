@@ -1,16 +1,16 @@
-"""Streamlit app for RACH: Restricted Admissible Causal Hypotheses.
+﻿"""Streamlit app for RACH: Restricted Admissible Causal Hypotheses.
 
 Workflow
 --------
-1. Constrain  — ecological constraint grammar rejects implausible latent parameter combos
-2. Sample     — random draws from ecology-principled trade-off priors
-3. Simulate   — M1-M5 causal hypotheses via proxy or stochastic ABM backend
-4. Filter     — ABC-style pattern-distance rejection against empirical observed patterns
-5. Retain     — restricted admissible causal hypotheses + compatible parameter ranges
+1. Constrain  窶・ecological constraint grammar rejects implausible latent parameter combos
+2. Sample     窶・random draws from ecology-principled trade-off priors
+3. Simulate   窶・M1-M5 causal hypotheses via proxy or stochastic ABM backend
+4. Filter     窶・ABC-style pattern-distance rejection against empirical observed patterns
+5. Retain     窶・restricted admissible causal hypotheses + compatible parameter ranges
 
 Reference
 ---------
-Inoue & Amano (1986) — pollinator change and breeding system evolution on Izu islands.
+Inoue & Amano (1986) 窶・pollinator change and breeding system evolution on Izu islands.
 """
 
 from __future__ import annotations
@@ -45,15 +45,20 @@ from examples.campanula_izu.observed_data import (
     load_observed_patterns,
     load_pattern_weights,
 )
+from causal_model.switch_inference import (
+    CAMPANULA_SWITCHES,
+    compute_coactivation_table,
+    run_switch_posterior_inference,
+)
 from examples.campanula_izu.proxy_simulation import (
     default_campanula_proxy_environments,
     simulate_campanula_causal_structure,
 )
 
-st.set_page_config(page_title="RACH — Campanula / Izu Islands", layout="wide", page_icon="🔭")
+st.set_page_config(page_title="RACH 窶・Campanula / Izu Islands", layout="wide", page_icon="発")
 
 # ---------------------------------------------------------------------------
-# Observed patterns — loaded from CSV; hard-coded fallback inside loader
+# Observed patterns 窶・loaded from CSV; hard-coded fallback inside loader
 # ---------------------------------------------------------------------------
 try:
     _OBS_TABLE = load_observed_pattern_table()
@@ -95,11 +100,11 @@ WORKFLOW_STEPS = [
 
 BACKEND_DESCRIPTIONS = {
     "proxy_causal": (
-        "⚡ Fast deterministic proxy — use for broad screening and debugging. "
+        "笞｡ Fast deterministic proxy 窶・use for broad screening and debugging. "
         "Approximates population outcomes without generation-level dynamics."
     ),
     "stochastic_abm": (
-        "🔬 Stochastic individual-based ABM — the main causal generative model. "
+        "溌 Stochastic individual-based ABM 窶・the main causal generative model. "
         "Slower, but models heritable trait evolution, drift, selection, and "
         "reproduction explicitly across generations."
     ),
@@ -208,7 +213,7 @@ def simulate_structure_stochastic_abm(
         "herkogamy": relation_from_values("Oshima", oshima.get("mean_herkogamy", 0.5), "Hachijo", hachijo.get("mean_herkogamy", 0.5)),
         "flower_size": relation_from_values("Oshima", oshima.get("mean_flower_size", 0.5), "Hachijo", hachijo.get("mean_flower_size", 0.5)),
         "Fis": relation_from_values("Oshima", oshima.get("Fis_proxy", 0.5), "Hachijo", hachijo.get("Fis_proxy", 0.5)),
-        "Bombus_frequency": "Oshima > Hachijo",  # structural — fixed by island ecology
+        "Bombus_frequency": "Oshima > Hachijo",  # structural 窶・fixed by island ecology
     }
     final_rows = [{"population": name, **values} for name, values in final_by_population.items()]
     return relations, {"final_values": final_rows, "generation_rows": generation_rows}
@@ -407,14 +412,14 @@ def generation_timeseries_long(df_generation_rows: pd.DataFrame) -> pd.DataFrame
 # UI
 # ============================================================================
 
-st.title("🔭 RACH — Restricted Admissible Causal Hypotheses")
+st.title("発 RACH 窶・Restricted Admissible Causal Hypotheses")
 st.caption("Campanula punctata / Izu Islands isolation gradient worked example")
 st.info(
     "RACH constrains latent ecological trade-offs, simulates candidate causal hypotheses "
-    "(M1–M5), then retains only the hypotheses and parameter regions compatible with "
+    "(M1窶溺5), then retains only the hypotheses and parameter regions compatible with "
     "multiple empirical observed patterns simultaneously.  "
     "No parameter was manually tuned to reproduce the target patterns.",
-    icon="🔭",
+    icon="発",
 )
 
 with st.expander("RACH workflow", expanded=True):
@@ -441,7 +446,7 @@ with st.sidebar:
     backend = st.selectbox(
         "Simulation backend",
         ["proxy_causal", "stochastic_abm"],
-        format_func=lambda x: "⚡ proxy_causal (fast screen)" if x == "proxy_causal" else "🔬 stochastic_abm (main model)",
+        format_func=lambda x: "笞｡ proxy_causal (fast screen)" if x == "proxy_causal" else "溌 stochastic_abm (main model)",
     )
     st.caption(BACKEND_DESCRIPTIONS[backend])
 
@@ -461,18 +466,18 @@ with st.sidebar:
         "ABC acceptance rule",
         available_rules(),
         format_func=lambda r: {
-            "strict_6_of_6":   "strict (ε=0, all 6 must match)",
-            "relaxed_5_of_6":  "relaxed (ε=1/6, ≥5 must match)",
-            "relaxed_4_of_6":  "lax (ε=2/6, ≥4 must match)",
-            "weighted_strict": "weighted strict (weighted ε=0)",
-            "weighted_lax":    "weighted lax (weighted ε=0.20)",
+            "strict_6_of_6":   "strict (ﾎｵ=0, all 6 must match)",
+            "relaxed_5_of_6":  "relaxed (ﾎｵ=1/6, 竕･5 must match)",
+            "relaxed_4_of_6":  "lax (ﾎｵ=2/6, 竕･4 must match)",
+            "weighted_strict": "weighted strict (weighted ﾎｵ=0)",
+            "weighted_lax":    "weighted lax (weighted ﾎｵ=0.20)",
         }.get(r, r),
     )
     st.caption(
-        f"ε = {epsilon_for_rule(acceptance_rule, len(OBSERVED_RELS)):.4f}  "
-        f"| distance = 1 − matches / {len(OBSERVED_RELS)}"
+        f"ﾎｵ = {epsilon_for_rule(acceptance_rule, len(OBSERVED_RELS)):.4f}  "
+        f"| distance = 1 竏・matches / {len(OBSERVED_RELS)}"
     )
-    run_button = st.button("▶ Run RACH workflow", type="primary", width="stretch")
+    run_button = st.button("笆ｶ Run RACH workflow", type="primary", width="stretch")
 
 preset = presets[preset_name]
 st.subheader("Ecological trade-off preset")
@@ -488,16 +493,16 @@ st.dataframe(
 
 if backend == "stochastic_abm":
     st.warning(
-        "Stochastic ABM mode is slower. Start with small draw counts (≤80), "
+        "Stochastic ABM mode is slower. Start with small draw counts (竕､80), "
         "then increase after confirming the workflow runs correctly.",
-        icon="🐢",
+        icon="世",
     )
 
 # ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
 if run_button:
-    with st.spinner("Constrain → sample → simulate → filter admissible hypotheses…"):
+    with st.spinner("Constrain 竊・sample 竊・simulate 竊・filter admissible hypotheses窶ｦ"):
         result = run_research_mode(
             preset_name=preset_name,
             n_attempts=n_attempts,
@@ -519,6 +524,18 @@ if run_button:
         "population_size": population_size,
         "replicates": replicates,
     }
+
+if run_switch_button:
+    with st.spinner("Sampling (params, switches) jointly → ABC filter → posterior…"):
+        sp_result = run_switch_posterior_inference(
+            preset_name=preset_name,
+            n_attempts=int(sp_n_attempts),
+            acceptance_rule=acceptance_rule,
+            seed=int(seed) + 1,
+            observed_rels=OBSERVED_RELS,
+            pattern_weights=PATTERN_WEIGHTS,
+        )
+    st.session_state["sp_result"] = sp_result
 
 # ---------------------------------------------------------------------------
 # Results
@@ -552,12 +569,12 @@ if "research_result" in st.session_state:
         c5.metric("Best hypothesis", "none")
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "🏆 Hypothesis ranking",
-        "🧭 Parameter space",
-        "📌 Compatible ranges",
-        "🌱 Simulated values",
-        "⏱ ABM time series",
-        "📦 Tables & downloads",
+        "醇 Hypothesis ranking",
+        "ｧｭ Parameter space",
+        "東 Compatible ranges",
+        "験 Simulated values",
+        "竢ｱ ABM time series",
+        "逃 Tables & downloads",
     ])
 
     with tab1:
@@ -581,7 +598,7 @@ if "research_result" in st.session_state:
                     df_summary.set_index("causal_hypothesis")[["mean_abc_distance"]],
                     width="stretch",
                 )
-                st.caption("Unweighted: 1 − matches/6")
+                st.caption("Unweighted: 1 竏・matches/6")
             with col_b:
                 st.bar_chart(
                     df_summary.set_index("causal_hypothesis")[["mean_weighted_abc_distance"]],
@@ -622,7 +639,7 @@ if "research_result" in st.session_state:
     with tab3:
         st.markdown("### Compatible latent parameter ranges")
         st.caption(
-            "These ranges characterise the admissible region of latent parameter space — "
+            "These ranges characterise the admissible region of latent parameter space 窶・"
             "the inferential output of RACH, not manually chosen values."
         )
         if df_ranges.empty:
@@ -666,7 +683,7 @@ if "research_result" in st.session_state:
         st.caption("Available only in stochastic_abm backend mode.")
         ts = generation_timeseries_long(df_generation_rows)
         if ts.empty:
-            st.info("Run the workflow in **🔬 stochastic_abm** mode to see generation trajectories.")
+            st.info("Run the workflow in **溌 stochastic_abm** mode to see generation trajectories.")
         else:
             col_ts1, col_ts2 = st.columns(2)
             with col_ts1:
@@ -727,7 +744,134 @@ if "research_result" in st.session_state:
 
 else:
     st.markdown(
-        "Configure settings in the sidebar and click **▶ Run RACH workflow** to begin.  \n"
-        "Use **⚡ proxy_causal** for fast broad screening, "
-        "then confirm with **🔬 stochastic_abm** for the main causal generative model."
+        "Configure settings in the sidebar and click **笆ｶ Run RACH workflow** to begin.  \n"
+        "Use **笞｡ proxy_causal** for fast broad screening, "
+        "then confirm with **溌 stochastic_abm** for the main causal generative model."
     )
+
+
+# ============================================================================
+# Switch Posterior Results
+# ============================================================================
+if "sp_result" in st.session_state:
+    sp = st.session_state["sp_result"]
+    st.divider()
+    st.header("🧬 Switch Posterior Inference Results")
+    st.caption(
+        "These results infer which biological pathways were active in parameter-space "
+        "regions that reproduced observed patterns — without any pre-defined M1-M5 structure."
+    )
+
+    sp_c1, sp_c2, sp_c3, sp_c4 = st.columns(4)
+    sp_c1.metric("Joint prior draws", sp.n_attempts)
+    sp_c2.metric("ABC-accepted", len(sp.accepted_rows))
+    sp_c3.metric("Acceptance rate", f"{sp.acceptance_rate:.1%}")
+    sp_c4.metric("Switches inferred", len(CAMPANULA_SWITCHES))
+
+    if not sp.accepted_rows:
+        st.warning("No samples accepted. Try a more relaxed rule or more draws.")
+    else:
+        sp_tab1, sp_tab2, sp_tab3, sp_tab4 = st.tabs([
+            "📊 Posterior P(ON)",
+            "🔗 Co-activation",
+            "🗺 Parameter space",
+            "📦 Downloads",
+        ])
+
+        with sp_tab1:
+            st.markdown("### P(switch ON | patterns matched)")
+            st.caption(
+                "Posterior probability that each biological mechanism is active in "
+                "parameter-space regions compatible with the observed Oshima-Hachijo patterns. "
+                "Prior = 0.5 (uninformative). BF > 3 = supported; BF < 1/3 = opposed."
+            )
+            df_post = pd.DataFrame(sp.posterior_table)
+            if not df_post.empty:
+                st.bar_chart(
+                    df_post.set_index("switch")[["P_prior_ON", "P_posterior_ON"]],
+                    width="stretch",
+                )
+                st.caption(
+                    "Left bar = prior (0.5). Right bar = posterior. "
+                    "Posterior > 0.5 means the switch being ON is associated with "
+                    "matching the observed patterns."
+                )
+                stretch_df(df_post[["switch", "biological_question", "P_prior_ON",
+                                    "P_posterior_ON", "Bayes_factor", "interpretation",
+                                    "n_ON", "n_accepted"]], hide_index=True)
+                st.markdown("#### Biological interpretation")
+                for row in sp.posterior_table:
+                    icon = ("✅" if str(row.get("interpretation","")).startswith("supported")
+                            else "🔶" if str(row.get("interpretation","")).startswith("weakly s")
+                            else "❌" if str(row.get("interpretation","")).startswith("opposed")
+                            else "➖")
+                    bf = row.get("Bayes_factor")
+                    bf_str = f"BF={bf:.2f}" if bf is not None else "BF=n/a"
+                    st.markdown(
+                        f"{icon} **{row['switch']}**  \n"
+                        f"P(ON)={row['P_posterior_ON']:.3f} ({bf_str}) — "
+                        f"*{row['biological_question'][:80]}*"
+                    )
+
+        with sp_tab2:
+            st.markdown("### Switch co-activation")
+            st.caption(
+                "P(switch A ON and switch B ON | accepted). "
+                "High co-activation = two pathways tend to be simultaneously active "
+                "in pattern-compatible parameter regions."
+            )
+            coact = compute_coactivation_table(sp.accepted_rows)
+            if coact:
+                df_coact = pd.DataFrame(coact)
+                stretch_df(df_coact, hide_index=True)
+                try:
+                    pivot = df_coact.pivot(index="switch_A", columns="switch_B", values="P_both_ON")
+                    st.markdown("#### Co-activation matrix")
+                    st.dataframe(pivot.round(3), width="stretch")
+                except Exception:
+                    pass
+            else:
+                st.info("Not enough accepted samples for co-activation table.")
+
+        with sp_tab3:
+            st.markdown("### Accepted switch states in parameter space")
+            df_sp = pd.DataFrame(sp.accepted_rows)
+            sw_names = [sw.name for sw in CAMPANULA_SWITCHES]
+            avail = [p for p in ["guide_cost","outcrossing_benefit",
+                                  "selfing_benefit","inbreeding_depression",
+                                  "drift_strength"] if p in df_sp.columns]
+            if len(avail) >= 2:
+                col_sw, col_x, col_y = st.columns(3)
+                with col_sw:
+                    color_switch = st.selectbox("Colour by switch",
+                        [s for s in sw_names if s in df_sp.columns], key="sp_color")
+                with col_x:
+                    x_p = st.selectbox("X axis", avail, key="sp_x")
+                with col_y:
+                    y_p = st.selectbox("Y axis", avail, index=min(1, len(avail)-1), key="sp_y")
+                plot_df = df_sp[[x_p, y_p, color_switch]].dropna().copy()
+                plot_df[color_switch] = plot_df[color_switch].map({True: "ON", False: "OFF"})
+                st.scatter_chart(plot_df, x=x_p, y=y_p, color=color_switch, size=40)
+
+            if "nearest_structure" in df_sp.columns:
+                st.markdown("#### Nearest M-structure distribution")
+                st.bar_chart(df_sp["nearest_structure"].value_counts(), width="stretch")
+                st.caption(
+                    "Maps accepted switch states to the nearest M1-M5 label, "
+                    "connecting switch inference back to conventional structure comparison."
+                )
+
+        with sp_tab4:
+            col_dl1, col_dl2 = st.columns(2)
+            with col_dl1:
+                st.download_button(
+                    "switch_posterior_accepted.csv",
+                    pd.DataFrame(sp.accepted_rows).to_csv(index=False).encode(),
+                    "rach_switch_posterior_accepted.csv", "text/csv",
+                )
+            with col_dl2:
+                st.download_button(
+                    "switch_posterior_table.csv",
+                    pd.DataFrame(sp.posterior_table).to_csv(index=False).encode(),
+                    "rach_switch_posterior_table.csv", "text/csv",
+                )
