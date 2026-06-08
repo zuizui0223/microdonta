@@ -1,28 +1,25 @@
-"""ABM simulation core for CAPOM inference.
+"""ABM simulation runner — assembles attraction_trait_model components.
 
-Individual-level heritable traits
-----------------------------------
-nectar_guide, flower_size, herkogamy, selfing_ability, neutral_diversity
-are all carried by each Plant agent and evolve via inheritance + mutation.
-
-Population-level params (fixed)
----------------------------------
-pollinator_environment, bombus_frequency, seed_set_*, germination_*,
-migration_rate, guide_cost, bombus_*_efficiency, *_guide_*, base_outcross,
-mutation_sd, genetic_drift_strength.
+Bridge between the biological model layer (attraction_trait_model) and the
+CAPOM inference pipeline (constraint_abm). Provides a callable simulate() /
+simulate_multi_seed() interface that accepts a flat parameter dict.
 """
 
 from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
 
-
-def clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
-    if math.isnan(float(value)):
-        return low
-    return max(low, min(high, float(value)))
+from attraction_trait_model.agents import PlantAgent
+from attraction_trait_model.environment import Environment
+from attraction_trait_model.fitness import fitness as compute_fitness
+from attraction_trait_model.inheritance import drift_strength, inherit_trait
+from attraction_trait_model.parameters import ModelParameters
+from attraction_trait_model.reproduction import (
+    clamp,
+    outcrossing_probability,
+    selfing_probability,
+)
 
 
 def _mean(values: list[float]) -> float:
@@ -30,181 +27,130 @@ def _mean(values: list[float]) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Agent
+# Parameter bridging: flat dict → typed model objects
 # ---------------------------------------------------------------------------
 
-@dataclass
-class Plant:
-    # --- heritable, mutable individual traits ---
-    guide: float            # nectar-guide intensity
-    flower_size: float      # corolla size / floral display
-    herkogamy: float        # anther-stigma separation
-    selfing_ability: float  # intrinsic self-compatibility
-    diversity: float        # neutral genetic diversity proxy
-
-    # --- position (spatial jitter only, no selection) ---
-    x: float
-    y: float
-
-    # --- state updated each generation by evaluate_population ---
-    mode: str = "outcrossing"
-    seed_output: float = 1.0
-    germination: float = 1.0
-    fitness: float = 1.0
-
-
-# ---------------------------------------------------------------------------
-# Fitness evaluation
-# ---------------------------------------------------------------------------
-
-def _outcross_prob(plant: Plant, params: dict) -> float:
-    bombus_freq = clamp(params.get("bombus_frequency", params.get("bombus_present", 0.0)))
-    poll_eff = (
-        bombus_freq * params["bombus_pollination_efficiency"]
-        + (1.0 - bombus_freq) * params["other_pollinator_efficiency"]
-    )
-    # Guide alignment uses the *individual* plant's nectar-guide intensity
-    guide_align = (
-        bombus_freq * params["bombus_guide_dependence"]
-        + (1.0 - bombus_freq) * params["other_pollinator_guide_use"]
-    )
-    return clamp(
-        params["base_outcross"]
-        + params["pollinator_environment"]
-        * poll_eff
-        * (params["pollinator_environment_outcross_effect"] + guide_align * plant.guide)
+def _env(params: dict) -> Environment:
+    bombus = clamp(params.get("bombus_frequency", params.get("bombus_present", 0.0)))
+    return Environment(
+        name=params.get("population_name", "unknown"),
+        bombus_frequency=bombus,
+        small_pollinator_frequency=clamp(1.0 - bombus),
+        pollinator_environment=clamp(params.get("pollinator_environment", 0.5)),
+        migration_rate=clamp(params.get("migration_rate", 0.05), 0.0, 1.0),
+        effective_population_size=float(params.get("effective_population_size", 100.0)),
+        island_distance=float(params.get("island_distance", 0.0)),
     )
 
 
-def evaluate_population(population: list[Plant], params: dict, rng: random.Random) -> None:
-    """Assign reproduction mode and fitness to every plant in-place.
+def _mp(params: dict) -> ModelParameters:
+    mu = params.get("mutation_sd", 0.055)
+    mu_t = params.get("mutation_sd_trait", mu * 0.5)
+    return ModelParameters(
+        base_outcross_rate=params.get("base_outcross", 0.10),
+        bombus_efficiency=params.get("bombus_pollination_efficiency", 0.86),
+        small_pollinator_efficiency=params.get("other_pollinator_efficiency", 0.34),
+        bombus_guide_use=params.get("bombus_guide_dependence", 0.75),
+        small_pollinator_guide_use=params.get("other_pollinator_guide_use", 0.12),
+        seed_set_outcrossing=params.get("seed_set_outcrossing", 0.92),
+        seed_set_selfing=params.get("seed_set_selfing", 0.46),
+        germination_outcrossed=params.get("germination_outcrossed", 0.86),
+        inbreeding_depression=params.get("inbreeding_load", 0.32),
+        guide_cost=params.get("guide_cost", 0.06),
+        flower_size_cost=params.get("flower_size_cost", 0.02),
+        selfing_benefit=params.get("selfing_benefit", 0.0),
+        outcrossing_benefit=params.get("outcrossing_benefit", 0.0),
+        mutation_sd_guide=mu,
+        mutation_sd_flower_size=mu_t,
+        mutation_sd_herkogamy=mu_t,
+        mutation_sd_selfing_ability=mu_t,
+        base_drift_strength=params.get("genetic_drift_strength", 0.035),
+    )
 
-    Key change from v1: uses *individual* plant.herkogamy, plant.selfing_ability,
-    and plant.flower_size rather than population-level constants.
-    """
-    for plant in population:
-        # Herkogamy constrains realised selfing ability at the individual level
-        effective_selfing = clamp(plant.selfing_ability * (1.0 - plant.herkogamy))
 
-        outcrossing = rng.random() < _outcross_prob(plant, params)
-        selfing = (not outcrossing) and (rng.random() < effective_selfing)
-        plant.mode = "outcrossing" if outcrossing else "selfing" if selfing else "failed"
+# ---------------------------------------------------------------------------
+# Population lifecycle
+# ---------------------------------------------------------------------------
 
-        if outcrossing:
-            plant.seed_output = params["seed_set_outcrossing"]
-            plant.germination = params["germination_outcrossed"]
-        elif selfing:
-            plant.seed_output = params["seed_set_selfing"]
-            plant.germination = max(
-                0.0,
-                min(
-                    params["germination_selfed"],
-                    params["germination_outcrossed"] - params["inbreeding_load"],
-                ),
-            )
-        else:
-            plant.seed_output = 0.02
-            plant.germination = 0.02
+def _init_population(params: dict, size: int, rng: random.Random) -> list[PlantAgent]:
+    def g(key: str, default: float, sd: float) -> float:
+        return clamp(rng.gauss(params.get(key, default), sd))
 
-        # Floral display cost scales with the *individual* flower_size
-        guide_cost = params["guide_cost"] * plant.flower_size
-        plant.fitness = max(
-            0.001,
-            plant.seed_output * plant.germination - guide_cost * plant.guide,
+    return [
+        PlantAgent(
+            nectar_guide=g("nectar_guide", 0.5, 0.08),
+            flower_size=g("flower_size", 0.65, 0.08),
+            herkogamy=g("herkogamy", 0.55, 0.08),
+            selfing_ability=g("selfing_ability", 0.40, 0.06),
+            neutral_diversity=clamp(rng.gauss(0.78, 0.08)),
+            x=rng.uniform(0, 1),
+            y=rng.uniform(0, 1),
         )
+        for _ in range(size)
+    ]
 
 
-# ---------------------------------------------------------------------------
-# Offspring production
-# ---------------------------------------------------------------------------
-
-def _inherit(parent_val: float, rng: random.Random, mutation_sd: float) -> float:
-    return clamp(parent_val + rng.gauss(0.0, mutation_sd))
-
-
-def _make_offspring(
-    parent: Plant,
+def _evaluate(
+    population: list[PlantAgent],
+    env: Environment,
+    mp: ModelParameters,
     rng: random.Random,
-    params: dict,
-) -> Plant:
-    """Produce one offspring from a parent via inheritance + mutation + drift."""
-    mu = params["mutation_sd"]
-    # Structural traits (flower_size, herkogamy, selfing_ability) are assumed
-    # more developmentally canalized than nectar_guide, so they mutate at half
-    # the rate. This is a conservative default; adjust via mutation_sd_trait.
-    mu_trait = params.get("mutation_sd_trait", mu * 0.5)
+) -> None:
+    for agent in population:
+        p_out = outcrossing_probability(agent, env, mp)
+        p_self = selfing_probability(agent, p_out)
+        r = rng.random()
+        if r < p_out:
+            agent.reproduction_mode = "outcrossing"
+        elif r < p_out + p_self:
+            agent.reproduction_mode = "selfing"
+        else:
+            agent.reproduction_mode = "failed"
+        agent.fitness = compute_fitness(agent, mp)
 
-    if parent.mode == "outcrossing":
-        diversity = parent.diversity + 0.045
-    elif parent.mode == "selfing":
-        diversity = parent.diversity * (1.0 - 0.5 * params["inbreeding_load"])
+
+def _offspring(
+    parent: PlantAgent,
+    env: Environment,
+    mp: ModelParameters,
+    rng: random.Random,
+) -> PlantAgent:
+    d_sd = drift_strength(env, mp)
+    if parent.reproduction_mode == "outcrossing":
+        diversity = parent.neutral_diversity + 0.045
+    elif parent.reproduction_mode == "selfing":
+        diversity = parent.neutral_diversity * (1.0 - 0.5 * mp.inbreeding_depression)
     else:
-        diversity = parent.diversity * 0.96
-    diversity += params["migration_rate"] * (0.82 - diversity)
-    diversity += rng.gauss(0.0, params["genetic_drift_strength"])
-
-    return Plant(
-        guide=_inherit(parent.guide, rng, mu),
-        flower_size=_inherit(parent.flower_size, rng, mu_trait),
-        herkogamy=_inherit(parent.herkogamy, rng, mu_trait),
-        selfing_ability=_inherit(parent.selfing_ability, rng, mu_trait),
-        diversity=clamp(diversity),
+        diversity = parent.neutral_diversity * 0.96
+    diversity += env.migration_rate * (0.82 - diversity)
+    return PlantAgent(
+        nectar_guide=inherit_trait(parent.nectar_guide, mp.mutation_sd_guide, d_sd, rng),
+        flower_size=inherit_trait(parent.flower_size, mp.mutation_sd_flower_size, d_sd, rng),
+        herkogamy=inherit_trait(parent.herkogamy, mp.mutation_sd_herkogamy, d_sd, rng),
+        selfing_ability=inherit_trait(parent.selfing_ability, mp.mutation_sd_selfing_ability, d_sd, rng),
+        neutral_diversity=clamp(diversity + rng.gauss(0, d_sd)),
         x=clamp(parent.x + rng.gauss(0, 0.055)),
         y=clamp(parent.y + rng.gauss(0, 0.055)),
     )
 
 
-# ---------------------------------------------------------------------------
-# Population initialisation
-# ---------------------------------------------------------------------------
-
-def _init_population(
-    params: dict,
-    population_size: int,
-    rng: random.Random,
-) -> list[Plant]:
-    """Initialise agents from normal distributions around population starting values.
-
-    Starting values (means) come from params; individual variation is ±0.08
-    for guide / flower_size / herkogamy, ±0.06 for selfing_ability.
-    """
-    return [
-        Plant(
-            guide=clamp(rng.gauss(params.get("nectar_guide", 0.5), 0.08)),
-            flower_size=clamp(rng.gauss(params.get("flower_size", 0.65), 0.08)),
-            herkogamy=clamp(rng.gauss(params.get("herkogamy", 0.55), 0.08)),
-            selfing_ability=clamp(rng.gauss(params.get("selfing_ability", 0.40), 0.06)),
-            diversity=clamp(rng.gauss(0.78, 0.08)),
-            x=rng.uniform(0, 1),
-            y=rng.uniform(0, 1),
-        )
-        for _ in range(population_size)
-    ]
-
-
-# ---------------------------------------------------------------------------
-# Summary statistics
-# ---------------------------------------------------------------------------
-
-def _summary(population: list[Plant], params: dict) -> dict[str, float]:
-    selfing_rate = _mean([1.0 if p.mode == "selfing" else 0.0 for p in population])
-    outcrossing_rate = _mean([1.0 if p.mode == "outcrossing" else 0.0 for p in population])
-    diversity_vals = [p.diversity for p in population]
-    fis = clamp(selfing_rate * (1.0 - 0.5 * params["migration_rate"]))
+def _summary(population: list[PlantAgent], env: Environment) -> dict[str, float]:
+    selfing_rate = _mean([1.0 if a.reproduction_mode == "selfing" else 0.0 for a in population])
+    outcrossing_rate = _mean([1.0 if a.reproduction_mode == "outcrossing" else 0.0 for a in population])
+    diversity_vals = [a.neutral_diversity for a in population]
+    fis = clamp(selfing_rate * (1.0 - 0.5 * env.migration_rate))
     fst = clamp(
-        (1.0 - params["migration_rate"])
-        * (1.0 - outcrossing_rate)
-        * (1.0 - _mean(diversity_vals))
+        (1.0 - env.migration_rate) * (1.0 - outcrossing_rate) * (1.0 - _mean(diversity_vals))
     )
     return {
-        "mean_nectar_guide": _mean([p.guide for p in population]),
-        "mean_flower_size": _mean([p.flower_size for p in population]),
-        "mean_herkogamy": _mean([p.herkogamy for p in population]),
-        "mean_selfing_ability": _mean([p.selfing_ability for p in population]),
+        "mean_nectar_guide": _mean([a.nectar_guide for a in population]),
+        "mean_flower_size": _mean([a.flower_size for a in population]),
+        "mean_herkogamy": _mean([a.herkogamy for a in population]),
+        "mean_selfing_ability": _mean([a.selfing_ability for a in population]),
         "selfing_rate": selfing_rate,
         "outcrossing_rate": outcrossing_rate,
-        "failed_rate": _mean([1.0 if p.mode == "failed" else 0.0 for p in population]),
-        "mean_fitness": _mean([p.fitness for p in population]),
+        "failed_rate": _mean([1.0 if a.reproduction_mode == "failed" else 0.0 for a in population]),
+        "mean_fitness": _mean([a.fitness for a in population]),
         "mean_neutral_diversity": _mean(diversity_vals),
         "Fis": fis,
         "Fst": fst,
@@ -212,7 +158,7 @@ def _summary(population: list[Plant], params: dict) -> dict[str, float]:
 
 
 # ---------------------------------------------------------------------------
-# Public simulation API
+# Public API
 # ---------------------------------------------------------------------------
 
 def simulate(
@@ -223,35 +169,27 @@ def simulate(
 ) -> dict[str, float]:
     """Run ABM and return final-generation summary statistics.
 
-    Parameters
-    ----------
-    params:
-        Combined parameter dict.  Individual-trait starting means are read
-        from keys: nectar_guide, flower_size, herkogamy, selfing_ability.
-        These are now *initial conditions*, not fixed-across-generations values.
-    generations, population_size, seed:
-        Simulation settings.
-
-    Returns
-    -------
-    dict with keys: mean_nectar_guide, mean_flower_size, mean_herkogamy,
-    mean_selfing_ability, selfing_rate, outcrossing_rate, failed_rate,
-    mean_fitness, mean_neutral_diversity, Fis, Fst.
+    Environment params (bombus_frequency, pollinator_environment, migration_rate)
+    and latent mechanistic params (guide_cost, genetic_drift_strength, mutation_sd)
+    are passed as a single flat dict. Trait starting distributions are initialised
+    around nectar_guide, flower_size, herkogamy, selfing_ability if provided.
     """
     rng = random.Random(seed)
+    env = _env(params)
+    mp = _mp(params)
     population = _init_population(params, population_size, rng)
-    evaluate_population(population, params, rng)
+    _evaluate(population, env, mp, rng)
 
     for _ in range(generations):
-        total_fitness = sum(p.fitness for p in population)
+        total_fitness = sum(a.fitness for a in population)
         if total_fitness <= 0:
             break
-        weights = [p.fitness / total_fitness for p in population]
+        weights = [a.fitness / total_fitness for a in population]
         parents = rng.choices(population, weights=weights, k=population_size)
-        population = [_make_offspring(p, rng, params) for p in parents]
-        evaluate_population(population, params, rng)
+        population = [_offspring(p, env, mp, rng) for p in parents]
+        _evaluate(population, env, mp, rng)
 
-    return _summary(population, params)
+    return _summary(population, env)
 
 
 def simulate_multi_seed(
