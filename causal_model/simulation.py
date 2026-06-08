@@ -168,29 +168,40 @@ def simulate_population_proxy(
         selfing   += w * 0.70 * sm
         herkogamy -= w * 0.52 * sm
         flower    -= w * 0.48 * sm
-        guide     -= w * 0.16 * sm  # weak: guide divergence needs S1 or S3
-        # Max guide_diff from S2 alone = 0.16 * (0.66-0.38) * 1.0 = 0.045 < 0.05
-        # So S2 alone cannot exceed RELATION_TOLERANCE for guide pattern.
+        guide     -= w * 0.04 * sm  # negligible: guide needs S1 or S4, not S2
+        # Max guide_diff from S2 alone = 0.04 * (0.66-0.38) * 1.0 = 0.011 << 0.05
+        # Combined with S3 max: 0.011 + 0.035 = 0.046 < 0.05
+        # → S2 alone or S2+S3 combined still cannot exceed RELATION_TOLERANCE.
 
     # ------------------------------------------------------------------
     # S3: island_isolation_common_cause
     # ------------------------------------------------------------------
-    # Island isolation drives multiple traits simultaneously as a single
-    # upstream environmental factor.  Effect increases with isolation and
-    # with positive selfing net benefit.
+    # Island isolation drives the selfing syndrome (selfing, herkogamy,
+    # flower size) as a single upstream environmental cause, via reduced
+    # pollinator service and reproductive-assurance pressure.
     # OFF: isolation has no direct trait effect.
+    #
+    # DESIGN NOTE -- guide is deliberately NOT driven by S3:
+    # Nectar-guide retention/loss is determined by pollinator IDENTITY
+    # (Bombus specifically), not pollinator quantity.  Guides function as
+    # long-range Bombus attractants; small halictids use them less.
+    # S3 (isolation) reduces pollinator service overall but does NOT
+    # directly eliminate guides -- that requires S1 (Bombus absence) or
+    # S4 (genetic drift).  This makes S1 identifiable: only the Bombus-
+    # guide pathway produces a guide divergence above RELATION_TOLERANCE.
+    #
+    # Max S3 guide contribution = 0.07 * (0.85 - 0.35) = 0.035 < 0.05
+    # → S3 alone cannot exceed RELATION_TOLERANCE for the guide pattern.
     if switches.island_common_cause > 0:
         w = switches.island_common_cause
-        # Isolation drives all traits regardless of selfing_net trade-offs.
-        # Isolation reduces pollinator fauna, migration, and Ne independently
-        # of whether selfing is currently net beneficial in fitness terms.
+        # Isolation drives selfing syndrome regardless of selfing_net.
         # The selfing increase scales with (1 - ob) because high outcrossing
         # benefit partially resists reproductive-assurance selfing pressure.
         selfing_drive = isolation * clamp01(0.55 + (1.0 - ob) * 0.45)
         selfing   += w * 0.55 * selfing_drive
         herkogamy -= w * 0.40 * isolation
         flower    -= w * 0.28 * isolation
-        guide     -= w * 0.42 * isolation
+        guide     -= w * 0.07 * isolation  # weak: guide loss needs S1 or S4
 
     # ------------------------------------------------------------------
     # S4: drift_drives_guide_loss
