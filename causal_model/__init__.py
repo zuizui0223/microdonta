@@ -10,6 +10,7 @@ from .scoring import (
     expected_pattern_relations,
     score_causal_structure,
     score_pattern_match,
+    score_simulated_relations,
     summarize_structure_support,
 )
 from .structures import CausalEdge, CausalStructure
@@ -22,5 +23,6 @@ __all__ = [
     "expected_pattern_relations",
     "score_causal_structure",
     "score_pattern_match",
+    "score_simulated_relations",
     "summarize_structure_support",
 ]
