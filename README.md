@@ -100,7 +100,7 @@ See also:
 - [Campanula Izu worked example](examples/campanula_izu/README.md)
 - [Campanula causal structure comparison](examples/campanula_izu/run_causal_structure_comparison.py)
 
-このABMは、実データを入れて予測するモデルではなく、実データと比較するための仮説生成器です。野外で直接一点推定しにくい送粉効率やガイド維持コストは、`Robustness` タブで範囲を振って、どの条件で観察パターンに近い傾向が出るかを見ます。
+このABMは、実データを入れて予測するモデルではなく、実データと比較するための仮説生成器です。野外で直接測りにくい送粉効率やガイド維持コストは、`Robustness` タブで範囲を振って、どの条件で観察パターンに近い傾向が出るかを見ます。
 
 ## 設計思想
 
@@ -403,3 +403,105 @@ export_odd_protocol()
 - Shimizu, K. K. & Tsuchimatsu, T. 2022. The selfing syndrome and beyond: diverse evolutionary consequences of mating system transitions in plants. https://pmc.ncbi.nlm.nih.gov/articles/PMC9149797/
 - Wright, S. I. et al. 2013. Evolutionary consequences of self-fertilization in plants. Proceedings of the Royal Society B. https://pmc.ncbi.nlm.nih.gov/articles/PMC3652455/
 - Baker's law / island reproductive assurance overview: https://www.nature.com/articles/s41598-024-62065-4
+
+---
+
+## Full Stochastic ABM — Causal Structure Comparison
+
+This section describes the new stochastic individual-based simulation pipeline
+added on top of the existing deterministic proxy simulation.
+
+### Overview
+
+The existing pipeline:
+
+```
+causal structure → pathway switches → deterministic proxy → pattern ranking
+```
+
+The new stochastic pipeline (added in parallel, not replacing the above):
+
+```
+causal structure → pathway switches → stochastic ABM → generation summaries
+                → symbolic relation derivation → pattern comparison → ranking
+```
+
+### New modules
+
+| Module | Role |
+|---|---|
+| `attraction_trait_model/simulation.py` | Core stochastic ABM: 8 functions covering initialisation, reproduction mode selection, evaluation, parent selection, child production, next-generation loop, summarisation, and full simulation entry point |
+| `attraction_trait_model/scenario_runner.py` | High-level runner: maps a `CausalStructure` to `PathwaySwitches` and delegates to `simulate_population` |
+| `causal_model/relations.py` | Converts numeric population means to symbolic relation strings (`<`, `>`, `~=`) used by the pattern scorer |
+| `causal_model/pathway_switches.py` | Compatibility shim re-exporting `PathwaySwitches` from `causal_model/switches.py` |
+| `examples/campanula_izu/run_full_causal_abm_comparison.py` | Runner script: M1–M5 x Oshima/Hachijo x 5 seeds, writes 4 CSV files |
+
+### How the stochastic simulation works
+
+`simulate_population(env, params, switches, generations, population_size, seed)`
+initialises a population of `PlantAgent` objects, then iterates:
+
+1. **Evaluate**: assign `reproduction_mode` (outcrossing / selfing / failed) and
+   `fitness` to each agent based on environment, parameters, and active pathway
+   switches.
+2. **Summarise**: compute generation-level statistics (trait means, selfing rate,
+   Fis proxy, guide status).
+3. **Reproduce**: fitness-proportional parent selection; each child inherits
+   parent traits with Gaussian mutation and genetic drift, with pathway-specific
+   syndrome shifts applied where relevant.
+
+### How pathway switches affect each mechanism
+
+| Switch | Causal structure | Effect in ABM |
+|---|---|---|
+| `direct_pollinator_to_guide = 1.0` | M1 | Adds a Bombus-mediated bonus to outcrossing probability scaled by `nectar_guide * bombus_frequency * bombus_guide_use` |
+| `selfing_mediation = 1.0` | M2 | When a parent selfed, applies selfing-syndrome trait shifts to offspring: nectar guide down, flower size down ×0.6, herkogamy down ×0.5, selfing ability up ×0.4 |
+| `direct_pollinator_to_guide = 1.0` + `selfing_mediation = 1.0` | M3 | Both of the above active simultaneously |
+| `island_common_cause = 1.0` | M4 | Inflates drift SD by `island_distance × 0.1`; also inherits partial M1 and M2 switches (0.25 each) |
+| `drift_null = 1.0` | M5 | Multiplies drift SD by `(1 + drift_null)`, doubling effective genetic drift |
+
+### How Oshima and Hachijo are compared
+
+For each causal structure, 5 independent replicates (seeds 42–46) are run for
+both Oshima and Hachijo environments.  The final-generation summaries are
+averaged across seeds to produce a mean profile for each island.
+`relations_from_final_summaries` then converts numeric means into symbolic
+relations (`Oshima > Hachijo`, `Oshima ~= Hachijo`, etc.) for each of:
+
+- `mean_nectar_guide` → `nectar_guide`
+- `selfing_rate` (unchanged)
+- `mean_herkogamy` → `herkogamy`
+- `mean_flower_size` → `flower_size`
+- `Fis_proxy` → `Fis`
+
+These relations are passed to the existing `score_simulated_relations` scorer to
+produce weighted mismatch scores against the observed pattern targets.
+
+### Output CSV files
+
+All outputs are written to `examples/campanula_izu/outputs/`:
+
+| File | Contents |
+|---|---|
+| `full_causal_abm_ranking.csv` | Per-structure summary: `mean_weighted_mismatch`, `total_mismatch` |
+| `full_causal_abm_pattern_scores.csv` | Per-structure per-pattern scoring detail |
+| `full_causal_abm_final_values.csv` | Final-generation summary for every structure × environment × seed |
+| `full_causal_abm_generation_timeseries.csv` | All generation summaries for all runs |
+
+### Running the comparison
+
+```bash
+python examples/campanula_izu/run_full_causal_abm_comparison.py
+```
+
+### Limitations
+
+- Default `ModelParameters` values are provisional placeholders, not
+  empirically calibrated constants.  Results should be interpreted as
+  sensitivity exploration rather than quantitative prediction.
+- The `guide_status` threshold (`mean_nectar_guide >= 0.5` = "maintained") and
+  the `Fis_proxy` formula are heuristic approximations pending field validation.
+- Each replicate uses only 200 individuals and 50 generations, which may
+  underestimate drift variance in small populations.
+- The `selfing_mediation` syndrome shift magnitudes (0.6, 0.5, 0.4 scaling
+  factors) are not yet constrained by empirical data.
