@@ -472,12 +472,12 @@ with st.sidebar:
     st.caption(BACKEND_DESCRIPTIONS[backend])
 
     if backend == "stochastic_abm":
-        n_attempts = st.slider("Prior parameter draws", 20, 500, 80, 20)
+        n_attempts = st.slider("Prior parameter draws", 20, 500, 80, 20, key="n_attempts_abm")
         generations = st.slider("ABM generations", 10, 100, 40, 10)
         population_size = st.slider("ABM population size", 50, 500, 150, 50)
         replicates = st.slider("ABM replicates per island", 1, 5, 1, 1)
     else:
-        n_attempts = st.slider("Prior parameter draws", 100, 3000, 500, 100)
+        n_attempts = st.slider("Prior parameter draws", 100, 3000, 500, 100, key="n_attempts_proxy")
         generations = 0
         population_size = 0
         replicates = 0
