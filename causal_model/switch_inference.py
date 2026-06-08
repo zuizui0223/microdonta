@@ -404,20 +404,41 @@ def compute_coactivation_table(
 # Main inference function
 # ---------------------------------------------------------------------------
 
+def _acceptance_threshold(acceptance_rule: str) -> float:
+    """Map an ABC acceptance rule name to a minimum weighted_match_rate threshold.
+
+    With 13 gradient patterns the old 6-pattern epsilon values do not apply
+    directly.  We map rule names to a fraction-of-patterns-matched threshold:
+
+        strict_6_of_6   -> 1.000  (all 13 must match)
+        relaxed_5_of_6  -> 0.846  (>=11/13 must match by weight)
+        relaxed_4_of_6  -> 0.692  (>=9/13)
+        weighted_strict -> 1.000
+        weighted_lax    -> 0.800
+    """
+    return {
+        "strict_6_of_6":   1.000,
+        "relaxed_5_of_6":  11 / 13,
+        "relaxed_4_of_6":   9 / 13,
+        "weighted_strict": 1.000,
+        "weighted_lax":    0.800,
+    }.get(acceptance_rule, 1.000)
+
+
 def run_switch_posterior_inference(
     preset_name: str,
     n_attempts: int,
     acceptance_rule: str,
     seed: int,
-    observed_rels: dict[str, str],
-    pattern_weights: dict[str, float],
+    observed_rels: dict[str, str],   # kept for API compat; not used for gradient eval
+    pattern_weights: dict[str, float],  # kept for API compat
     switches: Sequence[BiologicalSwitch] = CAMPANULA_SWITCHES,
 ) -> SwitchPosteriorResult:
-    """Run switch posterior inference via ABC rejection.
+    """Run switch posterior inference via ABC rejection — 4-population gradient POM.
 
-    Jointly samples binary switch states and continuous ecological parameters,
-    simulates the proxy model, and retains samples where the simulated
-    Oshima-Hachijo relations match the observed pattern targets.
+    Evaluates all 13 observed patterns (pairwise + gradient_slope + rank_order)
+    across mainland / Oshima / Kozushima / Hachijo simultaneously.
+    Acceptance criterion: weighted_match_rate >= threshold (mapped from acceptance_rule).
 
     Parameters
     ----------
@@ -426,63 +447,74 @@ def run_switch_posterior_inference(
     n_attempts:
         Total joint draws from the (switch, parameter) prior.
     acceptance_rule:
-        ABC acceptance rule name; passed to compute_run_distances.
+        ABC acceptance rule name; mapped to a weighted_match_rate threshold.
     seed:
         RNG seed for reproducibility.
-    observed_rels:
-        {pattern_name: relation_string} from empirical data.
-    pattern_weights:
-        {pattern_name: weight} for weighted ABC distance.
+    observed_rels / pattern_weights:
+        Kept for backward-compatible call signature; gradient evaluation uses
+        load_observed_pattern_table() and load_population_env() directly.
     switches:
         Switch definitions.  Defaults to CAMPANULA_SWITCHES.
-
-    Returns
-    -------
-    SwitchPosteriorResult
     """
 
-    # Import here to avoid circular dependency at module level
+    from examples.campanula_izu.observed_data import (
+        load_observed_pattern_table,
+        load_population_env,
+    )
+    from examples.campanula_izu.pattern_evaluator import (
+        evaluate_patterns,
+        weighted_pattern_distance,
+    )
     from examples.campanula_izu.proxy_simulation import (
-        default_campanula_proxy_environments,
-        simulate_campanula_with_switches,
+        default_campanula_gradient_environments,
+        environments_from_population_env,
+        simulate_campanula_gradient,
     )
 
     rng = random.Random(seed)
     preset = predefined_tradeoff_presets()[preset_name]
+    threshold = _acceptance_threshold(acceptance_rule)
 
-    # Draw all parameter sets with constraint filtering first
+    pop_env = load_population_env()
+    all_patterns = load_observed_pattern_table()
+    grad_envs = (
+        environments_from_population_env(pop_env)
+        if pop_env else default_campanula_gradient_environments()
+    )
+
     constraint_passed, constraint_rejected = sample_all_sets_with_rejection_log(
         preset, n_attempts, seed=seed
     )
 
     accepted_rows: list[dict] = []
-    total_abc_attempts = 0
 
     for param_set in constraint_passed:
-        total_abc_attempts += 1
         model_params = param_set_to_model_parameters(param_set)
-
-        # Sample switch state from joint prior
         state = sample_switch_state(rng, switches)
         pw = pathway_switches_from_state(state, switches)
 
-        # Simulate with these switches
         try:
-            rels, _ = simulate_campanula_with_switches(pw, params=model_params)
+            outputs_dict = simulate_campanula_gradient(
+                pw, params=model_params, environments=grad_envs
+            )
+            outputs_list = list(outputs_dict.values())
+            eval_result = evaluate_patterns(outputs_list, all_patterns, pop_env)
         except Exception:
             continue
 
-        # ABC distance
-        dist_metrics = compute_run_distances(
-            observed_rels=observed_rels,
-            simulated_rels=rels,
-            weights=pattern_weights,
-            rule=acceptance_rule,
-        )
+        dist = weighted_pattern_distance(eval_result)
+        accepted = eval_result.weighted_match_rate >= threshold
+
+        # Build relation strings for the 4 populations for diagnostics
+        pop_trait_cols: dict = {}
+        for pop, out in outputs_dict.items():
+            for var in ("nectar_guide", "selfing_rate", "herkogamy", "flower_size", "Fis", "Bombus_frequency"):
+                pop_trait_cols[f"{pop}_{var}"] = round(getattr(out, var, float("nan")), 4)
 
         row = {
             "sample_id": str(uuid.uuid4()),
             "preset_name": preset_name,
+            "backend": "proxy_causal",
             "nearest_structure": switch_state_to_nearest_structure(state),
             **state,
             **{p: param_set.get(p) for p in (
@@ -491,16 +523,21 @@ def run_switch_posterior_inference(
                 "drift_strength", "direct_pollinator_guide_benefit",
                 "cost_of_waiting_for_pollinators",
             )},
-            **dist_metrics,
-            **{f"relation_{k}": v for k, v in rels.items()},
-            "guide_tradeoff_class": param_set.get("guide_tradeoff_class", ""),
-            "selfing_tradeoff_class": param_set.get("selfing_tradeoff_class", ""),
+            "pattern_matches":          eval_result.n_matched,
+            "pattern_total":            eval_result.n_total,
+            "weighted_match_rate":      round(eval_result.weighted_match_rate, 4),
+            "gradient_distance":        round(dist, 4),
+            "accepted_by_epsilon":      accepted,
+            "acceptance_rule":          acceptance_rule,
+            "guide_tradeoff_class":     param_set.get("guide_tradeoff_class", ""),
+            "selfing_tradeoff_class":   param_set.get("selfing_tradeoff_class", ""),
+            **pop_trait_cols,
         }
 
-        if dist_metrics["accepted_by_epsilon"]:
+        if accepted:
             accepted_rows.append(row)
 
-    rejected_count = len(constraint_rejected) + (total_abc_attempts - len(accepted_rows))
+    rejected_count = len(constraint_rejected) + len(constraint_passed) - len(accepted_rows)
     posterior_table = compute_switch_posterior_table(accepted_rows, switches)
 
     return SwitchPosteriorResult(
@@ -634,13 +671,30 @@ def run_switch_posterior_inference_abm(
     """
 
     from attraction_trait_model.simulation import simulate_population
+    from examples.campanula_izu.observed_data import (
+        load_observed_pattern_table,
+        load_population_env,
+    )
+    from examples.campanula_izu.pattern_evaluator import (
+        ABMPopulationProxy,
+        evaluate_patterns,
+        weighted_pattern_distance,
+    )
     from examples.campanula_izu.proxy_simulation import (
-        default_campanula_proxy_environments,
+        default_campanula_gradient_environments,
+        environments_from_population_env,
     )
 
     rng = random.Random(seed)
     preset = predefined_tradeoff_presets()[preset_name]
-    environments = default_campanula_proxy_environments()
+    threshold = _acceptance_threshold(acceptance_rule)
+
+    pop_env = load_population_env()
+    all_patterns = load_observed_pattern_table()
+    environments = (
+        environments_from_population_env(pop_env)
+        if pop_env else default_campanula_gradient_environments()
+    )
 
     constraint_passed, constraint_rejected = sample_all_sets_with_rejection_log(
         preset, n_attempts, seed=seed
@@ -653,7 +707,7 @@ def run_switch_posterior_inference_abm(
         state = sample_switch_state(rng, switches)
         pw = pathway_switches_from_state(state, switches)
 
-        # Run ABM for each population, averaging over replicates
+        # Run ABM for all 4 gradient populations, averaging over replicates
         pop_finals: dict[str, dict[str, float]] = {}
         abm_failed = False
         for pop_idx, (pop_name, env) in enumerate(environments.items()):
@@ -677,18 +731,34 @@ def run_switch_posterior_inference_abm(
             if abm_failed or not rep_finals:
                 abm_failed = True
                 break
-            pop_finals[pop_name] = _average_replicate_finals(rep_finals)
+            avg = _average_replicate_finals(rep_finals)
+            avg["Bombus_frequency"] = env.bombus_frequency  # inject from environment
+            pop_finals[pop_name] = avg
 
-        if abm_failed or "Oshima" not in pop_finals or "Hachijo" not in pop_finals:
+        if abm_failed or len(pop_finals) < 2:
             continue
 
-        rels = abm_outputs_to_relations(pop_finals["Oshima"], pop_finals["Hachijo"])
-        dist_metrics = compute_run_distances(
-            observed_rels=observed_rels,
-            simulated_rels=rels,
-            weights=pattern_weights,
-            rule=acceptance_rule,
-        )
+        # Build ABMPopulationProxy objects for gradient pattern evaluation
+        outputs_list = [
+            ABMPopulationProxy(pop, final_dict, pop_env.get(pop))
+            for pop, final_dict in pop_finals.items()
+        ]
+        try:
+            eval_result = evaluate_patterns(outputs_list, all_patterns, pop_env)
+        except Exception:
+            continue
+
+        dist = weighted_pattern_distance(eval_result)
+        accepted = eval_result.weighted_match_rate >= threshold
+
+        pop_trait_cols: dict = {}
+        for pop, fd in pop_finals.items():
+            pop_trait_cols[f"{pop}_nectar_guide"]  = round(float(fd.get("mean_nectar_guide", float("nan"))), 4)
+            pop_trait_cols[f"{pop}_selfing_rate"]  = round(float(fd.get("selfing_rate",      float("nan"))), 4)
+            pop_trait_cols[f"{pop}_herkogamy"]     = round(float(fd.get("mean_herkogamy",    float("nan"))), 4)
+            pop_trait_cols[f"{pop}_flower_size"]   = round(float(fd.get("mean_flower_size",  float("nan"))), 4)
+            pop_trait_cols[f"{pop}_Fis"]           = round(float(fd.get("Fis_proxy",         float("nan"))), 4)
+            pop_trait_cols[f"{pop}_Bombus_frequency"] = round(float(fd.get("Bombus_frequency", float("nan"))), 4)
 
         row = {
             "sample_id": str(uuid.uuid4()),
@@ -705,15 +775,18 @@ def run_switch_posterior_inference_abm(
                 "drift_strength", "direct_pollinator_guide_benefit",
                 "cost_of_waiting_for_pollinators",
             )},
-            **dist_metrics,
-            **{f"relation_{k}": v for k, v in rels.items()},
-            **{f"oshima_{k}": v for k, v in pop_finals["Oshima"].items()},
-            **{f"hachijo_{k}": v for k, v in pop_finals["Hachijo"].items()},
-            "guide_tradeoff_class": param_set.get("guide_tradeoff_class", ""),
+            "pattern_matches":        eval_result.n_matched,
+            "pattern_total":          eval_result.n_total,
+            "weighted_match_rate":    round(eval_result.weighted_match_rate, 4),
+            "gradient_distance":      round(dist, 4),
+            "accepted_by_epsilon":    accepted,
+            "acceptance_rule":        acceptance_rule,
+            "guide_tradeoff_class":   param_set.get("guide_tradeoff_class", ""),
             "selfing_tradeoff_class": param_set.get("selfing_tradeoff_class", ""),
+            **pop_trait_cols,
         }
 
-        if dist_metrics["accepted_by_epsilon"]:
+        if accepted:
             accepted_rows.append(row)
 
     rejected_count = (
