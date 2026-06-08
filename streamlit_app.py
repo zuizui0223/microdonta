@@ -56,6 +56,7 @@ from examples.campanula_izu.observed_data import (
     ordered_populations,
 )
 from examples.campanula_izu.pattern_evaluator import (
+    ABMPopulationProxy,
     EvaluationResult,
     evaluate_patterns,
     weighted_pattern_distance,
@@ -198,37 +199,98 @@ def average_summaries(summaries: list[dict[str, Any]]) -> dict[str, float]:
 
 
 # ---------------------------------------------------------------------------
+# Gradient trait columns helper
+# ---------------------------------------------------------------------------
+
+_GRAD_VARS = ["nectar_guide", "selfing_rate", "herkogamy", "flower_size", "Fis", "Bombus_frequency"]
+_GRAD_POPS = ["mainland", "Oshima", "Kozushima", "Hachijo"]
+
+
+def _gradient_columns(outputs_by_pop: dict[str, Any], abm: bool = False) -> dict[str, float]:
+    """Return per-population trait values as flat columns for the run row.
+
+    Keys: e.g. 'mainland_nectar_guide', 'Oshima_selfing_rate', ...
+    Works with both PopulationProxyOutput objects (proxy) and plain dicts (ABM).
+    """
+    cols: dict[str, float] = {}
+    _abm_map = {
+        "nectar_guide": "mean_nectar_guide",
+        "selfing_rate": "selfing_rate",
+        "herkogamy": "mean_herkogamy",
+        "flower_size": "mean_flower_size",
+        "Fis": "Fis_proxy",
+        "Bombus_frequency": "Bombus_frequency",
+    }
+    for pop in _GRAD_POPS:
+        out = outputs_by_pop.get(pop)
+        if out is None:
+            for var in _GRAD_VARS:
+                cols[f"{pop}_{var}"] = float("nan")
+            continue
+        for var in _GRAD_VARS:
+            if abm:
+                key = _abm_map.get(var, var)
+                val = float(out.get(key, float("nan"))) if isinstance(out, dict) else float(getattr(out, var, float("nan")))
+            else:
+                val = float(getattr(out, var, float("nan")))
+            cols[f"{pop}_{var}"] = round(val, 4)
+    return cols
+
+
+# ---------------------------------------------------------------------------
 # Simulation backends
 # ---------------------------------------------------------------------------
 
 def simulate_structure_proxy(structure, model_params) -> tuple[dict[str, str], dict[str, Any]]:
-    relations, outputs = simulate_campanula_causal_structure(structure, params=model_params)
+    """Run proxy simulation for all 4 gradient populations."""
+    from causal_model.switches import switches_for_structure as _sfs
+    _sw = _sfs(structure.name)
+    _grad_envs = (
+        environments_from_population_env(_POP_ENV)
+        if _POP_ENV else default_campanula_gradient_environments()
+    )
+    outputs_dict = simulate_campanula_gradient(_sw, params=model_params, environments=_grad_envs)
+    outputs_list = list(outputs_dict.values())
+
+    # Pairwise Oshima vs Hachijo (used for ABC acceptance — backward compat)
+    from causal_model.simulation import relations_from_outputs as _rfo
+    relations = _rfo(outputs_list, left="Oshima", right="Hachijo")
+
     output_rows = [
         {
-            "population": output.population,
-            "nectar_guide": output.nectar_guide,
-            "selfing_rate": output.selfing_rate,
-            "herkogamy": output.herkogamy,
-            "flower_size": output.flower_size,
-            "Fis": output.Fis,
-            "Bombus_frequency": output.Bombus_frequency,
-            "outcrossing_opportunity": output.outcrossing_opportunity,
+            "population": out.population,
+            "nectar_guide": out.nectar_guide,
+            "selfing_rate": out.selfing_rate,
+            "herkogamy": out.herkogamy,
+            "flower_size": out.flower_size,
+            "Fis": out.Fis,
+            "Bombus_frequency": out.Bombus_frequency,
+            "outcrossing_opportunity": out.outcrossing_opportunity,
         }
-        for output in outputs
+        for out in outputs_list
     ]
-    return relations, {"final_values": output_rows, "generation_rows": []}
+    return relations, {
+        "final_values": output_rows,
+        "generation_rows": [],
+        "outputs_list": outputs_list,
+        "outputs_by_pop": outputs_dict,
+    }
 
 
 def simulate_structure_stochastic_abm(
     structure, model_params,
     generations: int, population_size: int, replicates: int, seed: int,
 ) -> tuple[dict[str, str], dict[str, Any]]:
-    environments = default_campanula_proxy_environments()
+    """Run ABM for all 4 gradient populations."""
+    _grad_envs = (
+        environments_from_population_env(_POP_ENV)
+        if _POP_ENV else default_campanula_gradient_environments()
+    )
     switches = switches_for_structure(structure.name)
     final_by_population: dict[str, dict[str, float]] = {}
     generation_rows: list[dict[str, Any]] = []
 
-    for pop_index, (population_name, env) in enumerate(environments.items()):
+    for pop_index, (population_name, env) in enumerate(_grad_envs.items()):
         replicate_finals: list[dict[str, Any]] = []
         for rep in range(replicates):
             run_seed = seed + pop_index * 100_000 + rep * 1_000
@@ -243,30 +305,36 @@ def simulate_structure_stochastic_abm(
                     "structure": structure.name, **row,
                 })
             replicate_finals.append(final_abm_summary(rows))
-        final_by_population[population_name] = average_summaries(replicate_finals)
+        # Inject Bombus_frequency from environment (ABM doesn't track it)
+        avg = average_summaries(replicate_finals)
+        avg["Bombus_frequency"] = env.bombus_frequency
+        final_by_population[population_name] = avg
 
-    oshima = final_by_population.get("Oshima", {})
+    oshima  = final_by_population.get("Oshima", {})
     hachijo = final_by_population.get("Hachijo", {})
     relations = {
-        "nectar_guide": relation_from_values(
-            "Oshima", oshima.get("mean_nectar_guide", 0.5),
-            "Hachijo", hachijo.get("mean_nectar_guide", 0.5)),
-        "selfing_rate": relation_from_values(
-            "Oshima", oshima.get("selfing_rate", 0.5),
-            "Hachijo", hachijo.get("selfing_rate", 0.5)),
-        "herkogamy": relation_from_values(
-            "Oshima", oshima.get("mean_herkogamy", 0.5),
-            "Hachijo", hachijo.get("mean_herkogamy", 0.5)),
-        "flower_size": relation_from_values(
-            "Oshima", oshima.get("mean_flower_size", 0.5),
-            "Hachijo", hachijo.get("mean_flower_size", 0.5)),
-        "Fis": relation_from_values(
-            "Oshima", oshima.get("Fis_proxy", 0.5),
-            "Hachijo", hachijo.get("Fis_proxy", 0.5)),
+        "nectar_guide":    relation_from_values("Oshima", oshima.get("mean_nectar_guide", 0.5), "Hachijo", hachijo.get("mean_nectar_guide", 0.5)),
+        "selfing_rate":    relation_from_values("Oshima", oshima.get("selfing_rate",      0.5), "Hachijo", hachijo.get("selfing_rate",      0.5)),
+        "herkogamy":       relation_from_values("Oshima", oshima.get("mean_herkogamy",    0.5), "Hachijo", hachijo.get("mean_herkogamy",    0.5)),
+        "flower_size":     relation_from_values("Oshima", oshima.get("mean_flower_size",  0.5), "Hachijo", hachijo.get("mean_flower_size",  0.5)),
+        "Fis":             relation_from_values("Oshima", oshima.get("Fis_proxy",         0.5), "Hachijo", hachijo.get("Fis_proxy",         0.5)),
         "Bombus_frequency": "Oshima > Hachijo",
     }
+
+    # Build ABMPopulationProxy objects for gradient pattern evaluation
+    abm_outputs_list = [
+        ABMPopulationProxy(pop, final_dict, _POP_ENV.get(pop))
+        for pop, final_dict in final_by_population.items()
+    ]
+
     final_rows = [{"population": n, **v} for n, v in final_by_population.items()]
-    return relations, {"final_values": final_rows, "generation_rows": generation_rows}
+    return relations, {
+        "final_values": final_rows,
+        "generation_rows": generation_rows,
+        "outputs_list": abm_outputs_list,
+        "outputs_by_pop": final_by_population,
+        "abm": True,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -312,6 +380,29 @@ def run_research_mode(
                 rule=acceptance_rule,
             )
 
+            # Gradient pattern evaluation (all 13 patterns across 4 populations)
+            _outputs_list = payload.get("outputs_list", [])
+            _is_abm = payload.get("abm", False)
+            _grad_eval_cols: dict = {}
+            if _outputs_list and _GRADIENT_PATTERNS:
+                try:
+                    _all_pats = load_observed_pattern_table()
+                    _grad_eval = evaluate_patterns(
+                        _outputs_list, _all_pats, _POP_ENV
+                    )
+                    _grad_eval_cols = {
+                        "gradient_n_matched": _grad_eval.n_matched,
+                        "gradient_n_total": _grad_eval.n_total,
+                        "gradient_weighted_match_rate": round(_grad_eval.weighted_match_rate, 4),
+                        "gradient_distance": round(weighted_pattern_distance(_grad_eval), 4),
+                    }
+                except Exception:
+                    _grad_eval_cols = {}
+
+            # Per-population trait value columns for gradient visualization
+            _outputs_by_pop = payload.get("outputs_by_pop", {})
+            _grad_trait_cols = _gradient_columns(_outputs_by_pop, abm=_is_abm)
+
             run_id = f"{param_set.get('parameter_set_id', '')}_{structure.name}_{backend}"
             row = {
                 "run_id": run_id,
@@ -331,6 +422,8 @@ def run_research_mode(
                 "guide_net_benefit": param_set.get("guide_net_benefit", ""),
                 "selfing_net_benefit": param_set.get("selfing_net_benefit", ""),
                 **{f"relation_{k}": v for k, v in rels.items()},
+                **_grad_eval_cols,
+                **_grad_trait_cols,
             }
             all_runs.append(row)
 

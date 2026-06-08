@@ -385,6 +385,41 @@ def _ols_slope(xs: list[float], ys: list[float]) -> float:
     return num / den
 
 
+class ABMPopulationProxy:
+    """Thin wrapper around ABM final-generation averages for pattern evaluation.
+
+    Mimics the attribute interface of PopulationProxyOutput so that
+    evaluate_patterns() can be called with ABM outputs.
+    Bombus_frequency is injected from the environment table, not from ABM.
+    """
+
+    # ABM key → PopulationProxyOutput attribute
+    _KEY_MAP = {
+        "nectar_guide":  "mean_nectar_guide",
+        "selfing_rate":  "selfing_rate",
+        "herkogamy":     "mean_herkogamy",
+        "flower_size":   "mean_flower_size",
+        "Fis":           "Fis_proxy",
+    }
+
+    def __init__(
+        self,
+        population: str,
+        final_dict: dict,
+        env_row: dict | None = None,
+    ) -> None:
+        self.population = population
+        self.nectar_guide  = float(final_dict.get("mean_nectar_guide", 0.5))
+        self.selfing_rate  = float(final_dict.get("selfing_rate",      0.5))
+        self.herkogamy     = float(final_dict.get("mean_herkogamy",    0.5))
+        self.flower_size   = float(final_dict.get("mean_flower_size",  0.5))
+        self.Fis           = float(final_dict.get("Fis_proxy",         0.5))
+        self.Bombus_frequency = (
+            float(env_row.get("Bombus_frequency", 0.0)) if env_row else 0.0
+        )
+        self.outcrossing_opportunity = max(0.0, 1.0 - self.selfing_rate)
+
+
 def _kendall_tau(values: list[float]) -> float:
     """Compute Kendall's tau for a sequence vs its natural index order.
 
