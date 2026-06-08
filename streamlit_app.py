@@ -722,30 +722,16 @@ with sim_tab:
         st.line_chart(results.set_index("generation")[["selfing_syndrome_score", "island_syndrome_score"]])
 
     st.subheader("Agent scatter view")
-    st.caption("Streamlit 上の簡易可視化です。TenSnap 本体ではありません。各点は Plant 個体で、色は nectar_guide、サイズは fitness を表します。")
-    view_agents = agents.copy()
-    view_agents["guide_color_value"] = view_agents["nectar_guide"]
-    view_agents["fitness_size"] = 60 + 220 * view_agents["fitness"]
-    st.scatter_chart(
-        view_agents,
-        x="x",
-        y="y",
-        color="guide_color_value",
-        size="fitness_size",
-        width="stretch",
+    st.info(
+        "エージェントのリアルタイム可視化は **TenSnap** で行います。"
+        " ローカルで `python shimahotarubukuro_tensnap_abm.py` を起動してから"
+        " 下のリンクを開き、`ws://localhost:8765` に接続してください。",
+        icon="🌿",
     )
-    st.dataframe(
-        view_agents[
-            [
-                "x",
-                "y",
-                "nectar_guide",
-                "fitness",
-                "reproduction_mode",
-                "neutral_diversity",
-            ]
-        ].head(40),
-        width="stretch",
+    st.link_button(
+        "TenSnap レンダラーを開く →",
+        "https://tensnap.netlify.app/",
+        use_container_width=True,
     )
 
     st.download_button(
