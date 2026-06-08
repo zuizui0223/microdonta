@@ -23,6 +23,7 @@ FIELD_COLUMNS = [
     "pollen_ovule_ratio",
     "pollinator_environment",
     "bombus_present",
+    "bombus_frequency",
     "bombus_pollination_efficiency",
     "other_pollinator_efficiency",
     "bombus_guide_dependence",
@@ -45,10 +46,10 @@ FIELD_COLUMNS = [
 
 DEFAULT_FIELD_DATA = pd.DataFrame(
     [
-        ["Mainland", 0.62, 0.82, 0.78, 0.78, 0.78, 1.0, 0.86, 0.34, 0.75, 0.12, 0.22, 0.32, 0.46, 0.92, 0.54, 0.86, 0.100, np.nan, np.nan, np.nan, np.nan, 0.00, "source/mainland"],
-        ["Oshima", 0.55, 0.72, 0.62, 0.64, 0.58, 1.0, 0.78, 0.34, 0.65, 0.16, 0.36, 0.25, 0.55, 0.84, 0.57, 0.82, 0.050, np.nan, np.nan, np.nan, np.nan, 0.20, "island with Bombus ardens"],
-        ["Kozu", 0.42, 0.58, 0.44, 0.48, 0.42, 0.0, 0.86, 0.30, 0.00, 0.18, 0.52, 0.18, 0.64, 0.76, 0.60, 0.78, 0.025, np.nan, np.nan, np.nan, np.nan, 0.35, "bumblebee-free island"],
-        ["Hachijo", 0.28, 0.46, 0.30, 0.34, 0.36, 0.0, 0.86, 0.30, 0.00, 0.18, 0.68, 0.12, 0.72, 0.68, 0.62, 0.74, 0.010, np.nan, np.nan, np.nan, np.nan, 0.45, "bumblebee-free island"],
+        ["Mainland", 0.62, 0.82, 0.78, 0.78, 0.78, 1.0, 0.78, 0.86, 0.34, 0.75, 0.12, 0.22, 0.32, 0.46, 0.92, 0.54, 0.86, 0.100, np.nan, np.nan, np.nan, np.nan, 0.00, "source/mainland"],
+        ["Oshima", 0.55, 0.72, 0.62, 0.64, 0.58, 1.0, 0.35, 0.78, 0.34, 0.65, 0.16, 0.36, 0.25, 0.55, 0.84, 0.57, 0.82, 0.050, np.nan, np.nan, np.nan, np.nan, 0.20, "island with Bombus ardens"],
+        ["Kozu", 0.42, 0.58, 0.44, 0.48, 0.42, 0.0, 0.00, 0.86, 0.30, 0.00, 0.18, 0.52, 0.18, 0.64, 0.76, 0.60, 0.78, 0.025, np.nan, np.nan, np.nan, np.nan, 0.35, "bumblebee-free island"],
+        ["Hachijo", 0.28, 0.46, 0.30, 0.34, 0.36, 0.0, 0.00, 0.86, 0.30, 0.00, 0.18, 0.68, 0.12, 0.72, 0.68, 0.62, 0.74, 0.010, np.nan, np.nan, np.nan, np.nan, 0.45, "bumblebee-free island"],
     ],
     columns=FIELD_COLUMNS,
 )
@@ -210,15 +211,28 @@ def clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
     return max(low, min(high, float(value)))
 
 
+def row_clamped(row: pd.Series, key: str, fallback_key: str | None = None, default: float = 0.0) -> float:
+    """Read a field-data value with backwards-compatible fallback."""
+
+    if key in row.index and not pd.isna(row[key]):
+        return clamp(row[key])
+    if fallback_key is not None and fallback_key in row.index and not pd.isna(row[fallback_key]):
+        return clamp(row[fallback_key])
+    return clamp(default)
+
+
 def evaluate_population(population: list[Plant], params: dict[str, float], rng: np.random.Generator) -> None:
+    bombus_frequency = clamp(params.get("bombus_frequency", params.get("bombus_present", 0.0)))
+    effective_selfing_ability = clamp(params["selfing_ability"] * (1.0 - params["herkogamy"]))
+    constrained_guide_cost = params["guide_cost"] * params["flower_size"]
     for plant in population:
         pollinator_efficiency = (
-            params["bombus_present"] * params["bombus_pollination_efficiency"]
-            + (1.0 - params["bombus_present"]) * params["other_pollinator_efficiency"]
+            bombus_frequency * params["bombus_pollination_efficiency"]
+            + (1.0 - bombus_frequency) * params["other_pollinator_efficiency"]
         )
         guide_alignment = (
-            params["bombus_present"] * params["bombus_guide_dependence"]
-            + (1.0 - params["bombus_present"]) * params["other_pollinator_guide_use"]
+            bombus_frequency * params["bombus_guide_dependence"]
+            + (1.0 - bombus_frequency) * params["other_pollinator_guide_use"]
         )
         outcross_prob = clamp(
             params["base_outcross"]
@@ -230,7 +244,7 @@ def evaluate_population(population: list[Plant], params: dict[str, float], rng: 
             )
         )
         outcrossing = rng.random() < outcross_prob
-        selfing = (not outcrossing) and (rng.random() < params["selfing_ability"])
+        selfing = (not outcrossing) and (rng.random() < effective_selfing_ability)
         plant.mode = "outcrossing" if outcrossing else "selfing" if selfing else "failed"
 
         if outcrossing:
@@ -255,7 +269,7 @@ def evaluate_population(population: list[Plant], params: dict[str, float], rng: 
         plant.fitness = max(
             0.001,
             plant.seed_output * plant.germination * (1.0 - inbreeding_penalty)
-            - params["guide_cost"] * plant.guide,
+            - constrained_guide_cost * plant.guide,
         )
 
 
@@ -268,6 +282,8 @@ def record_generation(generation: int, population: list[Plant], params: dict[str
     failed_rate = np.mean([plant.mode == "failed" for plant in population])
     fis = clamp(selfing_rate * (1.0 - 0.5 * params["migration_rate"]))
     fst = clamp((1.0 - params["migration_rate"]) * (1.0 - outcrossing_rate) * (1.0 - np.mean(diversity)))
+    effective_selfing_ability = clamp(params["selfing_ability"] * (1.0 - params["herkogamy"]))
+    constrained_guide_cost = params["guide_cost"] * params["flower_size"]
     selfing_syndrome_score = clamp(
         (
             selfing_rate
@@ -282,7 +298,7 @@ def record_generation(generation: int, population: list[Plant], params: dict[str
     island_syndrome_score = clamp(
         (
             (1.0 - params["pollinator_environment"])
-            + (1.0 - params["bombus_present"])
+            + (1.0 - params["bombus_frequency"])
             + params["selfing_ability"]
             + (1.0 - np.mean(diversity))
             + (1.0 - params["migration_rate"] / 0.25)
@@ -303,6 +319,9 @@ def record_generation(generation: int, population: list[Plant], params: dict[str
         "mean_neutral_diversity": float(np.mean(diversity)),
         "Fis": fis,
         "Fst": fst,
+        "bombus_frequency": float(params["bombus_frequency"]),
+        "effective_selfing_ability": float(effective_selfing_ability),
+        "constrained_guide_cost": float(constrained_guide_cost),
         "selfing_syndrome_score": float(selfing_syndrome_score),
         "island_syndrome_score": float(island_syndrome_score),
     }
@@ -486,24 +505,25 @@ def run_robustness_grid(
 
 def field_row_to_params(row: pd.Series) -> dict[str, float]:
     return {
-        "nectar_guide": clamp(row["nectar_guide"]),
-        "flower_size": clamp(row["flower_size"]),
-        "herkogamy": clamp(row["herkogamy"]),
-        "pollen_ovule_ratio": clamp(row["pollen_ovule_ratio"]),
-        "pollinator_environment": clamp(row["pollinator_environment"]),
-        "bombus_present": clamp(row["bombus_present"]),
-        "bombus_pollination_efficiency": clamp(row["bombus_pollination_efficiency"]),
-        "other_pollinator_efficiency": clamp(row["other_pollinator_efficiency"]),
-        "bombus_guide_dependence": clamp(row["bombus_guide_dependence"]),
-        "other_pollinator_guide_use": clamp(row["other_pollinator_guide_use"]),
-        "selfing_ability": clamp(row["selfing_ability"]),
-        "inbreeding_load": clamp(row["inbreeding_load"]),
-        "seed_set_selfing": clamp(row["seed_set_selfing"]),
-        "seed_set_outcrossing": clamp(row["seed_set_outcrossing"]),
-        "germination_selfed": clamp(row["germination_selfed"]),
-        "germination_outcrossed": clamp(row["germination_outcrossed"]),
+        "nectar_guide": row_clamped(row, "nectar_guide"),
+        "flower_size": row_clamped(row, "flower_size"),
+        "herkogamy": row_clamped(row, "herkogamy"),
+        "pollen_ovule_ratio": row_clamped(row, "pollen_ovule_ratio"),
+        "pollinator_environment": row_clamped(row, "pollinator_environment"),
+        "bombus_present": row_clamped(row, "bombus_present"),
+        "bombus_frequency": row_clamped(row, "bombus_frequency", fallback_key="bombus_present"),
+        "bombus_pollination_efficiency": row_clamped(row, "bombus_pollination_efficiency"),
+        "other_pollinator_efficiency": row_clamped(row, "other_pollinator_efficiency"),
+        "bombus_guide_dependence": row_clamped(row, "bombus_guide_dependence"),
+        "other_pollinator_guide_use": row_clamped(row, "other_pollinator_guide_use"),
+        "selfing_ability": row_clamped(row, "selfing_ability"),
+        "inbreeding_load": row_clamped(row, "inbreeding_load"),
+        "seed_set_selfing": row_clamped(row, "seed_set_selfing"),
+        "seed_set_outcrossing": row_clamped(row, "seed_set_outcrossing"),
+        "germination_selfed": row_clamped(row, "germination_selfed"),
+        "germination_outcrossed": row_clamped(row, "germination_outcrossed"),
         "migration_rate": clamp(row["migration_rate"], 0.0, 0.25),
-        "admixture_index": clamp(row["admixture_index"]),
+        "admixture_index": row_clamped(row, "admixture_index"),
         "guide_cost": 0.06,
         "base_outcross": 0.10,
         "pollinator_environment_outcross_effect": 0.42,
@@ -588,9 +608,13 @@ with st.expander("CAPOM framework", expanded=True):
         **CAPOM**: 観察パターンを先に定義し、そのパターンを再現できる潜在パラメータ範囲と因果シナリオを絞る。
 
         野外データは入力値ではなく、ABMが再現すべき観察パターンとして扱います。
-        このアプリでは、`nectar_guide`, `flower_size`, 送粉者頻度、自殖率、発芽率、`Fis`, `Fst`, `Pst` などを
+        このアプリでは、`nectar_guide`, `flower_size`, Bombus頻度・寄与率、自殖率、発芽率、`Fis`, `Fst`, `Pst` などを
         **Observable patterns** として扱い、`guide_cost`, `outcrossing_benefit`, `inbreeding_depression`,
         `drift_strength`, `small_pollinator_efficiency` などの **Latent trade-offs** をシナリオ比較と感度分析で制約します。
+
+        CAPOM制約として、`bombus_frequency` は送粉効率とネクターガイド利用を連続的に重みづけ、
+        `herkogamy` は実効自殖能力を制約し、`flower_size` はネクターガイド維持コストを制約します。
+        `selfing_syndrome_score` と `island_syndrome_score` は診断指標であり、fitness計算には入れません。
         """
     )
 
@@ -632,7 +656,7 @@ base_params = field_row_to_params(selected_row)
 with st.sidebar.expander("Manual parameter overrides", expanded=False):
     for key in [
         "pollinator_environment",
-        "bombus_present",
+        "bombus_frequency",
         "bombus_pollination_efficiency",
         "other_pollinator_efficiency",
         "bombus_guide_dependence",
@@ -677,14 +701,14 @@ with sim_tab:
 
             - `mean_nectar_guide`: 最終世代の全個体の `nectar_guide` 平均。
             - `outcrossing_rate`: 最終世代で他殖になった個体の割合。
-            - `selfing_rate`: 最終世代で自殖成功になった個体の割合。モデル内では、他殖しなかった個体だけが自殖判定に進みます。
+            - `selfing_rate`: 最終世代で自殖成功になった個体の割合。モデル内では、他殖しなかった個体だけが `selfing_ability * (1 - herkogamy)` の実効自殖能力で自殖判定に進みます。
             - `Fis`: `selfing_rate * (1 - 0.5 * migration_rate)` を 0-1 に丸めた近交診断。
             - `Fst`: `(1 - migration_rate) * (1 - outcrossing_rate) * (1 - mean_neutral_diversity)` を 0-1 に丸めた分化診断。
             - `threshold status`: `mean_nectar_guide >= 0.5` なら `above 0.5`、下回れば `below 0.5`。
 
-            各個体の繁殖モードは、送粉者環境、Bombus チャンネル、ネクターガイド値から他殖確率を作り、
+            各個体の繁殖モードは、送粉者環境、Bombus頻度・寄与率、ネクターガイド値から他殖確率を作り、
             乱数で `outcrossing` / `selfing` / `failed` に分岐させています。次世代の親は、
-            種子数・発芽率・近交弱勢・ガイド維持コストから作った `fitness` を重みとして選ばれます。
+            種子数・発芽率・近交弱勢・`guide_cost * flower_size` で制約されたガイド維持コストから作った `fitness` を重みとして選ばれます。
             """
         )
 
@@ -737,17 +761,17 @@ with threshold_tab:
     default_axis = "pollinator_environment"
     sweep_axis = st.radio(
         "sweep axis",
-        ["pollinator_environment", "bombus_guide_dependence"],
-        index=["pollinator_environment", "bombus_guide_dependence"].index(default_axis),
+        ["pollinator_environment", "bombus_frequency", "bombus_guide_dependence"],
+        index=["pollinator_environment", "bombus_frequency", "bombus_guide_dependence"].index(default_axis),
         horizontal=True,
     )
     st.write(
         "ここでは `mean_nectar_guide >= guide criterion` を「ネクターガイド維持」と定義し、"
         f"`selfing_ability` ごとに、維持に必要な最小 `{sweep_axis}` を探索します。"
     )
-    if sweep_axis == "bombus_guide_dependence" and base_params["bombus_present"] == 0:
+    if sweep_axis == "bombus_guide_dependence" and base_params["bombus_frequency"] == 0:
         st.warning(
-            "この集団ではマルハナバチ不在が前提なので、Bombus guide dependence の sweep は反実仮想です。"
+            "この集団では Bombus 頻度が 0 なので、Bombus guide dependence の sweep は反実仮想です。"
             "現実の閾値としては pollinator_environment または実測 outcrossing_rate を見てください。"
         )
     sweep_cols = st.columns(5)
@@ -881,7 +905,8 @@ with evidence_tab:
             [
                 ["nectar_guide", "斑点面積率", "個体の guide trait と mean_nectar_guide"],
                 ["pollinator_environment", "訪花者組成・訪花頻度・花粉接触から作る他殖機会", "他殖確率の主要項"],
-                ["bombus_present", "マルハナバチ在/不在", "ネクターガイド選択の重み"],
+                ["bombus_frequency", "Bombus頻度・寄与率", "送粉効率とネクターガイド選択の連続的な重み"],
+                ["bombus_present", "後方互換用の在/不在列", "bombus_frequency が無いCSVのfallback"],
                 ["bombus_guide_dependence", "Bombus がネクターガイドを利用する強さ", "guide trait が他殖に効く強さ"],
                 ["other_pollinator_guide_use", "コハナバチ類などの guide 利用", "Bombus 不在時の弱い guide 効果"],
                 ["selfing_ability", "袋掛け結実率", "他殖失敗時の自殖成功確率"],
@@ -901,7 +926,7 @@ with evidence_tab:
                 ["flower_size", "corolla size / floral display", "selfing syndrome: reduced attraction traits"],
                 ["herkogamy", "anther-stigma separation", "selfing syndrome: reduced separation can enable autonomous selfing"],
                 ["pollen_ovule_ratio", "pollen grains per ovule", "selfing syndrome: reduced male allocation"],
-                ["bombus_pollination_efficiency", "Bombus seed/pollen-transfer efficiency", "efficient-pollinator channel; active only when bombus_present > 0"],
+                ["bombus_pollination_efficiency", "Bombus seed/pollen-transfer efficiency", "efficient-pollinator channel weighted by bombus_frequency"],
                 ["other_pollinator_efficiency", "halictid/small-bee efficiency", "uncertain non-Bombus channel; explored in robustness"],
                 ["selfing_syndrome_score", "combined diagnosis", "higher when selfing and reduced outcrossing floral traits co-occur"],
                 ["island_syndrome_score", "combined diagnosis", "higher when pollinator loss, isolation, selfing, and diversity loss co-occur"],
@@ -917,7 +942,7 @@ with fieldwork_tab:
         pd.DataFrame(
             [
                 ["斑点面積率", "nectar_guide", "各集団 30-50 個体、各個体 3-5 花", "目的形質。退化/維持の直接測定"],
-                ["訪花者の種類と訪花回数/時間", "pollinator_environment, bombus_present", "各集団 20-30 時間以上", "送粉者相と他殖機会"],
+                ["訪花者の種類と訪花回数/時間", "pollinator_environment, bombus_frequency", "各集団 20-30 時間以上", "送粉者相と他殖機会"],
                 ["自然結実率・種子数", "fitness baseline", "各集団 30-50 花以上", "自然条件での適応度"],
                 ["袋掛け結実率", "selfing_ability", "各集団 30-50 花以上", "送粉者なしの繁殖保証"],
                 ["人工自殖/人工他殖の種子数", "seed_set_selfing, seed_set_outcrossing", "各集団 20-30 母株、各処理 1-3 花", "繁殖様式ごとの種子生産"],
