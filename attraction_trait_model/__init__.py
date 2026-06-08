@@ -1,9 +1,3 @@
-"""Generative attraction-trait evolution model components.
-
-This package is the biological model layer. CAPOM pattern matching and
-inference remain in `constraint_abm`.
-"""
-
 from .agents import PlantAgent
 from .diagnostics import guide_status, selfing_syndrome_score
 from .environment import Environment
@@ -16,22 +10,40 @@ from .reproduction import (
     selfing_probability,
     small_pollinator_access,
 )
+from .simulation import (
+    choose_reproduction_mode,
+    evaluate_population,
+    initialize_population,
+    next_generation,
+    produce_child,
+    select_parent,
+    simulate_population,
+    summarize_population,
+)
 
 __all__ = [
     "Environment",
     "ModelParameters",
     "PlantAgent",
+    "choose_reproduction_mode",
     "clamp",
     "drift_strength",
+    "evaluate_population",
     "fitness",
     "flower_cost_effect",
     "guide_cost_effect",
     "guide_status",
     "inherit_trait",
+    "initialize_population",
+    "next_generation",
     "outcrossing_probability",
+    "produce_child",
     "reproductive_output",
+    "select_parent",
     "selfing_probability",
     "selfing_syndrome_score",
     "selfing_syndrome_shift",
+    "simulate_population",
     "small_pollinator_access",
+    "summarize_population",
 ]
