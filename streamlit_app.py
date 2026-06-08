@@ -572,11 +572,27 @@ def make_pst_fst_diagnostics(data: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-st.title("シマホタルブクロ ネクターガイド進化 ABM")
+st.title("CAPOM: シマホタルブクロ ネクターガイド進化 ABM")
 st.caption(
+    "Constraint-Aware Pattern-Oriented Modelling: 見えるパターンで、見えないメカニズムを縛る方法。"
     "実データを入れて予測するモデルではなく、実データと比較するための仮説生成器です。"
-    "送粉者環境・自殖保証・近交弱勢・遺伝的多様性を動かし、どの条件で観察されそうな傾向が出るかを探索します。"
 )
+
+with st.expander("CAPOM framework", expanded=True):
+    st.markdown(
+        """
+        **POM**: 見えるパターンに合うモデルを探す。
+
+        **普通のABM**: ルールを作って、パターンが出るかを見る。
+
+        **CAPOM**: 観察パターンを先に定義し、そのパターンを再現できる潜在パラメータ範囲と因果シナリオを絞る。
+
+        野外データは入力値ではなく、ABMが再現すべき観察パターンとして扱います。
+        このアプリでは、`nectar_guide`, `flower_size`, 送粉者頻度、自殖率、発芽率、`Fis`, `Fst`, `Pst` などを
+        **Observable patterns** として扱い、`guide_cost`, `outcrossing_benefit`, `inbreeding_depression`,
+        `drift_strength`, `small_pollinator_efficiency` などの **Latent trade-offs** をシナリオ比較と感度分析で制約します。
+        """
+    )
 
 with st.expander("仮説", expanded=True):
     st.markdown(

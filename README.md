@@ -1,6 +1,59 @@
 # シマホタルブクロのネクターガイド進化ABM
 
-シマホタルブクロ / `Campanula punctata` 系の島嶼集団で、送粉者環境、自殖、近交弱勢、遺伝的多様性、ネクターガイド退化をつなぐための仮説探索アプリです。
+**CAPOM (Constraint-Aware Pattern-Oriented Modelling)** の一言定義:
+
+> 見えるパターンで、見えないメカニズムを縛る方法。
+
+More formally:
+
+> CAPOM uses observable field patterns to constrain latent ecological trade-offs that are difficult to measure directly.
+
+このリポジトリは、シマホタルブクロ / `Campanula punctata` 系の伊豆諸島集団を worked example として、CAPOMを Methods in Ecology and Evolution 投稿に耐える再利用可能な方法論パッケージへ整理するためのプロトタイプです。
+
+## CAPOMとは
+
+CAPOMは、Pattern-Oriented Modelling (POM) と Agent-Based Modelling (ABM) を土台にしつつ、野外で直接測りにくい潜在トレードオフを、複数の観察可能パターンで制約するためのワークフローです。
+
+| Approach | Short definition | Main question |
+|---|---|---|
+| Ordinary ABM | ルールを作って、パターンが出るかを見る | この個体ルールからどんな集団パターンが出るか |
+| POM | 見えるパターンに合うモデルを探す | 複数の観察パターンを再現できるモデルか |
+| CAPOM | 見えるパターンを使って、見えない条件を絞る | 観察パターンを再現できる潜在パラメータ範囲と因果シナリオはどれか |
+
+重要なのは、野外データを単なる「入力値」として扱わないことです。野外データは、ABMが再現すべき **observable patterns** です。ABMは、見えないパラメータを証明する機械ではなく、観察パターンと矛盾しない潜在パラメータ範囲と因果シナリオを絞るための **generative filter** です。
+
+## Five CAPOM Layers
+
+1. **Observable patterns**
+   野外で測れるもの: `nectar_guide`, `flower_size`, Bombus frequency, small pollinator frequency, effective selfing rate, fruit set, germination, `Fis`, `Fst`, `Ne`, `Pst`, island distance.
+
+2. **Latent trade-offs**
+   野外で直接測りにくいもの: `guide_cost`, `outcrossing_benefit`, `inbreeding_depression`, `drift_strength`, `small_pollinator_efficiency`, future reproductive benefit.
+
+3. **Constraints**
+   メカニズムを生態学的に制限するもの: island distance, migration rate, flower size, herkogamy, `Ne`, genetic diversity.
+
+4. **Generative ABM**
+   個体群シミュレーション: reproduction, selfing, outcrossing, germination, inheritance, selection, drift.
+
+5. **Pattern matching**
+   simulated patterns と observed patterns を比較し、scenario ranking と latent-parameter filtering を行う。
+
+## Why this repository has two roles
+
+1. ネクターガイド退化の実証研究として使う。
+2. CAPOMという方法論論文の worked example として使う。
+3. 将来的に再利用可能なPythonパッケージへ切り出す。
+4. MEE投稿に必要な README、ODD protocol、workflow、example dataset、scenario comparison、sensitivity analysis、null models を整備する。
+
+See also:
+
+- [ABM design policy](docs/abm_design_policy.md)
+- [Package roadmap](docs/package_roadmap.md)
+- [Methods workflow](paper/methods_workflow.md)
+- [ODD protocol draft](paper/odd_protocol_draft.md)
+- [MEE submission plan](paper/mee_submission_plan.md)
+- [Campanula Izu worked example](examples/campanula_izu/README.md)
 
 このABMは、実データを入れて予測するモデルではなく、実データと比較するための仮説生成器です。野外で直接一点推定しにくい送粉効率やガイド維持コストは、`Robustness` タブで範囲を振って、どの条件で観察パターンに近い傾向が出るかを見ます。
 
