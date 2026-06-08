@@ -1,4 +1,4 @@
-"""CAPOM — Campanula Izu Islands: Interactive Pattern-Oriented Modelling App.
+﻿"""CAPOM — Campanula Izu Islands: Interactive Pattern-Oriented Modelling App.
 
 Implements generative inverse estimation for the selfing-syndrome / nectar-guide
 loss gradient across the Izu Islands (Mainland → Oshima → Kozu → Hachijo).
@@ -652,6 +652,7 @@ The research workflow replaces this with:
             classify_tradeoffs,
             check_ecological_parameter_constraints,
         )
+        from causal_model.parameter_sampling import param_set_to_model_parameters
         from examples.campanula_izu.causal_structures import campanula_causal_structures
         from examples.campanula_izu.proxy_simulation import (
             simulate_campanula_causal_structure,
@@ -707,11 +708,22 @@ The research workflow replaces this with:
                     "Bombus_frequency": "Oshima > Hachijo",
                 }
 
+                _LATENT_PARAMS = [
+                    "guide_cost", "outcrossing_benefit", "selfing_benefit",
+                    "inbreeding_depression", "small_pollinator_efficiency",
+                    "drift_strength", "direct_pollinator_guide_benefit",
+                    "cost_of_waiting_for_pollinators",
+                ]
+
                 all_runs = []
                 for param_set in accepted_params:
+                    try:
+                        mp = param_set_to_model_parameters(param_set)
+                    except Exception:
+                        mp = None
                     for s in structures:
                         try:
-                            rels, _ = simulate_campanula_causal_structure(s)
+                            rels, _ = simulate_campanula_causal_structure(s, params=mp)
                         except Exception:
                             continue
                         matches = sum(1 for var, obs in OBSERVED_RELS.items()
@@ -725,6 +737,7 @@ The research workflow replaces this with:
                             "selfing_tradeoff_class": param_set.get("selfing_tradeoff_class", ""),
                             "guide_net_benefit": param_set.get("guide_net_benefit", 0.0),
                             "selfing_net_benefit": param_set.get("selfing_net_benefit", 0.0),
+                            **{p: param_set.get(p) for p in _LATENT_PARAMS},
                         })
 
                 st.session_state["rs_accepted"] = accepted_params
@@ -797,6 +810,34 @@ The research workflow replaces this with:
                         summary.sort_values("acceptance_rate", ascending=False),
                         use_container_width=True, hide_index=True,
                     )
+
+                # Accepted parameter ranges table
+                if all_runs:
+                    accepted_run_rows = [r for r in all_runs if r["all_matched"]]
+                    if accepted_run_rows:
+                        st.subheader("Accepted parameter ranges (structures reproducing all patterns)")
+                        ranges_data = []
+                        for param in _LATENT_PARAMS:
+                            vals = [r[param] for r in accepted_run_rows
+                                    if isinstance(r.get(param), (int, float))]
+                            if vals:
+                                ranges_data.append({
+                                    "Parameter": param,
+                                    "Min": round(min(vals), 4),
+                                    "Mean": round(sum(vals) / len(vals), 4),
+                                    "Max": round(max(vals), 4),
+                                    "n runs": len(vals),
+                                })
+                        if ranges_data:
+                            st.dataframe(
+                                pd.DataFrame(ranges_data),
+                                use_container_width=True,
+                                hide_index=True,
+                            )
+                        else:
+                            st.info("No parameter set reproduced all 6 patterns for any causal structure.")
+                    else:
+                        st.info("No parameter set reproduced all 6 patterns for any causal structure.")
 
                 # Download
                 if accepted_params:
@@ -1058,3 +1099,4 @@ elif page == "🌿 TenSnap Visualisation":
 - Inbreeding coefficient (Fis)
 - Population differentiation (Fst)
 """)
+
