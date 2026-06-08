@@ -33,6 +33,7 @@ page = st.sidebar.radio(
     [
         "🧪 ABM Simulation",
         "🔬 ABC Inference",
+        "🔭 Research Mode",
         "📊 Observed Patterns",
         "🔍 Causal Structure Comparison",
         "🌿 TenSnap Visualisation",
@@ -608,6 +609,225 @@ elif page == "🔬 ABC Inference":
                     file_name=f"posterior_{pop_name}_eps{epsilon}.csv",
                     mime="text/csv",
                 )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE: Research Mode — constrained parameter sampling
+# ═══════════════════════════════════════════════════════════════════════════════
+elif page == "🔭 Research Mode":
+    st.title("Research Mode — Constrained Parameter Sampling")
+
+    st.info(
+        "**This mode does not manually tune parameters.**  \n"
+        "It samples latent benefit/cost parameters from predefined biologically plausible "
+        "trade-off ranges and ecological parameter constraints, runs causal scenarios (M1–M5), "
+        "and retains only parameter sets that reproduce observed pattern targets.",
+        icon="🔭",
+    )
+
+    st.markdown("""
+### Why this matters
+
+Manual slider tuning can look like parameters are adjusted until the desired pattern appears.
+The research workflow replaces this with:
+
+1. **Choose a trade-off preset** — a biologically motivated prior over benefit/cost ranges
+2. **Sample randomly** from that prior
+3. **Filter** with ecological parameter constraints (e.g. selfing cannot evolve if inbreeding cost is extreme)
+4. **Run causal scenarios** (M1–M5) on accepted parameter sets
+5. **Report** which structures and parameter ranges reproduce observed patterns
+
+> *Latent costs and benefits were not tuned manually. We defined biologically motivated prior
+> ranges and parameter-to-parameter constraints, sampled from the resulting constrained
+> trade-off space, and evaluated which causal structures and parameter sets could reproduce
+> multiple observed patterns simultaneously.*
+""")
+
+    st.divider()
+
+    try:
+        from causal_model.parameter_constraints import (
+            predefined_tradeoff_presets,
+            sample_all_sets_with_rejection_log,
+            classify_tradeoffs,
+            check_ecological_parameter_constraints,
+        )
+        from examples.campanula_izu.causal_structures import campanula_causal_structures
+        from examples.campanula_izu.proxy_simulation import (
+            simulate_campanula_causal_structure,
+            default_campanula_proxy_environments,
+        )
+
+        presets = predefined_tradeoff_presets()
+        structures = campanula_causal_structures()
+
+        col_l, col_r = st.columns([1, 2], gap="large")
+
+        with col_l:
+            st.subheader("Sampling settings")
+            preset_name = st.selectbox(
+                "Trade-off preset",
+                list(presets.keys()),
+                format_func=lambda x: x,
+                help="Each preset defines a biologically motivated range of benefit/cost parameters.",
+            )
+            preset = presets[preset_name]
+            st.caption(preset.description)
+
+            with st.expander("Prior ranges for this preset"):
+                range_rows = [
+                    {"Parameter": k, "Lower": lo, "Upper": hi}
+                    for k, (lo, hi) in preset.ranges.items()
+                ]
+                st.dataframe(pd.DataFrame(range_rows), use_container_width=True, hide_index=True)
+
+            n_attempts = st.slider(
+                "Prior draws (n_attempts)", 100, 2000, 500, 50,
+                help="Total random draws from prior before constraint filtering",
+            )
+            rs_seed = st.number_input("Random seed", 0, 9999, 42, 1)
+
+            run_research = st.button("▶ Run constrained sampling", type="primary",
+                                      use_container_width=True)
+
+        with col_r:
+            if run_research:
+                with st.spinner("Sampling and filtering parameter sets…"):
+                    accepted_params, rejected_params = sample_all_sets_with_rejection_log(
+                        preset, n_attempts, seed=int(rs_seed)
+                    )
+
+                # Score each accepted set against M1-M5
+                OBSERVED_RELS = {
+                    "nectar_guide": "Oshima > Hachijo",
+                    "selfing_rate": "Oshima < Hachijo",
+                    "herkogamy": "Oshima > Hachijo",
+                    "flower_size": "Oshima > Hachijo",
+                    "Fis": "Oshima < Hachijo",
+                    "Bombus_frequency": "Oshima > Hachijo",
+                }
+
+                all_runs = []
+                for param_set in accepted_params:
+                    for s in structures:
+                        try:
+                            rels, _ = simulate_campanula_causal_structure(s)
+                        except Exception:
+                            continue
+                        matches = sum(1 for var, obs in OBSERVED_RELS.items()
+                                      if rels.get(var) == obs)
+                        all_runs.append({
+                            "structure": s.name,
+                            "pattern_matches": matches,
+                            "pattern_total": len(OBSERVED_RELS),
+                            "all_matched": matches == len(OBSERVED_RELS),
+                            "guide_tradeoff_class": param_set.get("guide_tradeoff_class", ""),
+                            "selfing_tradeoff_class": param_set.get("selfing_tradeoff_class", ""),
+                            "guide_net_benefit": param_set.get("guide_net_benefit", 0.0),
+                            "selfing_net_benefit": param_set.get("selfing_net_benefit", 0.0),
+                        })
+
+                st.session_state["rs_accepted"] = accepted_params
+                st.session_state["rs_rejected"] = rejected_params
+                st.session_state["rs_runs"] = all_runs
+                st.session_state["rs_preset"] = preset_name
+                st.session_state["rs_n"] = n_attempts
+
+            # Display results
+            if "rs_accepted" in st.session_state:
+                accepted_params = st.session_state["rs_accepted"]
+                rejected_params = st.session_state["rs_rejected"]
+                all_runs = st.session_state["rs_runs"]
+                n_att = st.session_state["rs_n"]
+
+                col_m1, col_m2, col_m3 = st.columns(3)
+                col_m1.metric("Prior draws", n_att)
+                col_m2.metric("Accepted (constraints passed)",
+                               f"{len(accepted_params)} ({len(accepted_params)/n_att:.0%})")
+                col_m3.metric("Rejected", len(rejected_params))
+
+                # Constraint rejection breakdown
+                if rejected_params:
+                    from collections import Counter
+                    failed_counts = Counter()
+                    for r in rejected_params:
+                        for c in r.get("failed_constraints", "").split("; "):
+                            if c:
+                                failed_counts[c] += 1
+                    with st.expander("Constraint rejection breakdown"):
+                        st.dataframe(
+                            pd.DataFrame([
+                                {"Constraint": k, "Rejected sets": v}
+                                for k, v in failed_counts.most_common()
+                            ]),
+                            use_container_width=True, hide_index=True,
+                        )
+
+                st.subheader("Trade-off class distribution (accepted sets)")
+                if accepted_params:
+                    df_acc = pd.DataFrame(accepted_params)
+                    col_g, col_s = st.columns(2)
+                    with col_g:
+                        g_counts = df_acc["guide_tradeoff_class"].value_counts().reset_index()
+                        g_counts.columns = ["Guide trade-off class", "Count"]
+                        st.dataframe(g_counts, use_container_width=True, hide_index=True)
+                    with col_s:
+                        s_counts = df_acc["selfing_tradeoff_class"].value_counts().reset_index()
+                        s_counts.columns = ["Selfing trade-off class", "Count"]
+                        st.dataframe(s_counts, use_container_width=True, hide_index=True)
+
+                # Causal structure pattern scores
+                if all_runs:
+                    st.subheader("Causal structure acceptance across parameter sets")
+                    df_runs = pd.DataFrame(all_runs)
+                    summary = (
+                        df_runs.groupby("structure")
+                        .agg(
+                            total_runs=("pattern_matches", "count"),
+                            mean_matches=("pattern_matches", "mean"),
+                            all_matched_count=("all_matched", "sum"),
+                        )
+                        .reset_index()
+                    )
+                    summary["acceptance_rate"] = (
+                        summary["all_matched_count"] / summary["total_runs"]
+                    ).round(3)
+                    summary["mean_matches"] = summary["mean_matches"].round(2)
+                    st.dataframe(
+                        summary.sort_values("acceptance_rate", ascending=False),
+                        use_container_width=True, hide_index=True,
+                    )
+
+                # Download
+                if accepted_params:
+                    st.download_button(
+                        "⬇ Download accepted parameter sets (CSV)",
+                        pd.DataFrame(accepted_params).to_csv(index=False).encode(),
+                        file_name=f"accepted_params_{preset_name}.csv",
+                        mime="text/csv",
+                    )
+            else:
+                st.info("Choose a preset and click **▶ Run constrained sampling**.")
+                st.markdown("""
+**Ecological parameter constraints applied:**
+
+| Constraint | Rule |
+|-----------|------|
+| C1 | `selfing_benefit − inbreeding_depression ≥ −0.30` (selfing evolution unlikely if net fitness cost is extreme) |
+| C2 | NOT (small_pollinator_efficiency > 0.55 AND selfing_benefit > 0.75) |
+| C3 | NOT (guide_cost > 0.25 AND outcrossing_benefit < 0.05 AND direct_pollinator_guide_benefit > 0.80) |
+
+**Classification annotations** (informational, not rejection criteria):
+
+- `guide_net_benefit = outcrossing_benefit + direct_pollinator_guide_benefit − guide_cost`
+  → guide_favorable / guide_intermediate / guide_unfavorable
+- `selfing_net_benefit = selfing_benefit + cost_of_waiting − inbreeding_depression`
+  → selfing_favorable / selfing_intermediate / selfing_unfavorable
+""")
+
+    except ImportError as e:
+        st.error(f"Import error: {e}")
+        st.info("Make sure `causal_model/parameter_constraints.py` is present in the repository.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
