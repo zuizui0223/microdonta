@@ -1,4 +1,4 @@
-"""Ecology-principled constrained parameter sampling for CAPOM.
+﻿"""Ecology-principled constrained parameter sampling for CAPOM.
 
 Latent benefit/cost parameters (guide_cost, outcrossing_benefit, etc.) should
 not be sampled independently without biological logic. This module provides:
@@ -18,11 +18,8 @@ Research framing::
 
 Japanese::
 
-    観察パターンに合うようにパラメータを手動調整するのではなく、
-    生態学的に妥当な利益・コストの範囲とパラメータ間制約を事前に定義し、
-    その制約内でランダムサンプリングを行い、複数の観察パターンを同時に
-    再現できるパラメータセットだけを受理する。
-"""
+    隕ｳ蟇溘ヱ繧ｿ繝ｼ繝ｳ縺ｫ蜷医≧繧医≧縺ｫ繝代Λ繝｡繝ｼ繧ｿ繧呈焔蜍戊ｪｿ謨ｴ縺吶ｋ縺ｮ縺ｧ縺ｯ縺ｪ縺上・    逕滓・蟄ｦ逧・↓螯･蠖薙↑蛻ｩ逶翫・繧ｳ繧ｹ繝医・遽・峇縺ｨ繝代Λ繝｡繝ｼ繧ｿ髢灘宛邏・ｒ莠句燕縺ｫ螳夂ｾｩ縺励・    縺昴・蛻ｶ邏・・縺ｧ繝ｩ繝ｳ繝繝繧ｵ繝ｳ繝励Μ繝ｳ繧ｰ繧定｡後＞縲∬､・焚縺ｮ隕ｳ蟇溘ヱ繧ｿ繝ｼ繝ｳ繧貞酔譎ゅ↓
+    蜀咲樟縺ｧ縺阪ｋ繝代Λ繝｡繝ｼ繧ｿ繧ｻ繝・ヨ縺縺代ｒ蜿礼炊縺吶ｋ縲・"""
 
 from __future__ import annotations
 
@@ -110,7 +107,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
     """
 
     return {
-        # ── 1. broad_prior ─────────────────────────────────────────────────
+        # 笏笏 1. broad_prior 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
         "broad_prior": TradeoffPreset(
             name="broad_prior",
             description=(
@@ -130,7 +127,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
             },
         ),
 
-        # ── 2. reproductive_assurance ───────────────────────────────────────
+        # 笏笏 2. reproductive_assurance 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
         "reproductive_assurance": TradeoffPreset(
             name="reproductive_assurance",
             description=(
@@ -151,7 +148,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
             },
         ),
 
-        # ── 3. outcrossing_benefit ──────────────────────────────────────────
+        # 笏笏 3. outcrossing_benefit 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
         "outcrossing_benefit": TradeoffPreset(
             name="outcrossing_benefit",
             description=(
@@ -171,7 +168,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
             },
         ),
 
-        # ── 4. high_guide_cost ──────────────────────────────────────────────
+        # 笏笏 4. high_guide_cost 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
         "high_guide_cost": TradeoffPreset(
             name="high_guide_cost",
             description=(
@@ -192,7 +189,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
             },
         ),
 
-        # ── 5. drift_dominated ──────────────────────────────────────────────
+        # 笏笏 5. drift_dominated 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
         "drift_dominated": TradeoffPreset(
             name="drift_dominated",
             description=(
@@ -279,13 +276,13 @@ def check_ecological_parameter_constraints(
     -----------------------------------------------------
     C4  guide_net_benefit = outcrossing_benefit
                           + direct_pollinator_guide_benefit - guide_cost
-        → guide_favorable (> 0.40) / guide_intermediate (0–0.40)
+        竊・guide_favorable (> 0.40) / guide_intermediate (0窶・.40)
           / guide_unfavorable (< 0)
 
     C5  selfing_net_benefit = selfing_benefit
                             + cost_of_waiting_for_pollinators
                             - inbreeding_depression
-        → selfing_favorable (> 0.30) / selfing_intermediate (-0.10–0.30)
+        竊・selfing_favorable (> 0.30) / selfing_intermediate (-0.10窶・.30)
           / selfing_unfavorable (< -0.10)
 
     Parameters
@@ -310,7 +307,7 @@ def check_ecological_parameter_constraints(
     failed: list[str] = []
     notes: list[str] = []
 
-    # C1 — selfing net fitness must not be implausibly negative
+    # C1 窶・selfing net fitness must not be implausibly negative
     if sb - ibd < -0.30:
         failed.append("C1_selfing_net_fitness")
         notes.append(
@@ -319,7 +316,7 @@ def check_ecological_parameter_constraints(
             " such strong inbreeding cost"
         )
 
-    # C2 — effective alternative outcrossing + extreme selfing benefit together
+    # C2 窶・effective alternative outcrossing + extreme selfing benefit together
     if spe > 0.55 and sb > 0.75:
         failed.append("C2_small_pollinator_vs_selfing_benefit")
         notes.append(
@@ -328,7 +325,7 @@ def check_ecological_parameter_constraints(
             " outcrossing and maximal selfing advantage is unjustified"
         )
 
-    # C3 — internally inconsistent high guide cost + no outcrossing + high guide benefit
+    # C3 窶・internally inconsistent high guide cost + no outcrossing + high guide benefit
     if gc > 0.25 and ob < 0.05 and dgb > 0.80:
         failed.append("C3_guide_cost_benefit_inconsistency")
         notes.append(
@@ -347,7 +344,7 @@ def check_ecological_parameter_constraints(
 def _classify_tradeoffs(params: dict[str, float]) -> dict[str, object]:
     """Compute C4/C5 informational trade-off classifications.
 
-    Not a rejection criterion — purely annotational.
+    Not a rejection criterion 窶・purely annotational.
 
     Returns dict with keys:
         guide_net_benefit, guide_tradeoff_class,
@@ -400,7 +397,7 @@ def sample_valid_parameter_sets(
     - all sampled parameter values from the preset
     - ``guide_net_benefit``, ``guide_tradeoff_class`` (C4)
     - ``selfing_net_benefit``, ``selfing_tradeoff_class`` (C5)
-    - ``parameter_set_id``  — UUID string for traceability
+    - ``parameter_set_id``  窶・UUID string for traceability
     - ``preset_name``
     - ``valid = True``  (only accepted sets are returned)
     - ``failed_constraints = ""``
@@ -412,14 +409,14 @@ def sample_valid_parameter_sets(
     n:
         Target number of valid sets to collect.
     seed:
-        RNG seed for reproducibility. ``None`` → system entropy.
+        RNG seed for reproducibility. ``None`` 竊・system entropy.
     max_attempts:
         Maximum total draws before stopping (default: ``50 * n``).
         If exhausted before *n* sets are found, returns fewer than *n*.
 
     Returns
     -------
-    list of valid annotated parameter dicts (length ≤ n).
+    list of valid annotated parameter dicts (length 竕､ n).
 
     Notes
     -----
@@ -494,3 +491,50 @@ def sample_with_rejection_log(
         (accepted if result.valid else rejected).append(row)
 
     return accepted, rejected
+
+
+# ---------------------------------------------------------------------------
+# Conversion to ModelParameters
+# ---------------------------------------------------------------------------
+
+def param_set_to_model_parameters(param_set: dict):
+    """Convert a sampled latent parameter dict to ModelParameters.
+
+    Maps the 8 CAPOM latent parameters onto ModelParameters fields.
+
+    Mapping
+    -------
+    guide_cost                      → mp.guide_cost
+    outcrossing_benefit             → mp.outcrossing_benefit
+    selfing_benefit                 → mp.selfing_benefit (base)
+    inbreeding_depression           → mp.inbreeding_depression
+    small_pollinator_efficiency     → mp.small_pollinator_efficiency
+    drift_strength                  → mp.base_drift_strength
+    direct_pollinator_guide_benefit → mp.bombus_guide_use
+    cost_of_waiting_for_pollinators → added to selfing_benefit as reproductive-
+                                      assurance modifier (× 0.4, capped at 1.0)
+    """
+
+    from attraction_trait_model.parameters import ModelParameters
+
+    guide_cost = float(param_set.get("guide_cost", 0.05))
+    outcrossing_benefit = float(param_set.get("outcrossing_benefit", 0.2))
+    selfing_benefit_raw = float(param_set.get("selfing_benefit", 0.1))
+    inbreeding_depression = float(param_set.get("inbreeding_depression", 0.2))
+    small_pollinator_efficiency = float(param_set.get("small_pollinator_efficiency", 0.3))
+    drift_strength = float(param_set.get("drift_strength", 0.05))
+    direct_pollinator_guide_benefit = float(param_set.get("direct_pollinator_guide_benefit", 0.6))
+    cost_of_waiting = float(param_set.get("cost_of_waiting_for_pollinators", 0.1))
+
+    # Reproductive assurance: waiting cost increases effective selfing benefit
+    effective_selfing_benefit = min(1.0, selfing_benefit_raw + cost_of_waiting * 0.4)
+
+    return ModelParameters(
+        guide_cost=guide_cost,
+        outcrossing_benefit=outcrossing_benefit,
+        selfing_benefit=effective_selfing_benefit,
+        inbreeding_depression=inbreeding_depression,
+        small_pollinator_efficiency=small_pollinator_efficiency,
+        base_drift_strength=drift_strength,
+        bombus_guide_use=direct_pollinator_guide_benefit,
+    )
