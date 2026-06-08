@@ -1,10 +1,11 @@
-"""Streamlit app for constraint-first CAPOM.
+"""Streamlit app for RACH: Restricted Admissible Causal Hypotheses.
 
 Workflow:
-    constrained parameter exploration
+    ecological constraint grammar
+    -> constrained latent parameter sampling
     -> proxy or stochastic ABM causal simulation
-    -> CAPOM pattern matching
-    -> visual scenario ranking and accepted parameter ranges
+    -> pattern-distance filtering
+    -> restricted admissible causal hypotheses
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ from examples.campanula_izu.proxy_simulation import (
     simulate_campanula_causal_structure,
 )
 
-st.set_page_config(page_title="Campanula CAPOM Research Mode", layout="wide", page_icon="🔭")
+st.set_page_config(page_title="RACH Research App", layout="wide", page_icon="🔭")
 
 OBSERVED_RELS = {
     "nectar_guide": "Oshima > Hachijo",
@@ -57,11 +58,11 @@ LATENT_PARAMS = [
 ]
 
 WORKFLOW_STEPS = [
-    {"Step": "1. Constrain", "Meaning": "Define ecology-principled trade-off ranges and reject inconsistent parameter combinations."},
-    {"Step": "2. Sample", "Meaning": "Randomly sample latent benefit/cost parameters inside the constrained space."},
-    {"Step": "3. Simulate", "Meaning": "Run M1-M5 causal structures with proxy or stochastic ABM backend."},
-    {"Step": "4. Match", "Meaning": "Compare simulated Oshima-Hachijo relations with observed CAPOM targets."},
-    {"Step": "5. Retain", "Meaning": "Report accepted causal structures and accepted latent parameter ranges."},
+    {"Step": "1. Constrain", "Meaning": "Define ecological constraint grammar and reject inconsistent latent parameter combinations."},
+    {"Step": "2. Sample", "Meaning": "Randomly sample latent benefit/cost parameters inside the admissible space."},
+    {"Step": "3. Simulate", "Meaning": "Run M1-M5 candidate causal hypotheses with proxy or stochastic ABM backend."},
+    {"Step": "4. Filter", "Meaning": "Compare simulated Oshima-Hachijo relations with observed pattern targets using pattern distance."},
+    {"Step": "5. Retain", "Meaning": "Report restricted admissible causal hypotheses and compatible latent parameter ranges."},
 ]
 
 BACKEND_DESCRIPTIONS = {
@@ -219,19 +220,22 @@ def run_research_mode(
                 rels, payload = simulate_structure_proxy(structure, model_params)
 
             matches = sum(1 for var, obs in OBSERVED_RELS.items() if rels.get(var) == obs)
-            abc_distance = 1.0 - matches / len(OBSERVED_RELS)
-            accepted = abc_distance <= epsilon
+            pattern_distance = 1.0 - matches / len(OBSERVED_RELS)
+            accepted = pattern_distance <= epsilon
             run_id = f"{param_set.get('parameter_set_id')}_{structure.name}_{backend}"
             run_row = {
                 "run_id": run_id,
                 "parameter_set_id": param_set.get("parameter_set_id"),
                 "preset_name": preset_name,
                 "backend": backend,
+                "causal_hypothesis": structure.name,
                 "structure": structure.name,
                 "pattern_matches": matches,
                 "pattern_total": len(OBSERVED_RELS),
-                "abc_distance": round(abc_distance, 4),
+                "pattern_distance": round(pattern_distance, 4),
+                "abc_distance": round(pattern_distance, 4),
                 "epsilon": round(epsilon, 4),
+                "admissible_by_epsilon": accepted,
                 "accepted_by_epsilon": accepted,
                 "accepted_by_rule": accepted,
                 "acceptance_rule": acceptance_rule,
@@ -248,41 +252,41 @@ def run_research_mode(
             all_runs.append(run_row)
 
             for final_row in payload.get("final_values", []):
-                all_final_values.append({"run_id": run_id, "structure": structure.name, "backend": backend, **final_row})
+                all_final_values.append({"run_id": run_id, "causal_hypothesis": structure.name, "structure": structure.name, "backend": backend, **final_row})
             if backend == "stochastic_abm":
                 for generation_row in payload.get("generation_rows", []):
                     generation_rows_all.append({"run_id": run_id, **generation_row})
 
-    accepted_runs = [row for row in all_runs if row["accepted_by_epsilon"]]
-    accepted_ranges = summarize_parameter_ranges(accepted_runs, LATENT_PARAMS)
+    admissible_runs = [row for row in all_runs if row["admissible_by_epsilon"]]
+    compatible_ranges = summarize_parameter_ranges(admissible_runs, LATENT_PARAMS)
     df_runs = pd.DataFrame(all_runs)
 
     if df_runs.empty:
-        df_summary = pd.DataFrame(columns=["structure", "total_runs", "accepted_runs", "acceptance_rate", "mean_matches", "mean_abc_distance"])
+        df_summary = pd.DataFrame(columns=["causal_hypothesis", "total_runs", "admissible_runs", "admissibility_rate", "mean_matches", "mean_pattern_distance"])
     else:
         df_summary = (
-            df_runs.groupby("structure")
+            df_runs.groupby("causal_hypothesis")
             .agg(
                 total_runs=("pattern_matches", "count"),
-                accepted_runs=("accepted_by_epsilon", "sum"),
+                admissible_runs=("admissible_by_epsilon", "sum"),
                 mean_matches=("pattern_matches", "mean"),
-                mean_abc_distance=("abc_distance", "mean"),
+                mean_pattern_distance=("pattern_distance", "mean"),
             )
             .reset_index()
         )
-        df_summary["acceptance_rate"] = (df_summary["accepted_runs"] / df_summary["total_runs"]).round(3)
+        df_summary["admissibility_rate"] = (df_summary["admissible_runs"] / df_summary["total_runs"]).round(3)
         df_summary["mean_matches"] = df_summary["mean_matches"].round(3)
-        df_summary["mean_abc_distance"] = df_summary["mean_abc_distance"].round(3)
-        df_summary = df_summary.sort_values(["acceptance_rate", "mean_matches"], ascending=False)
+        df_summary["mean_pattern_distance"] = df_summary["mean_pattern_distance"].round(3)
+        df_summary = df_summary.sort_values(["admissibility_rate", "mean_matches"], ascending=False)
 
     return {
         "preset": preset,
-        "accepted_params": pd.DataFrame(accepted_params),
+        "constraint_passed_params": pd.DataFrame(accepted_params),
         "rejected_params": pd.DataFrame(rejected_params),
         "all_runs": df_runs,
-        "accepted_runs": pd.DataFrame(accepted_runs),
-        "accepted_ranges": pd.DataFrame(accepted_ranges),
-        "scenario_summary": df_summary,
+        "admissible_runs": pd.DataFrame(admissible_runs),
+        "compatible_ranges": pd.DataFrame(compatible_ranges),
+        "hypothesis_summary": df_summary,
         "final_values": pd.DataFrame(all_final_values),
         "generation_rows": pd.DataFrame(generation_rows_all),
     }
@@ -292,9 +296,9 @@ def parameter_space_chart(df_runs: pd.DataFrame, x: str, y: str) -> None:
     if df_runs.empty or x not in df_runs or y not in df_runs:
         st.info("No parameter-space data to plot.")
         return
-    plot_df = df_runs[[x, y, "accepted_by_epsilon", "structure"]].dropna().copy()
-    plot_df["accepted"] = plot_df["accepted_by_epsilon"].map({True: "accepted", False: "rejected"})
-    st.scatter_chart(plot_df, x=x, y=y, color="accepted", size=40)
+    plot_df = df_runs[[x, y, "admissible_by_epsilon", "causal_hypothesis"]].dropna().copy()
+    plot_df["admissible"] = plot_df["admissible_by_epsilon"].map({True: "admissible", False: "rejected"})
+    st.scatter_chart(plot_df, x=x, y=y, color="admissible", size=40)
 
 
 def final_values_long(df_final_values: pd.DataFrame) -> pd.DataFrame:
@@ -313,6 +317,7 @@ def final_values_long(df_final_values: pd.DataFrame) -> pd.DataFrame:
             for candidate in candidates:
                 if candidate in row and pd.notna(row[candidate]):
                     rows.append({
+                        "causal_hypothesis": row.get("causal_hypothesis", row.get("structure", "")),
                         "structure": row.get("structure", ""),
                         "population": row.get("population", ""),
                         "variable": variable,
@@ -346,17 +351,18 @@ def generation_timeseries_long(df_generation_rows: pd.DataFrame) -> pd.DataFrame
     return pd.DataFrame(rows)
 
 
-st.title("🔭 Constraint-first CAPOM Research Mode")
-st.caption("Campanula / Izu Islands worked example")
+st.title("🔭 RACH Research App")
+st.caption("Restricted Admissible Causal Hypotheses — Campanula / Izu Islands worked example")
 st.info(
-    "Constrain latent benefit/cost parameters first, then run causal simulations, then use CAPOM/ABC-style matching to keep compatible scenarios.",
+    "RACH first constrains latent ecological trade-offs, then simulates candidate causal hypotheses, "
+    "then retains only the hypotheses and parameter regions compatible with observed patterns.",
     icon="🔭",
 )
 
-with st.expander("Model workflow", expanded=True):
+with st.expander("RACH workflow", expanded=True):
     st.dataframe(pd.DataFrame(WORKFLOW_STEPS), use_container_width=True, hide_index=True)
 
-with st.expander("Observed CAPOM pattern targets", expanded=False):
+with st.expander("Observed pattern targets", expanded=False):
     st.dataframe(
         pd.DataFrame([{"Pattern": key, "Observed relation": value} for key, value in OBSERVED_RELS.items()]),
         use_container_width=True,
@@ -380,11 +386,11 @@ with st.sidebar:
         population_size = 0
         replicates = 0
     seed = st.number_input("Random seed", min_value=0, max_value=999999, value=42, step=1)
-    acceptance_rule = st.selectbox("ABC/CAPOM acceptance rule", ["strict_6_of_6", "relaxed_5_of_6"])
-    run_button = st.button("▶ Run workflow", type="primary", use_container_width=True)
+    acceptance_rule = st.selectbox("Pattern-distance rule", ["strict_6_of_6", "relaxed_5_of_6"])
+    run_button = st.button("▶ Run RACH workflow", type="primary", use_container_width=True)
 
 preset = presets[preset_name]
-st.subheader("Selected ecological trade-off preset")
+st.subheader("Ecological trade-off preset")
 st.caption(preset.description)
 st.dataframe(
     pd.DataFrame([{"Latent parameter": key, "Lower": val[0], "Upper": val[1]} for key, val in preset.ranges.items()]),
@@ -396,7 +402,7 @@ if backend == "stochastic_abm":
     st.warning("Stochastic ABM mode is slower. Start with small draw counts, then increase.", icon="🐢")
 
 if run_button:
-    with st.spinner("Constrain → sample → simulate M1-M5 → match patterns..."):
+    with st.spinner("Constrain → sample → simulate candidate hypotheses → filter admissible hypotheses..."):
         result = run_research_mode(
             preset_name=preset_name,
             n_attempts=n_attempts,
@@ -422,12 +428,12 @@ if run_button:
 if "research_result" in st.session_state:
     result = st.session_state["research_result"]
     settings = st.session_state.get("research_settings", {})
-    df_acc_params = result["accepted_params"]
+    df_acc_params = result["constraint_passed_params"]
     df_rej = result["rejected_params"]
     df_runs = result["all_runs"]
-    df_acc_runs = result["accepted_runs"]
-    df_ranges = result["accepted_ranges"]
-    df_summary = result["scenario_summary"]
+    df_acc_runs = result["admissible_runs"]
+    df_ranges = result["compatible_ranges"]
+    df_summary = result["hypothesis_summary"]
     df_final_values = result["final_values"]
     df_generation_rows = result["generation_rows"]
 
@@ -436,43 +442,43 @@ if "research_result" in st.session_state:
     c1.metric("Prior draws", settings.get("n_attempts", n_attempts))
     c2.metric("Constraint-passed", len(df_acc_params))
     c3.metric("Constraint-rejected", len(df_rej))
-    c4.metric("Accepted runs", len(df_acc_runs))
+    c4.metric("Admissible runs", len(df_acc_runs))
     if not df_summary.empty:
         best = df_summary.iloc[0]
-        c5.metric("Best scenario", str(best["structure"]).replace("M", "M"), f"acceptance {best['acceptance_rate']:.2f}")
+        c5.metric("Best hypothesis", str(best["causal_hypothesis"]), f"admissibility {best['admissibility_rate']:.2f}")
     else:
-        c5.metric("Best scenario", "none")
+        c5.metric("Best hypothesis", "none")
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "🏆 Scenario ranking",
+        "🏆 Hypothesis ranking",
         "🧭 Parameter space",
-        "📌 Accepted ranges",
+        "📌 Compatible ranges",
         "🌱 Simulated values",
         "⏱ ABM time series",
         "📦 Tables & downloads",
     ])
 
     with tab1:
-        st.markdown("### Which causal structure works best?")
+        st.markdown("### Which causal hypothesis remains admissible?")
         if df_summary.empty:
-            st.warning("No scenario summary available.")
+            st.warning("No hypothesis summary available.")
         else:
-            rank_df = df_summary.set_index("structure")[["acceptance_rate"]]
+            rank_df = df_summary.set_index("causal_hypothesis")[["admissibility_rate"]]
             st.bar_chart(rank_df, use_container_width=True)
-            match_df = df_summary.set_index("structure")[["mean_matches"]]
+            match_df = df_summary.set_index("causal_hypothesis")[["mean_matches"]]
             st.caption("Mean number of matched observed patterns out of 6.")
             st.bar_chart(match_df, use_container_width=True)
             st.dataframe(df_summary, use_container_width=True, hide_index=True)
 
         if not df_runs.empty:
-            st.markdown("### Pattern match heatmap-style table")
+            st.markdown("### Pattern match table")
             relation_cols = [col for col in df_runs.columns if col.startswith("relation_")]
-            show_cols = ["structure", "pattern_matches", "abc_distance", "accepted_by_epsilon"] + relation_cols
+            show_cols = ["causal_hypothesis", "pattern_matches", "pattern_distance", "admissible_by_epsilon"] + relation_cols
             st.dataframe(df_runs[show_cols].head(200), use_container_width=True, hide_index=True)
 
     with tab2:
-        st.markdown("### Accepted vs rejected parameter space")
-        st.caption("These plots show where accepted scenario-runs sit in latent benefit/cost space.")
+        st.markdown("### Admissible vs rejected parameter space")
+        st.caption("These plots show where admissible hypothesis-runs sit in latent benefit/cost space.")
         if df_runs.empty:
             st.warning("No run data available.")
         else:
@@ -492,10 +498,10 @@ if "research_result" in st.session_state:
                 parameter_space_chart(df_runs, "drift_strength", "guide_cost")
 
     with tab3:
-        st.markdown("### Accepted latent parameter ranges")
-        st.caption("These ranges, not manually chosen values, are the inferential output.")
+        st.markdown("### Compatible latent parameter ranges")
+        st.caption("These ranges, not manually chosen values, are the inferential output of RACH.")
         if df_ranges.empty:
-            st.warning("No accepted scenario-runs under the selected rule.")
+            st.warning("No admissible hypothesis-runs under the selected rule.")
         else:
             st.dataframe(df_ranges, use_container_width=True, hide_index=True)
             range_plot = df_ranges.set_index("Parameter")[["Median"]]
@@ -508,8 +514,8 @@ if "research_result" in st.session_state:
             st.warning("No final simulated values were returned.")
         else:
             selected_var = st.selectbox("Variable to visualize", sorted(long_values["variable"].unique()))
-            selected_structure = st.selectbox("Structure to visualize", sorted(long_values["structure"].unique()))
-            sub = long_values[(long_values["variable"] == selected_var) & (long_values["structure"] == selected_structure)]
+            selected_hypothesis = st.selectbox("Hypothesis to visualize", sorted(long_values["causal_hypothesis"].unique()))
+            sub = long_values[(long_values["variable"] == selected_var) & (long_values["causal_hypothesis"] == selected_hypothesis)]
             if sub.empty:
                 st.info("No values for this combination.")
             else:
@@ -524,7 +530,7 @@ if "research_result" in st.session_state:
             st.info("Generation-level trajectories are available only in stochastic_abm mode.")
         else:
             var = st.selectbox("Time-series variable", sorted(ts["variable"].unique()))
-            structure = st.selectbox("Time-series structure", sorted(ts["structure"].unique()))
+            structure = st.selectbox("Time-series hypothesis", sorted(ts["structure"].unique()))
             sub = ts[(ts["variable"] == var) & (ts["structure"] == structure)]
             if sub.empty:
                 st.info("No time-series data for this combination.")
@@ -539,20 +545,20 @@ if "research_result" in st.session_state:
         st.dataframe(df_runs.head(200), use_container_width=True, hide_index=True)
         d1, d2, d3 = st.columns(3)
         with d1:
-            st.download_button("all_runs.csv", to_csv_bytes(df_runs), "parameter_filtering_all_runs.csv", "text/csv")
-            st.download_button("accepted_runs.csv", to_csv_bytes(df_acc_runs), "parameter_filtering_accepted_runs.csv", "text/csv")
-            st.download_button("final_values.csv", to_csv_bytes(df_final_values), "simulation_final_values.csv", "text/csv")
+            st.download_button("all_runs.csv", to_csv_bytes(df_runs), "rach_all_runs.csv", "text/csv")
+            st.download_button("admissible_runs.csv", to_csv_bytes(df_acc_runs), "rach_admissible_runs.csv", "text/csv")
+            st.download_button("final_values.csv", to_csv_bytes(df_final_values), "rach_simulation_final_values.csv", "text/csv")
         with d2:
-            st.download_button("accepted_ranges.csv", to_csv_bytes(df_ranges), "parameter_filtering_accepted_ranges.csv", "text/csv")
-            st.download_button("scenario_summary.csv", to_csv_bytes(df_summary), "parameter_filtering_scenario_summary.csv", "text/csv")
+            st.download_button("compatible_ranges.csv", to_csv_bytes(df_ranges), "rach_compatible_ranges.csv", "text/csv")
+            st.download_button("hypothesis_summary.csv", to_csv_bytes(df_summary), "rach_hypothesis_summary.csv", "text/csv")
             if not df_generation_rows.empty:
-                st.download_button("generation_timeseries.csv", to_csv_bytes(df_generation_rows), "stochastic_abm_generation_timeseries.csv", "text/csv")
+                st.download_button("generation_timeseries.csv", to_csv_bytes(df_generation_rows), "rach_stochastic_abm_generation_timeseries.csv", "text/csv")
         with d3:
-            st.download_button("constraint_passed_parameter_sets.csv", to_csv_bytes(df_acc_params), "constraint_passed_parameter_sets.csv", "text/csv")
-            st.download_button("rejected_parameter_sets.csv", to_csv_bytes(df_rej), "parameter_sampling_rejected_sets.csv", "text/csv")
+            st.download_button("constraint_passed_parameter_sets.csv", to_csv_bytes(df_acc_params), "rach_constraint_passed_parameter_sets.csv", "text/csv")
+            st.download_button("rejected_parameter_sets.csv", to_csv_bytes(df_rej), "rach_rejected_parameter_sets.csv", "text/csv")
 
 else:
     st.markdown(
-        "Choose a preset and backend, then click **Run workflow**. "
+        "Choose a preset and backend, then click **Run RACH workflow**. "
         "Use proxy mode for broad filtering and stochastic ABM mode for generation-level simulations."
     )
