@@ -1,14 +1,10 @@
-"""Streamlit entry point for constraint-first CAPOM.
+"""Streamlit app for constraint-first CAPOM.
 
-This app avoids manual parameter tuning. It first constructs an ecologically
-constrained latent parameter space, then runs M1-M5 causal simulations, then uses
-CAPOM pattern matching to retain accepted scenario-parameter combinations.
-
-Two simulation backends are available:
-
-- proxy_causal: fast deterministic causal proxy for broad parameter filtering.
-- stochastic_abm: full individual-based generation simulation using
-  attraction_trait_model.simulation.simulate_population.
+Workflow:
+    constrained parameter exploration
+    -> proxy or stochastic ABM causal simulation
+    -> CAPOM pattern matching
+    -> visual scenario ranking and accepted parameter ranges
 """
 
 from __future__ import annotations
@@ -61,16 +57,16 @@ LATENT_PARAMS = [
 ]
 
 WORKFLOW_STEPS = [
-    {"Step": "1. Constrain", "Meaning": "Choose an ecology-principled trade-off preset and reject biologically inconsistent parameter combinations."},
-    {"Step": "2. Sample", "Meaning": "Randomly sample latent benefit/cost parameters inside the constrained space. No manual tuning."},
-    {"Step": "3. Simulate", "Meaning": "Convert each valid parameter set to ModelParameters and run M1-M5 with proxy or stochastic ABM backend."},
-    {"Step": "4. Match", "Meaning": "Compare simulated Oshima-Hachijo relations with observed CAPOM pattern targets."},
-    {"Step": "5. Retain", "Meaning": "Report accepted causal structures, accepted parameter ranges, and rejected parameter sets."},
+    {"Step": "1. Constrain", "Meaning": "Define ecology-principled trade-off ranges and reject inconsistent parameter combinations."},
+    {"Step": "2. Sample", "Meaning": "Randomly sample latent benefit/cost parameters inside the constrained space."},
+    {"Step": "3. Simulate", "Meaning": "Run M1-M5 causal structures with proxy or stochastic ABM backend."},
+    {"Step": "4. Match", "Meaning": "Compare simulated Oshima-Hachijo relations with observed CAPOM targets."},
+    {"Step": "5. Retain", "Meaning": "Report accepted causal structures and accepted latent parameter ranges."},
 ]
 
 BACKEND_DESCRIPTIONS = {
-    "proxy_causal": "Fast deterministic proxy. Best for broad parameter filtering and debugging.",
-    "stochastic_abm": "Full individual-based generation simulation. Slower, but closer to the intended causal generative model.",
+    "proxy_causal": "Fast deterministic proxy for broad screening and debugging.",
+    "stochastic_abm": "Individual-based generation simulation; slower, but closer to the intended causal generative model.",
 }
 
 
@@ -79,8 +75,6 @@ def to_csv_bytes(df: pd.DataFrame) -> bytes:
 
 
 def relation_from_values(left_name: str, left_value: float, right_name: str, right_value: float, tolerance: float = 0.03) -> str:
-    """Return ordinal relation between two values with a small tolerance."""
-
     if abs(left_value - right_value) <= tolerance:
         return f"{left_name} ~= {right_name}"
     if left_value > right_value:
@@ -89,8 +83,6 @@ def relation_from_values(left_name: str, left_value: float, right_name: str, rig
 
 
 def final_abm_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Return final-generation ABM summary, or zeros if no rows exist."""
-
     if not rows:
         return {
             "mean_nectar_guide": 0.0,
@@ -103,8 +95,6 @@ def final_abm_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def average_summaries(summaries: list[dict[str, Any]]) -> dict[str, float]:
-    """Average final ABM summaries across replicates."""
-
     numeric_keys = [
         "mean_nectar_guide",
         "selfing_rate",
@@ -126,8 +116,6 @@ def average_summaries(summaries: list[dict[str, Any]]) -> dict[str, float]:
 
 
 def simulate_structure_proxy(structure, model_params) -> tuple[dict[str, str], dict[str, Any]]:
-    """Run the existing deterministic proxy causal simulation."""
-
     relations, outputs = simulate_campanula_causal_structure(structure, params=model_params)
     output_rows = []
     for output in outputs:
@@ -152,8 +140,6 @@ def simulate_structure_stochastic_abm(
     replicates: int,
     seed: int,
 ) -> tuple[dict[str, str], dict[str, Any]]:
-    """Run full stochastic ABM for Oshima and Hachijo and convert outputs to CAPOM relations."""
-
     environments = default_campanula_proxy_environments()
     switches = switches_for_structure(structure.name)
     final_by_population: dict[str, dict[str, float]] = {}
@@ -191,11 +177,7 @@ def simulate_structure_stochastic_abm(
         "Fis": relation_from_values("Oshima", oshima["Fis_proxy"], "Hachijo", hachijo["Fis_proxy"]),
         "Bombus_frequency": "Oshima > Hachijo",
     }
-
-    final_rows = []
-    for population_name, values in final_by_population.items():
-        final_rows.append({"population": population_name, **values})
-
+    final_rows = [{"population": name, **values} for name, values in final_by_population.items()]
     return relations, {"final_values": final_rows, "generation_rows": generation_rows}
 
 
@@ -209,14 +191,13 @@ def run_research_mode(
     population_size: int,
     replicates: int,
 ):
-    """Run constraint-first parameter exploration, causal simulation, and CAPOM matching."""
-
     presets = predefined_tradeoff_presets()
     preset = presets[preset_name]
     structures = campanula_causal_structures()
     accepted_params, rejected_params = sample_all_sets_with_rejection_log(preset, n_attempts, seed=seed)
 
     threshold = 6 if acceptance_rule == "strict_6_of_6" else 5
+    epsilon = 1.0 - threshold / len(OBSERVED_RELS)
     all_runs = []
     all_final_values: list[dict[str, Any]] = []
     generation_rows_all: list[dict[str, Any]] = []
@@ -238,7 +219,8 @@ def run_research_mode(
                 rels, payload = simulate_structure_proxy(structure, model_params)
 
             matches = sum(1 for var, obs in OBSERVED_RELS.items() if rels.get(var) == obs)
-            accepted = matches >= threshold
+            abc_distance = 1.0 - matches / len(OBSERVED_RELS)
+            accepted = abc_distance <= epsilon
             run_id = f"{param_set.get('parameter_set_id')}_{structure.name}_{backend}"
             run_row = {
                 "run_id": run_id,
@@ -248,6 +230,9 @@ def run_research_mode(
                 "structure": structure.name,
                 "pattern_matches": matches,
                 "pattern_total": len(OBSERVED_RELS),
+                "abc_distance": round(abc_distance, 4),
+                "epsilon": round(epsilon, 4),
+                "accepted_by_epsilon": accepted,
                 "accepted_by_rule": accepted,
                 "acceptance_rule": acceptance_rule,
                 "generations": generations if backend == "stochastic_abm" else None,
@@ -268,26 +253,27 @@ def run_research_mode(
                 for generation_row in payload.get("generation_rows", []):
                     generation_rows_all.append({"run_id": run_id, **generation_row})
 
-    accepted_runs = [row for row in all_runs if row["accepted_by_rule"]]
+    accepted_runs = [row for row in all_runs if row["accepted_by_epsilon"]]
     accepted_ranges = summarize_parameter_ranges(accepted_runs, LATENT_PARAMS)
-
     df_runs = pd.DataFrame(all_runs)
+
     if df_runs.empty:
-        df_summary = pd.DataFrame(columns=["structure", "total_runs", "accepted_runs", "acceptance_rate", "mean_matches"])
+        df_summary = pd.DataFrame(columns=["structure", "total_runs", "accepted_runs", "acceptance_rate", "mean_matches", "mean_abc_distance"])
     else:
         df_summary = (
             df_runs.groupby("structure")
             .agg(
                 total_runs=("pattern_matches", "count"),
-                accepted_runs=("accepted_by_rule", "sum"),
+                accepted_runs=("accepted_by_epsilon", "sum"),
                 mean_matches=("pattern_matches", "mean"),
+                mean_abc_distance=("abc_distance", "mean"),
             )
             .reset_index()
         )
-        df_summary["acceptance_rate"] = df_summary["accepted_runs"] / df_summary["total_runs"]
+        df_summary["acceptance_rate"] = (df_summary["accepted_runs"] / df_summary["total_runs"]).round(3)
         df_summary["mean_matches"] = df_summary["mean_matches"].round(3)
-        df_summary["acceptance_rate"] = df_summary["acceptance_rate"].round(3)
-        df_summary = df_summary.sort_values("acceptance_rate", ascending=False)
+        df_summary["mean_abc_distance"] = df_summary["mean_abc_distance"].round(3)
+        df_summary = df_summary.sort_values(["acceptance_rate", "mean_matches"], ascending=False)
 
     return {
         "preset": preset,
@@ -302,36 +288,87 @@ def run_research_mode(
     }
 
 
+def parameter_space_chart(df_runs: pd.DataFrame, x: str, y: str) -> None:
+    if df_runs.empty or x not in df_runs or y not in df_runs:
+        st.info("No parameter-space data to plot.")
+        return
+    plot_df = df_runs[[x, y, "accepted_by_epsilon", "structure"]].dropna().copy()
+    plot_df["accepted"] = plot_df["accepted_by_epsilon"].map({True: "accepted", False: "rejected"})
+    st.scatter_chart(plot_df, x=x, y=y, color="accepted", size=40)
+
+
+def final_values_long(df_final_values: pd.DataFrame) -> pd.DataFrame:
+    if df_final_values.empty:
+        return pd.DataFrame()
+    rows = []
+    mappings = {
+        "nectar_guide": ["nectar_guide", "mean_nectar_guide"],
+        "selfing_rate": ["selfing_rate"],
+        "herkogamy": ["herkogamy", "mean_herkogamy"],
+        "flower_size": ["flower_size", "mean_flower_size"],
+        "Fis": ["Fis", "Fis_proxy"],
+    }
+    for _, row in df_final_values.iterrows():
+        for variable, candidates in mappings.items():
+            for candidate in candidates:
+                if candidate in row and pd.notna(row[candidate]):
+                    rows.append({
+                        "structure": row.get("structure", ""),
+                        "population": row.get("population", ""),
+                        "variable": variable,
+                        "value": float(row[candidate]),
+                    })
+                    break
+    return pd.DataFrame(rows)
+
+
+def generation_timeseries_long(df_generation_rows: pd.DataFrame) -> pd.DataFrame:
+    if df_generation_rows.empty:
+        return pd.DataFrame()
+    value_columns = {
+        "mean_nectar_guide": "nectar_guide",
+        "selfing_rate": "selfing_rate",
+        "mean_herkogamy": "herkogamy",
+        "mean_flower_size": "flower_size",
+        "Fis_proxy": "Fis",
+    }
+    rows = []
+    for _, row in df_generation_rows.iterrows():
+        for source, variable in value_columns.items():
+            if source in row and pd.notna(row[source]):
+                rows.append({
+                    "generation": int(row.get("generation", 0)),
+                    "structure": row.get("structure", ""),
+                    "population": row.get("population", ""),
+                    "variable": variable,
+                    "value": float(row[source]),
+                })
+    return pd.DataFrame(rows)
+
+
 st.title("🔭 Constraint-first CAPOM Research Mode")
 st.caption("Campanula / Izu Islands worked example")
-
 st.info(
-    "This app does not manually tune parameters. It first constrains latent benefit/cost "
-    "parameters using ecological trade-off rules, then runs causal simulations, then uses "
-    "CAPOM pattern matching to retain compatible scenario-parameter combinations.",
+    "Constrain latent benefit/cost parameters first, then run causal simulations, then use CAPOM/ABC-style matching to keep compatible scenarios.",
     icon="🔭",
 )
 
-st.subheader("Model workflow")
-st.dataframe(pd.DataFrame(WORKFLOW_STEPS), use_container_width=True, hide_index=True)
+with st.expander("Model workflow", expanded=True):
+    st.dataframe(pd.DataFrame(WORKFLOW_STEPS), use_container_width=True, hide_index=True)
 
 with st.expander("Observed CAPOM pattern targets", expanded=False):
     st.dataframe(
-        pd.DataFrame([
-            {"Pattern": key, "Observed relation": value}
-            for key, value in OBSERVED_RELS.items()
-        ]),
+        pd.DataFrame([{"Pattern": key, "Observed relation": value} for key, value in OBSERVED_RELS.items()]),
         use_container_width=True,
         hide_index=True,
     )
 
 with st.sidebar:
-    st.header("1. Constrained exploration settings")
+    st.header("1. Settings")
     presets = predefined_tradeoff_presets()
     preset_name = st.selectbox("Trade-off preset", list(presets.keys()))
     backend = st.selectbox("Simulation backend", ["proxy_causal", "stochastic_abm"])
     st.caption(BACKEND_DESCRIPTIONS[backend])
-
     if backend == "stochastic_abm":
         n_attempts = st.slider("Prior parameter draws", min_value=20, max_value=500, value=80, step=20)
         generations = st.slider("ABM generations", min_value=10, max_value=100, value=40, step=10)
@@ -342,32 +379,24 @@ with st.sidebar:
         generations = 0
         population_size = 0
         replicates = 0
-
     seed = st.number_input("Random seed", min_value=0, max_value=999999, value=42, step=1)
-    acceptance_rule = st.selectbox("CAPOM acceptance rule", ["strict_6_of_6", "relaxed_5_of_6"])
-    run_button = st.button("▶ Run constrained CAPOM workflow", type="primary", use_container_width=True)
+    acceptance_rule = st.selectbox("ABC/CAPOM acceptance rule", ["strict_6_of_6", "relaxed_5_of_6"])
+    run_button = st.button("▶ Run workflow", type="primary", use_container_width=True)
 
 preset = presets[preset_name]
-st.subheader("1. Selected ecological trade-off preset")
+st.subheader("Selected ecological trade-off preset")
 st.caption(preset.description)
 st.dataframe(
-    pd.DataFrame([
-        {"Latent parameter": key, "Lower bound": val[0], "Upper bound": val[1]}
-        for key, val in preset.ranges.items()
-    ]),
+    pd.DataFrame([{"Latent parameter": key, "Lower": val[0], "Upper": val[1]} for key, val in preset.ranges.items()]),
     use_container_width=True,
     hide_index=True,
 )
 
 if backend == "stochastic_abm":
-    st.warning(
-        "Stochastic ABM mode runs individual-based generation simulations. It is slower than proxy mode. "
-        "Start with small draw counts, then increase once the workflow behaves as expected.",
-        icon="🐢",
-    )
+    st.warning("Stochastic ABM mode is slower. Start with small draw counts, then increase.", icon="🐢")
 
 if run_button:
-    with st.spinner("Constrain → sample → simulate M1-M5 → CAPOM match..."):
+    with st.spinner("Constrain → sample → simulate M1-M5 → match patterns..."):
         result = run_research_mode(
             preset_name=preset_name,
             n_attempts=n_attempts,
@@ -402,68 +431,128 @@ if "research_result" in st.session_state:
     df_final_values = result["final_values"]
     df_generation_rows = result["generation_rows"]
 
-    st.subheader("2. Constraint filtering summary")
-    c1, c2, c3, c4 = st.columns(4)
+    st.subheader("Result overview")
+    c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Prior draws", settings.get("n_attempts", n_attempts))
-    c2.metric("Constraint-passed parameter sets", len(df_acc_params))
-    c3.metric("Constraint-rejected sets", len(df_rej))
-    c4.metric("Accepted scenario-runs", len(df_acc_runs))
-
-    st.subheader("3. Causal structure ranking after CAPOM matching")
-    st.caption(f"Backend: {settings.get('backend', backend)} | Acceptance rule: {settings.get('acceptance_rule', acceptance_rule)}")
-    st.dataframe(df_summary, use_container_width=True, hide_index=True)
-
-    st.subheader("4. Accepted latent parameter ranges")
-    st.caption("These ranges, not manually chosen values, are the inferential output.")
-    if df_ranges.empty:
-        st.warning("No accepted scenario-runs under the selected acceptance rule.")
+    c2.metric("Constraint-passed", len(df_acc_params))
+    c3.metric("Constraint-rejected", len(df_rej))
+    c4.metric("Accepted runs", len(df_acc_runs))
+    if not df_summary.empty:
+        best = df_summary.iloc[0]
+        c5.metric("Best scenario", str(best["structure"]).replace("M", "M"), f"acceptance {best['acceptance_rate']:.2f}")
     else:
-        st.dataframe(df_ranges, use_container_width=True, hide_index=True)
+        c5.metric("Best scenario", "none")
 
-    st.subheader("5. Simulated final values")
-    if df_final_values.empty:
-        st.warning("No final simulated values were returned.")
-    else:
-        st.dataframe(df_final_values.head(200), use_container_width=True, hide_index=True)
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🏆 Scenario ranking",
+        "🧭 Parameter space",
+        "📌 Accepted ranges",
+        "🌱 Simulated values",
+        "⏱ ABM time series",
+        "📦 Tables & downloads",
+    ])
 
-    st.subheader("6. Trade-off class distribution")
-    if not df_acc_params.empty:
-        col_g, col_s = st.columns(2)
-        with col_g:
-            st.markdown("**Guide trade-off classes**")
-            st.dataframe(
-                df_acc_params["guide_tradeoff_class"].value_counts().rename_axis("guide_tradeoff_class").reset_index(name="count"),
-                use_container_width=True,
-                hide_index=True,
-            )
-        with col_s:
-            st.markdown("**Selfing trade-off classes**")
-            st.dataframe(
-                df_acc_params["selfing_tradeoff_class"].value_counts().rename_axis("selfing_tradeoff_class").reset_index(name="count"),
-                use_container_width=True,
-                hide_index=True,
-            )
-    else:
-        st.warning("No constraint-passed parameter sets for this preset / seed / draw count.")
+    with tab1:
+        st.markdown("### Which causal structure works best?")
+        if df_summary.empty:
+            st.warning("No scenario summary available.")
+        else:
+            rank_df = df_summary.set_index("structure")[["acceptance_rate"]]
+            st.bar_chart(rank_df, use_container_width=True)
+            match_df = df_summary.set_index("structure")[["mean_matches"]]
+            st.caption("Mean number of matched observed patterns out of 6.")
+            st.bar_chart(match_df, use_container_width=True)
+            st.dataframe(df_summary, use_container_width=True, hide_index=True)
 
-    st.subheader("7. Downloads")
-    st.caption("Use these CSV files for reproducible checks and manuscript figures.")
-    d1, d2, d3 = st.columns(3)
-    with d1:
-        st.download_button("all_runs.csv", to_csv_bytes(df_runs), "parameter_filtering_all_runs.csv", "text/csv")
-        st.download_button("accepted_runs.csv", to_csv_bytes(df_acc_runs), "parameter_filtering_accepted_runs.csv", "text/csv")
-        st.download_button("final_values.csv", to_csv_bytes(df_final_values), "simulation_final_values.csv", "text/csv")
-    with d2:
-        st.download_button("accepted_ranges.csv", to_csv_bytes(df_ranges), "parameter_filtering_accepted_ranges.csv", "text/csv")
-        st.download_button("scenario_summary.csv", to_csv_bytes(df_summary), "parameter_filtering_scenario_summary.csv", "text/csv")
-        if not df_generation_rows.empty:
-            st.download_button("generation_timeseries.csv", to_csv_bytes(df_generation_rows), "stochastic_abm_generation_timeseries.csv", "text/csv")
-    with d3:
-        st.download_button("constraint_passed_parameter_sets.csv", to_csv_bytes(df_acc_params), "constraint_passed_parameter_sets.csv", "text/csv")
-        st.download_button("rejected_parameter_sets.csv", to_csv_bytes(df_rej), "parameter_sampling_rejected_sets.csv", "text/csv")
+        if not df_runs.empty:
+            st.markdown("### Pattern match heatmap-style table")
+            relation_cols = [col for col in df_runs.columns if col.startswith("relation_")]
+            show_cols = ["structure", "pattern_matches", "abc_distance", "accepted_by_epsilon"] + relation_cols
+            st.dataframe(df_runs[show_cols].head(200), use_container_width=True, hide_index=True)
+
+    with tab2:
+        st.markdown("### Accepted vs rejected parameter space")
+        st.caption("These plots show where accepted scenario-runs sit in latent benefit/cost space.")
+        if df_runs.empty:
+            st.warning("No run data available.")
+        else:
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("**Guide cost vs outcrossing benefit**")
+                parameter_space_chart(df_runs, "guide_cost", "outcrossing_benefit")
+            with col_b:
+                st.markdown("**Selfing benefit vs inbreeding depression**")
+                parameter_space_chart(df_runs, "selfing_benefit", "inbreeding_depression")
+            col_c, col_d = st.columns(2)
+            with col_c:
+                st.markdown("**Small-pollinator efficiency vs selfing benefit**")
+                parameter_space_chart(df_runs, "small_pollinator_efficiency", "selfing_benefit")
+            with col_d:
+                st.markdown("**Drift strength vs guide cost**")
+                parameter_space_chart(df_runs, "drift_strength", "guide_cost")
+
+    with tab3:
+        st.markdown("### Accepted latent parameter ranges")
+        st.caption("These ranges, not manually chosen values, are the inferential output.")
+        if df_ranges.empty:
+            st.warning("No accepted scenario-runs under the selected rule.")
+        else:
+            st.dataframe(df_ranges, use_container_width=True, hide_index=True)
+            range_plot = df_ranges.set_index("Parameter")[["Median"]]
+            st.bar_chart(range_plot, use_container_width=True)
+
+    with tab4:
+        st.markdown("### Simulated Oshima vs Hachijo values")
+        long_values = final_values_long(df_final_values)
+        if long_values.empty:
+            st.warning("No final simulated values were returned.")
+        else:
+            selected_var = st.selectbox("Variable to visualize", sorted(long_values["variable"].unique()))
+            selected_structure = st.selectbox("Structure to visualize", sorted(long_values["structure"].unique()))
+            sub = long_values[(long_values["variable"] == selected_var) & (long_values["structure"] == selected_structure)]
+            if sub.empty:
+                st.info("No values for this combination.")
+            else:
+                value_plot = sub.groupby("population", as_index=True)["value"].mean().to_frame()
+                st.bar_chart(value_plot, use_container_width=True)
+            st.dataframe(df_final_values.head(300), use_container_width=True, hide_index=True)
+
+    with tab5:
+        st.markdown("### Stochastic ABM generation-level trajectories")
+        ts = generation_timeseries_long(df_generation_rows)
+        if ts.empty:
+            st.info("Generation-level trajectories are available only in stochastic_abm mode.")
+        else:
+            var = st.selectbox("Time-series variable", sorted(ts["variable"].unique()))
+            structure = st.selectbox("Time-series structure", sorted(ts["structure"].unique()))
+            sub = ts[(ts["variable"] == var) & (ts["structure"] == structure)]
+            if sub.empty:
+                st.info("No time-series data for this combination.")
+            else:
+                line_df = sub.groupby(["generation", "population"], as_index=False)["value"].mean()
+                line_wide = line_df.pivot(index="generation", columns="population", values="value")
+                st.line_chart(line_wide, use_container_width=True)
+            st.dataframe(df_generation_rows.head(300), use_container_width=True, hide_index=True)
+
+    with tab6:
+        st.markdown("### Raw tables and downloads")
+        st.dataframe(df_runs.head(200), use_container_width=True, hide_index=True)
+        d1, d2, d3 = st.columns(3)
+        with d1:
+            st.download_button("all_runs.csv", to_csv_bytes(df_runs), "parameter_filtering_all_runs.csv", "text/csv")
+            st.download_button("accepted_runs.csv", to_csv_bytes(df_acc_runs), "parameter_filtering_accepted_runs.csv", "text/csv")
+            st.download_button("final_values.csv", to_csv_bytes(df_final_values), "simulation_final_values.csv", "text/csv")
+        with d2:
+            st.download_button("accepted_ranges.csv", to_csv_bytes(df_ranges), "parameter_filtering_accepted_ranges.csv", "text/csv")
+            st.download_button("scenario_summary.csv", to_csv_bytes(df_summary), "parameter_filtering_scenario_summary.csv", "text/csv")
+            if not df_generation_rows.empty:
+                st.download_button("generation_timeseries.csv", to_csv_bytes(df_generation_rows), "stochastic_abm_generation_timeseries.csv", "text/csv")
+        with d3:
+            st.download_button("constraint_passed_parameter_sets.csv", to_csv_bytes(df_acc_params), "constraint_passed_parameter_sets.csv", "text/csv")
+            st.download_button("rejected_parameter_sets.csv", to_csv_bytes(df_rej), "parameter_sampling_rejected_sets.csv", "text/csv")
 
 else:
     st.markdown(
-        "Choose a preset and backend, then click **Run constrained CAPOM workflow**. "
+        "Choose a preset and backend, then click **Run workflow**. "
         "Use proxy mode for broad filtering and stochastic ABM mode for generation-level simulations."
     )
