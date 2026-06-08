@@ -71,6 +71,12 @@ BACKEND_DESCRIPTIONS = {
 }
 
 
+def stretch_df(df: pd.DataFrame, **kwargs) -> None:
+    """Display a dataframe with the current Streamlit width API."""
+
+    st.dataframe(df, width="stretch", **kwargs)
+
+
 def to_csv_bytes(df: pd.DataFrame) -> bytes:
     return df.to_csv(index=False).encode("utf-8")
 
@@ -110,17 +116,13 @@ def average_summaries(summaries: list[dict[str, Any]]) -> dict[str, float]:
     ]
     if not summaries:
         return {key: 0.0 for key in numeric_keys}
-    return {
-        key: sum(float(row.get(key, 0.0)) for row in summaries) / len(summaries)
-        for key in numeric_keys
-    }
+    return {key: sum(float(row.get(key, 0.0)) for row in summaries) / len(summaries) for key in numeric_keys}
 
 
 def simulate_structure_proxy(structure, model_params) -> tuple[dict[str, str], dict[str, Any]]:
     relations, outputs = simulate_campanula_causal_structure(structure, params=model_params)
-    output_rows = []
-    for output in outputs:
-        output_rows.append({
+    output_rows = [
+        {
             "population": output.population,
             "nectar_guide": output.nectar_guide,
             "selfing_rate": output.selfing_rate,
@@ -129,7 +131,9 @@ def simulate_structure_proxy(structure, model_params) -> tuple[dict[str, str], d
             "Fis": output.Fis,
             "Bombus_frequency": output.Bombus_frequency,
             "outcrossing_opportunity": output.outcrossing_opportunity,
-        })
+        }
+        for output in outputs
+    ]
     return relations, {"final_values": output_rows, "generation_rows": []}
 
 
@@ -159,12 +163,7 @@ def simulate_structure_stochastic_abm(
                 seed=run_seed,
             )
             for row in rows:
-                generation_rows.append({
-                    "population": population_name,
-                    "replicate": rep,
-                    "structure": structure.name,
-                    **row,
-                })
+                generation_rows.append({"population": population_name, "replicate": rep, "structure": structure.name, **row})
             replicate_finals.append(final_abm_summary(rows))
         final_by_population[population_name] = average_summaries(replicate_finals)
 
@@ -191,19 +190,18 @@ def run_research_mode(
     generations: int,
     population_size: int,
     replicates: int,
-):
-    presets = predefined_tradeoff_presets()
-    preset = presets[preset_name]
+) -> dict[str, pd.DataFrame]:
+    preset = predefined_tradeoff_presets()[preset_name]
     structures = campanula_causal_structures()
-    accepted_params, rejected_params = sample_all_sets_with_rejection_log(preset, n_attempts, seed=seed)
+    constraint_passed, rejected_params = sample_all_sets_with_rejection_log(preset, n_attempts, seed=seed)
 
     threshold = 6 if acceptance_rule == "strict_6_of_6" else 5
     epsilon = 1.0 - threshold / len(OBSERVED_RELS)
-    all_runs = []
-    all_final_values: list[dict[str, Any]] = []
-    generation_rows_all: list[dict[str, Any]] = []
+    all_runs: list[dict[str, Any]] = []
+    final_values: list[dict[str, Any]] = []
+    generation_rows: list[dict[str, Any]] = []
 
-    for param_index, param_set in enumerate(accepted_params):
+    for param_index, param_set in enumerate(constraint_passed):
         model_params = param_set_to_model_parameters(param_set)
         for structure_index, structure in enumerate(structures):
             run_seed = seed + param_index * 10000 + structure_index * 100
@@ -221,9 +219,9 @@ def run_research_mode(
 
             matches = sum(1 for var, obs in OBSERVED_RELS.items() if rels.get(var) == obs)
             pattern_distance = 1.0 - matches / len(OBSERVED_RELS)
-            accepted = pattern_distance <= epsilon
+            admissible = pattern_distance <= epsilon
             run_id = f"{param_set.get('parameter_set_id')}_{structure.name}_{backend}"
-            run_row = {
+            row = {
                 "run_id": run_id,
                 "parameter_set_id": param_set.get("parameter_set_id"),
                 "preset_name": preset_name,
@@ -235,9 +233,9 @@ def run_research_mode(
                 "pattern_distance": round(pattern_distance, 4),
                 "abc_distance": round(pattern_distance, 4),
                 "epsilon": round(epsilon, 4),
-                "admissible_by_epsilon": accepted,
-                "accepted_by_epsilon": accepted,
-                "accepted_by_rule": accepted,
+                "admissible_by_epsilon": admissible,
+                "accepted_by_epsilon": admissible,
+                "accepted_by_rule": admissible,
                 "acceptance_rule": acceptance_rule,
                 "generations": generations if backend == "stochastic_abm" else None,
                 "population_size": population_size if backend == "stochastic_abm" else None,
@@ -247,15 +245,15 @@ def run_research_mode(
                 "selfing_tradeoff_class": param_set.get("selfing_tradeoff_class", ""),
                 "guide_net_benefit": param_set.get("guide_net_benefit", ""),
                 "selfing_net_benefit": param_set.get("selfing_net_benefit", ""),
-                **{f"relation_{k}": v for k, v in rels.items()},
+                **{f"relation_{key}": val for key, val in rels.items()},
             }
-            all_runs.append(run_row)
+            all_runs.append(row)
 
             for final_row in payload.get("final_values", []):
-                all_final_values.append({"run_id": run_id, "causal_hypothesis": structure.name, "structure": structure.name, "backend": backend, **final_row})
+                final_values.append({"run_id": run_id, "causal_hypothesis": structure.name, "structure": structure.name, "backend": backend, **final_row})
             if backend == "stochastic_abm":
-                for generation_row in payload.get("generation_rows", []):
-                    generation_rows_all.append({"run_id": run_id, **generation_row})
+                for gen_row in payload.get("generation_rows", []):
+                    generation_rows.append({"run_id": run_id, **gen_row})
 
     admissible_runs = [row for row in all_runs if row["admissible_by_epsilon"]]
     compatible_ranges = summarize_parameter_ranges(admissible_runs, LATENT_PARAMS)
@@ -280,15 +278,14 @@ def run_research_mode(
         df_summary = df_summary.sort_values(["admissibility_rate", "mean_matches"], ascending=False)
 
     return {
-        "preset": preset,
-        "constraint_passed_params": pd.DataFrame(accepted_params),
+        "constraint_passed_params": pd.DataFrame(constraint_passed),
         "rejected_params": pd.DataFrame(rejected_params),
         "all_runs": df_runs,
         "admissible_runs": pd.DataFrame(admissible_runs),
         "compatible_ranges": pd.DataFrame(compatible_ranges),
         "hypothesis_summary": df_summary,
-        "final_values": pd.DataFrame(all_final_values),
-        "generation_rows": pd.DataFrame(generation_rows_all),
+        "final_values": pd.DataFrame(final_values),
+        "generation_rows": pd.DataFrame(generation_rows),
     }
 
 
@@ -304,7 +301,7 @@ def parameter_space_chart(df_runs: pd.DataFrame, x: str, y: str) -> None:
 def final_values_long(df_final_values: pd.DataFrame) -> pd.DataFrame:
     if df_final_values.empty:
         return pd.DataFrame()
-    rows = []
+    rows: list[dict[str, Any]] = []
     mappings = {
         "nectar_guide": ["nectar_guide", "mean_nectar_guide"],
         "selfing_rate": ["selfing_rate"],
@@ -337,7 +334,7 @@ def generation_timeseries_long(df_generation_rows: pd.DataFrame) -> pd.DataFrame
         "mean_flower_size": "flower_size",
         "Fis_proxy": "Fis",
     }
-    rows = []
+    rows: list[dict[str, Any]] = []
     for _, row in df_generation_rows.iterrows():
         for source, variable in value_columns.items():
             if source in row and pd.notna(row[source]):
@@ -360,14 +357,10 @@ st.info(
 )
 
 with st.expander("RACH workflow", expanded=True):
-    st.dataframe(pd.DataFrame(WORKFLOW_STEPS), use_container_width=True, hide_index=True)
+    stretch_df(pd.DataFrame(WORKFLOW_STEPS), hide_index=True)
 
 with st.expander("Observed pattern targets", expanded=False):
-    st.dataframe(
-        pd.DataFrame([{"Pattern": key, "Observed relation": value} for key, value in OBSERVED_RELS.items()]),
-        use_container_width=True,
-        hide_index=True,
-    )
+    stretch_df(pd.DataFrame([{"Pattern": key, "Observed relation": value} for key, value in OBSERVED_RELS.items()]), hide_index=True)
 
 with st.sidebar:
     st.header("1. Settings")
@@ -387,14 +380,14 @@ with st.sidebar:
         replicates = 0
     seed = st.number_input("Random seed", min_value=0, max_value=999999, value=42, step=1)
     acceptance_rule = st.selectbox("Pattern-distance rule", ["strict_6_of_6", "relaxed_5_of_6"])
-    run_button = st.button("▶ Run RACH workflow", type="primary", use_container_width=True)
+    run_button = st.button("▶ Run RACH workflow", type="primary", width="stretch")
 
 preset = presets[preset_name]
 st.subheader("Ecological trade-off preset")
 st.caption(preset.description)
 st.dataframe(
     pd.DataFrame([{"Latent parameter": key, "Lower": val[0], "Upper": val[1]} for key, val in preset.ranges.items()]),
-    use_container_width=True,
+    width="stretch",
     hide_index=True,
 )
 
@@ -463,18 +456,15 @@ if "research_result" in st.session_state:
         if df_summary.empty:
             st.warning("No hypothesis summary available.")
         else:
-            rank_df = df_summary.set_index("causal_hypothesis")[["admissibility_rate"]]
-            st.bar_chart(rank_df, use_container_width=True)
-            match_df = df_summary.set_index("causal_hypothesis")[["mean_matches"]]
+            st.bar_chart(df_summary.set_index("causal_hypothesis")[["admissibility_rate"]], width="stretch")
             st.caption("Mean number of matched observed patterns out of 6.")
-            st.bar_chart(match_df, use_container_width=True)
-            st.dataframe(df_summary, use_container_width=True, hide_index=True)
-
+            st.bar_chart(df_summary.set_index("causal_hypothesis")[["mean_matches"]], width="stretch")
+            stretch_df(df_summary, hide_index=True)
         if not df_runs.empty:
             st.markdown("### Pattern match table")
             relation_cols = [col for col in df_runs.columns if col.startswith("relation_")]
             show_cols = ["causal_hypothesis", "pattern_matches", "pattern_distance", "admissible_by_epsilon"] + relation_cols
-            st.dataframe(df_runs[show_cols].head(200), use_container_width=True, hide_index=True)
+            stretch_df(df_runs[show_cols].head(200), hide_index=True)
 
     with tab2:
         st.markdown("### Admissible vs rejected parameter space")
@@ -503,9 +493,8 @@ if "research_result" in st.session_state:
         if df_ranges.empty:
             st.warning("No admissible hypothesis-runs under the selected rule.")
         else:
-            st.dataframe(df_ranges, use_container_width=True, hide_index=True)
-            range_plot = df_ranges.set_index("Parameter")[["Median"]]
-            st.bar_chart(range_plot, use_container_width=True)
+            stretch_df(df_ranges, hide_index=True)
+            st.bar_chart(df_ranges.set_index("Parameter")[["Median"]], width="stretch")
 
     with tab4:
         st.markdown("### Simulated Oshima vs Hachijo values")
@@ -519,9 +508,8 @@ if "research_result" in st.session_state:
             if sub.empty:
                 st.info("No values for this combination.")
             else:
-                value_plot = sub.groupby("population", as_index=True)["value"].mean().to_frame()
-                st.bar_chart(value_plot, use_container_width=True)
-            st.dataframe(df_final_values.head(300), use_container_width=True, hide_index=True)
+                st.bar_chart(sub.groupby("population", as_index=True)["value"].mean().to_frame(), width="stretch")
+            stretch_df(df_final_values.head(300), hide_index=True)
 
     with tab5:
         st.markdown("### Stochastic ABM generation-level trajectories")
@@ -537,12 +525,12 @@ if "research_result" in st.session_state:
             else:
                 line_df = sub.groupby(["generation", "population"], as_index=False)["value"].mean()
                 line_wide = line_df.pivot(index="generation", columns="population", values="value")
-                st.line_chart(line_wide, use_container_width=True)
-            st.dataframe(df_generation_rows.head(300), use_container_width=True, hide_index=True)
+                st.line_chart(line_wide, width="stretch")
+            stretch_df(df_generation_rows.head(300), hide_index=True)
 
     with tab6:
         st.markdown("### Raw tables and downloads")
-        st.dataframe(df_runs.head(200), use_container_width=True, hide_index=True)
+        stretch_df(df_runs.head(200), hide_index=True)
         d1, d2, d3 = st.columns(3)
         with d1:
             st.download_button("all_runs.csv", to_csv_bytes(df_runs), "rach_all_runs.csv", "text/csv")
@@ -556,7 +544,6 @@ if "research_result" in st.session_state:
         with d3:
             st.download_button("constraint_passed_parameter_sets.csv", to_csv_bytes(df_acc_params), "rach_constraint_passed_parameter_sets.csv", "text/csv")
             st.download_button("rejected_parameter_sets.csv", to_csv_bytes(df_rej), "rach_rejected_parameter_sets.csv", "text/csv")
-
 else:
     st.markdown(
         "Choose a preset and backend, then click **Run RACH workflow**. "
