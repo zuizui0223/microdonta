@@ -1,0 +1,7 @@
+pattern,left_population,right_population,left_value,right_value,relation,weight,source,notes
+nectar_guide,Oshima,Hachijo,0.72,0.31,Oshima > Hachijo,1.0,field/Inoue1986,provisional — Oshima retains nectar-guide expression; Hachijo reduced
+selfing_rate,Oshima,Hachijo,0.18,0.64,Oshima < Hachijo,1.0,field/Inoue1986,provisional — Hachijo has higher autonomous selfing rate
+herkogamy,Oshima,Hachijo,0.70,0.35,Oshima > Hachijo,0.8,field,provisional — greater stigma-anther separation on Oshima
+flower_size,Oshima,Hachijo,0.75,0.48,Oshima > Hachijo,0.8,field/Inoue1986,provisional — island isolation associated with floral size reduction
+Fis,Oshima,Hachijo,0.08,0.35,Oshima < Hachijo,1.0,genetic,provisional — elevated inbreeding coefficient on Hachijo consistent with selfing syndrome
+Bombus_frequency,Oshima,Hachijo,0.35,0.00,Oshima > Hachijo,1.0,field/literature,Bombus ardens present on Oshima; absent on Hachijo (Inoue & Amano 1986)
