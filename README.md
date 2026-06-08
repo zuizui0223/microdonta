@@ -61,6 +61,32 @@ For now, the existing Streamlit app remains the working prototype. Once
 `attraction_trait_model` is stable, it can be connected to Streamlit and to the
 CAPOM comparison / inference workflows.
 
+## Latent causal generative model layer
+
+The repository now distinguishes three layers:
+
+1. **Biological generator**
+   `attraction_trait_model` and the Streamlit ABM prototype generate biological
+   outcomes for attraction-trait maintenance or loss.
+
+2. **CAPOM evaluation**
+   `constraint_abm` compares simulated outputs with observed field and
+   literature patterns, then filters plausible latent parameter ranges.
+
+3. **Latent causal generative framing**
+   `causal_model` represents alternative causal structures, including direct
+   effects, mediated effects, direct plus mediated effects, common-cause
+   explanations, and drift/null explanations.
+
+The Campanula / Izu Islands case is the first worked example. Bombus loss,
+selfing increase, and nectar-guide reduction may overlap in the field, but that
+overlap is not treated as direct causal proof. The causal layer asks which
+candidate structures can generate the same observable pattern overlap while also
+matching additional patterns such as flower size, herkogamy, Fis, Fst, Ne, and
+pollinator composition.
+
+See the design document: [Latent causal generative model](docs/latent_causal_generative_model.md).
+
 See also:
 
 - [ABM design policy](docs/abm_design_policy.md)
