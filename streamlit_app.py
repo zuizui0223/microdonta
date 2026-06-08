@@ -32,6 +32,7 @@ from causal_model.abc_distance import (
     epsilon_for_rule,
 )
 from causal_model.parameter_constraints import (
+    LITERATURE_SOURCES,
     predefined_tradeoff_presets,
     sample_all_sets_with_rejection_log,
 )
@@ -518,14 +519,37 @@ with st.sidebar:
 preset = presets[preset_name]
 st.subheader("Ecological trade-off preset")
 st.caption(preset.description)
-st.dataframe(
-    pd.DataFrame([
-        {"Latent parameter": key, "Lower": val[0], "Upper": val[1]}
-        for key, val in preset.ranges.items()
-    ]),
-    width="stretch",
-    hide_index=True,
-)
+_lit_map = {src.parameter: src for src in LITERATURE_SOURCES}
+_prior_rows = []
+for key, (lo, hi) in preset.ranges.items():
+    src = _lit_map.get(key)
+    _prior_rows.append({
+        "Parameter": key,
+        "Lower": lo,
+        "Upper": hi,
+        "Empirical basis": src.empirical_range if src else "broad (unmeasured)",
+        "Source": src.citation if src else "n/a",
+    })
+st.dataframe(pd.DataFrame(_prior_rows), width="stretch", hide_index=True)
+
+if preset.literature_sources:
+    with st.expander("Literature sources for prior ranges", expanded=False):
+        _src_rows = [
+            {
+                "Parameter": s.parameter,
+                "Modelled range": f"({s.modelled_range[0]}, {s.modelled_range[1]})",
+                "Empirical range": s.empirical_range,
+                "Citation": s.citation,
+                "Notes": s.notes,
+            }
+            for s in preset.literature_sources
+        ]
+        st.dataframe(pd.DataFrame(_src_rows), width="stretch", hide_index=True)
+else:
+    st.caption(
+        "broad_prior: ranges are maximally broad for sensitivity analysis. "
+        "Compare results with literature_grounded to check prior sensitivity."
+    )
 
 if backend == "stochastic_abm":
     st.warning(
