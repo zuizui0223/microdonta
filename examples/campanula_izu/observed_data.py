@@ -130,13 +130,14 @@ def load_observed_pattern_table(path: str | Path | None = None) -> list[dict]:
 
 
 def load_observed_patterns(path: str | Path | None = None) -> dict[str, str]:
-    """Return pairwise patterns as ``{pattern_id: relation_string}`` (backward compat).
+    """Return pairwise patterns as ``{variable_name: relation_string}`` (backward compat).
 
     Only rows with type == 'pairwise_relation' are included.
-    The key is the ``pattern`` column (e.g. 'nectar_guide_pairwise').
+    The key is the ``variable`` column (e.g. 'nectar_guide'), matching
+    the keys returned by simulate_campanula_with_switches / relations_from_outputs.
     """
     return {
-        row["pattern"]: row["relation"]
+        row["variable"]: row["relation"]
         for row in load_observed_pattern_table(path)
         if row.get("type", "pairwise_relation") == "pairwise_relation"
     }
@@ -181,10 +182,16 @@ def observed_gradient_patterns(path: str | Path | None = None) -> list[dict]:
 
 
 def load_pattern_weights(path: str | Path | None = None) -> dict[str, float]:
-    """Return ``{pattern_id: weight}`` for all pattern rows."""
+    """Return ``{variable_name: weight}`` for pairwise pattern rows.
+
+    Keyed by ``variable`` (e.g. 'nectar_guide') to match simulation output keys.
+    Only pairwise_relation rows are included (gradient/rank rows are evaluated
+    separately via pattern_evaluator, not via compute_run_distances).
+    """
     return {
-        row["pattern"]: float(row.get("weight", 1.0))
+        row["variable"]: float(row.get("weight", 1.0))
         for row in load_observed_pattern_table(path)
+        if row.get("type", "pairwise_relation") == "pairwise_relation"
     }
 
 
