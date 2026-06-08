@@ -1,10 +1,9 @@
 """Rank Campanula latent causal structures against observable pattern targets.
 
-This is the Issue #3 Stage 3 runner. It compares the explicit observable
-expectations attached to M1-M5 causal structures with the Campanula pattern
-targets. It does not yet run the biological generator. Stage 4 should replace
-these structure-level expected relations with simulation-derived relations from
-`attraction_trait_model` or the Streamlit ABM prototype.
+This is the Issue #3 Stage 4 runner. It uses a deterministic proxy generator
+connected to `attraction_trait_model` probability functions, converts M1-M5
+outputs into Oshima/Hachijo pattern relations, and ranks the causal structures
+against observable Campanula pattern targets.
 """
 
 from __future__ import annotations
@@ -21,7 +20,8 @@ if str(REPO_ROOT) not in sys.path:
 from causal_model import (  # noqa: E402
     default_campanula_causal_structures,
     default_campanula_pattern_targets,
-    score_causal_structure,
+    score_simulated_relations,
+    simulate_campanula_causal_structure,
 )
 
 
@@ -31,10 +31,36 @@ def main() -> None:
 
     summary_rows: list[dict[str, float | str]] = []
     detail_rows: list[dict[str, float | str]] = []
+    value_rows: list[dict[str, float | str]] = []
     for structure in structures:
-        summary, details = score_causal_structure(structure, targets)
+        relations, outputs = simulate_campanula_causal_structure(structure)
+        summary, details = score_simulated_relations(
+            structure_name=structure.name,
+            description=structure.description,
+            relations=relations,
+            targets=targets,
+            latent_parameters=";".join(structure.latent_parameters),
+            edges=";".join(
+                f"{edge.source}->{edge.target}({edge.relation})"
+                for edge in structure.edges
+            ),
+        )
         summary_rows.append(summary)
         detail_rows.extend(details)
+        for output in outputs:
+            value_rows.append(
+                {
+                    "structure": structure.name,
+                    "population": output.population,
+                    "nectar_guide": output.nectar_guide,
+                    "selfing_rate": output.selfing_rate,
+                    "herkogamy": output.herkogamy,
+                    "flower_size": output.flower_size,
+                    "Fis": output.Fis,
+                    "Bombus_frequency": output.Bombus_frequency,
+                    "outcrossing_opportunity": output.outcrossing_opportunity,
+                }
+            )
 
     ranking = sorted(
         summary_rows,
@@ -48,13 +74,19 @@ def main() -> None:
         detail_rows,
         key=lambda row: (str(row["structure"]), str(row["pattern"])),
     )
+    values = sorted(
+        value_rows,
+        key=lambda row: (str(row["structure"]), str(row["population"])),
+    )
 
     out_dir = Path(__file__).resolve().parent / "outputs"
     out_dir.mkdir(exist_ok=True)
     ranking_path = out_dir / "causal_structure_ranking.csv"
     details_path = out_dir / "causal_structure_pattern_scores.csv"
+    values_path = out_dir / "causal_structure_simulated_values.csv"
     write_csv(ranking_path, ranking)
     write_csv(details_path, details)
+    write_csv(values_path, values)
 
     print("Campanula latent causal structure ranking")
     print_table(
@@ -68,6 +100,7 @@ def main() -> None:
     )
     print(f"\nWrote: {ranking_path}")
     print(f"Wrote: {details_path}")
+    print(f"Wrote: {values_path}")
 
 
 def write_csv(path: Path, rows: list[dict[str, float | str]]) -> None:

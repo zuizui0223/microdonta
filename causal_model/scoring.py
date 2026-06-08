@@ -39,12 +39,35 @@ def score_causal_structure(
     """
 
     predicted = expected_pattern_relations(structure)
+    return score_simulated_relations(
+        structure_name=structure.name,
+        description=structure.description,
+        relations=predicted,
+        targets=targets,
+        latent_parameters=";".join(structure.latent_parameters),
+        edges=";".join(
+            f"{edge.source}->{edge.target}({edge.relation})"
+            for edge in structure.edges
+        ),
+    )
+
+
+def score_simulated_relations(
+    structure_name: str,
+    description: str,
+    relations: dict[str, str],
+    targets: list[PatternTarget],
+    latent_parameters: str = "",
+    edges: str = "",
+) -> tuple[dict[str, float | str], list[dict[str, float | str]]]:
+    """Score simulation-derived relations against observable pattern targets."""
+
     detail_rows: list[dict[str, float | str]] = []
     total = 0.0
     weight_sum = sum(target.weight for target in targets) or 1.0
 
     for target in targets:
-        simulated_relation = predicted.get(target.variable, "")
+        simulated_relation = relations.get(target.variable, "")
         raw_mismatch = score_pattern_match(
             observed_relation=target.expected_relation,
             simulated_relation=simulated_relation,
@@ -53,7 +76,7 @@ def score_causal_structure(
         total += weighted_mismatch
         detail_rows.append(
             {
-                "structure": structure.name,
+                "structure": structure_name,
                 "pattern": target.name,
                 "variable": target.variable,
                 "observed_relation": target.expected_relation,
@@ -65,19 +88,16 @@ def score_causal_structure(
         )
 
     summary = {
-        "structure": structure.name,
-        "description": structure.description,
+        "structure": structure_name,
+        "description": description,
         "total_mismatch": total,
         "mean_weighted_mismatch": total / weight_sum,
         "n_targets": float(len(targets)),
         "n_predicted_targets": float(
-            sum(1 for target in targets if target.variable in predicted)
+            sum(1 for target in targets if target.variable in relations)
         ),
-        "latent_parameters": ";".join(structure.latent_parameters),
-        "edges": ";".join(
-            f"{edge.source}->{edge.target}({edge.relation})"
-            for edge in structure.edges
-        ),
+        "latent_parameters": latent_parameters,
+        "edges": edges,
     }
     return summary, detail_rows
 

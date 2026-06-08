@@ -165,6 +165,19 @@ The causal layer should eventually output:
 6. Null model comparison.
 7. Variables that best distinguish remaining hypotheses.
 
+## Stage 4 Proxy Simulation
+
+The first implementation bridge is intentionally modest. The
+`causal_model.simulation` module uses existing `attraction_trait_model`
+probability functions to generate deterministic Oshima/Hachijo proxy values for
+each candidate causal structure. These proxy values are converted into ordinal
+relations such as `Oshima > Hachijo` and scored against pattern targets.
+
+This is not yet the full stochastic ABM. It is a transparent intermediate step
+that makes causal structures produce simulated pattern relations before Stage 5
+connects richer population simulation, replicate seeds, sensitivity analysis,
+and latent-parameter filtering.
+
 ## Relationship to Issue #2
 
 Issue #2 builds the biological generator for attraction-trait maintenance and
