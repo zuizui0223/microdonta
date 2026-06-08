@@ -407,19 +407,22 @@ def compute_coactivation_table(
 def _acceptance_threshold(acceptance_rule: str) -> float:
     """Map an ABC acceptance rule name to a minimum weighted_match_rate threshold.
 
-    With 13 gradient patterns the old 6-pattern epsilon values do not apply
-    directly.  We map rule names to a fraction-of-patterns-matched threshold:
+    The POM uses ONLY the 7 gradient-direction patterns (5 gradient_slope +
+    2 rank_order).  Pairwise population comparisons are excluded because the
+    core hypothesis is the *gradient itself* (island syndrome: traits change
+    monotonically with isolation distance), not specific named-population
+    endpoint contrasts.
 
-        strict_6_of_6   -> 1.000  (all 13 must match)
-        relaxed_5_of_6  -> 0.846  (>=11/13 must match by weight)
-        relaxed_4_of_6  -> 0.692  (>=9/13)
+        strict_6_of_6   -> 1.000  (all 7 must match)
+        relaxed_5_of_6  -> 0.857  (>=6/7 must match by weight)
+        relaxed_4_of_6  -> 0.714  (>=5/7)
         weighted_strict -> 1.000
         weighted_lax    -> 0.800
     """
     return {
         "strict_6_of_6":   1.000,
-        "relaxed_5_of_6":  11 / 13,
-        "relaxed_4_of_6":   9 / 13,
+        "relaxed_5_of_6":  6 / 7,
+        "relaxed_4_of_6":  5 / 7,
         "weighted_strict": 1.000,
         "weighted_lax":    0.800,
     }.get(acceptance_rule, 1.000)
@@ -458,8 +461,8 @@ def run_switch_posterior_inference(
     """
 
     from examples.campanula_izu.observed_data import (
-        load_observed_pattern_table,
         load_population_env,
+        observed_gradient_only_patterns,
     )
     from examples.campanula_izu.pattern_evaluator import (
         evaluate_patterns,
@@ -476,7 +479,11 @@ def run_switch_posterior_inference(
     threshold = _acceptance_threshold(acceptance_rule)
 
     pop_env = load_population_env()
-    all_patterns = load_observed_pattern_table()
+    # POM = gradient-direction patterns only (gradient_slope + rank_order).
+    # We do NOT use pairwise comparisons (Oshima vs Hachijo) because the
+    # target hypothesis is the *isolation gradient itself* (island syndrome),
+    # not specific endpoint population contrasts.
+    all_patterns = observed_gradient_only_patterns()
     grad_envs = (
         environments_from_population_env(pop_env)
         if pop_env else default_campanula_gradient_environments()
@@ -672,8 +679,8 @@ def run_switch_posterior_inference_abm(
 
     from attraction_trait_model.simulation import simulate_population
     from examples.campanula_izu.observed_data import (
-        load_observed_pattern_table,
         load_population_env,
+        observed_gradient_only_patterns,
     )
     from examples.campanula_izu.pattern_evaluator import (
         ABMPopulationProxy,
@@ -690,7 +697,8 @@ def run_switch_posterior_inference_abm(
     threshold = _acceptance_threshold(acceptance_rule)
 
     pop_env = load_population_env()
-    all_patterns = load_observed_pattern_table()
+    # POM = gradient-direction patterns only (island syndrome gradient).
+    all_patterns = observed_gradient_only_patterns()
     environments = (
         environments_from_population_env(pop_env)
         if pop_env else default_campanula_gradient_environments()

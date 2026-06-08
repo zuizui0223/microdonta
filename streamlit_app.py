@@ -51,6 +51,7 @@ from examples.campanula_izu.observed_data import (
     load_observed_patterns,
     load_pattern_weights,
     load_population_env,
+    observed_gradient_only_patterns,
     observed_gradient_patterns,
     observed_pairwise_relations,
     ordered_populations,
@@ -380,13 +381,14 @@ def run_research_mode(
                 rule=acceptance_rule,
             )
 
-            # Gradient pattern evaluation (all 13 patterns across 4 populations)
+            # Gradient pattern evaluation (7 gradient-only patterns across 4 populations)
+            # POM = isolation gradient direction (island syndrome), NOT specific pairwise comparisons
             _outputs_list = payload.get("outputs_list", [])
             _is_abm = payload.get("abm", False)
             _grad_eval_cols: dict = {}
             if _outputs_list and _GRADIENT_PATTERNS:
                 try:
-                    _all_pats = load_observed_pattern_table()
+                    _all_pats = observed_gradient_only_patterns()
                     _grad_eval = evaluate_patterns(
                         _outputs_list, _all_pats, _POP_ENV
                     )
@@ -668,8 +670,10 @@ with st.sidebar:
     st.divider()
     st.subheader("Island Gradient Analysis")
     st.caption(
-        "Simulates all four populations (mainland -> Oshima -> Kozushima -> Hachijo) "
-        "and evaluates gradient + pairwise + rank-order patterns."
+        "Simulates all four populations (mainland → Oshima → Kozushima → Hachijo) "
+        "and evaluates whether traits change *in the right direction along the isolation "
+        "gradient* (island syndrome). POM = 7 gradient-direction patterns (slope sign + "
+        "rank order); specific pairwise population names are not part of the target."
     )
     grad_n_attempts = st.slider(
         "Gradient inference draws", 200, 2000, 800, 100,
@@ -762,7 +766,8 @@ if run_gradient_button:
         _constraint_ok, _ = sample_all_sets_with_rejection_log(
             _preset, int(grad_n_attempts), seed=int(seed) + 99
         )
-        _all_patterns = load_observed_pattern_table()
+        # POM = gradient-only patterns (island syndrome: trait direction along isolation distance)
+        _all_patterns = observed_gradient_only_patterns()
         _grad_envs = (
             environments_from_population_env(_POP_ENV)
             if _POP_ENV

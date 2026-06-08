@@ -162,6 +162,10 @@ def observed_pairwise_relations(path: str | Path | None = None) -> dict[str, str
 def observed_gradient_patterns(path: str | Path | None = None) -> list[dict]:
     """Return gradient_slope and rank_order pattern rows.
 
+    These are the gradient POM: abstract directional expectations that do NOT
+    name specific population pairs, only the direction of change along the
+    isolation gradient (e.g. "nectar_guide decreases with distance").
+
     Returns
     -------
     list of dict
@@ -179,6 +183,22 @@ def observed_gradient_patterns(path: str | Path | None = None) -> list[dict]:
         out["populations"] = [p.strip() for p in raw_pops.split(";") if p.strip()]
         rows.append(out)
     return rows
+
+
+def observed_gradient_only_patterns(path: str | Path | None = None) -> list[dict]:
+    """Return ONLY gradient_slope and rank_order rows as raw dicts (unprocessed).
+
+    Unlike observed_gradient_patterns(), this returns the raw CSV rows
+    (suitable for passing to evaluate_patterns() directly), without splitting
+    the populations field — evaluate_patterns() handles that internally.
+
+    Use this when you want purely gradient-based POM with no population-specific
+    pairwise comparisons.
+    """
+    return [
+        row for row in load_observed_pattern_table(path)
+        if row.get("type", "") in ("gradient_slope", "rank_order")
+    ]
 
 
 def load_pattern_weights(path: str | Path | None = None) -> dict[str, float]:
