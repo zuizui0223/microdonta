@@ -74,7 +74,7 @@ BACKEND_DESCRIPTIONS = {
 def stretch_df(df: pd.DataFrame, **kwargs) -> None:
     """Display a dataframe with the current Streamlit width API."""
 
-    st.dataframe(df, use_container_width=True, **kwargs)
+    st.dataframe(df, width="stretch", **kwargs)
 
 
 def to_csv_bytes(df: pd.DataFrame) -> bytes:
@@ -380,12 +380,16 @@ with st.sidebar:
         replicates = 0
     seed = st.number_input("Random seed", min_value=0, max_value=999999, value=42, step=1)
     acceptance_rule = st.selectbox("Pattern-distance rule", ["strict_6_of_6", "relaxed_5_of_6"])
-    run_button = st.button("▶ Run RACH workflow", type="primary", use_container_width=True)
+    run_button = st.button("▶ Run RACH workflow", type="primary", width="stretch")
 
 preset = presets[preset_name]
 st.subheader("Ecological trade-off preset")
 st.caption(preset.description)
-st.dataframe(pd.DataFrame([{"Latent parameter": key, "Lower": val[0], "Upper": val[1]} for key, val in preset.ranges.items()]), use_container_width=True, hide_index=True)
+st.dataframe(
+    pd.DataFrame([{"Latent parameter": key, "Lower": val[0], "Upper": val[1]} for key, val in preset.ranges.items()]),
+    width="stretch",
+    hide_index=True,
+)
 
 if backend == "stochastic_abm":
     st.warning("Stochastic ABM mode is slower. Start with small draw counts, then increase.", icon="🐢")
@@ -452,9 +456,9 @@ if "research_result" in st.session_state:
         if df_summary.empty:
             st.warning("No hypothesis summary available.")
         else:
-            st.bar_chart(df_summary.set_index("causal_hypothesis")[["admissibility_rate"]])
+            st.bar_chart(df_summary.set_index("causal_hypothesis")[["admissibility_rate"]], width="stretch")
             st.caption("Mean number of matched observed patterns out of 6.")
-            st.bar_chart(df_summary.set_index("causal_hypothesis")[["mean_matches"]])
+            st.bar_chart(df_summary.set_index("causal_hypothesis")[["mean_matches"]], width="stretch")
             stretch_df(df_summary, hide_index=True)
         if not df_runs.empty:
             st.markdown("### Pattern match table")
@@ -490,7 +494,7 @@ if "research_result" in st.session_state:
             st.warning("No admissible hypothesis-runs under the selected rule.")
         else:
             stretch_df(df_ranges, hide_index=True)
-            st.bar_chart(df_ranges.set_index("Parameter")[["Median"]])
+            st.bar_chart(df_ranges.set_index("Parameter")[["Median"]], width="stretch")
 
     with tab4:
         st.markdown("### Simulated Oshima vs Hachijo values")
@@ -504,7 +508,7 @@ if "research_result" in st.session_state:
             if sub.empty:
                 st.info("No values for this combination.")
             else:
-                st.bar_chart(sub.groupby("population", as_index=True)["value"].mean().to_frame())
+                st.bar_chart(sub.groupby("population", as_index=True)["value"].mean().to_frame(), width="stretch")
             stretch_df(df_final_values.head(300), hide_index=True)
 
     with tab5:
@@ -521,7 +525,7 @@ if "research_result" in st.session_state:
             else:
                 line_df = sub.groupby(["generation", "population"], as_index=False)["value"].mean()
                 line_wide = line_df.pivot(index="generation", columns="population", values="value")
-                st.line_chart(line_wide)
+                st.line_chart(line_wide, width="stretch")
             stretch_df(df_generation_rows.head(300), hide_index=True)
 
     with tab6:
