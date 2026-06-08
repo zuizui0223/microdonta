@@ -85,10 +85,16 @@ Planned files:
 ```text
 observed_patterns_template.csv
 run_case_study.py
+run_inoue_pattern_comparison.py
 scenario_config.yaml
 figures/
 outputs/
 ```
+
+`run_inoue_pattern_comparison.py` treats the Inoue-series literature information
+as observed CAPOM patterns, runs H1-H5 ABM scenarios, and ranks scenarios by how
+well their simulated outputs match Bombus frequency, flower size, selfing
+ability, and pollinator-fauna patterns.
 
 ## Manuscript use
 
