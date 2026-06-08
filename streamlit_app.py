@@ -1,6 +1,10 @@
-"""CAPOM — シマホタルブクロ インタラクティブシミュレーター.
+"""CAPOM — Campanula Izu Islands: Interactive Pattern-Oriented Modelling App.
 
-実行: streamlit run streamlit_app.py
+Implements generative inverse estimation for the selfing-syndrome / nectar-guide
+loss gradient across the Izu Islands (Mainland → Oshima → Kozu → Hachijo).
+
+Run:
+    streamlit run streamlit_app.py
 """
 
 from __future__ import annotations
@@ -18,82 +22,102 @@ import pandas as pd
 import streamlit as st
 
 st.set_page_config(
-    page_title="シマホタルブクロ CAPOM",
+    page_title="Campanula CAPOM",
     layout="wide",
     page_icon="🌿",
 )
 
-# ── ページ選択 ────────────────────────────────────────────────────────────────
+# ── Sidebar navigation ────────────────────────────────────────────────────────
 page = st.sidebar.radio(
-    "ページ",
+    "Navigation",
     [
-        "🧪 シミュレーション実行",
-        "📊 観察パターン",
-        "🔍 因果構造比較 (M1–M5)",
-        "📈 ABC 事後分布",
-        "🌿 TenSnap 可視化",
+        "🧪 ABM Simulation",
+        "🔬 ABC Inference",
+        "📊 Observed Patterns",
+        "🔍 Causal Structure Comparison",
+        "🌿 TenSnap Visualisation",
     ],
 )
 
-# ── プリセット ─────────────────────────────────────────────────────────────────
-PRESETS: dict[str, dict[str, float]] = {
-    "Mainland (本州)": dict(
+st.sidebar.divider()
+st.sidebar.caption(
+    "CAPOM: Constraint-Aware Pattern-Oriented Modelling  \n"
+    "*Campanula punctata* var. *hondoensis* / *microdonta*  \n"
+    "Izu Islands pollination ecology"
+)
+
+# ── Shared constants ──────────────────────────────────────────────────────────
+POPULATION_ORDER = ["Mainland", "Oshima", "Kozu", "Hachijo"]
+
+PRESETS: dict[str, dict] = {
+    "Mainland": dict(
         nectar_guide=0.62, flower_size=0.82, herkogamy=0.78, selfing_ability=0.22,
         bombus_frequency=1.0, pollinator_environment=0.78, migration_rate=0.10,
         guide_cost=0.06, genetic_drift_strength=0.035, mutation_sd=0.055,
-        inbreeding_load=0.32,
+        inbreeding_load=0.32, bombus_guide_dependence=0.75,
+        other_pollinator_guide_use=0.12, base_outcross=0.10,
     ),
-    "Oshima (大島)": dict(
+    "Oshima": dict(
         nectar_guide=0.55, flower_size=0.72, herkogamy=0.62, selfing_ability=0.36,
         bombus_frequency=0.35, pollinator_environment=0.58, migration_rate=0.05,
         guide_cost=0.06, genetic_drift_strength=0.035, mutation_sd=0.055,
-        inbreeding_load=0.25,
+        inbreeding_load=0.25, bombus_guide_dependence=0.75,
+        other_pollinator_guide_use=0.12, base_outcross=0.10,
     ),
-    "Kozu (神津島)": dict(
+    "Kozu": dict(
         nectar_guide=0.42, flower_size=0.58, herkogamy=0.44, selfing_ability=0.52,
         bombus_frequency=0.0, pollinator_environment=0.42, migration_rate=0.025,
         guide_cost=0.06, genetic_drift_strength=0.05, mutation_sd=0.055,
-        inbreeding_load=0.18,
+        inbreeding_load=0.18, bombus_guide_dependence=0.0,
+        other_pollinator_guide_use=0.18, base_outcross=0.10,
     ),
-    "Hachijo (八丈島)": dict(
+    "Hachijo": dict(
         nectar_guide=0.28, flower_size=0.46, herkogamy=0.30, selfing_ability=0.68,
         bombus_frequency=0.0, pollinator_environment=0.36, migration_rate=0.01,
         guide_cost=0.06, genetic_drift_strength=0.07, mutation_sd=0.055,
-        inbreeding_load=0.12,
+        inbreeding_load=0.12, bombus_guide_dependence=0.0,
+        other_pollinator_guide_use=0.18, base_outcross=0.10,
     ),
 }
 
-OBSERVED: dict[str, dict[str, float]] = {
-    "Mainland (本州)": dict(nectar_guide=0.62, selfing_rate=0.22, Fis=0.08, outcrossing_rate=0.65),
-    "Oshima (大島)":   dict(nectar_guide=0.55, selfing_rate=0.35, Fis=0.14, outcrossing_rate=0.50),
-    "Kozu (神津島)":   dict(nectar_guide=0.42, selfing_rate=0.52, Fis=0.28, outcrossing_rate=0.32),
-    "Hachijo (八丈島)": dict(nectar_guide=0.28, selfing_rate=0.68, Fis=0.42, outcrossing_rate=0.18),
+OBSERVED: dict[str, dict] = {
+    "Mainland": dict(mean_nectar_guide=0.62, selfing_rate=0.22, Fis=0.08, outcrossing_rate=0.65),
+    "Oshima":   dict(mean_nectar_guide=0.55, selfing_rate=0.35, Fis=0.14, outcrossing_rate=0.50),
+    "Kozu":     dict(mean_nectar_guide=0.42, selfing_rate=0.52, Fis=0.28, outcrossing_rate=0.32),
+    "Hachijo":  dict(mean_nectar_guide=0.28, selfing_rate=0.68, Fis=0.42, outcrossing_rate=0.18),
 }
 
-TRAIT_JP = {
-    "mean_nectar_guide": "蜜腺標識",
-    "mean_flower_size": "花サイズ",
-    "mean_herkogamy": "雌雄異熟",
-    "mean_selfing_ability": "自殖能力",
-    "selfing_rate": "自殖率",
-    "outcrossing_rate": "外交配率",
-    "Fis": "Fis (近交係数)",
-    "Fst": "Fst (集団間分化)",
-    "mean_fitness": "平均適応度",
+TRAIT_LABELS: dict[str, str] = {
+    "mean_nectar_guide": "nectar guide",
+    "mean_flower_size": "flower size",
+    "mean_herkogamy": "herkogamy",
+    "mean_selfing_ability": "selfing ability",
+    "selfing_rate": "selfing rate",
+    "outcrossing_rate": "outcrossing rate",
+    "Fis": "inbreeding coefficient (Fis)",
+    "Fst": "population differentiation (Fst)",
+    "mean_fitness": "mean fitness",
+    "failed_rate": "pollination failure rate",
+    "mean_neutral_diversity": "neutral diversity",
+    "nectar_guide": "nectar guide",
+    "flower_size": "flower size",
+    "herkogamy": "herkogamy",
+    "selfing_ability": "selfing ability",
+    "bombus_frequency": "Bombus frequency",
+    "pollinator_environment": "pollinator environment",
+    "migration_rate": "migration rate",
+    "admixture_index": "admixture index",
 }
 
 
-# ── ABM 軌跡シミュレーター (インライン実装) ────────────────────────────────────
-def _clamp(v: float, lo: float = 0.0, hi: float = 1.0) -> float:
-    return max(lo, min(hi, v))
+# ── Inline ABM trajectory (mirrors abm_core.simulate but records each gen) ────
+def _clamp(v, lo=0.0, hi=1.0): return max(lo, min(hi, v))
+def _mean(xs): return sum(xs) / len(xs) if xs else math.nan
 
 
-def _mean(vals: list[float]) -> float:
-    return sum(vals) / len(vals) if vals else math.nan
-
-
-def run_trajectory(params: dict, generations: int, population_size: int, seed: int) -> pd.DataFrame:
-    """世代ごとの統計を返す DataFrame を生成する。"""
+def run_trajectory(
+    params: dict, generations: int, population_size: int, seed: int
+) -> pd.DataFrame:
     try:
         from attraction_trait_model.agents import PlantAgent
         from attraction_trait_model.environment import Environment
@@ -101,27 +125,24 @@ def run_trajectory(params: dict, generations: int, population_size: int, seed: i
         from attraction_trait_model.inheritance import drift_strength, inherit_trait
         from attraction_trait_model.parameters import ModelParameters
         from attraction_trait_model.reproduction import (
-            clamp,
-            outcrossing_probability,
-            selfing_probability,
+            clamp, outcrossing_probability, selfing_probability,
         )
     except ImportError as e:
-        st.error(f"attraction_trait_model が見つかりません: {e}")
+        st.error(f"attraction_trait_model not found: {e}")
         return pd.DataFrame()
 
     rng = random.Random(seed)
-    bombus = _clamp(params.get("bombus_frequency", 0.0))
+    bom = _clamp(params.get("bombus_frequency", 0.0))
     env = Environment(
         name=params.get("population_name", "sim"),
-        bombus_frequency=bombus,
-        small_pollinator_frequency=_clamp(1.0 - bombus),
+        bombus_frequency=bom,
+        small_pollinator_frequency=_clamp(1.0 - bom),
         pollinator_environment=_clamp(params.get("pollinator_environment", 0.5)),
         migration_rate=_clamp(params.get("migration_rate", 0.05), 0, 1),
         effective_population_size=float(params.get("effective_population_size", 100)),
         island_distance=float(params.get("island_distance", 0)),
     )
     mu = params.get("mutation_sd", 0.055)
-    mu_t = mu * 0.5
     mp = ModelParameters(
         base_outcross_rate=params.get("base_outcross", 0.10),
         bombus_efficiency=params.get("bombus_pollination_efficiency", 0.86),
@@ -135,13 +156,13 @@ def run_trajectory(params: dict, generations: int, population_size: int, seed: i
         guide_cost=params.get("guide_cost", 0.06),
         flower_size_cost=params.get("flower_size_cost", 0.02),
         mutation_sd_guide=mu,
-        mutation_sd_flower_size=mu_t,
-        mutation_sd_herkogamy=mu_t,
-        mutation_sd_selfing_ability=mu_t,
+        mutation_sd_flower_size=mu * 0.5,
+        mutation_sd_herkogamy=mu * 0.5,
+        mutation_sd_selfing_ability=mu * 0.5,
         base_drift_strength=params.get("genetic_drift_strength", 0.035),
     )
 
-    def init_agent() -> PlantAgent:
+    def new_agent():
         def g(k, d, s): return _clamp(rng.gauss(params.get(k, d), s))
         return PlantAgent(
             nectar_guide=g("nectar_guide", 0.5, 0.08),
@@ -149,279 +170,524 @@ def run_trajectory(params: dict, generations: int, population_size: int, seed: i
             herkogamy=g("herkogamy", 0.55, 0.08),
             selfing_ability=g("selfing_ability", 0.40, 0.06),
             neutral_diversity=_clamp(rng.gauss(0.78, 0.08)),
-            x=rng.uniform(0, 1),
-            y=rng.uniform(0, 1),
+            x=rng.uniform(0, 1), y=rng.uniform(0, 1),
         )
 
     def evaluate(pop):
         for a in pop:
-            p_out = outcrossing_probability(a, env, mp)
-            p_self = selfing_probability(a, p_out)
+            po = outcrossing_probability(a, env, mp)
+            ps = selfing_probability(a, po)
             r = rng.random()
-            if r < p_out:
-                a.reproduction_mode = "outcrossing"
-            elif r < p_out + p_self:
-                a.reproduction_mode = "selfing"
-            else:
-                a.reproduction_mode = "failed"
+            a.reproduction_mode = "outcrossing" if r < po else "selfing" if r < po + ps else "failed"
             a.fitness = compute_fitness(a, mp)
 
-    def make_offspring(parent) -> PlantAgent:
-        d_sd = drift_strength(env, mp)
+    def offspring(parent):
+        d = drift_strength(env, mp)
         div = parent.neutral_diversity
-        if parent.reproduction_mode == "outcrossing":
-            div += 0.045
-        elif parent.reproduction_mode == "selfing":
-            div *= (1.0 - 0.5 * mp.inbreeding_depression)
-        else:
-            div *= 0.96
+        div = div + 0.045 if parent.reproduction_mode == "outcrossing" else \
+              div * (1 - 0.5 * mp.inbreeding_depression) if parent.reproduction_mode == "selfing" else \
+              div * 0.96
         div += env.migration_rate * (0.82 - div)
         return PlantAgent(
-            nectar_guide=inherit_trait(parent.nectar_guide, mp.mutation_sd_guide, d_sd, rng),
-            flower_size=inherit_trait(parent.flower_size, mp.mutation_sd_flower_size, d_sd, rng),
-            herkogamy=inherit_trait(parent.herkogamy, mp.mutation_sd_herkogamy, d_sd, rng),
-            selfing_ability=inherit_trait(parent.selfing_ability, mp.mutation_sd_selfing_ability, d_sd, rng),
-            neutral_diversity=_clamp(div + rng.gauss(0, d_sd)),
+            nectar_guide=inherit_trait(parent.nectar_guide, mp.mutation_sd_guide, d, rng),
+            flower_size=inherit_trait(parent.flower_size, mp.mutation_sd_flower_size, d, rng),
+            herkogamy=inherit_trait(parent.herkogamy, mp.mutation_sd_herkogamy, d, rng),
+            selfing_ability=inherit_trait(parent.selfing_ability, mp.mutation_sd_selfing_ability, d, rng),
+            neutral_diversity=_clamp(div + rng.gauss(0, d)),
             x=_clamp(parent.x + rng.gauss(0, 0.055)),
             y=_clamp(parent.y + rng.gauss(0, 0.055)),
         )
 
-    def snapshot(gen, pop) -> dict:
-        selfing = _mean([1.0 if a.reproduction_mode == "selfing" else 0.0 for a in pop])
-        outcross = _mean([1.0 if a.reproduction_mode == "outcrossing" else 0.0 for a in pop])
-        div = _mean([a.neutral_diversity for a in pop])
-        fis = _clamp(selfing * (1.0 - 0.5 * env.migration_rate))
-        fst = _clamp((1.0 - env.migration_rate) * (1.0 - outcross) * (1.0 - div))
-        return {
-            "generation": gen,
-            "mean_nectar_guide": _mean([a.nectar_guide for a in pop]),
-            "mean_flower_size": _mean([a.flower_size for a in pop]),
-            "mean_herkogamy": _mean([a.herkogamy for a in pop]),
-            "mean_selfing_ability": _mean([a.selfing_ability for a in pop]),
-            "selfing_rate": selfing,
-            "outcrossing_rate": outcross,
-            "Fis": fis,
-            "Fst": fst,
-            "mean_fitness": _mean([a.fitness for a in pop]),
-        }
+    def snap(gen, pop):
+        sr = _mean([1.0 if a.reproduction_mode == "selfing" else 0.0 for a in pop])
+        oc = _mean([1.0 if a.reproduction_mode == "outcrossing" else 0.0 for a in pop])
+        dv = _mean([a.neutral_diversity for a in pop])
+        fis = _clamp(sr * (1.0 - 0.5 * env.migration_rate))
+        fst = _clamp((1.0 - env.migration_rate) * (1.0 - oc) * (1.0 - dv))
+        return dict(
+            generation=gen,
+            mean_nectar_guide=_mean([a.nectar_guide for a in pop]),
+            mean_flower_size=_mean([a.flower_size for a in pop]),
+            mean_herkogamy=_mean([a.herkogamy for a in pop]),
+            mean_selfing_ability=_mean([a.selfing_ability for a in pop]),
+            selfing_rate=sr, outcrossing_rate=oc,
+            failed_rate=_mean([1.0 if a.reproduction_mode == "failed" else 0.0 for a in pop]),
+            mean_fitness=_mean([a.fitness for a in pop]),
+            mean_neutral_diversity=dv, Fis=fis, Fst=fst,
+        )
 
-    pop = [init_agent() for _ in range(population_size)]
+    pop = [new_agent() for _ in range(population_size)]
     evaluate(pop)
-    records = [snapshot(0, pop)]
-
+    records = [snap(0, pop)]
     for gen in range(1, generations + 1):
-        total_fit = sum(a.fitness for a in pop)
-        if total_fit <= 0:
-            break
-        weights = [a.fitness / total_fit for a in pop]
-        parents = rng.choices(pop, weights=weights, k=population_size)
-        pop = [make_offspring(p) for p in parents]
+        tf = sum(a.fitness for a in pop)
+        if tf <= 0: break
+        parents = rng.choices(pop, weights=[a.fitness / tf for a in pop], k=population_size)
+        pop = [offspring(p) for p in parents]
         evaluate(pop)
-        records.append(snapshot(gen, pop))
-
+        records.append(snap(gen, pop))
     return pd.DataFrame(records)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# ページ: シミュレーション実行
-# ═══════════════════════════════════════════════════════════════════════════════
-if page == "🧪 シミュレーション実行":
-    st.title("ABM シミュレーション実行")
+# ── Inline ABC with progress bar ──────────────────────────────────────────────
+def run_abc_inline(
+    population_name: str,
+    n_samples: int,
+    epsilon: float,
+    abm_generations: int,
+    abm_population_size: int,
+    seed: int,
+    progress_bar,
+    status_text,
+) -> tuple[pd.DataFrame, float, int]:
+    """Run ABC rejection sampling with Streamlit progress updates.
 
-    col_param, col_result = st.columns([1, 2], gap="large")
-
-    with col_param:
-        st.subheader("パラメータ設定")
-
-        preset_name = st.selectbox(
-            "プリセット",
-            ["カスタム"] + list(PRESETS.keys()),
-            index=1,
+    Returns (samples_df, acceptance_rate, n_attempted).
+    """
+    try:
+        from constraint_abm.abm_core import simulate as abm_simulate
+        from examples.campanula_izu.observed_patterns import (
+            POPULATION_FIXED_PARAMS,
+            POPULATION_OBSERVED,
+            LATENT_PARAMS,
+            BIOLOGICAL_CONSTRAINTS,
         )
-        p = PRESETS.get(preset_name, PRESETS["Mainland (本州)"]).copy()
+    except ImportError as e:
+        st.error(f"Import error: {e}")
+        return pd.DataFrame(), 0.0, 0
 
-        st.markdown("**環境パラメータ**")
-        p["bombus_frequency"] = st.slider("マルハナバチ頻度", 0.0, 1.0, float(p["bombus_frequency"]), 0.05)
-        p["pollinator_environment"] = st.slider("伝播者環境密度", 0.0, 1.0, float(p["pollinator_environment"]), 0.05)
-        p["migration_rate"] = st.slider("移住率", 0.0, 0.20, float(p["migration_rate"]), 0.005)
+    fixed = POPULATION_FIXED_PARAMS[population_name]
+    patterns = POPULATION_OBSERVED[population_name]
+    latent_params = LATENT_PARAMS
+    constraints = BIOLOGICAL_CONSTRAINTS
 
-        st.markdown("**潜在パラメータ (推定対象)**")
-        p["guide_cost"] = st.slider("蜜腺標識維持コスト", 0.01, 0.20, float(p["guide_cost"]), 0.005)
-        p["genetic_drift_strength"] = st.slider("遺伝的浮動強度", 0.005, 0.10, float(p["genetic_drift_strength"]), 0.005)
-        p["mutation_sd"] = st.slider("突然変異 SD", 0.01, 0.12, float(p["mutation_sd"]), 0.005)
-        p["inbreeding_load"] = st.slider("近交弱勢", 0.0, 0.60, float(p["inbreeding_load"]), 0.01)
+    def simulate_fn(params):
+        return abm_simulate(params, generations=abm_generations, population_size=abm_population_size)
 
-        st.markdown("**初期形質 (世代 0 の平均)**")
-        p["nectar_guide"] = st.slider("蜜腺標識 (初期)", 0.0, 1.0, float(p["nectar_guide"]), 0.05)
-        p["selfing_ability"] = st.slider("自殖能力 (初期)", 0.0, 1.0, float(p["selfing_ability"]), 0.05)
+    rng = random.Random(seed)
+    weight_sum = sum(p.weight for p in patterns) or 1.0
+    accepted = []
+    log_interval = max(1, n_samples // 20)
 
-        st.markdown("**シミュレーション設定**")
-        generations = st.slider("世代数", 20, 200, 80, 10)
-        population_size = st.select_slider("個体数", [40, 80, 120, 160, 240, 320], value=160)
-        seed = st.number_input("乱数シード", 0, 9999, 42, 1)
+    for i in range(n_samples):
+        candidate = {lp.name: rng.uniform(lp.lower, lp.upper) for lp in latent_params}
+        full_params = {**fixed, **candidate}
 
-        run_btn = st.button("▶ 実行", type="primary", use_container_width=True)
+        if not all(c.predicate(full_params) for c in constraints):
+            continue
 
-    with col_result:
-        if run_btn or "sim_result" in st.session_state:
-            if run_btn:
-                with st.spinner("シミュレーション実行中..."):
-                    df_traj = run_trajectory(p, generations, population_size, int(seed))
-                st.session_state["sim_result"] = df_traj
-                st.session_state["sim_preset"] = preset_name
-            else:
-                df_traj = st.session_state["sim_result"]
-                preset_name = st.session_state.get("sim_preset", "")
+        try:
+            simulated = simulate_fn(full_params)
+        except Exception:
+            continue
 
-            if df_traj.empty:
-                st.stop()
+        total_dist = 0.0
+        pat_dists = {}
+        for pat in patterns:
+            d = float(pat.distance(simulated[pat.name])) if pat.name in simulated else 1.0
+            pat_dists[pat.name] = d
+            total_dist += pat.weight * d
+        total_dist /= weight_sum
 
-            # ── 軌跡チャート ─────────────────────────────────────────────
-            st.subheader("形質の世代変化")
-            traj_traits = st.multiselect(
-                "表示する形質",
+        if total_dist <= epsilon:
+            row = {**candidate, "distance": total_dist}
+            row.update({f"d_{k}": v for k, v in pat_dists.items()})
+            accepted.append(row)
+
+        if (i + 1) % log_interval == 0:
+            frac = (i + 1) / n_samples
+            rate = len(accepted) / (i + 1)
+            progress_bar.progress(frac)
+            status_text.text(
+                f"Sampling: {i+1}/{n_samples} | "
+                f"Accepted: {len(accepted)} | "
+                f"Acceptance rate: {rate:.3%}"
+            )
+
+    progress_bar.progress(1.0)
+    latent_names = [lp.name for lp in latent_params]
+    pat_cols = [f"d_{p.name}" for p in patterns]
+    all_cols = latent_names + ["distance"] + pat_cols
+    df = pd.DataFrame(accepted) if accepted else pd.DataFrame(columns=all_cols)
+    rate = len(accepted) / max(1, n_samples)
+    return df, rate, n_samples
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE: ABM Simulation
+# ═══════════════════════════════════════════════════════════════════════════════
+if page == "🧪 ABM Simulation":
+    st.title("Agent-Based Model — Forward Simulation")
+    st.markdown(
+        "Run the ABM forward in time to explore how environmental and mechanistic "
+        "parameters drive evolutionary change in nectar-guide expression, mating system, "
+        "and population genetic structure."
+    )
+
+    col_p, col_r = st.columns([1, 2], gap="large")
+
+    with col_p:
+        st.subheader("Parameters")
+        preset = st.selectbox("Preset population", ["Custom"] + POPULATION_ORDER)
+        p = PRESETS.get(preset, PRESETS["Mainland"]).copy()
+
+        st.markdown("**Pollinator environment**")
+        p["bombus_frequency"] = st.slider(
+            "*Bombus* frequency", 0.0, 1.0, float(p["bombus_frequency"]), 0.05,
+            help="Fraction of pollinator visits by Bombus (bumblebees)")
+        p["pollinator_environment"] = st.slider(
+            "Pollinator environment density", 0.0, 1.0, float(p["pollinator_environment"]), 0.05,
+            help="Overall abundance of functional pollinators")
+        p["migration_rate"] = st.slider(
+            "Migration rate", 0.0, 0.20, float(p["migration_rate"]), 0.005)
+
+        st.markdown("**Latent mechanistic parameters** *(inference targets)*")
+        p["guide_cost"] = st.slider(
+            "Nectar-guide maintenance cost", 0.01, 0.20, float(p["guide_cost"]), 0.005,
+            help="Metabolic cost of maintaining nectar-guide pigmentation")
+        p["genetic_drift_strength"] = st.slider(
+            "Genetic drift strength", 0.005, 0.10, float(p["genetic_drift_strength"]), 0.005,
+            help="Per-generation random perturbation; higher on small isolated islands")
+        p["mutation_sd"] = st.slider(
+            "Mutation SD (nectar guide)", 0.01, 0.12, float(p["mutation_sd"]), 0.005)
+        p["inbreeding_load"] = st.slider(
+            "Inbreeding depression", 0.0, 0.60, float(p["inbreeding_load"]), 0.01,
+            help="Fitness reduction in selfed offspring")
+
+        st.markdown("**Initial trait means (generation 0)**")
+        p["nectar_guide"] = st.slider(
+            "Nectar guide (initial)", 0.0, 1.0, float(p["nectar_guide"]), 0.05)
+        p["selfing_ability"] = st.slider(
+            "Selfing ability (initial)", 0.0, 1.0, float(p["selfing_ability"]), 0.05)
+
+        st.markdown("**Simulation settings**")
+        generations = st.slider("Generations", 20, 200, 80, 10)
+        pop_size = st.select_slider("Population size", [40, 80, 120, 160, 240, 320], value=160)
+        seed = st.number_input("Random seed", 0, 9999, 42, 1)
+
+        run_btn = st.button("▶ Run simulation", type="primary", use_container_width=True)
+
+    with col_r:
+        if run_btn:
+            with st.spinner("Running ABM…"):
+                df_traj = run_trajectory(p, generations, int(pop_size), int(seed))
+            st.session_state["sim_df"] = df_traj
+            st.session_state["sim_preset"] = preset
+        elif "sim_df" in st.session_state:
+            df_traj = st.session_state["sim_df"]
+            preset = st.session_state.get("sim_preset", preset)
+        else:
+            st.info("Set parameters on the left and click **▶ Run simulation**.")
+            st.markdown("""
+**What this shows:**
+- How nectar-guide expression evolves under different *Bombus* environments
+- The rise of selfing and inbreeding under pollinator loss
+- Effect of genetic drift strength (smaller populations, more isolated islands)
+- Interaction between guide maintenance cost and mating-system evolution
+""")
+            df_traj = None
+
+        if df_traj is not None and not df_traj.empty:
+            # Trait trajectory
+            st.subheader("Trait trajectory over generations")
+            traj_vars = st.multiselect(
+                "Variables to display",
                 [c for c in df_traj.columns if c != "generation"],
                 default=["mean_nectar_guide", "selfing_rate", "Fis", "mean_selfing_ability"],
-                format_func=lambda x: TRAIT_JP.get(x, x),
+                format_func=lambda x: TRAIT_LABELS.get(x, x),
             )
-            if traj_traits:
+            if traj_vars:
                 try:
                     import altair as alt
-                    melted = df_traj[["generation"] + traj_traits].melt(
-                        id_vars="generation", var_name="trait", value_name="value"
-                    )
-                    melted["形質"] = melted["trait"].map(TRAIT_JP)
+                    melted = df_traj[["generation"] + traj_vars].melt(
+                        id_vars="generation", var_name="variable", value_name="value")
+                    melted["Variable"] = melted["variable"].map(TRAIT_LABELS)
                     chart = (
-                        alt.Chart(melted)
-                        .mark_line(strokeWidth=2)
+                        alt.Chart(melted).mark_line(strokeWidth=2)
                         .encode(
-                            x=alt.X("generation:Q", title="世代"),
-                            y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 1.05]), title="値"),
-                            color=alt.Color("形質:N"),
-                            tooltip=["generation", "形質", alt.Tooltip("value:Q", format=".3f")],
-                        )
-                        .properties(height=320)
-                        .interactive()
+                            x=alt.X("generation:Q", title="Generation"),
+                            y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 1.05]), title="Value"),
+                            color=alt.Color("Variable:N"),
+                            tooltip=["generation", "Variable", alt.Tooltip("value:Q", format=".3f")],
+                        ).properties(height=320).interactive()
                     )
                     st.altair_chart(chart, use_container_width=True)
                 except ImportError:
-                    st.line_chart(df_traj.set_index("generation")[traj_traits])
+                    st.line_chart(df_traj.set_index("generation")[traj_vars])
 
-            # ── 最終世代 vs 観察値 ─────────────────────────────────────
-            st.subheader("最終世代 vs 観察値")
+            # Final generation vs. observed
+            st.subheader("Final generation vs. observed values")
             final = df_traj.iloc[-1].to_dict()
-            obs_key = preset_name if preset_name in OBSERVED else None
-
-            compare_map = {
-                "mean_nectar_guide": "nectar_guide",
-                "selfing_rate": "selfing_rate",
-                "outcrossing_rate": "outcrossing_rate",
-                "Fis": "Fis",
-            }
+            obs = OBSERVED.get(preset, {})
             rows = []
-            for sim_key, obs_field in compare_map.items():
-                sim_val = final.get(sim_key, float("nan"))
-                obs_val = OBSERVED.get(obs_key, {}).get(obs_field) if obs_key else None
+            for sk, ok in [
+                ("mean_nectar_guide", "mean_nectar_guide"),
+                ("selfing_rate", "selfing_rate"),
+                ("outcrossing_rate", "outcrossing_rate"),
+                ("Fis", "Fis"),
+            ]:
+                sv = final.get(sk, float("nan"))
+                ov = obs.get(ok)
                 rows.append({
-                    "形質": TRAIT_JP.get(sim_key, sim_key),
-                    "シミュレーション": round(sim_val, 3),
-                    "観察値": round(obs_val, 3) if obs_val is not None else "—",
-                    "差": round(abs(sim_val - obs_val), 3) if obs_val is not None else "—",
+                    "Trait": TRAIT_LABELS.get(sk, sk),
+                    "Simulated (final gen)": round(sv, 3),
+                    "Observed": round(ov, 3) if ov is not None else "—",
+                    "|Δ|": round(abs(sv - ov), 3) if ov is not None else "—",
                 })
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-            # ── 最終世代の全統計 ──────────────────────────────────────
-            with st.expander("最終世代の全統計"):
-                final_df = pd.DataFrame([
-                    {"統計量": TRAIT_JP.get(k, k), "値": round(v, 4)}
-                    for k, v in final.items() if k != "generation"
-                ])
-                st.dataframe(final_df, use_container_width=True, hide_index=True)
-
-        else:
-            st.info("左のパラメータを設定して「▶ 実行」を押してください。")
-            st.markdown("""
-**このシミュレーターでできること:**
-- 本州→大島→神津島→八丈島の4プリセットを試す
-- マルハナバチ頻度・蜜腺コスト・浮動強度などを変えて影響を確認
-- 世代ごとの形質変化軌跡を可視化
-- 最終状態を観察値と比較
-""")
+            with st.expander("All final-generation statistics"):
+                st.dataframe(
+                    pd.DataFrame([
+                        {"Statistic": TRAIT_LABELS.get(k, k), "Value": round(v, 4)}
+                        for k, v in final.items() if k != "generation"
+                    ]),
+                    use_container_width=True, hide_index=True,
+                )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ページ: 観察パターン
+# PAGE: ABC Inference
 # ═══════════════════════════════════════════════════════════════════════════════
-elif page == "📊 観察パターン":
-    st.title("伊豆諸島の観察勾配")
-    st.markdown("""
-本州 → 大島 → 神津島 → 八丈島 と島の隔離度が増すにつれ、
-**蜜腺標識 ↓ ・花サイズ ↓ ・自殖能力 ↑ ・Fis ↑** の一貫した勾配が観察される。
-""")
-
-    POPULATION_ORDER = ["Mainland (本州)", "Oshima (大島)", "Kozu (神津島)", "Hachijo (八丈島)"]
-    TRAIT_LABELS = {
-        "nectar_guide": "蜜腺標識",
-        "flower_size": "花サイズ",
-        "herkogamy": "雌雄異熟",
-        "selfing_ability": "自殖能力",
-        "bombus_frequency": "マルハナバチ頻度",
-        "pollinator_environment": "伝播者環境",
-    }
-
-    rows = [{"population": k, **v} for k, v in PRESETS.items()]
-    df = pd.DataFrame(rows)
-    df["population"] = pd.Categorical(df["population"], categories=POPULATION_ORDER, ordered=True)
-    df = df.sort_values("population").reset_index(drop=True)
-
-    traits = st.multiselect(
-        "表示する形質",
-        list(TRAIT_LABELS.keys()),
-        default=["nectar_guide", "selfing_ability", "bombus_frequency", "pollinator_environment"],
-        format_func=lambda x: TRAIT_LABELS.get(x, x),
+elif page == "🔬 ABC Inference":
+    st.title("ABC Rejection Sampling — Generative Inverse Estimation")
+    st.markdown(
+        "Approximate Bayesian Computation (ABC) estimates the posterior distribution "
+        "of **latent mechanistic parameters** that cannot be measured directly in the "
+        "field (guide maintenance cost, drift strength, etc.), using observable "
+        "ecological and genetic patterns as constraints."
     )
 
-    if traits:
+    col_a, col_b = st.columns([1, 2], gap="large")
+
+    with col_a:
+        st.subheader("Inference settings")
+        pop_name = st.selectbox("Target population", POPULATION_ORDER)
+
+        with st.expander("Observed patterns used as constraints", expanded=False):
+            obs_rows = []
+            for k, v in OBSERVED[pop_name].items():
+                obs_rows.append({"Pattern": TRAIT_LABELS.get(k, k), "Target value": v})
+            st.dataframe(pd.DataFrame(obs_rows), use_container_width=True, hide_index=True)
+
+        st.markdown("**ABC settings**")
+        n_samples = st.slider(
+            "Prior samples (n_samples)", 200, 3000, 800, 100,
+            help="Total draws from the prior. More = better posterior but slower.")
+        epsilon = st.slider(
+            "Acceptance threshold (ε)", 0.05, 0.60, 0.20, 0.01,
+            help="Max normalised pattern distance to accept. Smaller = stricter.")
+
+        st.markdown("**ABM settings** *(per simulation call)*")
+        abm_gen = st.slider("Generations per ABM run", 20, 100, 40, 10)
+        abm_pop = st.select_slider("Population size per ABM run", [40, 60, 80, 120, 160], value=80)
+        abc_seed = st.number_input("Random seed", 0, 9999, 42, 1)
+
+        est_sec = n_samples * abm_gen * abm_pop * 2e-7
+        st.caption(f"⏱ Estimated runtime: ~{est_sec:.0f}s (varies by machine)")
+
+        run_abc = st.button("▶ Run ABC inference", type="primary", use_container_width=True)
+
+    with col_b:
+        if run_abc:
+            prog = st.progress(0.0)
+            status = st.empty()
+            df_abc, acc_rate, n_att = run_abc_inline(
+                pop_name, n_samples, epsilon, abm_gen, abm_pop, int(abc_seed), prog, status
+            )
+            st.session_state["abc_df"] = df_abc
+            st.session_state["abc_rate"] = acc_rate
+            st.session_state["abc_pop"] = pop_name
+            st.session_state["abc_epsilon"] = epsilon
+        elif "abc_df" in st.session_state:
+            df_abc = st.session_state["abc_df"]
+            acc_rate = st.session_state["abc_rate"]
+            pop_name = st.session_state.get("abc_pop", pop_name)
+            epsilon = st.session_state.get("abc_epsilon", epsilon)
+        else:
+            st.info("Configure settings on the left and click **▶ Run ABC inference**.")
+            st.markdown("""
+**Latent parameters estimated:**
+| Parameter | Ecological meaning |
+|-----------|-------------------|
+| `guide_cost` | Metabolic cost of nectar-guide maintenance |
+| `bombus_guide_dependence` | Degree to which *Bombus* visits are guide-mediated |
+| `other_pollinator_guide_use` | Guide utilisation by small bees |
+| `genetic_drift_strength` | Random per-generation trait perturbation |
+| `mutation_sd` | Mutational input to nectar-guide variation |
+| `base_outcross` | Baseline outcrossing probability (wind/gravity) |
+""")
+            df_abc = None
+
+        if df_abc is not None:
+            latent_cols = [c for c in df_abc.columns
+                           if not c.startswith("d_") and c != "distance"]
+
+            col_m1, col_m2, col_m3 = st.columns(3)
+            col_m1.metric("Accepted samples", f"{len(df_abc):,}")
+            col_m2.metric("Acceptance rate", f"{acc_rate:.3%}")
+            col_m3.metric("ε threshold", f"{epsilon}")
+
+            if df_abc.empty:
+                st.warning(
+                    "No samples accepted. Try increasing ε or reducing generations/population size. "
+                    "The patterns may be too strict for the current ABM settings."
+                )
+            else:
+                # Posterior distributions
+                st.subheader("Posterior distributions")
+                sel_params = st.multiselect(
+                    "Parameters to display",
+                    latent_cols,
+                    default=latent_cols[:min(6, len(latent_cols))],
+                )
+                if sel_params:
+                    try:
+                        import altair as alt
+                        melted = df_abc[sel_params].melt(
+                            var_name="parameter", value_name="value")
+                        hist = (
+                            alt.Chart(melted).mark_bar(opacity=0.75)
+                            .encode(
+                                x=alt.X("value:Q", bin=alt.Bin(maxbins=25), title="Value"),
+                                y=alt.Y("count():Q", title="Frequency"),
+                                color="parameter:N",
+                                facet=alt.Facet("parameter:N", columns=3),
+                            )
+                            .properties(width=250, height=160)
+                            .resolve_scale(x="independent", y="independent")
+                        )
+                        st.altair_chart(hist)
+                    except ImportError:
+                        st.dataframe(df_abc[sel_params].describe(), use_container_width=True)
+
+                # Posterior summary table
+                st.subheader("Posterior summary")
+                summary_rows = []
+                for col in latent_cols:
+                    s = df_abc[col]
+                    summary_rows.append({
+                        "Parameter": col,
+                        "Mean": round(s.mean(), 4),
+                        "SD": round(s.std(), 4),
+                        "5th pct": round(s.quantile(0.05), 4),
+                        "Median": round(s.quantile(0.50), 4),
+                        "95th pct": round(s.quantile(0.95), 4),
+                    })
+                st.dataframe(
+                    pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+
+                # Pattern distances
+                with st.expander("Pattern distances of accepted samples"):
+                    d_cols = [c for c in df_abc.columns if c.startswith("d_")]
+                    if d_cols:
+                        st.dataframe(df_abc[["distance"] + d_cols].describe().round(4),
+                                     use_container_width=True)
+
+                # Download
+                csv_bytes = df_abc.to_csv(index=False).encode()
+                st.download_button(
+                    "⬇ Download posterior samples (CSV)",
+                    csv_bytes,
+                    file_name=f"posterior_{pop_name}_eps{epsilon}.csv",
+                    mime="text/csv",
+                )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE: Observed Patterns
+# ═══════════════════════════════════════════════════════════════════════════════
+elif page == "📊 Observed Patterns":
+    st.title("Observed Patterns — Izu Islands Isolation Gradient")
+    st.markdown(
+        "Moving from the mainland (Honshu) towards the most isolated island (Hachijo), "
+        "a consistent gradient is observed: **nectar-guide expression ↓**, "
+        "**flower size ↓**, **herkogamy ↓** (selfing-syndrome progression), "
+        "**selfing rate ↑**, **inbreeding coefficient Fis ↑**, "
+        "***Bombus* frequency ↓** (pollinator fauna simplification)."
+    )
+
+    obs_trait_opts = {
+        "nectar_guide": "nectar guide",
+        "flower_size": "flower size",
+        "herkogamy": "herkogamy",
+        "selfing_ability": "selfing ability",
+        "bombus_frequency": "*Bombus* frequency",
+        "pollinator_environment": "pollinator environment",
+        "migration_rate": "migration rate",
+    }
+    rows = [{"population": k, **{kk: v for kk, v in vv.items() if kk in obs_trait_opts}}
+            for k, vv in PRESETS.items()]
+    df_obs = pd.DataFrame(rows)
+    df_obs["population"] = pd.Categorical(df_obs["population"], POPULATION_ORDER, ordered=True)
+    df_obs = df_obs.sort_values("population").reset_index(drop=True)
+
+    selected_traits = st.multiselect(
+        "Traits to display",
+        list(obs_trait_opts.keys()),
+        default=["nectar_guide", "selfing_ability", "bombus_frequency", "pollinator_environment"],
+        format_func=lambda x: obs_trait_opts[x],
+    )
+    if selected_traits:
         try:
             import altair as alt
-            melted = df[["population"] + traits].melt(id_vars="population", var_name="trait", value_name="value")
-            melted["形質"] = melted["trait"].map(TRAIT_LABELS)
+            melted = df_obs[["population"] + selected_traits].melt(
+                id_vars="population", var_name="trait", value_name="value")
+            melted["Trait"] = melted["trait"].map(obs_trait_opts)
             chart = (
-                alt.Chart(melted)
-                .mark_line(point=True, strokeWidth=2.5)
+                alt.Chart(melted).mark_line(point=True, strokeWidth=2.5)
                 .encode(
-                    x=alt.X("population:O", sort=POPULATION_ORDER, title="個体群"),
-                    y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 1.05]), title="値 [0–1]"),
-                    color=alt.Color("形質:N"),
-                    tooltip=["population", "形質", alt.Tooltip("value:Q", format=".3f")],
-                )
-                .properties(height=360)
-                .interactive()
+                    x=alt.X("population:O", sort=POPULATION_ORDER, title="Population"),
+                    y=alt.Y("value:Q", scale=alt.Scale(domain=[0, 1.05]), title="Value [0–1]"),
+                    color=alt.Color("Trait:N"),
+                    tooltip=["population", "Trait", alt.Tooltip("value:Q", format=".3f")],
+                ).properties(height=360).interactive()
             )
             st.altair_chart(chart, use_container_width=True)
         except ImportError:
-            st.line_chart(df.set_index("population")[traits].rename(columns=TRAIT_LABELS))
+            st.line_chart(df_obs.set_index("population")[selected_traits])
 
-    with st.expander("固定パラメータ一覧 (POPULATION_FIXED_PARAMS)"):
-        st.dataframe(df.set_index("population"), use_container_width=True)
+    st.subheader("CAPOM pattern targets (used in ABC)")
+    st.markdown(
+        "The following quantitative patterns from each population constrain "
+        "the ABC posterior. Weights reflect measurement reliability."
+    )
+    for pop in POPULATION_ORDER:
+        obs = OBSERVED[pop]
+        with st.expander(f"{pop}"):
+            st.dataframe(
+                pd.DataFrame([
+                    {"Pattern": TRAIT_LABELS.get(k, k), "Target": v,
+                     "Weight": 2.0 if "guide" in k else 1.5 if "selfing" in k or "outcross" in k else 1.0}
+                    for k, v in obs.items()
+                ]),
+                use_container_width=True, hide_index=True,
+            )
+
+    with st.expander("Full fixed parameter table"):
+        rows2 = [{"population": k, **v} for k, v in PRESETS.items()]
+        st.dataframe(pd.DataFrame(rows2).set_index("population"), use_container_width=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ページ: 因果構造比較
+# PAGE: Causal Structure Comparison
 # ═══════════════════════════════════════════════════════════════════════════════
-elif page == "🔍 因果構造比較 (M1–M5)":
-    st.title("因果構造 M1–M5 比較")
+elif page == "🔍 Causal Structure Comparison":
+    st.title("Causal Structure Comparison — M1–M5 (Stage 3)")
+    st.markdown(
+        "Five competing hypotheses are evaluated using a **deterministic proxy "
+        "simulation** (no stochastic ABM) by predicting the direction of Oshima–Hachijo "
+        "pattern contrasts and scoring them against observed ordinal relations."
+    )
+
     st.markdown("""
-大島 vs 八丈島のパターン方向を**決定論的プロキシシミュレーション**で予測し、
-観察と一致した数をスコアとします（ABMなし・即時実行）。
-
-| モデル | 仮説 |
-|--------|------|
-| M1 | Bombus が直接、蜜腺標識の利益を高める（直接選択） |
-| M2 | 自殖の増加を介した蜜腺標識喪失（媒介効果） |
-| M3 | M1 + M2 の複合 |
-| M4 | 島の隔離が複数形質を共通原因として駆動 |
-| M5 | ドリフト・中立 null モデル |
+| Model | Hypothesis | Mechanism |
+|-------|-----------|-----------|
+| **M1** | Direct pollinator effect | *Bombus* directly increases nectar-guide benefit through guide-dependent foraging |
+| **M2** | Selfing-mediated | Reduced outcrossing opportunity → reproductive-assurance selfing → guide loss |
+| **M3** | Combined M1 + M2 | Both direct selection and selfing-mediated pathways act simultaneously |
+| **M4** | Common island cause | Island isolation drives multiple traits via shared causal factors (Ne, drift) |
+| **M5** | Drift null | Neutral guide loss by genetic drift, no directional selection |
 """)
 
     try:
@@ -429,7 +695,7 @@ elif page == "🔍 因果構造比較 (M1–M5)":
         from examples.campanula_izu.proxy_simulation import simulate_campanula_causal_structure
 
         structures = campanula_causal_structures()
-        OBS = {
+        OBS_RELS = {
             "nectar_guide": "Oshima > Hachijo",
             "selfing_rate": "Oshima < Hachijo",
             "herkogamy": "Oshima > Hachijo",
@@ -438,135 +704,121 @@ elif page == "🔍 因果構造比較 (M1–M5)":
             "Bombus_frequency": "Oshima > Hachijo",
         }
 
-        summary, detail_rows = [], []
+        summary_rows, detail_rows, val_rows = [], [], []
         for s in structures:
             rels, outputs = simulate_campanula_causal_structure(s)
-            matches = sum(1 for var, exp in OBS.items() if rels.get(var) == exp)
-            summary.append({"モデル": s.name, "スコア": matches, "最大": len(OBS),
-                             "割合": f"{matches}/{len(OBS)}", "説明": s.description})
-            for var, obs in OBS.items():
+            matches = sum(1 for var, exp in OBS_RELS.items() if rels.get(var) == exp)
+            summary_rows.append({
+                "Model": s.name, "Score": matches, "Max": len(OBS_RELS),
+                "Fraction": f"{matches}/{len(OBS_RELS)}", "Description": s.description,
+            })
+            for var, obs_rel in OBS_RELS.items():
                 pred = rels.get(var, "—")
-                detail_rows.append({"モデル": s.name, "変数": var, "観察": obs,
-                                     "予測": pred, "一致": "✅" if pred == obs else "❌"})
+                detail_rows.append({
+                    "Model": s.name, "Variable": TRAIT_LABELS.get(var.lower(), var),
+                    "Observed": obs_rel, "Predicted": pred,
+                    "Match": "✅" if pred == obs_rel else "❌",
+                })
+            for o in outputs:
+                val_rows.append({
+                    "Model": s.name, "Population": o.population,
+                    "Nectar guide": round(o.nectar_guide, 3),
+                    "Selfing rate": round(o.selfing_rate, 3),
+                    "Herkogamy": round(o.herkogamy, 3),
+                    "Flower size": round(o.flower_size, 3),
+                    "Fis": round(o.Fis, 3),
+                })
 
-        df_s = pd.DataFrame(summary).sort_values("スコア", ascending=False)
-        st.subheader("スコアランキング")
-        st.dataframe(df_s[["モデル", "割合", "説明"]], use_container_width=True, hide_index=True)
+        df_sum = pd.DataFrame(summary_rows).sort_values("Score", ascending=False)
+
+        st.subheader("Score ranking")
+        st.dataframe(df_sum[["Model", "Fraction", "Description"]],
+                     use_container_width=True, hide_index=True)
 
         try:
             import altair as alt
             bar = (
-                alt.Chart(df_s)
-                .mark_bar()
+                alt.Chart(df_sum).mark_bar()
                 .encode(
-                    x=alt.X("スコア:Q", scale=alt.Scale(domain=[0, len(OBS)])),
-                    y=alt.Y("モデル:O", sort="-x"),
+                    x=alt.X("Score:Q", scale=alt.Scale(domain=[0, len(OBS_RELS)]),
+                             title="Patterns correctly predicted"),
+                    y=alt.Y("Model:O", sort="-x"),
                     color=alt.condition(
-                        alt.datum["スコア"] == int(df_s["スコア"].max()),
+                        alt.datum["Score"] == int(df_sum["Score"].max()),
                         alt.value("#2ecc71"), alt.value("#95a5a6"),
                     ),
-                    tooltip=["モデル", "割合", "説明"],
-                )
-                .properties(height=200)
+                    tooltip=["Model", "Fraction", "Description"],
+                ).properties(height=220)
             )
             st.altair_chart(bar, use_container_width=True)
         except ImportError:
             pass
 
-        with st.expander("予測 vs 観察 詳細"):
+        with st.expander("Predicted vs. observed — detail matrix"):
             df_d = pd.DataFrame(detail_rows)
-            pivot = df_d.pivot(index="変数", columns="モデル", values="一致")
+            pivot = df_d.pivot(index="Variable", columns="Model", values="Match")
             st.dataframe(pivot, use_container_width=True)
 
-        with st.expander("シミュレーション出力値"):
-            val_rows = []
-            for s in structures:
-                _, outputs = simulate_campanula_causal_structure(s)
-                for o in outputs:
-                    val_rows.append({
-                        "モデル": s.name, "個体群": o.population,
-                        "蜜腺標識": round(o.nectar_guide, 3),
-                        "自殖率": round(o.selfing_rate, 3),
-                        "雌雄異熟": round(o.herkogamy, 3),
-                        "Fis": round(o.Fis, 3),
-                    })
+        with st.expander("Proxy simulation output values (Oshima / Hachijo)"):
             st.dataframe(pd.DataFrame(val_rows), use_container_width=True, hide_index=True)
 
     except ImportError as e:
-        st.error(f"インポートエラー: {e}")
-        st.code(str(e))
+        st.error(f"Import error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ページ: ABC 事後分布
+# PAGE: TenSnap Visualisation
 # ═══════════════════════════════════════════════════════════════════════════════
-elif page == "📈 ABC 事後分布":
-    st.title("ABC 推定結果ビューア")
-    st.markdown("""
-`python examples/campanula_izu/run_inference.py` を実行すると
-`examples/campanula_izu/outputs/` に CSV が生成されます。
-""")
+elif page == "🌿 TenSnap Visualisation":
+    st.title("Agent-Level Realtime Visualisation — TenSnap")
+    st.markdown(
+        "TenSnap streams agent positions and trait values over WebSocket "
+        "(`ws://localhost:8765`) and renders them in the browser. "
+        "This complements the Streamlit app: while Streamlit shows aggregate "
+        "statistics, TenSnap shows individual-agent spatial dynamics."
+    )
 
-    outputs_dir = _ROOT / "examples" / "campanula_izu" / "outputs"
-    csvs = sorted(outputs_dir.glob("*.csv")) if outputs_dir.exists() else []
-
-    if not csvs:
-        st.info("outputs/ に CSV がありません。まず `run_inference.py` を実行してください。")
-    else:
-        chosen = st.selectbox("ファイルを選択", [f.name for f in csvs])
-        df = pd.read_csv(outputs_dir / chosen)
-        st.metric("採択サンプル数", f"{len(df):,}")
-
-        param_cols = [c for c in df.select_dtypes("number").columns
-                      if c not in ("acceptance_rate", "n_attempted", "epsilon")]
-        selected = st.multiselect("パラメータを選択", param_cols,
-                                   default=param_cols[:min(6, len(param_cols))])
-        if selected:
-            try:
-                import altair as alt
-                melted = df[selected].melt(var_name="パラメータ", value_name="値")
-                hist = (
-                    alt.Chart(melted)
-                    .mark_bar(opacity=0.75)
-                    .encode(
-                        x=alt.X("値:Q", bin=alt.Bin(maxbins=30)),
-                        y=alt.Y("count():Q"),
-                        color="パラメータ:N",
-                        facet=alt.Facet("パラメータ:N", columns=3),
-                    )
-                    .properties(width=260, height=160)
-                    .resolve_scale(x="independent", y="independent")
-                )
-                st.altair_chart(hist)
-            except ImportError:
-                st.dataframe(df[selected].describe(), use_container_width=True)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# ページ: TenSnap
-# ═══════════════════════════════════════════════════════════════════════════════
-elif page == "🌿 TenSnap 可視化":
-    st.title("エージェントレベル可視化 — TenSnap")
     st.info(
-        "**起動手順:**\n\n"
-        "1. ローカルで ABM サーバーを起動:\n"
-        "   ```\n   python abm/shimahotarubukuro_tensnap_abm.py\n   ```\n"
-        "2. 下のボタンから TenSnap レンダラーを開く (`ws://localhost:8765` に接続)。",
+        "**How to use:**\n\n"
+        "1. Start the ABM WebSocket server locally:\n"
+        "   ```\n"
+        "   python abm/shimahotarubukuro_tensnap_abm.py\n"
+        "   ```\n"
+        "2. Open the TenSnap renderer (connects to `ws://localhost:8765` automatically).",
         icon="🌿",
     )
+
     col1, col2 = st.columns(2)
     with col1:
-        st.link_button("TenSnap レンダラーを開く →", "https://tensnap.netlify.app/", use_container_width=True)
+        st.link_button("Open TenSnap renderer →", "https://tensnap.netlify.app/",
+                        use_container_width=True)
     with col2:
-        st.link_button("ABM ソースを見る →",
+        st.link_button("View ABM source code →",
                         "https://github.com/zuizui0223/microdonta/blob/main/abm/shimahotarubukuro_tensnap_abm.py",
                         use_container_width=True)
 
+    st.subheader("ABM presets")
     st.markdown("""
-| プリセット | マルハナバチ頻度 | 個体数 | 特徴 |
-|-----------|----------------|-------|------|
-| Mainland  | 1.0            | 160   | Bombus 支配、高外交配 |
-| Oshima    | 0.35           | 140   | 混合送粉者 |
-| Kozu      | 0.0            | 100   | Bombus 不在 |
-| Hachijo   | 0.0            | 80    | 最高自殖率 |
+| Preset | *Bombus* freq. | Small-bee freq. | Pop. size | Expected outcome |
+|--------|---------------|----------------|-----------|-----------------|
+| Mainland | 1.0 | 0.3 | 160 | *Bombus*-dominated; high outcrossing; guide maintained |
+| Oshima | 0.35 | 0.55 | 140 | Mixed pollinator community; intermediate guide expression |
+| Kozu | 0.0 | 0.65 | 100 | *Bombus*-absent; small-bee dependent; guide partially lost |
+| Hachijo | 0.0 | 0.72 | 80 | Highest selfing rate; lowest nectar-guide expression |
+""")
+
+    st.subheader("Visual encoding")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown("""
+**Agent colour:**
+- 🟡 Yellow = high nectar-guide expression (≈ 1.0)
+- 🟣 Purple = low nectar-guide expression (≈ 0.0)
+""")
+    with col_b:
+        st.markdown("""
+**Live charts:**
+- Selfing rate per generation
+- Inbreeding coefficient (Fis)
+- Population differentiation (Fst)
 """)
