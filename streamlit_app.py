@@ -261,10 +261,11 @@ def run_abc_inline(
     latent_params = LATENT_PARAMS
     constraints = BIOLOGICAL_CONSTRAINTS
 
-    def simulate_fn(params):
-        return abm_simulate(params, generations=abm_generations, population_size=abm_population_size)
-
     rng = random.Random(seed)
+
+    def simulate_fn(params, abm_seed):
+        return abm_simulate(params, generations=abm_generations,
+                            population_size=abm_population_size, seed=abm_seed)
     weight_sum = sum(p.weight for p in patterns) or 1.0
     accepted = []
     log_interval = max(1, n_samples // 20)
@@ -277,14 +278,22 @@ def run_abc_inline(
             continue
 
         try:
-            simulated = simulate_fn(full_params)
+            simulated = simulate_fn(full_params, rng.randint(0, 99999))
         except Exception:
             continue
 
+        # Use raw absolute error (not tolerance-normalised) so that ε is
+        # interpretable as mean absolute deviation in [0, 1] trait space.
         total_dist = 0.0
         pat_dists = {}
         for pat in patterns:
-            d = float(pat.distance(simulated[pat.name])) if pat.name in simulated else 1.0
+            if pat.name not in simulated:
+                d = 1.0
+            else:
+                try:
+                    d = abs(float(simulated[pat.name]) - float(pat.target))
+                except (TypeError, ValueError):
+                    d = 1.0
             pat_dists[pat.name] = d
             total_dist += pat.weight * d
         total_dist /= weight_sum
@@ -475,16 +484,23 @@ elif page == "🔬 ABC Inference":
             "Prior samples (n_samples)", 200, 3000, 800, 100,
             help="Total draws from the prior. More = better posterior but slower.")
         epsilon = st.slider(
-            "Acceptance threshold (ε)", 0.05, 0.60, 0.20, 0.01,
-            help="Max normalised pattern distance to accept. Smaller = stricter.")
+            "Acceptance threshold (ε)", 0.05, 0.50, 0.15, 0.01,
+            help=(
+                "ε is the maximum *mean absolute error* across pattern targets. "
+                "e.g. ε=0.15 accepts simulations where the average trait deviation "
+                "from observed values is < 0.15 (on a 0–1 scale). "
+                "Increase if no samples are accepted."
+            ))
 
         st.markdown("**ABM settings** *(per simulation call)*")
-        abm_gen = st.slider("Generations per ABM run", 20, 100, 40, 10)
+        abm_gen = st.slider("Generations per ABM run", 20, 100, 60, 10,
+                             help="More generations → slower but may reach equilibrium")
         abm_pop = st.select_slider("Population size per ABM run", [40, 60, 80, 120, 160], value=80)
         abc_seed = st.number_input("Random seed", 0, 9999, 42, 1)
 
         est_sec = n_samples * abm_gen * abm_pop * 2e-7
         st.caption(f"⏱ Estimated runtime: ~{est_sec:.0f}s (varies by machine)")
+        st.caption("If acceptance rate is 0%, increase ε or check the ABM settings.")
 
         run_abc = st.button("▶ Run ABC inference", type="primary", use_container_width=True)
 
