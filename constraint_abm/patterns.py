@@ -31,7 +31,25 @@ class ObservablePattern:
         return 0.0 if simulated == self.target else 1.0
 
 
-def ordinal_pattern(name: str, ordered_levels: list[str], weight: float = 1.0) -> ObservablePattern:
-    """Define an ordinal pattern such as Mainland > Oshima > Kozu > Hachijo."""
+def ordinal_pattern(
+    name: str,
+    ordered: list[str] | None = None,
+    ordered_levels: list[str] | None = None,
+    weight: float = 1.0,
+    description: str = "",
+) -> ObservablePattern:
+    """Define an ordinal pattern such as Mainland > Oshima > Kozu > Hachijo.
 
-    return ObservablePattern(name=name, kind="ordinal", target=ordered_levels, weight=weight)
+    Accepts either ``ordered`` or ``ordered_levels`` as the level list.
+    """
+
+    levels = ordered if ordered is not None else ordered_levels
+    if levels is None:
+        raise ValueError("Provide either 'ordered' or 'ordered_levels'.")
+    return ObservablePattern(
+        name=name,
+        kind="ordinal",
+        target=levels,
+        weight=weight,
+        description=description,
+    )
