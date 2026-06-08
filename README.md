@@ -86,6 +86,7 @@ matching additional patterns such as flower size, herkogamy, Fis, Fst, Ne, and
 pollinator composition.
 
 See the design document: [Latent causal generative model](docs/latent_causal_generative_model.md).
+See also: [Generative model vs path model](docs/generative_model_vs_path_model.md).
 The first simulation-derived comparison runner is
 [Campanula causal structure comparison](examples/campanula_izu/run_causal_structure_comparison.py).
 

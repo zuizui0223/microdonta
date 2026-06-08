@@ -86,6 +86,7 @@ Planned files:
 observed_patterns_template.csv
 run_case_study.py
 run_causal_structure_comparison.py
+causal_structures_config.json
 run_inoue_pattern_comparison.py
 scenario_config.yaml
 figures/
@@ -97,6 +98,10 @@ structures M1-M5 against observable Campanula pattern targets. It uses a
 deterministic proxy generator connected to `attraction_trait_model`
 reproduction-probability functions, then converts simulated Oshima/Hachijo
 values into pattern relations for scoring.
+
+`causal_structures_config.json` records the Issue #4 pathway switches for each
+M1-M5 causal structure. The same switch names are exposed by
+`causal_model.switches.PathwaySwitches`.
 
 `run_inoue_pattern_comparison.py` treats the Inoue-series literature information
 as observed CAPOM patterns, runs H1-H5 ABM scenarios, and ranks scenarios by how

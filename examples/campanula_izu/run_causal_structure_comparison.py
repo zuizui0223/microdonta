@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from causal_model import score_simulated_relations  # noqa: E402
+from causal_model.switches import switches_for_structure, switches_to_dict  # noqa: E402
 from examples.campanula_izu.causal_structures import (  # noqa: E402
     campanula_causal_structures,
     campanula_pattern_targets,
@@ -35,7 +36,12 @@ def main() -> None:
     value_rows: list[dict[str, float | str]] = []
 
     for structure in structures:
-        relations, outputs = simulate_campanula_causal_structure(structure)
+        switches = switches_for_structure(structure.name)
+        relations, outputs = simulate_campanula_causal_structure(
+            structure,
+            switches=switches,
+        )
+        switch_values = switches_to_dict(switches)
         summary, details = score_simulated_relations(
             structure_name=structure.name,
             description=structure.description,
@@ -48,6 +54,7 @@ def main() -> None:
             ),
         )
         summary_rows.append(summary)
+        summary.update(switch_values)
         detail_rows.extend(details)
         for output in outputs:
             value_rows.append(

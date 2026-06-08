@@ -21,6 +21,7 @@ from attraction_trait_model import (
 )
 
 from .structures import CausalStructure
+from .switches import PathwaySwitches, switches_for_structure
 
 
 @dataclass(frozen=True)
@@ -41,11 +42,11 @@ def simulate_population_proxy(
     structure: CausalStructure,
     env: Environment,
     params: ModelParameters,
+    switches: PathwaySwitches | None = None,
 ) -> PopulationProxyOutput:
     """Generate provisional trait and mating-system values for one population."""
 
-    mechanisms = {edge.source + "->" + edge.target for edge in structure.edges}
-    edge_targets = {edge.target for edge in structure.edges}
+    switches = switches or switches_for_structure(structure.name)
     isolation = env.island_distance
     drift = max(0.0, 1.0 - env.effective_population_size)
 
@@ -54,25 +55,23 @@ def simulate_population_proxy(
     selfing_ability = 0.35
     nectar_guide = 0.50
 
-    if "island_isolation->selfing_rate" in mechanisms:
-        selfing_ability += 0.40 * isolation
-        herkogamy -= 0.28 * isolation
+    if switches.island_common_cause > 0:
+        selfing_ability += switches.island_common_cause * 0.40 * isolation
+        herkogamy -= switches.island_common_cause * 0.28 * isolation
 
-    if "outcrossing_opportunity->selfing_rate" in mechanisms:
-        selfing_ability += 0.35 * (1.0 - env.pollinator_environment)
-        herkogamy -= 0.22 * (1.0 - env.pollinator_environment)
+    if switches.selfing_mediation > 0:
+        pollination_gap = 1.0 - env.pollinator_environment
+        selfing_ability += switches.selfing_mediation * 0.35 * pollination_gap
+        herkogamy -= switches.selfing_mediation * 0.22 * pollination_gap
 
-    if "island_isolation->nectar_guide" in mechanisms:
-        nectar_guide -= 0.28 * isolation
+    if switches.island_common_cause > 0:
+        nectar_guide -= switches.island_common_cause * 0.28 * isolation
 
-    if "Bombus_frequency->nectar_guide" in mechanisms:
-        nectar_guide += 0.42 * env.bombus_frequency
+    if switches.direct_pollinator_to_guide > 0:
+        nectar_guide += switches.direct_pollinator_to_guide * 0.42 * env.bombus_frequency
 
-    if "drift_strength" in edge_targets or "drift_strength->nectar_guide" in mechanisms:
-        nectar_guide -= 0.24 * drift
-
-    if structure.name == "M5_drift_null":
-        nectar_guide = 0.52 - 0.30 * drift
+    if switches.drift_null > 0:
+        nectar_guide -= switches.drift_null * 0.30 * drift
 
     agent = PlantAgent(
         nectar_guide=clamp01(nectar_guide),
@@ -84,14 +83,19 @@ def simulate_population_proxy(
     outcross = outcrossing_probability(agent, env, params)
     selfing = selfing_probability(agent, outcross)
 
-    if "selfing_rate->nectar_guide" in mechanisms:
-        agent = replace(agent, nectar_guide=clamp01(agent.nectar_guide - 0.35 * selfing))
-
-    if structure.name in {"M2_selfing_mediated", "M3_direct_plus_mediated"}:
+    if switches.selfing_mediation > 0:
         agent = replace(
             agent,
-            flower_size=clamp01(agent.flower_size - 0.18 * selfing),
-            herkogamy=clamp01(agent.herkogamy - 0.12 * selfing),
+            nectar_guide=clamp01(
+                agent.nectar_guide - switches.selfing_mediation * 0.35 * selfing
+            ),
+        )
+
+    if switches.selfing_mediation > 0:
+        agent = replace(
+            agent,
+            flower_size=clamp01(agent.flower_size - switches.selfing_mediation * 0.18 * selfing),
+            herkogamy=clamp01(agent.herkogamy - switches.selfing_mediation * 0.12 * selfing),
         )
 
     fis = clamp01(0.04 + 0.78 * selfing + 0.10 * drift)

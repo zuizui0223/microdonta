@@ -14,6 +14,7 @@ from causal_model.simulation import (
     simulate_population_proxy,
 )
 from causal_model.structures import CausalStructure
+from causal_model.switches import PathwaySwitches, switches_for_structure
 
 
 def default_campanula_proxy_environments() -> dict[str, Environment]:
@@ -45,13 +46,15 @@ def simulate_campanula_causal_structure(
     structure: CausalStructure,
     params: ModelParameters | None = None,
     environments: dict[str, Environment] | None = None,
+    switches: PathwaySwitches | None = None,
 ) -> tuple[dict[str, str], list[PopulationProxyOutput]]:
     """Generate Oshima/Hachijo pattern relations for one causal structure."""
 
     params = params or ModelParameters()
     environments = environments or default_campanula_proxy_environments()
+    switches = switches or switches_for_structure(structure.name)
     outputs = [
-        simulate_population_proxy(structure, env, params)
+        simulate_population_proxy(structure, env, params, switches=switches)
         for env in environments.values()
     ]
     relations = relations_from_outputs(outputs, left="Oshima", right="Hachijo")
