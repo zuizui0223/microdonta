@@ -18,11 +18,16 @@ class Constraint:
         return bool(self.predicate(parameters))
 
 
-def within(name: str, key: str, lower: float, upper: float, description: str = "") -> Constraint:
-    """Create a simple bounded-value constraint."""
+def within(key: str, lower: float, upper: float, description: str = "") -> Constraint:
+    """Create a bounded-value constraint for a single parameter.
 
+    Usage::
+
+        within("guide_cost", 0.0, 0.20)
+        within("mutation_sd", 0.01, 0.12, "realistic quantitative-genetics range")
+    """
     return Constraint(
-        name=name,
-        predicate=lambda params: lower <= float(params[key]) <= upper,
-        description=description or f"{key} must be between {lower} and {upper}.",
+        name=f"{key}_within_range",
+        predicate=lambda params, k=key, lo=lower, hi=upper: lo <= float(params.get(k, lo)) <= hi,
+        description=description or f"{key} ∈ [{lower}, {upper}].",
     )
