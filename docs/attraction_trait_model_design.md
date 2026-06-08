@@ -21,6 +21,31 @@ This document specifies the second layer. It should guide a future
 `attraction_trait_model/` module without replacing the existing
 `constraint_abm/` CAPOM package.
 
+## 1.1 Why the current CAPOM workflow is not yet a full model
+
+The current CAPOM workflow is already useful for organizing evidence and
+ranking scenario outputs, but it is still weak as a formal evolutionary model
+for three reasons.
+
+First, most observable floral traits are currently treated as population-level
+conditions or diagnostics. A full individual-based model should let
+`nectar_guide`, `flower_size`, `herkogamy`, and `selfing_ability` vary among
+individuals, be inherited, mutate, drift, and respond to selection.
+
+Second, the current workflow mostly asks whether a scenario output resembles
+known patterns. A full model should also generate phase boundaries:
+
+```text
+maintenance region
+reduction region
+loss region
+intermediate stable region
+```
+
+Third, CAPOM evaluates compatibility between simulated outputs and observed
+patterns. It should not itself be the biological generator. The generator must
+contain explicit reproduction, fitness, inheritance, mutation, and drift rules.
+
 The core biological question is:
 
 ```text

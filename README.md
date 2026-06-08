@@ -46,6 +46,21 @@ CAPOMは、Pattern-Oriented Modelling (POM) と Agent-Based Modelling (ABM) を�
 3. 将来的に再利用可能なPythonパッケージへ切り出す。
 4. MEE投稿に必要な README、ODD protocol、workflow、example dataset、scenario comparison、sensitivity analysis、null models を整備する。
 
+## Model layer vs CAPOM layer
+
+CAPOM is the evaluation / pattern-matching workflow. It organizes observable
+patterns, compares simulated outputs with field and literature patterns, and
+filters plausible latent parameter ranges.
+
+The new `attraction_trait_model` package is the generative biological model
+layer. It defines individual plant agents, environments, provisional latent
+parameters, reproduction probabilities, fitness components, inheritance helpers,
+and diagnostics for attraction-trait evolution.
+
+For now, the existing Streamlit app remains the working prototype. Once
+`attraction_trait_model` is stable, it can be connected to Streamlit and to the
+CAPOM comparison / inference workflows.
+
 See also:
 
 - [ABM design policy](docs/abm_design_policy.md)
