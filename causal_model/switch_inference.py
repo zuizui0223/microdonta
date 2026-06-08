@@ -48,6 +48,22 @@ from causal_model.parameter_constraints import (
 from causal_model.parameter_sampling import param_set_to_model_parameters
 from causal_model.switches import PathwaySwitches
 
+# ABM output column → relation variable name
+# ABM final-generation dicts use verbose keys; proxy uses short keys.
+_ABM_KEY_MAP: dict[str, str] = {
+    "nectar_guide":  "mean_nectar_guide",
+    "selfing_rate":  "selfing_rate",
+    "herkogamy":     "mean_herkogamy",
+    "flower_size":   "mean_flower_size",
+    "Fis":           "Fis_proxy",
+}
+
+# Bombus_frequency is environmental (always matches observed); inject directly.
+_ABM_BOMBUS: dict[str, float] = {"Oshima": 0.35, "Hachijo": 0.00}
+
+# Minimum trait difference to call a directional relation (same as proxy tolerance)
+_ABM_RELATION_TOLERANCE: float = 0.05
+
 
 # ---------------------------------------------------------------------------
 # Biological switch definitions
@@ -485,6 +501,224 @@ def run_switch_posterior_inference(
             accepted_rows.append(row)
 
     rejected_count = len(constraint_rejected) + (total_abc_attempts - len(accepted_rows))
+    posterior_table = compute_switch_posterior_table(accepted_rows, switches)
+
+    return SwitchPosteriorResult(
+        accepted_rows=accepted_rows,
+        rejected_count=rejected_count,
+        n_attempts=n_attempts,
+        posterior_table=posterior_table,
+    )
+
+
+# ---------------------------------------------------------------------------
+# ABM helpers
+# ---------------------------------------------------------------------------
+
+def abm_outputs_to_relations(
+    mean_oshima: dict[str, float],
+    mean_hachijo: dict[str, float],
+    tolerance: float = _ABM_RELATION_TOLERANCE,
+) -> dict[str, str]:
+    """Convert averaged ABM final-generation outputs to ordinal relation strings.
+
+    Parameters
+    ----------
+    mean_oshima / mean_hachijo:
+        Replicate-averaged final-generation summary dicts from simulate_population().
+    tolerance:
+        Minimum absolute difference to call a directional relation (default 0.05).
+
+    Returns
+    -------
+    dict  {variable_name: relation_string}
+        Keys match those expected by compute_run_distances() for pairwise patterns.
+    """
+    relations: dict[str, str] = {}
+    for var, abm_key in _ABM_KEY_MAP.items():
+        v_o = float(mean_oshima.get(abm_key, 0.5))
+        v_h = float(mean_hachijo.get(abm_key, 0.5))
+        diff = v_o - v_h
+        if abs(diff) <= tolerance:
+            relations[var] = "Oshima ~= Hachijo"
+        elif diff > 0:
+            relations[var] = "Oshima > Hachijo"
+        else:
+            relations[var] = "Oshima < Hachijo"
+    # Bombus_frequency is fixed by the environment — always matches
+    b_o = _ABM_BOMBUS["Oshima"]
+    b_h = _ABM_BOMBUS["Hachijo"]
+    relations["Bombus_frequency"] = (
+        "Oshima > Hachijo" if b_o - b_h > tolerance
+        else "Oshima < Hachijo" if b_h - b_o > tolerance
+        else "Oshima ~= Hachijo"
+    )
+    return relations
+
+
+def _average_replicate_finals(finals: list[dict]) -> dict[str, float]:
+    """Average numeric values across replicate final-generation rows."""
+    if not finals:
+        return {}
+    keys = [k for k in finals[0] if isinstance(finals[0][k], (int, float))]
+    return {k: sum(float(r.get(k, 0)) for r in finals) / len(finals) for k in keys}
+
+
+# ---------------------------------------------------------------------------
+# ABM-backed switch posterior inference
+# ---------------------------------------------------------------------------
+
+def run_switch_posterior_inference_abm(
+    preset_name: str,
+    n_attempts: int,
+    acceptance_rule: str,
+    seed: int,
+    observed_rels: dict[str, str],
+    pattern_weights: dict[str, float],
+    generations: int = 40,
+    population_size: int = 150,
+    replicates: int = 3,
+    switches: Sequence[BiologicalSwitch] = CAMPANULA_SWITCHES,
+) -> SwitchPosteriorResult:
+    """Run switch posterior inference using the stochastic ABM backend.
+
+    Algorithm (same ABC-rejection scheme as the proxy version):
+
+    1. Sample binary switch state  s ~ Bernoulli(prior_on_prob)
+    2. Sample latent parameters    θ ~ constrained trade-off prior
+    3. Simulate ABM for Oshima and Hachijo independently (``replicates`` times each)
+    4. Average replicates → mean final-generation trait values
+    5. Convert to ordinal relations with tolerance=_ABM_RELATION_TOLERANCE
+    6. ABC acceptance: accept if relation matches observed targets
+    7. Posterior: P(switch ON | accepted)
+
+    Why ABM gives sharper BFs than proxy
+    -------------------------------------
+    The proxy model is deterministic — a switch combination either always
+    produces or never produces the correct relations.  This means many
+    combinations are "always on the boundary", inflating acceptance rates.
+    The stochastic ABM introduces population-level noise: a switch combination
+    that is *marginally* effective will sometimes produce divergence above the
+    tolerance threshold and sometimes not, depending on drift and stochastic
+    pollinator visits.  This creates a continuous acceptance probability
+    P(accept | switches, θ), sharpening the Bayes factors.
+
+    Parameters
+    ----------
+    preset_name:
+        Name of the trade-off preset for ecological parameter sampling.
+    n_attempts:
+        Total joint draws. ABM is ~20-100x slower than proxy; 100-300 is typical.
+    acceptance_rule:
+        ABC acceptance rule; passed to compute_run_distances.
+    seed:
+        RNG seed for reproducibility.
+    observed_rels:
+        {variable_name: relation_string} from empirical data.
+    pattern_weights:
+        {variable_name: weight} for weighted ABC distance.
+    generations:
+        Number of evolutionary generations per ABM run. 30-50 is typical.
+    population_size:
+        Number of individual plants per ABM run. 100-200 is typical.
+    replicates:
+        ABM replicates per population per draw. Averaging over replicates
+        reduces stochastic noise in the relation estimate. 3-5 recommended.
+    switches:
+        Switch definitions. Defaults to CAMPANULA_SWITCHES.
+
+    Returns
+    -------
+    SwitchPosteriorResult
+        Same structure as proxy version; compatible with all downstream UI.
+    """
+
+    from attraction_trait_model.simulation import simulate_population
+    from examples.campanula_izu.proxy_simulation import (
+        default_campanula_proxy_environments,
+    )
+
+    rng = random.Random(seed)
+    preset = predefined_tradeoff_presets()[preset_name]
+    environments = default_campanula_proxy_environments()
+
+    constraint_passed, constraint_rejected = sample_all_sets_with_rejection_log(
+        preset, n_attempts, seed=seed
+    )
+
+    accepted_rows: list[dict] = []
+
+    for draw_idx, param_set in enumerate(constraint_passed):
+        model_params = param_set_to_model_parameters(param_set)
+        state = sample_switch_state(rng, switches)
+        pw = pathway_switches_from_state(state, switches)
+
+        # Run ABM for each population, averaging over replicates
+        pop_finals: dict[str, dict[str, float]] = {}
+        abm_failed = False
+        for pop_idx, (pop_name, env) in enumerate(environments.items()):
+            rep_finals: list[dict] = []
+            for rep in range(replicates):
+                run_seed = seed + draw_idx * 100_000 + pop_idx * 10_000 + rep * 1_000
+                try:
+                    rows = simulate_population(
+                        env=env,
+                        params=model_params,
+                        switches=pw,
+                        generations=generations,
+                        population_size=population_size,
+                        seed=run_seed,
+                    )
+                    if rows:
+                        rep_finals.append(rows[-1])
+                except Exception:
+                    abm_failed = True
+                    break
+            if abm_failed or not rep_finals:
+                abm_failed = True
+                break
+            pop_finals[pop_name] = _average_replicate_finals(rep_finals)
+
+        if abm_failed or "Oshima" not in pop_finals or "Hachijo" not in pop_finals:
+            continue
+
+        rels = abm_outputs_to_relations(pop_finals["Oshima"], pop_finals["Hachijo"])
+        dist_metrics = compute_run_distances(
+            observed_rels=observed_rels,
+            simulated_rels=rels,
+            weights=pattern_weights,
+            rule=acceptance_rule,
+        )
+
+        row = {
+            "sample_id": str(uuid.uuid4()),
+            "preset_name": preset_name,
+            "backend": "stochastic_abm",
+            "generations": generations,
+            "population_size": population_size,
+            "replicates": replicates,
+            "nearest_structure": switch_state_to_nearest_structure(state),
+            **state,
+            **{p: param_set.get(p) for p in (
+                "guide_cost", "outcrossing_benefit", "selfing_benefit",
+                "inbreeding_depression", "small_pollinator_efficiency",
+                "drift_strength", "direct_pollinator_guide_benefit",
+                "cost_of_waiting_for_pollinators",
+            )},
+            **dist_metrics,
+            **{f"relation_{k}": v for k, v in rels.items()},
+            **{f"oshima_{k}": v for k, v in pop_finals["Oshima"].items()},
+            **{f"hachijo_{k}": v for k, v in pop_finals["Hachijo"].items()},
+            "guide_tradeoff_class": param_set.get("guide_tradeoff_class", ""),
+            "selfing_tradeoff_class": param_set.get("selfing_tradeoff_class", ""),
+        }
+
+        if dist_metrics["accepted_by_epsilon"]:
+            accepted_rows.append(row)
+
+    rejected_count = (
+        len(constraint_rejected) + len(constraint_passed) - len(accepted_rows)
+    )
     posterior_table = compute_switch_posterior_table(accepted_rows, switches)
 
     return SwitchPosteriorResult(

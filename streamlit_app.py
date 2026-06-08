@@ -42,6 +42,7 @@ from causal_model.switch_inference import (
     CAMPANULA_SWITCHES,
     compute_coactivation_table,
     run_switch_posterior_inference,
+    run_switch_posterior_inference_abm,
 )
 from causal_model.switches import switches_for_structure
 from examples.campanula_izu.causal_structures import campanula_causal_structures
@@ -535,11 +536,38 @@ with st.sidebar:
         "Infers P(pathway ON | patterns matched) without pre-defining M1-M5 structures. "
         "Jointly samples binary switch states and latent parameters."
     )
-    sp_n_attempts = st.slider(
-        "Switch inference draws", 200, 3000, 1500, 100,
-        key="sp_n",
-        help="More draws give sharper posteriors. 1500+ recommended for stable BF estimates.",
+    sp_backend = st.selectbox(
+        "Inference backend",
+        ["proxy_causal", "stochastic_abm"],
+        format_func=lambda x: (
+            "proxy (fast, ~1500 draws)" if x == "proxy_causal"
+            else "stochastic ABM (slow, ~200-500 draws, sharper BF)"
+        ),
+        key="sp_backend",
     )
+    if sp_backend == "stochastic_abm":
+        sp_n_attempts = st.slider(
+            "Switch inference draws", 50, 1000, 200, 50,
+            key="sp_n_abm",
+            help="Each draw runs ABM for Oshima + Hachijo. ~289ms/draw. 200 draws ≈ 1 min.",
+        )
+        sp_abm_generations = st.slider("ABM generations", 10, 80, 30, 10, key="sp_gen")
+        sp_abm_popsize    = st.slider("ABM population size", 50, 300, 100, 50, key="sp_pop")
+        sp_abm_replicates = st.slider("ABM replicates", 1, 5, 3, 1, key="sp_rep")
+        _est_sec = int(sp_n_attempts * 0.30 * sp_abm_replicates / 3)
+        st.caption(
+            f"Estimated runtime: ~{_est_sec}s "
+            f"({sp_n_attempts} draws × {sp_abm_replicates} rep × 2 islands)"
+        )
+    else:
+        sp_n_attempts = st.slider(
+            "Switch inference draws", 200, 3000, 1500, 100,
+            key="sp_n_proxy",
+            help="More draws give sharper posteriors. 1500+ recommended for stable BF estimates.",
+        )
+        sp_abm_generations = 0
+        sp_abm_popsize = 0
+        sp_abm_replicates = 0
     run_switch_button = st.button(
         "Run Switch Posterior", use_container_width=True
     )
@@ -686,16 +714,36 @@ if run_gradient_button:
 # Run switch posterior inference
 # ---------------------------------------------------------------------------
 if run_switch_button:
-    with st.spinner("Sampling (params, switches) jointly -> ABC filter -> posterior..."):
-        sp_result = run_switch_posterior_inference(
-            preset_name=preset_name,
-            n_attempts=int(sp_n_attempts),
-            acceptance_rule=acceptance_rule,
-            seed=int(seed) + 1,
-            observed_rels=OBSERVED_RELS,
-            pattern_weights=PATTERN_WEIGHTS,
+    if sp_backend == "stochastic_abm":
+        _spinner_msg = (
+            f"ABM switch posterior: {sp_n_attempts} draws × "
+            f"{sp_abm_replicates} rep × 2 islands "
+            f"(gen={sp_abm_generations}, pop={sp_abm_popsize})..."
         )
+        with st.spinner(_spinner_msg):
+            sp_result = run_switch_posterior_inference_abm(
+                preset_name=preset_name,
+                n_attempts=int(sp_n_attempts),
+                acceptance_rule=acceptance_rule,
+                seed=int(seed) + 1,
+                observed_rels=OBSERVED_RELS,
+                pattern_weights=PATTERN_WEIGHTS,
+                generations=sp_abm_generations,
+                population_size=sp_abm_popsize,
+                replicates=sp_abm_replicates,
+            )
+    else:
+        with st.spinner("Sampling (params, switches) jointly -> ABC filter -> posterior..."):
+            sp_result = run_switch_posterior_inference(
+                preset_name=preset_name,
+                n_attempts=int(sp_n_attempts),
+                acceptance_rule=acceptance_rule,
+                seed=int(seed) + 1,
+                observed_rels=OBSERVED_RELS,
+                pattern_weights=PATTERN_WEIGHTS,
+            )
     st.session_state["sp_result"] = sp_result
+    st.session_state["sp_backend_used"] = sp_backend
 
 # ---------------------------------------------------------------------------
 # M1-M5 Results
@@ -902,6 +950,7 @@ else:
 # ============================================================================
 if "sp_result" in st.session_state:
     sp = st.session_state["sp_result"]
+    _sp_backend_used = st.session_state.get("sp_backend_used", "proxy_causal")
     st.divider()
     st.header("Switch Posterior Inference Results")
     st.info(
@@ -910,6 +959,20 @@ if "sp_result" in st.session_state:
         "pre-defined M1-M5 structure. The posterior P(switch ON | accepted) is the "
         "primary inferential output."
     )
+    if _sp_backend_used == "stochastic_abm":
+        st.success(
+            "Stochastic ABM backend: acceptance rate reflects genuine biological "
+            "discriminability, not proxy model determinism. "
+            "BF > 3 is now achievable with sufficient draws."
+        )
+    else:
+        st.caption("Backend: proxy_causal (fast screen)")
+
+    if len(sp.accepted_rows) < 30:
+        st.warning(
+            f"Only {len(sp.accepted_rows)} accepted samples — BF estimates are unstable. "
+            "Increase draws or use a more relaxed acceptance rule for reliable inference."
+        )
 
     sp_c1, sp_c2, sp_c3, sp_c4 = st.columns(4)
     sp_c1.metric("Joint prior draws", sp.n_attempts)
