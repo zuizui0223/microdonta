@@ -21,7 +21,7 @@ simulate_campanula_gradient(switches, ...)
     returns outputs keyed by population name.
 
 environments_from_population_env(env_table)
-    Convert a population_env.csv dict (from observed_data.load_population_env)
+    Convert an ecological_context.csv dict (from observed_data.load_ecological_context)
     into {population_name: Environment} for gradient simulation.
 """
 
@@ -153,12 +153,12 @@ def simulate_campanula_with_switches(
 def environments_from_population_env(
     env_table: dict[str, dict],
 ) -> dict[str, Environment]:
-    """Convert population_env.csv data into Environment objects.
+    """Convert ecological_context.csv data into Environment objects.
 
     Parameters
     ----------
     env_table:
-        Dict returned by observed_data.load_population_env().
+        Dict returned by observed_data.load_ecological_context().
         Keys are population names; values are dicts with numeric columns.
 
     Returns

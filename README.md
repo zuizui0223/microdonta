@@ -124,6 +124,32 @@ effective_population_size       = 1.00 - 0.765 * isolation
 
 ---
 
+## データ設計 — input_context と response_target の分離（Issue #7）
+
+RACHは2種類のデータを明確に区別します。
+
+| ファイル | 役割 | 内容 | ABCに使うか |
+|---|---|---|---|
+| `ecological_context.csv` | **input_context** | 孤立距離・送粉者頻度・有効集団サイズなど、シミュレーションに「投入」する環境変数 | **使わない** — 投入値を予測値と照合するのは循環論法 |
+| `observed_patterns.csv`（`role=response_target`） | **response_target** | ネクターガイド・自殖率・花柱離隔・Fis の勾配方向など、シミュレーションが**再現すべき**パターン | **使う** — ABC採否基準 |
+
+`observed_patterns.csv` の各行には `role` 列があります：
+
+```
+role = response_target  ← ABCの採否に使う（形質の勾配パターン）
+role = input_context    ← ABCに使わない（予測変数、例: primary_pollinator_frequency）
+```
+
+`evaluate_patterns()` は `role=input_context` 行を**自動的にスキップ**します（ディフェンシブガード付き）。`response_target_patterns()` を呼べば、ABCに渡すべき行だけを取得できます。
+
+### 循環論法の防止
+
+`primary_pollinator_frequency`（Bombus頻度）は `ecological_context.csv` からシミュレーションに**注入**される値です。これを同時にABCの採否基準にすると、スイッチの状態に関係なく常にマッチしてしまいます（Bombus頻度はシミュレーションで生成されるのではなく与えられるため）。
+
+`role=input_context` のラベルはこの構造的欠陥を**機械的に**防ぎます。
+
+---
+
 ## 送粉者変数の設計（3機能的役割）
 
 Environment は送粉者を**機能的役割**で分類します（種名に依存しない汎用設計）。
@@ -208,11 +234,12 @@ causal_model/               因果構造・スイッチ・パラメータ制約�
   parameter_constraints.py  生態学的制約文法（C1-C4、文献引用付き）
   switches.py               PathwaySwitches定義
 examples/campanula_izu/     伊豆諸島worked example
-  data/observed_patterns.csv  勾配POMパターン定義
-  data/population_env.csv     集団環境データ
+  data/observed_patterns.csv  勾配POMパターン定義（role列: response_target / input_context）
+  data/ecological_context.csv 集団の生態的文脈データ（input_context; ABC採否には使わない）
   proxy_simulation.py         連続孤立勾配シミュレーション（env_from_isolation）
-  pattern_evaluator.py        勾配パターン評価（gradient_slope, rank_order）
-  observed_data.py            野外・文献データローダー
+  pattern_evaluator.py        勾配パターン評価（gradient_slope, rank_order; role filterつき）
+  observed_data.py            データローダー（response_target_patterns / load_ecological_context）
+  test_ecological_invariants.py  生態不変量テスト（5項目、input_context除外を含む）
 streamlit_app.py            メインアプリ
 ```
 

@@ -469,7 +469,7 @@ def run_switch_posterior_inference(
         RNG seed for reproducibility.
     observed_rels / pattern_weights:
         Kept for backward-compatible call signature; gradient evaluation uses
-        load_observed_pattern_table() and load_population_env() directly.
+        observed_gradient_only_patterns() and load_ecological_context() directly.
     switches:
         Switch definitions.  Defaults to CAMPANULA_SWITCHES.
     """

@@ -1,4 +1,4 @@
-"""Pattern evaluator for Campanula Izu multi-population gradient analysis.
+"""Pattern evaluator for ecological gradient pattern targets.
 
 Supports three pattern types defined in observed_patterns.csv:
 
@@ -16,10 +16,22 @@ rank_order
     matches an expected ordering (increasing or decreasing).
     Match: Kendall's tau > 0 (correct monotone order).
 
+Role filtering (Issue #7)
+--------------------------
+``evaluate_patterns()`` automatically skips rows with
+``role == "input_context"``.  Predictor variables (e.g.
+``primary_pollinator_frequency``) are injected from ecological_context, not
+simulated, so including them in the acceptance criterion would be circular.
+Only ``role == "response_target"`` rows count toward ``weighted_match_rate``.
+
+Pass ``response_target_patterns()`` from ``observed_data`` to ensure only
+the correct rows reach this function; the role guard here is a defensive
+second check.
+
 Entry points
 ------------
 evaluate_patterns(simulated_outputs, observed_rows, env_table)
-    Evaluate all pattern rows. Returns EvaluationResult.
+    Evaluate all response_target pattern rows. Returns EvaluationResult.
 
 weighted_pattern_distance(eval_result)
     Compute ABC distance in [0, 1] from EvaluationResult.
@@ -104,24 +116,30 @@ class EvaluationResult:
 
 def evaluate_patterns(
     simulated_outputs: list,            # list[PopulationProxyOutput]
-    observed_rows: list[dict],          # from load_observed_pattern_table()
-    env_table: dict[str, dict],         # from load_population_env()
+    observed_rows: list[dict],          # from response_target_patterns() or load_observed_pattern_table()
+    env_table: dict[str, dict],         # from load_ecological_context()
     pairwise_left: str = "Oshima",
     pairwise_right: str = "Hachijo",
 ) -> EvaluationResult:
-    """Evaluate all observed pattern rows against simulated outputs.
+    """Evaluate response_target pattern rows against simulated outputs.
+
+    Rows with ``role == "input_context"`` are silently skipped — predictor
+    variables are injected from ecological_context, not simulated, so they
+    must not count toward ABC acceptance (circular logic prevention).
 
     Parameters
     ----------
     simulated_outputs:
         List of PopulationProxyOutput objects (one per population).
     observed_rows:
-        Pattern rows from load_observed_pattern_table().
+        Pattern rows.  Prefer passing ``response_target_patterns()`` from
+        ``observed_data``; this function also guards against input_context rows
+        appearing in the list.
     env_table:
-        Population environment dict from load_population_env().
+        Ecological context dict from ``load_ecological_context()``.
     pairwise_left / pairwise_right:
-        Default populations for legacy pairwise comparison (used when the
-        pattern row itself does not specify left/right_population).
+        Default populations for pairwise comparison when the pattern row
+        itself does not specify left/right_population.
 
     Returns
     -------
@@ -144,6 +162,10 @@ def evaluate_patterns(
 
     result = EvaluationResult()
     for row in observed_rows:
+        # Defensive role guard: skip input_context rows regardless of how the
+        # list was assembled.  Predictor variables must not count toward ABC.
+        if row.get("role", "response_target") == "input_context":
+            continue
         ptype = row.get("type", "pairwise_relation")
         weight = float(row.get("weight", 1.0))
         variable = row.get("variable", row.get("pattern", ""))
@@ -400,7 +422,7 @@ class ABMPopulationProxy:
 
     Mimics the attribute interface of PopulationProxyOutput so that
     evaluate_patterns() can be called with ABM outputs.
-    Bombus_frequency is injected from the environment table, not from ABM.
+    primary_pollinator_frequency is injected from ecological_context, not from ABM.
     """
 
     # ABM key → PopulationProxyOutput attribute
@@ -424,8 +446,8 @@ class ABMPopulationProxy:
         self.herkogamy     = float(final_dict.get("mean_herkogamy",    0.5))
         self.flower_size   = float(final_dict.get("mean_flower_size",  0.5))
         self.Fis           = float(final_dict.get("Fis_proxy",         0.5))
-        self.Bombus_frequency = (
-            float(env_row.get("Bombus_frequency", 0.0)) if env_row else 0.0
+        self.primary_pollinator_frequency = (
+            float(env_row.get("primary_pollinator_frequency", 0.0)) if env_row else 0.0
         )
         self.outcrossing_opportunity = max(0.0, 1.0 - self.selfing_rate)
 
