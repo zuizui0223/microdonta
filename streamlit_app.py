@@ -161,6 +161,32 @@ def to_csv_bytes(df: pd.DataFrame) -> bytes:
     return df.to_csv(index=False).encode("utf-8")
 
 
+def _run_tag(settings: dict) -> str:
+    """Short tag for file names: YYYYMMDD_HHMMSS_preset_seed_rule."""
+    import datetime
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    preset = settings.get("preset_name", "unknown").replace("_", "")[:12]
+    seed   = settings.get("seed", 0)
+    rule   = settings.get("acceptance_rule", "unknown").replace("_", "").replace(".", "")[:10]
+    return f"{ts}_{preset}_s{seed}_{rule}"
+
+
+def _build_zip(files: dict[str, pd.DataFrame]) -> bytes:
+    """Pack multiple DataFrames into an in-memory ZIP.
+
+    Parameters
+    ----------
+    files : {filename_without_ext: DataFrame}
+    """
+    import io, zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, df in files.items():
+            if df is not None and not df.empty:
+                zf.writestr(f"{name}.csv", df.to_csv(index=False).encode("utf-8"))
+    return buf.getvalue()
+
+
 def relation_from_values(
     left_name: str, left_value: float,
     right_name: str, right_value: float,
@@ -808,6 +834,12 @@ if run_switch_button:
     _sp_stat.empty()
     st.session_state["sp_result"] = sp_result
     st.session_state["sp_backend_used"] = sp_backend
+    st.session_state["sp_settings"] = {
+        "preset_name": preset_name,
+        "seed": int(seed) + 1,
+        "acceptance_rule": acceptance_rule,
+        "backend": sp_backend,
+    }
 
 # ---------------------------------------------------------------------------
 # M1-M5 Results
@@ -972,37 +1004,62 @@ if "research_result" in st.session_state:
     with tab6:
         st.markdown("### Raw tables and downloads")
         stretch_df(df_runs.head(200), hide_index=True)
+        _tag = _run_tag(settings)
+
+        # --- Bulk ZIP download (all tables in one click) ---
+        _zip_files = {
+            f"{_tag}_all_runs":               df_runs,
+            f"{_tag}_admissible_runs":        df_acc_runs,
+            f"{_tag}_final_values":           df_final_values,
+            f"{_tag}_compatible_ranges":      df_ranges,
+            f"{_tag}_hypothesis_summary":     df_summary,
+            f"{_tag}_constraint_passed_params": df_acc_params,
+            f"{_tag}_rejected_params":        df_rej,
+        }
+        if not df_generation_rows.empty:
+            _zip_files[f"{_tag}_generation_timeseries"] = df_generation_rows
+        st.download_button(
+            "⬇ Download ALL tables as ZIP",
+            _build_zip(_zip_files),
+            f"{_tag}_rach_all.zip",
+            "application/zip",
+            use_container_width=True,
+            type="primary",
+        )
+        st.divider()
+
+        # --- Individual downloads ---
         d1, d2, d3 = st.columns(3)
         with d1:
             st.download_button("all_runs.csv", to_csv_bytes(df_runs),
-                               "rach_all_runs.csv", "text/csv")
+                               f"{_tag}_all_runs.csv", "text/csv")
             st.download_button("admissible_runs.csv", to_csv_bytes(df_acc_runs),
-                               "rach_admissible_runs.csv", "text/csv")
+                               f"{_tag}_admissible_runs.csv", "text/csv")
             st.download_button("final_values.csv", to_csv_bytes(df_final_values),
-                               "rach_simulation_final_values.csv", "text/csv")
+                               f"{_tag}_final_values.csv", "text/csv")
         with d2:
             st.download_button("compatible_ranges.csv", to_csv_bytes(df_ranges),
-                               "rach_compatible_ranges.csv", "text/csv")
+                               f"{_tag}_compatible_ranges.csv", "text/csv")
             st.download_button("hypothesis_summary.csv", to_csv_bytes(df_summary),
-                               "rach_hypothesis_summary.csv", "text/csv")
+                               f"{_tag}_hypothesis_summary.csv", "text/csv")
             if not df_generation_rows.empty:
                 st.download_button(
                     "generation_timeseries.csv",
                     to_csv_bytes(df_generation_rows),
-                    "rach_stochastic_abm_generation_timeseries.csv",
+                    f"{_tag}_generation_timeseries.csv",
                     "text/csv",
                 )
         with d3:
             st.download_button(
                 "constraint_passed_params.csv",
                 to_csv_bytes(df_acc_params),
-                "rach_constraint_passed_parameter_sets.csv",
+                f"{_tag}_constraint_passed_params.csv",
                 "text/csv",
             )
             st.download_button(
                 "rejected_params.csv",
                 to_csv_bytes(df_rej),
-                "rach_rejected_parameter_sets.csv",
+                f"{_tag}_rejected_params.csv",
                 "text/csv",
             )
 
@@ -1325,19 +1382,38 @@ if "sp_result" in st.session_state:
                 )
 
         with sp_tab5:
+            _sp_settings = st.session_state.get("sp_settings", {})
+            _sp_tag = _run_tag(_sp_settings)
+            _df_sp_accepted  = pd.DataFrame(sp.accepted_rows)
+            _df_sp_posterior = pd.DataFrame(sp.posterior_table)
+
+            # Bulk ZIP
+            st.download_button(
+                "⬇ Download ALL switch posterior tables as ZIP",
+                _build_zip({
+                    f"{_sp_tag}_sp_accepted_rows":  _df_sp_accepted,
+                    f"{_sp_tag}_sp_posterior_table": _df_sp_posterior,
+                }),
+                f"{_sp_tag}_sp_all.zip",
+                "application/zip",
+                use_container_width=True,
+                type="primary",
+            )
+            st.divider()
+
             col_dl1, col_dl2 = st.columns(2)
             with col_dl1:
                 st.download_button(
                     "switch_posterior_accepted.csv",
-                    pd.DataFrame(sp.accepted_rows).to_csv(index=False).encode(),
-                    "rach_switch_posterior_accepted.csv",
+                    _df_sp_accepted.to_csv(index=False).encode("utf-8"),
+                    f"{_sp_tag}_sp_accepted.csv",
                     "text/csv",
                 )
             with col_dl2:
                 st.download_button(
                     "switch_posterior_table.csv",
-                    pd.DataFrame(sp.posterior_table).to_csv(index=False).encode(),
-                    "rach_switch_posterior_table.csv",
+                    _df_sp_posterior.to_csv(index=False).encode("utf-8"),
+                    f"{_sp_tag}_sp_posterior_table.csv",
                     "text/csv",
                 )
 
