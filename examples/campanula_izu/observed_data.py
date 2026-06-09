@@ -278,20 +278,21 @@ def response_target_patterns(path: str | Path | None = None) -> list[dict]:
 
 
 def observed_gradient_only_patterns(path: str | Path | None = None) -> list[dict]:
-    """Return ``response_target`` rows of type gradient_slope or rank_order.
+    """Return ``response_target`` rows usable with the isolation gradient simulation.
 
-    These are the gradient POM: abstract directional expectations that do NOT
-    name specific population pairs, only the direction of change along the
-    isolation gradient (e.g. "nectar_guide decreases with distance").
+    Includes: gradient_slope, rank_order, and trait_correlation patterns.
+    Excludes: pairwise_relation (requires named populations Oshima/Hachijo).
 
-    This is the primary acceptance criterion in Switch Posterior Inference
-    (used by ``switch_inference.py`` and ``test_ecological_invariants.py``).
+    These are the directional patterns that work with any population set —
+    they describe the *shape* of the gradient, not comparisons between named
+    islands.  This is the primary acceptance criterion in Switch Posterior
+    Inference (used by ``switch_inference.py`` and ``test_ecological_invariants.py``).
 
     Returns raw CSV dicts (suitable for ``evaluate_patterns()``).
     """
     return [
         row for row in response_target_patterns(path)
-        if row.get("type", "") in ("gradient_slope", "rank_order")
+        if row.get("type", "") in ("gradient_slope", "rank_order", "trait_correlation")
     ]
 
 

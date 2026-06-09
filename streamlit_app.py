@@ -1204,22 +1204,71 @@ if "sp_result" in st.session_state:
                     if not df_contrib_nz.empty:
                         st.bar_chart(
                             df_contrib_nz.set_index(
-                                df_contrib_nz["pattern"] + " → " + df_contrib_nz["switch"]
+                                df_contrib_nz["pattern"] + " -> " + df_contrib_nz["switch"]
                             )[["C_k_j"]],
                             width="stretch",
                         )
                         stretch_df(df_contrib_nz, hide_index=True)
                     else:
                         st.info(
-                            "All |C_k(j)| ≈ 0 — either every pattern is redundant or "
-                            "no per_pattern_matched data was captured. "
-                            "Re-run with proxy_causal backend to populate pattern-level data."
+                            "All |C_k(j)| ≈ 0 — the current pattern set is redundant or "
+                            "weakly discriminating: removing any single pattern does not "
+                            "change which samples are accepted (LOO has no effect). "
+                            "Adding quantitative or trait-correlation patterns increases "
+                            "discrimination and makes C_k(j) nonzero."
                         )
                 else:
                     st.info(
                         "Pattern contribution requires per_pattern_matched data. "
                         "This is populated automatically on the next inference run."
                     )
+
+                # --- Acceptance rule sensitivity comparison ---
+                st.markdown("#### Acceptance rule sensitivity")
+                st.caption(
+                    "How H(S|A_ε), degeneracy reduction, and total I_j change when "
+                    "the ABC threshold is relaxed. Computed by re-filtering the same "
+                    "accepted rows at each threshold — no re-simulation needed."
+                )
+                _thresh_map = {
+                    "strict_all (1.000)":    1.000,
+                    "relaxed_0.83 (0.833)":  5 / 6,
+                    "relaxed_0.67 (0.667)":  4 / 6,
+                    "weighted_lax (0.800)":  0.800,
+                }
+                _all_rows = sp.accepted_rows  # already accepted at some threshold
+                _sens_rows = []
+                for _rule_label, _thr in _thresh_map.items():
+                    _filtered = [
+                        r for r in _all_rows
+                        if r.get("weighted_match_rate", 0.0) >= _thr - 1e-9
+                    ]
+                    _n = len(_filtered)
+                    if _n >= 3:
+                        _m = compute_rach_theory_metrics(_filtered, CAMPANULA_SWITCHES)
+                        _sens_rows.append({
+                            "rule": _rule_label,
+                            "n_accepted": _n,
+                            "acceptance_rate": f"{_n / max(sp.n_attempts, 1):.1%}",
+                            "H(S|Aε) bits": round(_m.causal_degeneracy, 3),
+                            "degeneracy_reduction": round(_m.degeneracy_reduction, 3),
+                            "total_Ij bits": round(_m.total_identifiability, 3),
+                        })
+                    else:
+                        _sens_rows.append({
+                            "rule": _rule_label,
+                            "n_accepted": _n,
+                            "acceptance_rate": f"{_n / max(sp.n_attempts, 1):.1%}",
+                            "H(S|Aε) bits": "n/a (too few)",
+                            "degeneracy_reduction": "n/a",
+                            "total_Ij bits": "n/a",
+                        })
+                stretch_df(pd.DataFrame(_sens_rows), hide_index=True)
+                st.caption(
+                    "Stricter threshold -> smaller accepted set -> lower H(S|A_ε) "
+                    "-> higher identifiability. Use this table to choose the threshold "
+                    "that balances n_accepted vs degeneracy reduction."
+                )
 
             except ImportError as _e:
                 st.error(f"causal_model.identifiability not available: {_e}")

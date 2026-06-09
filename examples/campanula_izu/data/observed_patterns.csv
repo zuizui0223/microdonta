@@ -11,3 +11,8 @@ herkogamy_distance,gradient_slope,herkogamy,,,,distance_from_mainland,negative,,
 Fis_distance,gradient_slope,Fis,,,,distance_from_mainland,positive,,1.0,conceptual_gradient,inbreeding coefficient increases with isolation distance,response_target
 nectar_guide_rank,rank_order,nectar_guide,,,,,decreasing,,1.0,conceptual_gradient,nectar guide rank decreases along isolation gradient,response_target
 selfing_rank,rank_order,selfing_rate,,,,,increasing,,1.0,conceptual_gradient,selfing rate rank increases along isolation gradient,response_target
+selfing_herkogamy_corr,trait_correlation,herkogamy,,,,selfing_rate,negative,,1.0,theoretical,herkogamy decreases as selfing rate increases (selfing syndrome co-evolution S2),response_target
+selfing_flower_size_corr,trait_correlation,flower_size,,,,selfing_rate,negative,,1.0,theoretical,flower size decreases as selfing rate increases (selfing syndrome S2),response_target
+selfing_Fis_corr,trait_correlation,Fis,,,,selfing_rate,positive,,1.0,theoretical,inbreeding coefficient increases as selfing rate increases (S2 drives both),response_target
+guide_outcross_corr,trait_correlation,outcrossing_opportunity,,,,nectar_guide,positive,,1.0,theoretical,outcrossing opportunity increases with nectar guide expression (guide attracts pollinators S1),response_target
+neutral_diversity_isolation,gradient_slope,neutral_diversity,,,,distance_from_mainland,negative,,1.2,theoretical,neutral genetic diversity decreases with isolation (requires drift S4 — flat without S4),response_target

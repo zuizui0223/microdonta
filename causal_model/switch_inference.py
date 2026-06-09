@@ -429,8 +429,26 @@ GRADIENT_THRESH_MAP: dict[str, float] = {
     "weighted_lax":    0.800,
 }
 
-# Number of gradient POM patterns (used for epsilon display in UI)
-GRADIENT_N_PATTERNS: int = 6
+# Number of response_target patterns (used for epsilon display in UI).
+# Computed dynamically from observed_patterns.csv so the count stays in sync.
+def _count_response_target_patterns() -> int:
+    try:
+        import csv as _csv
+        from pathlib import Path as _Path
+        _csv_path = (
+            _Path(__file__).resolve().parent.parent
+            / "examples" / "campanula_izu" / "data" / "observed_patterns.csv"
+        )
+        with open(_csv_path, newline="", encoding="utf-8") as f:
+            return sum(
+                1 for row in _csv.DictReader(f)
+                if row.get("role", "response_target") == "response_target"
+            )
+    except Exception:
+        return 6  # fallback to original count
+
+
+GRADIENT_N_PATTERNS: int = _count_response_target_patterns()
 
 
 def _acceptance_threshold(acceptance_rule: str) -> float:

@@ -57,6 +57,10 @@ class PopulationProxyOutput:
     Fis: float
     primary_pollinator_frequency: float
     outcrossing_opportunity: float
+    neutral_diversity: float = 0.5   # proxy for neutral genetic diversity (π/θ)
+    # S4 (drift_null ON + low Ne) → strong decrease
+    # S2 (selfing_mediation ON) → mild decrease via inbreeding-reduced Ne
+    # Distinguishes drift-driven guide loss (S4) from selfing-syndrome (S2)
 
 
 def simulate_population_proxy(
@@ -250,6 +254,42 @@ def simulate_population_proxy(
     # is below RELATION_TOLERANCE (0.05) so Fis does not spuriously match.
     fis = clamp01(0.03 + 0.68 * selfing + 0.14 * drift)
 
+    # ------------------------------------------------------------------
+    # Neutral diversity (new): proxy for neutral genetic diversity (π or θ)
+    # ------------------------------------------------------------------
+    # Baseline: FLAT at 0.80 with no switches.
+    # This is critical for identifiability: if the baseline itself decreases
+    # with isolation, the neutral_diversity_isolation pattern passes for ANY
+    # switch state and provides no information.
+    #
+    # S4 (drift_null): strong diversity loss correlated with low_ne — the
+    #   signature of random genetic drift in small populations.
+    #   drift = low_ne × (0.5 + 2.5 × ds), so isolation + small Ne + S4 ON →
+    #   sharp diversity decline along the gradient.
+    #
+    # S2 (selfing_mediation): mild reduction through inbreeding-reduced Ne.
+    #   Selfing reduces effective Ne by the inbreeding factor (1-F).
+    #   Produces a mild diversity decline correlated with selfing rate, with a
+    #   WEAKER gradient than S4 (and different functional form).
+    #
+    # Design intent: neutral_diversity_isolation FAILS when only S2 is ON
+    #   (mild gradient, below threshold) and PASSES when S4 is ON (strong
+    #   gradient), making S4 identifiable from S2.
+    neutral_diversity = 0.80  # flat baseline — no isolation effect without switches
+
+    if switches.drift_null > 0:
+        w = switches.drift_null
+        # Strong drift-driven loss — primary S4 signature
+        neutral_diversity -= w * 0.60 * drift
+
+    if switches.selfing_mediation > 0:
+        w = switches.selfing_mediation
+        # Mild inbreeding-driven loss: much weaker slope than S4
+        fis_from_selfing = clamp01(0.50 * selfing)
+        neutral_diversity -= w * 0.18 * fis_from_selfing
+
+    neutral_diversity = clamp01(neutral_diversity)
+
     return PopulationProxyOutput(
         population=env.name,
         nectar_guide=guide,
@@ -259,6 +299,7 @@ def simulate_population_proxy(
         Fis=fis,
         primary_pollinator_frequency=primary_poll,
         outcrossing_opportunity=clamp01(1.0 - selfing),
+        neutral_diversity=neutral_diversity,
     )
 
 

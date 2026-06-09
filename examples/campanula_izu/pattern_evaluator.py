@@ -1,6 +1,6 @@
 """Pattern evaluator for ecological gradient pattern targets.
 
-Supports three pattern types defined in observed_patterns.csv:
+Supports four pattern types defined in observed_patterns.csv:
 
 pairwise_relation
     Ordinal comparison between two populations, e.g. "Oshima > Hachijo".
@@ -15,6 +15,14 @@ rank_order
     The rank order of simulated variable values across populations
     matches an expected ordering (increasing or decreasing).
     Match: Kendall's tau > 0 (correct monotone order).
+
+trait_correlation
+    Pearson correlation (slope sign) between two variables across all
+    simulated populations.  The ``variable`` column is the response (y)
+    and the ``predictor`` column is the explanatory variable (x).
+    Predictors can be either a field on PopulationProxyOutput OR a
+    column in the env_table (env_table lookup is used as fallback).
+    Match: sign(Pearson r) == expected_direction (positive / negative).
 
 Role filtering (Issue #7)
 --------------------------
@@ -183,6 +191,9 @@ def evaluate_patterns(
         elif ptype == "rank_order":
             match = match_rank_order(by_pop, row)
 
+        elif ptype == "trait_correlation":
+            match = match_trait_correlation(by_pop, env_table, row)
+
         else:
             # Unknown type: skip with a non-match so it counts against acceptance
             match = PatternMatch(
@@ -327,6 +338,83 @@ def match_gradient_slope(
     )
 
 
+def match_trait_correlation(
+    by_pop: dict,       # {pop_name: PopulationProxyOutput}
+    env_table: dict,    # {pop_name: {col: val}}
+    pattern_row: dict,
+) -> PatternMatch:
+    """Evaluate a trait_correlation pattern row.
+
+    Computes the Pearson correlation (via OLS slope sign) between response
+    variable y and predictor x across all simulated populations.
+
+    Predictor lookup order:
+    1. ``getattr(output, predictor)`` — field on PopulationProxyOutput
+    2. ``env_table[pop].get(predictor)`` — environmental column (fallback)
+
+    Parameters
+    ----------
+    by_pop:
+        Dict mapping population name to PopulationProxyOutput.
+    env_table:
+        Dict mapping population name to environment row.
+    pattern_row:
+        One CSV row with type == 'trait_correlation'.
+        Required fields: variable (y), predictor (x), expected_direction.
+    """
+    variable     = pattern_row.get("variable", "")
+    predictor    = pattern_row.get("predictor", "")
+    pattern_id   = pattern_row.get("pattern", variable)
+    weight       = float(pattern_row.get("weight", 1.0))
+    expected_dir = pattern_row.get("expected_direction", "").strip().lower()
+
+    if not variable or not predictor:
+        return PatternMatch(
+            pattern=pattern_id, pattern_type="trait_correlation",
+            variable=variable, weight=weight, matched=False,
+            detail="missing variable or predictor field",
+        )
+
+    xs, ys, missing = [], [], []
+    for pop, out in by_pop.items():
+        y_val = getattr(out, variable, None)
+        # Predictor: try output attribute first, then env_table
+        x_val = getattr(out, predictor, None)
+        if x_val is None:
+            env_row = env_table.get(pop, {})
+            x_val = env_row.get(predictor)
+        if x_val is None or y_val is None:
+            missing.append(pop)
+            continue
+        xs.append(float(x_val))
+        ys.append(float(y_val))
+
+    if len(xs) < 3:
+        return PatternMatch(
+            pattern=pattern_id, pattern_type="trait_correlation",
+            variable=variable, weight=weight, matched=False,
+            detail=f"insufficient data (n={len(xs)}, missing={missing})",
+        )
+
+    slope = _ols_slope(xs, ys)
+    # Pearson r has the same sign as OLS slope for the same data
+    if expected_dir == "positive":
+        matched = slope > 0.0
+    elif expected_dir == "negative":
+        matched = slope < 0.0
+    else:
+        matched = False
+
+    detail = (
+        f"corr_slope={slope:.4f} expected={expected_dir} "
+        f"n={len(xs)} y={variable} x={predictor}"
+    )
+    return PatternMatch(
+        pattern=pattern_id, pattern_type="trait_correlation",
+        variable=variable, weight=weight, matched=matched, detail=detail,
+    )
+
+
 def match_rank_order(
     by_pop: dict,  # {pop_name: PopulationProxyOutput}
     pattern_row: dict,
@@ -450,6 +538,8 @@ class ABMPopulationProxy:
             float(env_row.get("primary_pollinator_frequency", 0.0)) if env_row else 0.0
         )
         self.outcrossing_opportunity = max(0.0, 1.0 - self.selfing_rate)
+        # ABM tracks mean_neutral_diversity when available; fall back to 0.5
+        self.neutral_diversity = float(final_dict.get("mean_neutral_diversity", 0.5))
 
 
 def _kendall_tau(values: list[float]) -> float:
