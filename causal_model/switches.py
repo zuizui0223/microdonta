@@ -34,11 +34,14 @@ def switches_for_structure(structure_name: str) -> PathwaySwitches:
             direct_pollinator_to_guide=1.0,
             selfing_mediation=1.0,
         ),
+        # M4: island isolation acts as a SINGLE upstream common cause.
+        # All other switches are OFF so that the pattern contribution is
+        # attributable purely to the isolation pathway (S3), not to
+        # Bombus-guide (S1), selfing syndrome (S2), or drift (S4).
+        # The previous definition included S1=0.25, S4=0.25, which conflated
+        # multiple mechanisms and prevented clean M4 identification.
         "M4_common_island_cause": PathwaySwitches(
-            direct_pollinator_to_guide=0.25,
-            selfing_mediation=0.25,
             island_common_cause=1.0,
-            drift_null=0.25,
         ),
         "M5_drift_null": PathwaySwitches(
             drift_null=1.0,

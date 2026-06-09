@@ -334,7 +334,11 @@ def compute_switch_posterior_table(
             prior_odds = p_prior / (1.0 - p_prior)
             bf = posterior_odds / prior_odds
 
-        if not isinstance(bf, float) or (bf == bf):  # not nan
+        # NaN check: float('nan') != float('nan') in Python, so `bf == bf`
+        # is True iff bf is a valid (non-NaN) float.  The condition below
+        # evaluates True for non-NaN floats (proceed to interpretation)
+        # and False for NaN (fall through to "indeterminate").
+        if not isinstance(bf, float) or (bf == bf):
             if bf > 3.0:
                 interp = "supported (BF>3)"
             elif bf > 1.0:
@@ -533,7 +537,7 @@ def run_switch_posterior_inference(
             **state,
             **{p: param_set.get(p) for p in (
                 "guide_cost", "outcrossing_benefit", "selfing_benefit",
-                "inbreeding_depression", "small_pollinator_efficiency",
+                "inbreeding_depression", "background_pollinator_efficiency",
                 "drift_strength", "direct_pollinator_guide_benefit",
                 "cost_of_waiting_for_pollinators",
             )},
@@ -808,7 +812,7 @@ def run_switch_posterior_inference_abm(
             **state,
             **{p: param_set.get(p) for p in (
                 "guide_cost", "outcrossing_benefit", "selfing_benefit",
-                "inbreeding_depression", "small_pollinator_efficiency",
+                "inbreeding_depression", "background_pollinator_efficiency",
                 "drift_strength", "direct_pollinator_guide_benefit",
                 "cost_of_waiting_for_pollinators",
             )},

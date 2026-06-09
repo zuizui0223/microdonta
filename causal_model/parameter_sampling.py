@@ -1,5 +1,14 @@
 """Ecology-principled constrained parameter sampling for CAPOM.
 
+IMPORTANT — single source of truth for constraints:
+    Ecological parameter constraints (C1, C2, C3, literature-grounded ranges,
+    and preset definitions) are AUTHORITATIVE in ``parameter_constraints.py``.
+    This module contains a parallel implementation of some checks (used during
+    TradeoffPreset sampling) that MUST remain consistent with that module.
+    Any change to a constraint threshold must be applied in both files.
+    Current agreed values: C2 threshold = sb > 0.55 (selfing_benefit).
+
+
 This module defines the research-mode sampling logic for latent benefit/cost
 parameters. These parameters should not be tuned manually or sampled as fully
 independent sliders. Instead, users choose an ecology-motivated trade-off preset,
@@ -180,11 +189,17 @@ def check_ecological_parameter_constraints(
             "strong selfing evolution is unlikely under such inbreeding cost."
         )
 
-    if background_pollinator_efficiency > 0.55 and selfing_benefit > 0.75:
+    # C2 — threshold unified with parameter_constraints.py (sb > 0.55).
+    # Ecological rationale: if background pollinators adequately substitute
+    # for primary pollinators, reproductive-assurance selfing pressure is
+    # relieved, so simultaneously high background_pollinator_efficiency AND
+    # high selfing_benefit is ecologically inconsistent.
+    if background_pollinator_efficiency > 0.55 and selfing_benefit > 0.55:
         failed.append("C2_small_pollinator_vs_selfing_benefit")
         notes.append(
-            "C2: high small-pollinator efficiency and extreme selfing benefit were "
-            "sampled together without justification."
+            "C2: background_pollinator_efficiency > 0.55 AND selfing_benefit > 0.55 — "
+            "high outcrossing substitute and high selfing advantage cannot both be "
+            "extreme simultaneously (reproductive-assurance logic)."
         )
 
     if (

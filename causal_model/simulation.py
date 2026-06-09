@@ -198,9 +198,15 @@ def simulate_population_proxy(
     # used as POM.  Set to 0.00 to strictly enforce the design.
     if switches.island_common_cause > 0:
         w = switches.island_common_cause
-        # Isolation drives selfing syndrome regardless of selfing_net.
-        # The selfing increase scales with (1 - ob) because high outcrossing
-        # benefit partially resists reproductive-assurance selfing pressure.
+        # S3 as "single upstream cause": isolation reduces pollinator service
+        # overall, creating reproductive-assurance pressure.  The magnitude of
+        # that pressure is modulated by (1 - ob): a plant with high outcrossing
+        # benefit resists RA-selfing more strongly than one with low ob.
+        # This modulation is PART of the S3 causal path (isolation → RA pressure
+        # → selfing evolution), NOT a separate mechanism leaking in from S1/S2.
+        # ob is a latent parameter, not a named switch — S3's identity as
+        # "island common cause" is preserved; it operates independently of
+        # Bombus presence (S1) or selfing syndrome selection (S2).
         selfing_drive = isolation * clamp01(0.55 + (1.0 - ob) * 0.45)
         selfing   += w * 0.55 * selfing_drive
         herkogamy -= w * 0.40 * isolation
