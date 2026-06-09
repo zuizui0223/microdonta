@@ -4,8 +4,8 @@ Workflow
 --------
 1. Constrain  -- ecological constraint grammar rejects implausible latent parameter combos
 2. Sample     -- random draws from ecology-principled trade-off priors
-3. Simulate   -- M1-M5 causal hypotheses via proxy or stochastic ABM backend
-4. Filter     -- ABC-style pattern-distance rejection against empirical observed patterns
+3. Simulate   -- named causal structure hypotheses via proxy or stochastic ABM backend
+4. Filter     -- ABC rejection against observable gradient pattern targets (response_target only)
 5. Retain     -- restricted admissible causal hypotheses + compatible parameter ranges
 6. Infer switches -- PathwaySwitch posterior: which biological mechanisms are active?
 
@@ -127,7 +127,7 @@ WORKFLOW_STEPS = [
     {"Step": "2. Sample",
      "Meaning": "Randomly sample latent benefit/cost parameters from ecology-principled trade-off priors."},
     {"Step": "3. Simulate",
-     "Meaning": "Run M1-M5 candidate causal hypotheses (proxy fast-screen or stochastic ABM main model)."},
+     "Meaning": "Run named causal structure hypotheses (proxy fast-screen or stochastic ABM main model)."},
     {"Step": "4. Filter",
      "Meaning": "ABC rejection against observable ecological gradient pattern targets (response_target rows only; input_context predictors excluded)."},
     {"Step": "5. Retain",
@@ -585,9 +585,9 @@ def generation_timeseries_long(df_generation_rows: pd.DataFrame) -> pd.DataFrame
 st.title("RACH -- Restricted Admissible Causal Hypotheses")
 st.caption("Campanula punctata / Izu Islands isolation gradient worked example")
 st.info(
-    "RACH constrains latent ecological trade-offs, simulates candidate causal hypotheses "
-    "(M1-M5), then retains only the hypotheses and parameter regions compatible with "
-    "multiple empirical observed patterns simultaneously. "
+    "RACH constrains latent ecological trade-offs, simulates named causal structure hypotheses, "
+    "then retains only the hypotheses and parameter regions compatible with "
+    "observable ecological gradient pattern targets simultaneously. "
     "No parameter was manually tuned to reproduce the target patterns."
 )
 
@@ -824,7 +824,7 @@ if "research_result" in st.session_state:
     df_final_values = result["final_values"]
     df_generation_rows = result["generation_rows"]
 
-    st.subheader("M1-M5 Comparison Results")
+    st.subheader("Causal Structure Comparison Results")
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Prior draws", settings.get("n_attempts", n_attempts))
     c2.metric("Constraint-passed", len(df_acc_params))
@@ -852,8 +852,8 @@ if "research_result" in st.session_state:
     with tab1:
         st.markdown("### Restricted admissible causal hypotheses")
         st.caption(
-            "Admissibility = fraction of parameter-set runs where all "
-            f"patterns were matched (rule: {settings.get('acceptance_rule', acceptance_rule)})."
+            "Admissibility = fraction of parameter-set runs where gradient pattern targets "
+            f"were matched (rule: {settings.get('acceptance_rule', acceptance_rule)})."
         )
         if df_summary.empty:
             st.warning("No runs completed.")
