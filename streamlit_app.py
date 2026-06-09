@@ -374,32 +374,47 @@ def run_research_mode(
                 rels = {}
                 payload = {"final_values": [], "generation_rows": []}
 
-            dist_metrics = compute_run_distances(
-                observed_rels=OBSERVED_RELS,
-                simulated_rels=rels,
-                weights=PATTERN_WEIGHTS,
-                rule=acceptance_rule,
-            )
-
-            # Gradient pattern evaluation (7 gradient-only patterns across 4 populations)
-            # POM = isolation gradient direction (island syndrome), NOT specific pairwise comparisons
+            # --- Primary POM: gradient-direction patterns (island syndrome) ---
+            # pattern_matches / accepted_by_epsilon are driven by the 7 gradient
+            # patterns (gradient_slope + rank_order across all 4 populations),
+            # NOT by Oshima vs Hachijo pairwise comparison.
             _outputs_list = payload.get("outputs_list", [])
             _is_abm = payload.get("abm", False)
-            _grad_eval_cols: dict = {}
-            if _outputs_list and _GRADIENT_PATTERNS:
+            _grad_pats = observed_gradient_only_patterns()
+            _THRESH_MAP = {
+                "strict_6_of_6":   1.000,
+                "relaxed_5_of_6":  6 / 7,
+                "relaxed_4_of_6":  5 / 7,
+                "weighted_strict": 1.000,
+                "weighted_lax":    0.800,
+            }
+            if _outputs_list and _grad_pats:
                 try:
-                    _all_pats = observed_gradient_only_patterns()
-                    _grad_eval = evaluate_patterns(
-                        _outputs_list, _all_pats, _POP_ENV
-                    )
-                    _grad_eval_cols = {
-                        "gradient_n_matched": _grad_eval.n_matched,
-                        "gradient_n_total": _grad_eval.n_total,
-                        "gradient_weighted_match_rate": round(_grad_eval.weighted_match_rate, 4),
-                        "gradient_distance": round(weighted_pattern_distance(_grad_eval), 4),
+                    _eval = evaluate_patterns(_outputs_list, _grad_pats, _POP_ENV)
+                    _wrate  = _eval.weighted_match_rate
+                    _thresh = _THRESH_MAP.get(acceptance_rule, 1.0)
+                    _ok     = _wrate >= _thresh - 1e-9
+                    dist_metrics = {
+                        "pattern_matches":      _eval.n_matched,
+                        "pattern_total":        _eval.n_total,
+                        "abc_distance":         round(1.0 - _wrate, 4),
+                        "weighted_abc_distance": round(1.0 - _wrate, 4),
+                        "epsilon":              round(1.0 - _thresh, 4),
+                        "accepted_by_epsilon":  _ok,
+                        "weighted_accepted":    _ok,
+                        "acceptance_rule":      acceptance_rule,
                     }
                 except Exception:
-                    _grad_eval_cols = {}
+                    dist_metrics = compute_run_distances(
+                        observed_rels=OBSERVED_RELS, simulated_rels=rels,
+                        weights=PATTERN_WEIGHTS, rule=acceptance_rule,
+                    )
+            else:
+                dist_metrics = compute_run_distances(
+                    observed_rels=OBSERVED_RELS, simulated_rels=rels,
+                    weights=PATTERN_WEIGHTS, rule=acceptance_rule,
+                )
+            _grad_eval_cols: dict = {}  # gradient IS the main eval; no separate tracking needed
 
             # Per-population trait value columns for gradient visualization
             _outputs_by_pop = payload.get("outputs_by_pop", {})
