@@ -346,12 +346,19 @@ def run_research_mode(
     preset_name: str, n_attempts: int, seed: int,
     acceptance_rule: str, backend: str,
     generations: int, population_size: int, replicates: int,
+    progress_callback=None,   # callable(done, total, status_text) or None
 ) -> dict[str, pd.DataFrame]:
+    import time as _time
     preset = predefined_tradeoff_presets()[preset_name]
     structures = campanula_causal_structures()
     constraint_passed, rejected_params = sample_all_sets_with_rejection_log(
         preset, n_attempts, seed=seed
     )
+
+    n_structures = len(structures)
+    total_steps = len(constraint_passed) * n_structures
+    done_steps = 0
+    t_start = _time.monotonic()
 
     all_runs: list[dict[str, Any]] = []
     final_values: list[dict[str, Any]] = []
@@ -443,6 +450,22 @@ def run_research_mode(
                 **_grad_trait_cols,
             }
             all_runs.append(row)
+
+            # --- progress callback ---
+            done_steps += 1
+            if progress_callback is not None:
+                elapsed = _time.monotonic() - t_start
+                avg_s = elapsed / done_steps
+                remain = avg_s * (total_steps - done_steps)
+                admissible_so_far = sum(1 for r in all_runs if r.get("admissible_by_epsilon"))
+                progress_callback(
+                    done_steps, total_steps,
+                    f"param {param_index+1}/{len(constraint_passed)} · "
+                    f"{structure.name} · "
+                    f"admissible so far: {admissible_so_far} · "
+                    f"elapsed {elapsed:.0f}s · "
+                    f"ETA {remain:.0f}s"
+                )
 
             for final_row in payload.get("final_values", []):
                 final_values.append({
@@ -744,17 +767,27 @@ if backend == "stochastic_abm":
 # Run M1-M5 comparison
 # ---------------------------------------------------------------------------
 if run_button:
-    with st.spinner("Constrain -> sample -> simulate -> filter admissible hypotheses..."):
-        result = run_research_mode(
-            preset_name=preset_name,
-            n_attempts=n_attempts,
-            seed=int(seed),
-            acceptance_rule=acceptance_rule,
-            backend=backend,
-            generations=generations,
-            population_size=population_size,
-            replicates=replicates,
-        )
+    _prog_bar  = st.progress(0.0, text="Starting…")
+    _stat_text = st.empty()
+
+    def _update_progress(done: int, total: int, status: str) -> None:
+        frac = done / total if total > 0 else 0.0
+        _prog_bar.progress(frac, text=f"{done}/{total} runs ({100*frac:.0f}%)")
+        _stat_text.caption(status)
+
+    result = run_research_mode(
+        preset_name=preset_name,
+        n_attempts=n_attempts,
+        seed=int(seed),
+        acceptance_rule=acceptance_rule,
+        backend=backend,
+        generations=generations,
+        population_size=population_size,
+        replicates=replicates,
+        progress_callback=_update_progress,
+    )
+    _prog_bar.progress(1.0, text="Done ✓")
+    _stat_text.empty()
     st.session_state["research_result"] = result
     st.session_state["research_settings"] = {
         "preset_name": preset_name,
@@ -771,54 +804,71 @@ if run_button:
 # Run island gradient inference
 # ---------------------------------------------------------------------------
 if run_gradient_button:
-    with st.spinner("Simulating mainland -> Oshima -> Kozushima -> Hachijo..."):
-        import random as _random
-        from causal_model.parameter_constraints import sample_all_sets_with_rejection_log
-        from causal_model.parameter_sampling import param_set_to_model_parameters
-        from causal_model.switch_inference import CAMPANULA_SWITCHES
+    import random as _random
+    import time as _gtime
+    from causal_model.parameter_constraints import sample_all_sets_with_rejection_log
+    from causal_model.parameter_sampling import param_set_to_model_parameters
+    from causal_model.switch_inference import CAMPANULA_SWITCHES
 
-        _preset = presets[preset_name]
-        _constraint_ok, _ = sample_all_sets_with_rejection_log(
-            _preset, int(grad_n_attempts), seed=int(seed) + 99
+    _preset = presets[preset_name]
+    _constraint_ok, _ = sample_all_sets_with_rejection_log(
+        _preset, int(grad_n_attempts), seed=int(seed) + 99
+    )
+    _all_patterns = observed_gradient_only_patterns()
+    _grad_envs = (
+        environments_from_population_env(_POP_ENV)
+        if _POP_ENV
+        else default_campanula_gradient_environments()
+    )
+
+    _g_total = len(_constraint_ok)
+    _g_bar   = st.progress(0.0, text="Island Gradient: starting…")
+    _g_stat  = st.empty()
+    _g_t0    = _gtime.monotonic()
+
+    _grad_rows: list[dict] = []
+    _rng = _random.Random(int(seed) + 99)
+    from causal_model.switch_inference import pathway_switches_from_state as _psfs
+    for _pidx, _pset in enumerate(_constraint_ok):
+        _mp = param_set_to_model_parameters(_pset)
+        _sw_state = {sw.name: (_rng.random() < 0.5) for sw in CAMPANULA_SWITCHES}
+        _sw = _psfs(_sw_state)
+        _outputs_dict = simulate_campanula_gradient(_sw, params=_mp, environments=_grad_envs)
+        _outputs_list = list(_outputs_dict.values())
+        _eval = evaluate_patterns(_outputs_list, _all_patterns, _POP_ENV)
+        _dist = weighted_pattern_distance(_eval)
+        _row: dict = {
+            "param_idx": _pidx,
+            "weighted_distance": round(_dist, 4),
+            "n_matched": _eval.n_matched,
+            "n_total": _eval.n_total,
+            "weighted_match_rate": round(_eval.weighted_match_rate, 4),
+            **{sw.name: _sw_state[sw.name] for sw in CAMPANULA_SWITCHES},
+            **{p: _pset.get(p) for p in LATENT_PARAMS},
+        }
+        for _pop, _out in _outputs_dict.items():
+            _row[f"{_pop}_nectar_guide"] = round(_out.nectar_guide, 4)
+            _row[f"{_pop}_selfing_rate"] = round(_out.selfing_rate, 4)
+            _row[f"{_pop}_herkogamy"] = round(_out.herkogamy, 4)
+            _row[f"{_pop}_flower_size"] = round(_out.flower_size, 4)
+            _row[f"{_pop}_Fis"] = round(_out.Fis, 4)
+            _row[f"{_pop}_Bombus_frequency"] = round(_out.Bombus_frequency, 4)
+        _grad_rows.append(_row)
+
+        # progress
+        _g_done = _pidx + 1
+        _g_elapsed = _gtime.monotonic() - _g_t0
+        _g_eta = (_g_elapsed / _g_done) * (_g_total - _g_done) if _g_done > 0 else 0
+        _g_accepted = sum(1 for r in _grad_rows if r["n_matched"] == r["n_total"])
+        _g_bar.progress(_g_done / _g_total,
+                        text=f"Island Gradient: {_g_done}/{_g_total} ({100*_g_done//_g_total}%)")
+        _g_stat.caption(
+            f"accepted (all 7 matched): {_g_accepted} · "
+            f"elapsed {_g_elapsed:.0f}s · ETA {_g_eta:.0f}s"
         )
-        # POM = gradient-only patterns (island syndrome: trait direction along isolation distance)
-        _all_patterns = observed_gradient_only_patterns()
-        _grad_envs = (
-            environments_from_population_env(_POP_ENV)
-            if _POP_ENV
-            else default_campanula_gradient_environments()
-        )
 
-        _grad_rows: list[dict] = []
-        _rng = _random.Random(int(seed) + 99)
-        for _pidx, _pset in enumerate(_constraint_ok):
-            _mp = param_set_to_model_parameters(_pset)
-            # Random binary switch state
-            _sw_state = {sw.name: (_rng.random() < 0.5) for sw in CAMPANULA_SWITCHES}
-            from causal_model.switch_inference import pathway_switches_from_state as _psfs
-            _sw = _psfs(_sw_state)
-            _outputs_dict = simulate_campanula_gradient(_sw, params=_mp, environments=_grad_envs)
-            _outputs_list = list(_outputs_dict.values())
-            _eval = evaluate_patterns(_outputs_list, _all_patterns, _POP_ENV)
-            _dist = weighted_pattern_distance(_eval)
-            _row: dict = {
-                "param_idx": _pidx,
-                "weighted_distance": round(_dist, 4),
-                "n_matched": _eval.n_matched,
-                "n_total": _eval.n_total,
-                "weighted_match_rate": round(_eval.weighted_match_rate, 4),
-                **{sw.name: _sw_state[sw.name] for sw in CAMPANULA_SWITCHES},
-                **{p: _pset.get(p) for p in LATENT_PARAMS},
-            }
-            for _pop, _out in _outputs_dict.items():
-                _row[f"{_pop}_nectar_guide"] = round(_out.nectar_guide, 4)
-                _row[f"{_pop}_selfing_rate"] = round(_out.selfing_rate, 4)
-                _row[f"{_pop}_herkogamy"] = round(_out.herkogamy, 4)
-                _row[f"{_pop}_flower_size"] = round(_out.flower_size, 4)
-                _row[f"{_pop}_Fis"] = round(_out.Fis, 4)
-                _row[f"{_pop}_Bombus_frequency"] = round(_out.Bombus_frequency, 4)
-            _grad_rows.append(_row)
-
+    _g_bar.progress(1.0, text="Island Gradient: Done ✓")
+    _g_stat.empty()
     st.session_state["grad_result"] = _grad_rows
     st.session_state["grad_envs"] = _grad_envs
     st.session_state["grad_outputs_last"] = _outputs_dict  # last run for display
@@ -827,34 +877,40 @@ if run_gradient_button:
 # Run switch posterior inference
 # ---------------------------------------------------------------------------
 if run_switch_button:
+    import time as _sptime
+    _sp_bar  = st.progress(0.0, text="Switch Posterior: starting…")
+    _sp_stat = st.empty()
+
+    def _sp_progress(done: int, total: int, status: str) -> None:
+        _sp_bar.progress(done / total if total > 0 else 0.0,
+                         text=f"Switch Posterior: {done}/{total} ({100*done//max(total,1)}%)")
+        _sp_stat.caption(status)
+
     if sp_backend == "stochastic_abm":
-        _spinner_msg = (
-            f"ABM switch posterior: {sp_n_attempts} draws × "
-            f"{sp_abm_replicates} rep × 2 islands "
-            f"(gen={sp_abm_generations}, pop={sp_abm_popsize})..."
+        sp_result = run_switch_posterior_inference_abm(
+            preset_name=preset_name,
+            n_attempts=int(sp_n_attempts),
+            acceptance_rule=acceptance_rule,
+            seed=int(seed) + 1,
+            observed_rels=OBSERVED_RELS,
+            pattern_weights=PATTERN_WEIGHTS,
+            generations=sp_abm_generations,
+            population_size=sp_abm_popsize,
+            replicates=sp_abm_replicates,
+            progress_callback=_sp_progress,
         )
-        with st.spinner(_spinner_msg):
-            sp_result = run_switch_posterior_inference_abm(
-                preset_name=preset_name,
-                n_attempts=int(sp_n_attempts),
-                acceptance_rule=acceptance_rule,
-                seed=int(seed) + 1,
-                observed_rels=OBSERVED_RELS,
-                pattern_weights=PATTERN_WEIGHTS,
-                generations=sp_abm_generations,
-                population_size=sp_abm_popsize,
-                replicates=sp_abm_replicates,
-            )
     else:
-        with st.spinner("Sampling (params, switches) jointly -> ABC filter -> posterior..."):
-            sp_result = run_switch_posterior_inference(
-                preset_name=preset_name,
-                n_attempts=int(sp_n_attempts),
-                acceptance_rule=acceptance_rule,
-                seed=int(seed) + 1,
-                observed_rels=OBSERVED_RELS,
-                pattern_weights=PATTERN_WEIGHTS,
-            )
+        sp_result = run_switch_posterior_inference(
+            preset_name=preset_name,
+            n_attempts=int(sp_n_attempts),
+            acceptance_rule=acceptance_rule,
+            seed=int(seed) + 1,
+            observed_rels=OBSERVED_RELS,
+            pattern_weights=PATTERN_WEIGHTS,
+            progress_callback=_sp_progress,
+        )
+    _sp_bar.progress(1.0, text="Switch Posterior: Done ✓")
+    _sp_stat.empty()
     st.session_state["sp_result"] = sp_result
     st.session_state["sp_backend_used"] = sp_backend
 

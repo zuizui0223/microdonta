@@ -436,6 +436,7 @@ def run_switch_posterior_inference(
     observed_rels: dict[str, str],   # kept for API compat; not used for gradient eval
     pattern_weights: dict[str, float],  # kept for API compat
     switches: Sequence[BiologicalSwitch] = CAMPANULA_SWITCHES,
+    progress_callback=None,  # callable(done, total, status_text) or None
 ) -> SwitchPosteriorResult:
     """Run switch posterior inference via ABC rejection — 4-population gradient POM.
 
@@ -493,9 +494,12 @@ def run_switch_posterior_inference(
         preset, n_attempts, seed=seed
     )
 
+    import time as _time
     accepted_rows: list[dict] = []
+    total_steps = len(constraint_passed)
+    t_start = _time.monotonic()
 
-    for param_set in constraint_passed:
+    for _step, param_set in enumerate(constraint_passed):
         model_params = param_set_to_model_parameters(param_set)
         state = sample_switch_state(rng, switches)
         pw = pathway_switches_from_state(state, switches)
@@ -507,6 +511,10 @@ def run_switch_posterior_inference(
             outputs_list = list(outputs_dict.values())
             eval_result = evaluate_patterns(outputs_list, all_patterns, pop_env)
         except Exception:
+            if progress_callback:
+                _el = _time.monotonic() - t_start
+                progress_callback(_step + 1, total_steps,
+                    f"draw {_step+1}/{total_steps} · accepted: {len(accepted_rows)} · elapsed {_el:.0f}s")
             continue
 
         dist = weighted_pattern_distance(eval_result)
@@ -543,6 +551,17 @@ def run_switch_posterior_inference(
 
         if accepted:
             accepted_rows.append(row)
+
+        if progress_callback:
+            _el = _time.monotonic() - t_start
+            _done = _step + 1
+            _eta = (_el / _done) * (total_steps - _done) if _done > 0 else 0
+            progress_callback(
+                _done, total_steps,
+                f"draw {_done}/{total_steps} · "
+                f"accepted: {len(accepted_rows)} · "
+                f"elapsed {_el:.0f}s · ETA {_eta:.0f}s"
+            )
 
     rejected_count = len(constraint_rejected) + len(constraint_passed) - len(accepted_rows)
     posterior_table = compute_switch_posterior_table(accepted_rows, switches)
@@ -623,6 +642,7 @@ def run_switch_posterior_inference_abm(
     population_size: int = 150,
     replicates: int = 3,
     switches: Sequence[BiologicalSwitch] = CAMPANULA_SWITCHES,
+    progress_callback=None,  # callable(done, total, status_text) or None
 ) -> SwitchPosteriorResult:
     """Run switch posterior inference using the stochastic ABM backend.
 
@@ -708,7 +728,10 @@ def run_switch_posterior_inference_abm(
         preset, n_attempts, seed=seed
     )
 
+    import time as _time
     accepted_rows: list[dict] = []
+    total_steps = len(constraint_passed)
+    t_start = _time.monotonic()
 
     for draw_idx, param_set in enumerate(constraint_passed):
         model_params = param_set_to_model_parameters(param_set)
@@ -796,6 +819,17 @@ def run_switch_posterior_inference_abm(
 
         if accepted:
             accepted_rows.append(row)
+
+        if progress_callback:
+            _el = _time.monotonic() - t_start
+            _done = draw_idx + 1
+            _eta = (_el / _done) * (total_steps - _done) if _done > 0 else 0
+            progress_callback(
+                _done, total_steps,
+                f"ABM draw {_done}/{total_steps} · "
+                f"accepted: {len(accepted_rows)} · "
+                f"elapsed {_el:.0f}s · ETA {_eta:.0f}s"
+            )
 
     rejected_count = (
         len(constraint_rejected) + len(constraint_passed) - len(accepted_rows)
