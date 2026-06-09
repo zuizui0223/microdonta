@@ -159,7 +159,7 @@ d(y, y_obs) = 1 − weighted_match_rate(y, y_obs)
             = 1 − (Σ_k w_k · 1[pattern k matched]) / (Σ_k w_k)
 ```
 
-and ε = 1 − threshold (e.g., ε = 0 for strict_all_match, ε = 0.2 for relaxed_5_of_6).
+and ε = 1 − threshold (e.g., ε = 0 for strict_all_match, ε = 0.2 for relaxed_0.83).
 
 The ABC sample {(θ_i, s_i)}_i is an empirical approximation of the uniform
 distribution over A_ε.

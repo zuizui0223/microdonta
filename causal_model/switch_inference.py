@@ -415,19 +415,16 @@ def compute_coactivation_table(
 # Bombus_distance removed — it was tautological (always matches because
 # primary_pollinator_frequency is injected from the environment, not simulated).
 #
-# Rule name semantics (for the 6-pattern gradient POM):
-#   strict_all       → 1.000  (all 6 must match by weight)
-#   relaxed_5_of_6   → 5/6    (≥5/6 weighted)
-#   relaxed_4_of_6   → 4/6    (≥4/6 weighted)
+# Rule name semantics (pattern-count-independent):
+#   strict_all       → 1.000  (all patterns must match)
+#   relaxed_0.83     → 5/6    (≥83% of patterns by weight)
+#   relaxed_0.67     → 4/6    (≥67% of patterns by weight)
 #   weighted_strict  → 1.000
 #   weighted_lax     → 0.800
-#
-# Kept under legacy names ("strict_6_of_6" etc.) so existing UI widgets
-# and CSV exports remain unchanged.
 GRADIENT_THRESH_MAP: dict[str, float] = {
-    "strict_6_of_6":   1.000,
-    "relaxed_5_of_6":  5 / 6,
-    "relaxed_4_of_6":  4 / 6,
+    "strict_all":      1.000,
+    "relaxed_0.83":    5 / 6,
+    "relaxed_0.67":    4 / 6,
     "weighted_strict": 1.000,
     "weighted_lax":    0.800,
 }

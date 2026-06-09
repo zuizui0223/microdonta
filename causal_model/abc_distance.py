@@ -27,11 +27,13 @@ where ``epsilon`` is derived from the acceptance rule.
 
 Acceptance rules
 ----------------
-strict_6_of_6   all 6 patterns must match        epsilon = 0.000
-relaxed_5_of_6  at least 5 of 6 must match       epsilon = 1/6 ≈ 0.167
-relaxed_4_of_6  at least 4 of 6 must match       epsilon = 2/6 ≈ 0.333
+strict_all      all patterns must match           epsilon = 0.000
+relaxed_0.83    at least 83% of patterns match    epsilon = 1/N
+relaxed_0.67    at least 67% of patterns match    epsilon = 2/N
 weighted_strict all patterns with weight > 0      epsilon = 0.000
 weighted_lax    weighted distance <= 0.20         epsilon = 0.200
+
+Rule names are pattern-count-independent (no hardcoded "6_of_6").
 
 Research framing
 ----------------
@@ -106,9 +108,9 @@ def weighted_pattern_distance(
 # ---------------------------------------------------------------------------
 
 _NAMED_RULES: dict[str, float] = {
-    "strict_6_of_6":   0.0,
-    "relaxed_5_of_6":  1.0 / 6.0,
-    "relaxed_4_of_6":  2.0 / 6.0,
+    "strict_all":      0.0,
+    "relaxed_0.83":    1.0 / 6.0,   # ≈ 1/N; exact epsilon computed dynamically
+    "relaxed_0.67":    2.0 / 6.0,   # ≈ 2/N; exact epsilon computed dynamically
     "weighted_strict": 0.0,
     "weighted_lax":    0.20,
 }
@@ -120,22 +122,22 @@ def epsilon_for_rule(rule: str, pattern_total: int = 6) -> float:
     Parameters
     ----------
     rule:
-        One of ``strict_6_of_6``, ``relaxed_5_of_6``, ``relaxed_4_of_6``,
+        One of ``strict_all``, ``relaxed_0.83``, ``relaxed_0.67``,
         ``weighted_strict``, ``weighted_lax``.
     pattern_total:
-        Used for rules that depend on the number of patterns (e.g.
-        ``relaxed_5_of_6`` = 1/pattern_total).
+        Used for proportion-based rules: ``relaxed_0.83`` = 1/pattern_total,
+        ``relaxed_0.67`` = 2/pattern_total.
 
     Returns
     -------
     float
     """
-
-    if rule in ("relaxed_5_of_6", "strict_6_of_6") and pattern_total != 6:
-        # Generalise to any pattern count
-        if rule == "strict_6_of_6":
-            return 0.0
-        return 1.0 / pattern_total
+    if rule == "strict_all":
+        return 0.0
+    if rule == "relaxed_0.83":
+        return 1.0 / max(pattern_total, 1)
+    if rule == "relaxed_0.67":
+        return 2.0 / max(pattern_total, 1)
     return _NAMED_RULES.get(rule, 0.0)
 
 
@@ -194,7 +196,7 @@ def compute_run_distances(
     w_dist = weighted_pattern_distance(match_results, weights)
     eps = epsilon_for_rule(rule, total)
     w_eps = epsilon_for_rule(
-        "weighted_strict" if rule == "strict_6_of_6" else "weighted_lax",
+        "weighted_strict" if rule == "strict_all" else "weighted_lax",
         total,
     )
 

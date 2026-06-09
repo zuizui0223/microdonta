@@ -628,11 +628,11 @@ with st.sidebar:
     acceptance_rule = st.selectbox(
         "ABC acceptance rule",
         _rules,
-        index=_rules.index("strict_6_of_6") if "strict_6_of_6" in _rules else 0,
+        index=_rules.index("strict_all") if "strict_all" in _rules else 0,
         format_func=lambda r: {
-            "strict_6_of_6":   "strict (all 6 gradient patterns must match)",
-            "relaxed_5_of_6":  "relaxed (>=5/6 gradient patterns)",
-            "relaxed_4_of_6":  "lax (>=4/6 gradient patterns)",
+            "strict_all":      "strict (all gradient patterns must match)",
+            "relaxed_0.83":    "relaxed (>=83% of gradient patterns)",
+            "relaxed_0.67":    "lax (>=67% of gradient patterns)",
             "weighted_strict": "weighted strict (weighted match = 1.0)",
             "weighted_lax":    "weighted lax (weighted match >= 0.80)",
         }.get(r, r),
@@ -920,6 +920,11 @@ if "research_result" in st.session_state:
 
     with tab4:
         st.markdown("### Simulated trait values along isolation gradient")
+        st.caption(
+            ":information_source: **Fis** shown here is a computational proxy "
+            "(heterozygosity deficit estimate), not a true genetic Fis from microsatellite data. "
+            "Interpret Fis values as indicative trends only."
+        )
         long_values = final_values_long(df_final_values)
         if long_values.empty:
             st.warning("No final simulated values available.")
