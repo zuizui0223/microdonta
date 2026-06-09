@@ -1,14 +1,14 @@
 pattern,type,variable,left_population,right_population,populations,predictor,expected_direction,relation,weight,source,notes
-nectar_guide_pairwise,pairwise_relation,nectar_guide,Oshima,Hachijo,,,,Oshima > Hachijo,1.0,field/Inoue1986,provisional — Oshima retains nectar-guide expression; Hachijo reduced
-selfing_rate_pairwise,pairwise_relation,selfing_rate,Oshima,Hachijo,,,,Oshima < Hachijo,1.0,field/Inoue1986,provisional — Hachijo has higher autonomous selfing rate
-herkogamy_pairwise,pairwise_relation,herkogamy,Oshima,Hachijo,,,,Oshima > Hachijo,0.8,field,provisional — greater stigma-anther separation on Oshima
-flower_size_pairwise,pairwise_relation,flower_size,Oshima,Hachijo,,,,Oshima > Hachijo,0.8,field/Inoue1986,provisional — island isolation associated with floral size reduction
-Fis_pairwise,pairwise_relation,Fis,Oshima,Hachijo,,,,Oshima < Hachijo,1.0,genetic,provisional — elevated inbreeding coefficient on Hachijo consistent with selfing syndrome
-Bombus_frequency_pairwise,pairwise_relation,Bombus_frequency,Oshima,Hachijo,,,,Oshima > Hachijo,1.0,field/literature,Bombus ardens present on Oshima; absent on Hachijo (Inoue & Amano 1986)
-nectar_guide_distance,gradient_slope,nectar_guide,,,mainland;Oshima;Kozushima;Hachijo,distance_from_mainland,negative,,1.0,conceptual_gradient,provisional — nectar guide expected to decrease with isolation distance
-selfing_distance,gradient_slope,selfing_rate,,,mainland;Oshima;Kozushima;Hachijo,distance_from_mainland,positive,,1.0,conceptual_gradient,provisional — selfing rate expected to increase with isolation distance
-herkogamy_distance,gradient_slope,herkogamy,,,mainland;Oshima;Kozushima;Hachijo,distance_from_mainland,negative,,0.8,conceptual_gradient,provisional — herkogamy expected to decrease with distance
-Fis_distance,gradient_slope,Fis,,,mainland;Oshima;Kozushima;Hachijo,distance_from_mainland,positive,,1.0,conceptual_gradient,provisional — inbreeding coefficient expected to increase with distance
-Bombus_distance,gradient_slope,Bombus_frequency,,,mainland;Oshima;Kozushima;Hachijo,distance_from_mainland,negative,,1.0,field/literature,Bombus frequency decreases along the Izu gradient (Inoue & Amano 1986)
-nectar_guide_rank,rank_order,nectar_guide,,,mainland;Oshima;Kozushima;Hachijo,,decreasing,,1.0,conceptual_gradient,provisional — expected rank order along isolation gradient
-selfing_rank,rank_order,selfing_rate,,,mainland;Oshima;Kozushima;Hachijo,,increasing,,1.0,conceptual_gradient,provisional — expected rank order along isolation gradient
+nectar_guide_pairwise,pairwise_relation,nectar_guide,Oshima,Hachijo,,,,Oshima > Hachijo,1.0,field/Inoue1986,provisional
+selfing_rate_pairwise,pairwise_relation,selfing_rate,Oshima,Hachijo,,,,Oshima < Hachijo,1.0,field/Inoue1986,provisional
+herkogamy_pairwise,pairwise_relation,herkogamy,Oshima,Hachijo,,,,Oshima > Hachijo,0.8,field,provisional
+flower_size_pairwise,pairwise_relation,flower_size,Oshima,Hachijo,,,,Oshima > Hachijo,0.8,field/Inoue1986,provisional
+Fis_pairwise,pairwise_relation,Fis,Oshima,Hachijo,,,,Oshima < Hachijo,1.0,genetic,provisional
+Bombus_frequency_pairwise,pairwise_relation,Bombus_frequency,Oshima,Hachijo,,,,Oshima > Hachijo,1.0,field/literature,Bombus ardens present on Oshima; absent on Hachijo
+nectar_guide_distance,gradient_slope,nectar_guide,,,,distance_from_mainland,negative,,1.0,conceptual_gradient,nectar guide decreases with isolation distance
+selfing_distance,gradient_slope,selfing_rate,,,,distance_from_mainland,positive,,1.0,conceptual_gradient,selfing rate increases with isolation distance
+herkogamy_distance,gradient_slope,herkogamy,,,,distance_from_mainland,negative,,0.8,conceptual_gradient,herkogamy decreases with isolation distance
+Fis_distance,gradient_slope,Fis,,,,distance_from_mainland,positive,,1.0,conceptual_gradient,inbreeding coefficient increases with isolation distance
+Bombus_distance,gradient_slope,Bombus_frequency,,,,distance_from_mainland,negative,,1.0,field/literature,Bombus frequency decreases along isolation gradient
+nectar_guide_rank,rank_order,nectar_guide,,,,,decreasing,,1.0,conceptual_gradient,nectar guide rank decreases along isolation gradient
+selfing_rank,rank_order,selfing_rate,,,,,increasing,,1.0,conceptual_gradient,selfing rate rank increases along isolation gradient

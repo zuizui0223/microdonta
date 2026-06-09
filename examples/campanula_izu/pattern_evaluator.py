@@ -249,13 +249,19 @@ def match_gradient_slope(
 
     raw_pops = pattern_row.get("populations", "")
     pop_list = [p.strip() for p in raw_pops.split(";") if p.strip()]
+    # Empty populations field → use ALL simulated populations,
+    # sorted by predictor value so the gradient direction is meaningful.
+    if not pop_list:
+        pop_list = sorted(
+            by_pop.keys(),
+            key=lambda p: float((env_table.get(p) or {}).get(predictor) or 0),
+        )
 
-    # Need at least 2 populations to compute a slope
     if len(pop_list) < 2:
         return PatternMatch(
             pattern=pattern_id, pattern_type="gradient_slope",
             variable=variable, weight=weight, matched=False,
-            detail="fewer than 2 populations specified",
+            detail="fewer than 2 populations available",
         )
 
     xs, ys = [], []
@@ -323,6 +329,10 @@ def match_rank_order(
 
     raw_pops = pattern_row.get("populations", "")
     pop_list = [p.strip() for p in raw_pops.split(";") if p.strip()]
+    # Empty populations field → use ALL simulated populations in dict order
+    # (caller should ensure by_pop is ordered by isolation distance).
+    if not pop_list:
+        pop_list = list(by_pop.keys())
 
     if len(pop_list) < 2:
         return PatternMatch(
