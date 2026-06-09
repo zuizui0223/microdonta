@@ -62,7 +62,7 @@ from examples.campanula_izu.pattern_evaluator import (
     evaluate_patterns,
     weighted_pattern_distance,
 )
-from examples.campanula_izu.proxy_simulation import (
+from examples.campanula_izu.campanula_phenomenological import (
     simulate_campanula_isolation_gradient,
 )
 
@@ -230,7 +230,7 @@ def _gradient_columns(outputs_by_pop: dict[str, Any], abm: bool = False) -> dict
     """Return per-population trait values as flat columns for the run row.
 
     Keys: e.g. 'mainland_nectar_guide', 'Oshima_selfing_rate', ...
-    Works with both PopulationProxyOutput objects (proxy) and plain dicts (ABM).
+    Works with both PhenomenologicalOutput objects and plain dicts (ABM).
     """
     cols: dict[str, float] = {}
     _abm_map = {
@@ -297,7 +297,7 @@ def simulate_structure_stochastic_abm(
     generations: int, population_size: int, replicates: int, seed: int,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     """Run ABM on a continuous isolation gradient (4 points)."""
-    from examples.campanula_izu.proxy_simulation import env_from_isolation
+    from examples.campanula_izu.campanula_phenomenological import env_from_isolation
     _n_abm = 4
     _grad_envs = {
         f"iso_{i / (_n_abm - 1):.3f}": env_from_isolation(i / (_n_abm - 1))

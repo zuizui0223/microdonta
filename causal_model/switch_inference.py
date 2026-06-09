@@ -474,9 +474,9 @@ def run_switch_posterior_inference(
 
     WARNING — PROXY BACKEND: NOT A VALID RACH f(θ,s)
     -------------------------------------------------
-    This function uses the deterministic proxy simulator
-    (``causal_model.simulation.simulate_population_proxy``) as f(θ,s).
-    The proxy contains hand-coded functional relationships; switch posteriors
+    This function uses the deterministic phenomenological model
+    (``causal_model.phenomenological_model.predict_traits_phenomenological``) as f(θ,s).
+    The phenomenological model directly encodes theoretical relationships; switch posteriors
     from this function may reflect researcher assumptions rather than data.
 
     Use :func:`run_switch_posterior_inference_abm` for valid RACH inference
@@ -513,7 +513,7 @@ def run_switch_posterior_inference(
         evaluate_patterns,
         weighted_pattern_distance,
     )
-    from examples.campanula_izu.proxy_simulation import (
+    from examples.campanula_izu.campanula_phenomenological import (
         simulate_campanula_isolation_gradient,
     )
 
@@ -750,7 +750,7 @@ def run_switch_posterior_inference_abm(
         evaluate_patterns,
         weighted_pattern_distance,
     )
-    from examples.campanula_izu.proxy_simulation import (
+    from examples.campanula_izu.campanula_phenomenological import (
         env_from_isolation,
     )
 

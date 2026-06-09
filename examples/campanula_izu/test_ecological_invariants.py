@@ -49,7 +49,7 @@ from examples.campanula_izu.observed_data import (
     response_target_patterns,
 )
 from examples.campanula_izu.pattern_evaluator import evaluate_patterns
-from examples.campanula_izu.proxy_simulation import simulate_campanula_isolation_gradient
+from examples.campanula_izu.campanula_phenomenological import simulate_campanula_isolation_gradient
 
 
 # ---------------------------------------------------------------------------

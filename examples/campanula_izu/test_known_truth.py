@@ -59,7 +59,7 @@ from examples.campanula_izu.pattern_evaluator import (
     evaluate_patterns,
     weighted_pattern_distance,
 )
-from examples.campanula_izu.proxy_simulation import simulate_campanula_isolation_gradient
+from examples.campanula_izu.campanula_phenomenological import simulate_campanula_isolation_gradient
 from causal_model.switches import PathwaySwitches
 
 

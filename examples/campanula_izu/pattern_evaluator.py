@@ -20,7 +20,7 @@ trait_correlation
     Pearson correlation (slope sign) between two variables across all
     simulated populations.  The ``variable`` column is the response (y)
     and the ``predictor`` column is the explanatory variable (x).
-    Predictors can be either a field on PopulationProxyOutput OR a
+    Predictors can be either a field on PhenomenologicalOutput OR a
     column in the env_table (env_table lookup is used as fallback).
     Match: sign(Pearson r) == expected_direction (positive / negative).
 
@@ -123,7 +123,7 @@ class EvaluationResult:
 # ---------------------------------------------------------------------------
 
 def evaluate_patterns(
-    simulated_outputs: list,            # list[PopulationProxyOutput]
+    simulated_outputs: list,            # list[PhenomenologicalOutput]
     observed_rows: list[dict],          # from response_target_patterns() or load_observed_pattern_table()
     env_table: dict[str, dict],         # from load_ecological_context()
     pairwise_left: str = "Oshima",
@@ -138,7 +138,7 @@ def evaluate_patterns(
     Parameters
     ----------
     simulated_outputs:
-        List of PopulationProxyOutput objects (one per population).
+        List of PhenomenologicalOutput objects (one per population).
     observed_rows:
         Pattern rows.  Prefer passing ``response_target_patterns()`` from
         ``observed_data``; this function also guards against input_context rows
@@ -162,7 +162,7 @@ def evaluate_patterns(
     def _get_pairwise_relations(left: str, right: str) -> dict[str, str]:
         key = (left, right)
         if key not in _sim_pairwise_cache:
-            from causal_model.simulation import relations_from_outputs
+            from causal_model.phenomenological_model import relations_from_outputs
             _sim_pairwise_cache[key] = relations_from_outputs(
                 simulated_outputs, left=left, right=right
             )
@@ -255,7 +255,7 @@ def match_pairwise(
 
 
 def match_gradient_slope(
-    by_pop: dict,         # {pop_name: PopulationProxyOutput}
+    by_pop: dict,         # {pop_name: PhenomenologicalOutput}
     env_table: dict,      # {pop_name: {col: val}}
     pattern_row: dict,
 ) -> PatternMatch:
@@ -268,7 +268,7 @@ def match_gradient_slope(
     Parameters
     ----------
     by_pop:
-        Dict mapping population name to PopulationProxyOutput.
+        Dict mapping population name to PhenomenologicalOutput.
     env_table:
         Dict mapping population name to environment row (numeric floats).
     pattern_row:
@@ -339,7 +339,7 @@ def match_gradient_slope(
 
 
 def match_trait_correlation(
-    by_pop: dict,       # {pop_name: PopulationProxyOutput}
+    by_pop: dict,       # {pop_name: PhenomenologicalOutput}
     env_table: dict,    # {pop_name: {col: val}}
     pattern_row: dict,
 ) -> PatternMatch:
@@ -349,13 +349,13 @@ def match_trait_correlation(
     variable y and predictor x across all simulated populations.
 
     Predictor lookup order:
-    1. ``getattr(output, predictor)`` — field on PopulationProxyOutput
+    1. ``getattr(output, predictor)`` — field on PhenomenologicalOutput
     2. ``env_table[pop].get(predictor)`` — environmental column (fallback)
 
     Parameters
     ----------
     by_pop:
-        Dict mapping population name to PopulationProxyOutput.
+        Dict mapping population name to PhenomenologicalOutput.
     env_table:
         Dict mapping population name to environment row.
     pattern_row:
@@ -416,7 +416,7 @@ def match_trait_correlation(
 
 
 def match_rank_order(
-    by_pop: dict,  # {pop_name: PopulationProxyOutput}
+    by_pop: dict,  # {pop_name: PhenomenologicalOutput}
     pattern_row: dict,
 ) -> PatternMatch:
     """Evaluate a rank_order pattern row.
@@ -428,7 +428,7 @@ def match_rank_order(
     Parameters
     ----------
     by_pop:
-        Dict mapping population name to PopulationProxyOutput.
+        Dict mapping population name to PhenomenologicalOutput.
     pattern_row:
         One CSV row with type == 'rank_order'.
     """
@@ -508,12 +508,12 @@ def _ols_slope(xs: list[float], ys: list[float]) -> float:
 class ABMPopulationProxy:
     """Thin wrapper around ABM final-generation averages for pattern evaluation.
 
-    Mimics the attribute interface of PopulationProxyOutput so that
+    Mimics the attribute interface of PhenomenologicalOutput so that
     evaluate_patterns() can be called with ABM outputs.
     primary_pollinator_frequency is injected from ecological_context, not from ABM.
     """
 
-    # ABM key → PopulationProxyOutput attribute
+    # ABM key → PhenomenologicalOutput attribute
     _KEY_MAP = {
         "nectar_guide":  "mean_nectar_guide",
         "selfing_rate":  "selfing_rate",
