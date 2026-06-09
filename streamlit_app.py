@@ -628,7 +628,7 @@ with st.sidebar:
     acceptance_rule = st.selectbox(
         "ABC acceptance rule",
         _rules,
-        index=_rules.index("strict_all") if "strict_all" in _rules else 0,
+        index=_rules.index("weighted_lax") if "weighted_lax" in _rules else 0,
         format_func=lambda r: {
             "strict_all":      "strict (all gradient patterns must match)",
             "relaxed_0.83":    "relaxed (>=83% of gradient patterns)",
