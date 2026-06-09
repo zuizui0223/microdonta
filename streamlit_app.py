@@ -627,7 +627,19 @@ with st.expander("RACH workflow", expanded=True):
 with st.sidebar:
     st.header("Settings")
     presets = predefined_tradeoff_presets()
-    preset_name = st.selectbox("Trade-off preset", list(presets.keys()))
+    _preset_keys = list(presets.keys())
+    preset_name = st.selectbox(
+        "Trade-off preset",
+        _preset_keys,
+        index=_preset_keys.index("literature_grounded") if "literature_grounded" in _preset_keys else 0,
+        format_func=lambda k: {
+            "literature_grounded":  "literature_grounded  ★ primary",
+            "broad_prior":          "broad_prior  (sensitivity sweep)",
+            "guide_pollinator_link":"guide_pollinator_link  (S1 scenario)",
+            "reproductive_assurance":"reproductive_assurance  (S2 scenario)",
+            "drift_null":           "drift_null  (S4 null model)",
+        }.get(k, k),
+    )
     backend = st.selectbox(
         "Simulation backend",
         ["proxy_causal", "stochastic_abm"],
@@ -743,10 +755,14 @@ if preset.literature_sources:
         ]
         st.dataframe(pd.DataFrame(_src_rows), width="stretch", hide_index=True)
 else:
-    st.caption(
-        "broad_prior: ranges are maximally broad for sensitivity analysis. "
-        "Compare results with literature_grounded to check prior sensitivity."
-    )
+    _preset_hints = {
+        "literature_grounded":   "Primary analysis preset — Izu Campanula literature-calibrated ranges.",
+        "broad_prior":           "Sensitivity sweep — maximally wide ranges; compare with literature_grounded.",
+        "guide_pollinator_link": "S1 scenario — guide retention driven by Bombus attraction.",
+        "reproductive_assurance":"S2 scenario — selfing syndrome driven by pollinator scarcity.",
+        "drift_null":            "S4 null model — guide loss by drift without adaptive selfing syndrome.",
+    }
+    st.caption(_preset_hints.get(preset_name, preset.description))
 
 if backend == "stochastic_abm":
     st.warning(

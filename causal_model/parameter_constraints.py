@@ -294,9 +294,82 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
         literature_sources=(),
     )
 
+    # ------------------------------------------------------------------
+    # Scenario presets — prior regions that favour individual switches
+    # ------------------------------------------------------------------
+
+    guide_pollinator_link = TradeoffPreset(
+        name="guide_pollinator_link",
+        description=(
+            "Nectar guides strongly attract Bombus and outcrossing benefit is "
+            "high. Conditions under which guide retention/loss is primarily "
+            "driven by Bombus presence (S1: guide_attracts_bombus). "
+            "Selfing benefit is kept low so the selfing-syndrome pathway (S2) "
+            "is not independently active."
+        ),
+        ranges={
+            "guide_cost":                      (0.00, 0.10),
+            "outcrossing_benefit":             (0.45, 0.90),
+            "selfing_benefit":                 (0.00, 0.30),
+            "inbreeding_depression":           (0.25, 0.70),
+            "background_pollinator_efficiency":(0.10, 0.45),
+            "drift_strength":                  (0.00, 0.10),
+            "direct_pollinator_guide_benefit": (0.40, 1.00),
+            "cost_of_waiting_for_pollinators": (0.00, 0.35),
+        },
+        literature_sources=(),
+    )
+
+    reproductive_assurance = TradeoffPreset(
+        name="reproductive_assurance",
+        description=(
+            "Pollinator scarcity makes selfing advantageous and triggers "
+            "convergent selfing-syndrome evolution (reduced herkogamy, flower "
+            "size). Corresponds to S2: selfing_syndrome_active. "
+            "Inbreeding depression is moderate-to-low so selfing can spread; "
+            "waiting cost is elevated (reproductive assurance)."
+        ),
+        ranges={
+            "guide_cost":                      (0.03, 0.20),
+            "outcrossing_benefit":             (0.10, 0.65),
+            "selfing_benefit":                 (0.30, 0.80),
+            "inbreeding_depression":           (0.00, 0.40),
+            "background_pollinator_efficiency":(0.00, 0.45),
+            "drift_strength":                  (0.00, 0.15),
+            "direct_pollinator_guide_benefit": (0.00, 0.60),
+            "cost_of_waiting_for_pollinators": (0.25, 0.90),
+        },
+        literature_sources=(),
+    )
+
+    drift_null = TradeoffPreset(
+        name="drift_null",
+        description=(
+            "Genetic drift in small island populations causes stochastic guide "
+            "loss without a full selfing syndrome. Directional selection is weak; "
+            "drift strength is elevated. Corresponds to S4: drift_drives_guide_loss "
+            "(null model). Use to test whether observed guide loss can be explained "
+            "without invoking adaptive mechanisms."
+        ),
+        ranges={
+            "guide_cost":                      (0.00, 0.15),
+            "outcrossing_benefit":             (0.00, 0.55),
+            "selfing_benefit":                 (0.00, 0.45),
+            "inbreeding_depression":           (0.05, 0.55),
+            "background_pollinator_efficiency":(0.00, 0.55),
+            "drift_strength":                  (0.10, 0.30),
+            "direct_pollinator_guide_benefit": (0.00, 0.45),
+            "cost_of_waiting_for_pollinators": (0.00, 0.50),
+        },
+        literature_sources=(),
+    )
+
     return {
-        "literature_grounded": literature_grounded,
-        "broad_prior": broad_prior,
+        "literature_grounded":   literature_grounded,
+        "broad_prior":           broad_prior,
+        "guide_pollinator_link": guide_pollinator_link,
+        "reproductive_assurance":reproductive_assurance,
+        "drift_null":            drift_null,
     }
 
 

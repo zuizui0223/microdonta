@@ -61,91 +61,118 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
     """
 
     return {
+        # ------------------------------------------------------------------
+        # 1. Literature-calibrated baseline — PRIMARY ANALYSIS
+        # ------------------------------------------------------------------
+        "literature_grounded": TradeoffPreset(
+            name="literature_grounded",
+            description=(
+                "Izu Islands Campanula punctata literature-calibrated ranges "
+                "(Inoue 1986 field data; Larsson 2005 halictid efficiency; "
+                "Darwin 1876 / Charlesworth & Charlesworth 1987 inbreeding). "
+                "Use as the primary analysis preset. "
+                "Compare with broad_prior to quantify prior sensitivity."
+            ),
+            ranges={
+                "guide_cost":                     (0.02, 0.12),
+                "outcrossing_benefit":             (0.30, 0.80),
+                "selfing_benefit":                 (0.10, 0.55),
+                "inbreeding_depression":           (0.10, 0.50),
+                "background_pollinator_efficiency":(0.15, 0.45),
+                "drift_strength":                  (0.02, 0.15),
+                "direct_pollinator_guide_benefit": (0.25, 0.80),
+                "cost_of_waiting_for_pollinators": (0.10, 0.55),
+            },
+        ),
+        # ------------------------------------------------------------------
+        # 2. Broad prior — SENSITIVITY / EXPLORATION
+        # ------------------------------------------------------------------
         "broad_prior": TradeoffPreset(
             name="broad_prior",
             description=(
-                "Wide exploratory ranges covering most biologically conceivable "
-                "combinations. Useful for initial sensitivity sweeps."
+                "Maximally wide exploratory ranges covering most biologically "
+                "conceivable parameter combinations. Use for sensitivity sweeps "
+                "and to confirm that results are not prior-dependent."
             ),
             ranges={
-                "guide_cost": (0.00, 0.30),
-                "outcrossing_benefit": (0.00, 1.00),
-                "selfing_benefit": (0.00, 0.80),
-                "inbreeding_depression": (0.00, 0.80),
-                "background_pollinator_efficiency": (0.00, 0.70),
-                "drift_strength": (0.00, 0.25),
+                "guide_cost":                     (0.00, 0.30),
+                "outcrossing_benefit":             (0.00, 1.00),
+                "selfing_benefit":                 (0.00, 0.80),
+                "inbreeding_depression":           (0.00, 0.80),
+                "background_pollinator_efficiency":(0.00, 0.70),
+                "drift_strength":                  (0.00, 0.25),
                 "direct_pollinator_guide_benefit": (0.00, 1.00),
                 "cost_of_waiting_for_pollinators": (0.00, 1.00),
             },
         ),
+        # ------------------------------------------------------------------
+        # 3. Guide–pollinator link (S1 scenario)
+        # ------------------------------------------------------------------
+        "guide_pollinator_link": TradeoffPreset(
+            name="guide_pollinator_link",
+            description=(
+                "Nectar guides strongly attract Bombus and outcrossing has high "
+                "value. Conditions under which guide retention/loss is primarily "
+                "driven by Bombus presence (S1: guide_attracts_bombus). "
+                "Selfing benefit is low so the selfing-syndrome pathway (S2) "
+                "is not independently active."
+            ),
+            ranges={
+                "guide_cost":                     (0.00, 0.10),
+                "outcrossing_benefit":             (0.45, 0.90),
+                "selfing_benefit":                 (0.00, 0.30),
+                "inbreeding_depression":           (0.25, 0.70),
+                "background_pollinator_efficiency":(0.10, 0.45),
+                "drift_strength":                  (0.00, 0.10),
+                "direct_pollinator_guide_benefit": (0.40, 1.00),
+                "cost_of_waiting_for_pollinators": (0.00, 0.35),
+            },
+        ),
+        # ------------------------------------------------------------------
+        # 4. Reproductive assurance / selfing syndrome (S2 scenario)
+        # ------------------------------------------------------------------
         "reproductive_assurance": TradeoffPreset(
             name="reproductive_assurance",
             description=(
-                "Selfing is potentially favoured because pollinator service is "
-                "unreliable. Waiting cost is elevated and selfing benefit is "
-                "moderate-to-high."
+                "Pollinator scarcity makes selfing advantageous and triggers "
+                "convergent selfing-syndrome evolution (reduced herkogamy, "
+                "flower size, guide co-evolved with selfing rate). "
+                "Corresponds to S2: selfing_syndrome_active. "
+                "Inbreeding depression is moderate-to-low (allows selfing to spread)."
             ),
             ranges={
-                "guide_cost": (0.03, 0.25),
-                "outcrossing_benefit": (0.10, 0.70),
-                "selfing_benefit": (0.25, 0.80),
-                "inbreeding_depression": (0.00, 0.45),
-                "background_pollinator_efficiency": (0.00, 0.50),
-                "drift_strength": (0.00, 0.20),
-                "direct_pollinator_guide_benefit": (0.00, 0.70),
-                "cost_of_waiting_for_pollinators": (0.20, 0.90),
+                "guide_cost":                     (0.03, 0.20),
+                "outcrossing_benefit":             (0.10, 0.65),
+                "selfing_benefit":                 (0.30, 0.80),
+                "inbreeding_depression":           (0.00, 0.40),
+                "background_pollinator_efficiency":(0.00, 0.45),
+                "drift_strength":                  (0.00, 0.15),
+                "direct_pollinator_guide_benefit": (0.00, 0.60),
+                "cost_of_waiting_for_pollinators": (0.25, 0.90),
             },
         ),
-        "outcrossing_benefit": TradeoffPreset(
-            name="outcrossing_benefit",
+        # ------------------------------------------------------------------
+        # 5. Drift null (S4/S5 scenario)
+        # ------------------------------------------------------------------
+        "drift_null": TradeoffPreset(
+            name="drift_null",
             description=(
-                "Outcrossing and pollinator-mediated attraction remain valuable. "
-                "Outcrossing benefit and direct guide benefit are elevated."
+                "Genetic drift in small island populations causes stochastic guide "
+                "loss without a full selfing syndrome. Directional selection is "
+                "weak; drift strength is elevated. "
+                "Corresponds to S4: drift_drives_guide_loss (null model). "
+                "Use to test whether observed guide loss can be explained without "
+                "invoking adaptive mechanisms."
             ),
             ranges={
-                "guide_cost": (0.00, 0.18),
-                "outcrossing_benefit": (0.40, 1.00),
-                "selfing_benefit": (0.00, 0.40),
-                "inbreeding_depression": (0.30, 0.80),
-                "background_pollinator_efficiency": (0.20, 0.70),
-                "drift_strength": (0.00, 0.15),
-                "direct_pollinator_guide_benefit": (0.30, 1.00),
-                "cost_of_waiting_for_pollinators": (0.00, 0.40),
-            },
-        ),
-        "high_guide_cost": TradeoffPreset(
-            name="high_guide_cost",
-            description=(
-                "Nectar-guide maintenance is metabolically costly. Guide loss can "
-                "be favoured even when some outcrossing benefit exists."
-            ),
-            ranges={
-                "guide_cost": (0.12, 0.30),
-                "outcrossing_benefit": (0.00, 0.70),
-                "selfing_benefit": (0.10, 0.70),
-                "inbreeding_depression": (0.00, 0.60),
-                "background_pollinator_efficiency": (0.00, 0.60),
-                "drift_strength": (0.00, 0.20),
-                "direct_pollinator_guide_benefit": (0.00, 0.80),
-                "cost_of_waiting_for_pollinators": (0.10, 0.80),
-            },
-        ),
-        "drift_dominated": TradeoffPreset(
-            name="drift_dominated",
-            description=(
-                "Null-like setting where drift strongly affects guide state. "
-                "Directional selection parameters are kept moderate so that guide "
-                "change is primarily attributable to stochastic loss."
-            ),
-            ranges={
-                "guide_cost": (0.00, 0.20),
-                "outcrossing_benefit": (0.00, 0.60),
-                "selfing_benefit": (0.00, 0.60),
-                "inbreeding_depression": (0.00, 0.60),
-                "background_pollinator_efficiency": (0.00, 0.60),
-                "drift_strength": (0.10, 0.30),
-                "direct_pollinator_guide_benefit": (0.00, 0.50),
-                "cost_of_waiting_for_pollinators": (0.00, 0.60),
+                "guide_cost":                     (0.00, 0.15),
+                "outcrossing_benefit":             (0.00, 0.55),
+                "selfing_benefit":                 (0.00, 0.45),
+                "inbreeding_depression":           (0.05, 0.55),
+                "background_pollinator_efficiency":(0.00, 0.55),
+                "drift_strength":                  (0.10, 0.30),
+                "direct_pollinator_guide_benefit": (0.00, 0.45),
+                "cost_of_waiting_for_pollinators": (0.00, 0.50),
             },
         ),
     }
