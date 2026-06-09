@@ -129,7 +129,7 @@ WORKFLOW_STEPS = [
     {"Step": "3. Simulate",
      "Meaning": "Run M1-M5 candidate causal hypotheses (proxy fast-screen or stochastic ABM main model)."},
     {"Step": "4. Filter",
-     "Meaning": "ABC-style pattern-distance rejection against empirical observed Oshima-Hachijo patterns."},
+     "Meaning": "ABC rejection against observable ecological gradient pattern targets (response_target rows only; input_context predictors excluded)."},
     {"Step": "5. Retain",
      "Meaning": "Restricted admissible causal hypotheses and compatible latent parameter ranges."},
     {"Step": "6. Infer switches",
@@ -372,10 +372,10 @@ def run_research_mode(
                 rels = {}
                 payload = {"final_values": [], "generation_rows": []}
 
-            # --- Primary POM: gradient-direction patterns (island syndrome) ---
-            # pattern_matches / accepted_by_epsilon are driven by the 7 gradient
-            # patterns (gradient_slope + rank_order across all 4 populations),
-            # NOT by Oshima vs Hachijo pairwise comparison.
+            # --- Primary gradient pattern targets ---
+            # Acceptance is driven by response_target gradient patterns
+            # (gradient_slope + rank_order across the isolation axis).
+            # input_context rows (predictor variables) are excluded automatically.
             _outputs_list = payload.get("outputs_list", [])
             _is_abm = payload.get("abm", False)
             _grad_pats = observed_gradient_only_patterns()
@@ -601,7 +601,8 @@ with st.expander("Observed pattern targets (empirical data)", expanded=False):
     _obs_display = _obs_df[[c for c in _obs_cols if c in _obs_df.columns]]
     stretch_df(_obs_display, hide_index=True)
     st.caption(
-        "Left = Oshima (less isolated), Right = Hachijo (most isolated). "
+        "Observable ecological gradient pattern targets (role=response_target). "
+        "input_context rows (predictor variables) are shown but excluded from ABC acceptance. "
         "Weights are used for weighted ABC distance. Source: Inoue & Amano (1986) + field."
     )
 
@@ -650,7 +651,7 @@ with st.sidebar:
     from causal_model.switch_inference import GRADIENT_N_PATTERNS as _N_PAT
     _thresh_display = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
     st.caption(
-        f"POM: {_N_PAT} gradient-direction patterns · "
+        f"Gradient pattern targets: {_N_PAT} response_target patterns · "
         f"threshold = weighted_match_rate >= {_thresh_display:.3f}"
     )
     run_button = st.button("Run RACH workflow", type="primary", use_container_width=True)
@@ -674,7 +675,7 @@ with st.sidebar:
         sp_n_attempts = st.slider(
             "Switch inference draws", 50, 1000, 200, 50,
             key="sp_n_abm",
-            help="Each draw runs ABM for Oshima + Hachijo. ~289ms/draw. 200 draws ≈ 1 min.",
+            help="Each draw runs ABM across the isolation gradient. ~289ms/draw. 200 draws ≈ 1 min.",
         )
         sp_abm_generations = st.slider("ABM generations", 10, 80, 30, 10, key="sp_gen")
         sp_abm_popsize    = st.slider("ABM population size", 50, 300, 100, 50, key="sp_pop")
@@ -682,7 +683,7 @@ with st.sidebar:
         _est_sec = int(sp_n_attempts * 0.30 * sp_abm_replicates / 3)
         st.caption(
             f"Estimated runtime: ~{_est_sec}s "
-            f"({sp_n_attempts} draws × {sp_abm_replicates} rep × 2 islands)"
+            f"({sp_n_attempts} draws × {sp_abm_replicates} rep × isolation gradient)"
         )
     else:
         sp_n_attempts = st.slider(
@@ -929,7 +930,7 @@ if "research_result" in st.session_state:
             st.bar_chart(df_ranges.set_index("Parameter")[["Median"]], width="stretch")
 
     with tab4:
-        st.markdown("### Simulated Oshima vs Hachijo trait values")
+        st.markdown("### Simulated trait values along isolation gradient")
         long_values = final_values_long(df_final_values)
         if long_values.empty:
             st.warning("No final simulated values available.")
@@ -1028,7 +1029,7 @@ if "sp_result" in st.session_state:
     st.header("Switch Posterior Inference Results")
     st.info(
         "These results infer which biological pathways were active in parameter-space "
-        "regions that reproduced the observed Oshima-Hachijo patterns -- without any "
+        "regions that reproduced the observable ecological gradient pattern targets -- without any "
         "pre-defined M1-M5 structure. The posterior P(switch ON | accepted) is the "
         "primary inferential output."
     )

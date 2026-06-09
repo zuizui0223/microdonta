@@ -2,17 +2,17 @@
 
 **RACH** stands for **Restricted Admissible Causal Hypotheses**.
 
-RACH は、生態学的制約を先に定義し、制約内で複数の因果仮説をシミュレーションし、観察パターンと照合することで **「観察パターンを生成できる因果仮説の制約集合」** を推定する生成推論フレームワークです。
+RACH は、**生態学的制約を先に定義**し、その制約内で複数の因果仮説をシミュレーションし、**観察された生態勾配パターンと照合する**ことで「観察パターンを生成できる因果仮説の制約集合」を推定する生成推論フレームワークです。
 
-このリポジトリは、シマホタルブクロ *Campanula punctata* 伊豆諸島集団を worked example として実装したプロトタイプです。
+特定の島嶼系・生物分類群に依存しない汎用フレームワークです。このリポジトリは、シマホタルブクロ *Campanula punctata* 伊豆諸島集団を **worked example** として実装したプロトタイプです。
 
 ---
 
 ## One-sentence definition
 
-> **RACH identifies the restricted set of admissible causal hypotheses that can generate observed ecological patterns under biologically motivated constraints.**
+> **RACH identifies the restricted set of admissible causal hypotheses that can generate observed ecological gradient patterns under biologically motivated constraints.**
 
-> **RACHは、生態学的制約のもとで観察パターンを生成可能な因果仮説だけを抽出するフレームワークである。**
+> **RACHは、生態学的制約のもとで観察された生態勾配パターンを生成可能な因果仮説だけを抽出する汎用フレームワークである。**
 
 ---
 
@@ -27,7 +27,7 @@ RACH は、生態学的制約を先に定義し、制約内で複数の因果仮
        ↓
 4. シミュレーション  (proxy / stochastic ABM)
        ↓
-5. 観察パターンとの照合  (ABC gradient-POM acceptance)
+5. 勾配パターンターゲットとの照合  (ABC gradient-pattern acceptance)
        ↓
 6. 受理サンプルからスイッチ事後確率を推定  (Switch Posterior Inference)
 ```
@@ -62,7 +62,7 @@ P(スイッチ ON | 観察パターンが一致) を各経路について推定�
 |---|---|---|
 | **S1** `guide_attracts_bombus` | 誘引形質 → Bombus誘引 → 他殖 | ネクターガイドがBombus訪花を因果的に増加させるか？ |
 | **S2** `selfing_syndrome_active` | 送粉者不足 → 繁殖保証 → 自殖症候群共進化 | 送粉者減少が、自殖・花柱離隔・花サイズの共進化を引き起こすか？ |
-| **S3** `island_isolation_common_cause` | 島の孤立 → 複数形質への共通上流原因 | 島の孤立が（Bombusの有無を経由せず）直接複数形質を同時に変化させるか？ |
+| **S3** `island_isolation_common_cause` | 孤立 → 複数形質への共通上流原因 | 孤立が（Bombusの有無を経由せず）直接複数形質を同時に変化させるか？ |
 | **S4** `drift_drives_guide_loss` | 小集団 → 遺伝的浮動 → ガイド消失 | ガイド消失は自然選択ではなく遺伝的浮動が主因か？ |
 | **S5** `small_pollinator_substitution` | ハナバチ類 → Bombus代替 → 繁殖保証圧の緩和 | 小型送粉者がBombusを代替し自殖圧を抑制するか？ |
 
@@ -70,10 +70,10 @@ P(スイッチ ON | 観察パターンが一致) を各経路について推定�
 
 ```python
 for each draw:
-    θ ~ constrained_ecological_prior()      # 生態学的制約内でパラメータサンプリング
-    s ~ Bernoulli(0.5) for each switch      # 各スイッチを独立にサンプリング（無情報事前分布）
-    y = simulate(θ, s)                      # プロキシまたはABMでシミュレーション
-    if pattern_match(y, observed_POM) >= ε: # 勾配POMと照合
+    θ ~ constrained_ecological_prior()          # 生態学的制約内でパラメータサンプリング
+    s ~ Bernoulli(0.5) for each switch          # 各スイッチを独立にサンプリング（無情報事前分布）
+    y = simulate(θ, s)                          # プロキシまたはABMでシミュレーション
+    if gradient_pattern_match(y, targets) >= ε: # 勾配パターンターゲットと照合
         accept(θ, s)
 
 P(switch ON | accepted) = accepted_ON / n_accepted  # スイッチ事後確率
@@ -87,16 +87,17 @@ BF = posterior_odds / prior_odds                    # Bayes因子
 
 ---
 
-## Pattern of Moment (POM) — gradient-based
+## Gradient-based pattern targets
 
-RACHのPOMは、**集団名に依存しない勾配方向パターン**です。
+RACHのABC採否基準は、**集団名に依存しない勾配方向パターンターゲット**です。
 
 ### なぜペアワイズ比較でなく勾配か
 
-「八丈島の方が大島より自殖率が高い」という文献記述は有用ですが、これは特定の2集団の比較です。RACHが検証したい仮説は「アイランドシンドローム」——**孤立距離に沿った形質変化の勾配そのもの**——です。
+「八丈島の方が大島より自殖率が高い」という文献記述は有用ですが、これは特定の2集団の比較です。RACHが検証したい仮説は、**生態勾配（孤立度・攪乱強度・資源可用性など）に沿った形質変化の方向性そのもの**です。
 
+勾配パターンターゲット（Campanula/Izu worked example）:
 ```
-POM: 孤立距離が増加するにつれて…
+孤立度が増加するにつれて…
   nectar_guide  が単調減少する  (gradient_slope: negative)
   selfing_rate  が単調増加する  (gradient_slope: positive)
   herkogamy     が単調減少する  (gradient_slope: negative)
@@ -105,44 +106,56 @@ POM: 孤立距離が増加するにつれて…
   selfing_rate  のランク順が昇順 (rank_order: increasing)
 ```
 
-この6パターンが現在のABC受理基準です。
+この6パターンが現在のABC受理基準です。パターンは集団名ではなく勾配の方向性で定義されるため、他のシステムへの適用が容易です。
 
-### 集団名なしの連続的孤立勾配シミュレーション
+### 汎用的な勾配シミュレーション（worked example）
 
-シミュレーションは「mainland / Oshima / Kozushima / Hachijo」という固定集団名を使いません。  
-`isolation ∈ [0, 1]` を唯一の入力として、N点の環境を生成します。
+シミュレーションは「mainland / Oshima / Kozushima / Hachijo」という固定集団名を使いません。`isolation ∈ [0, 1]` を唯一の入力として、N点の環境を生成します（理論的勾配予測 / generic mechanism exploration）。
 
 ```python
-# isolation から全環境変数を導出
+# isolation から全環境変数を導出（理論予測式）
 primary_pollinator_frequency    = max(0, 0.80 - 0.94 * isolation)
 community_pollinator_abundance  = 0.88 - 0.635 * isolation
 effective_population_size       = 1.00 - 0.765 * isolation
 # ...
 ```
 
-これにより、伊豆諸島以外の島嶼系にも同じフレームワークがそのまま適用できます。
+この合成勾配は実データの再構築ではなく、**どのメカニズムが勾配パターンを生成できるかを理論探索するため**のものです。実データとの照合は、`observed_patterns.csv` の `response_target` 行で行われます。
 
 ---
 
-## データ設計 — input_context と response_target の分離（Issue #7）
+## データ設計 — simulation layer と observation layer の分離
 
-RACHは2種類のデータを明確に区別します。
+RACHは2つのレイヤーを明確に区別します。
 
-| ファイル | 役割 | 内容 | ABCに使うか |
-|---|---|---|---|
-| `ecological_context.csv` | **input_context** | 孤立距離・送粉者頻度・有効集団サイズなど、シミュレーションに「投入」する環境変数 | **使わない** — 投入値を予測値と照合するのは循環論法 |
-| `observed_patterns.csv`（`role=response_target`） | **response_target** | ネクターガイド・自殖率・花柱離隔・Fis の勾配方向など、シミュレーションが**再現すべき**パターン | **使う** — ABC採否基準 |
+### Simulation layer（入力文脈）
+
+```
+ecological_context.csv  ←  input_context
+```
+
+環境変数（孤立度・送粉者頻度・有効集団サイズ等）はシミュレーションへの**入力**です。これらをABCの採否基準にするのは循環論法（値を投入して同じ値を予測する）です。
+
+### Observation layer（検証ターゲット）
+
+```
+observed_patterns.csv  ←  role = response_target
+```
+
+形質の勾配パターン（ネクターガイド・自殖率・Fis等の方向性）は、シミュレーションが**再現すべき**検証ターゲットです。ABCの採否基準はこの層のみです。
+
+### `role` 列による機械的分離
 
 `observed_patterns.csv` の各行には `role` 列があります：
 
-```
-role = response_target  ← ABCの採否に使う（形質の勾配パターン）
-role = input_context    ← ABCに使わない（予測変数、例: primary_pollinator_frequency）
-```
+| role | 意味 | ABCに使うか |
+|---|---|---|
+| `response_target` | 形質の勾配パターン（nectar_guide, selfing_rate, herkogamy, Fis など） | **使う** |
+| `input_context` | 予測変数（primary_pollinator_frequency 等、ecological_contextから注入） | **使わない** |
 
-`evaluate_patterns()` は `role=input_context` 行を**自動的にスキップ**します（ディフェンシブガード付き）。`response_target_patterns()` を呼べば、ABCに渡すべき行だけを取得できます。
+`evaluate_patterns()` は `role=input_context` 行を**自動的にスキップ**します。`response_target_patterns()` を呼べば、ABCに渡すべき行だけを取得できます。
 
-### 循環論法の防止
+### 循環論法の防止（具体例）
 
 `primary_pollinator_frequency`（Bombus頻度）は `ecological_context.csv` からシミュレーションに**注入**される値です。これを同時にABCの採否基準にすると、スイッチの状態に関係なく常にマッチしてしまいます（Bombus頻度はシミュレーションで生成されるのではなく与えられるため）。
 
@@ -233,8 +246,8 @@ causal_model/               因果構造・スイッチ・パラメータ制約�
   switch_inference.py       Switch Posterior Inference（ABCリジェクション）
   parameter_constraints.py  生態学的制約文法（C1-C4、文献引用付き）
   switches.py               PathwaySwitches定義
-examples/campanula_izu/     伊豆諸島worked example
-  data/observed_patterns.csv  勾配POMパターン定義（role列: response_target / input_context）
+examples/campanula_izu/     伊豆諸島 worked example (Campanula punctata)
+  data/observed_patterns.csv  勾配パターンターゲット定義（role列: response_target / input_context）
   data/ecological_context.csv 集団の生態的文脈データ（input_context; ABC採否には使わない）
   proxy_simulation.py         連続孤立勾配シミュレーション（env_from_isolation）
   pattern_evaluator.py        勾配パターン評価（gradient_slope, rank_order; role filterつき）
@@ -250,7 +263,7 @@ streamlit_app.py            メインアプリ
 | Existing method | Role inside RACH |
 |---|---|
 | ABM | candidate causal hypotheses を生成するシミュレーター |
-| POM | 複数観察パターンでモデルを制約する評価原理 |
+| Gradient pattern targets | 複数観察パターンでモデルを制約する評価原理（旧来のPOM概念を一般化） |
 | ABC-rejection | 距離関数と受理閾値に基づく潜在パラメータ領域の近似 |
 | Ecological constraint grammar | シミュレーション前に許容パラメータ空間を定義する制約規則 |
 
@@ -260,11 +273,11 @@ RACHの独自性は、これらを**因果仮説の事後確率推定**という
 
 ## Manuscript framing
 
-> We propose RACH, a Restricted Admissible Causal Hypotheses framework. RACH first defines an admissible latent trade-off space using ecological constraint grammar, then simulates candidate causal hypotheses within that space using a switch-based generative model, and finally infers the posterior probability of each biological pathway being active via ABC rejection — without pre-specifying causal structures.
+> We propose RACH, a Restricted Admissible Causal Hypotheses framework for ecological gradient inference. RACH first defines an admissible latent trade-off space using ecological constraint grammar, then simulates candidate causal hypotheses within that space using a switch-based generative model, and finally infers the posterior probability of each biological pathway being active via ABC rejection against observed gradient pattern targets — without pre-specifying causal structures.
 
 日本語:
 
-> 本研究では、RACH（Restricted Admissible Causal Hypotheses）を提案する。RACHは、生態学的制約文法によって許容潜在トレードオフ空間を先に定義し、スイッチベースの生成モデルでその空間内を探索し、ABCリジェクション法によって各生物学的経路の事後確率を推定する。因果構造を事前に固定する必要がない点が、従来の構造比較アプローチとの本質的な違いである。
+> 本研究では、RACH（Restricted Admissible Causal Hypotheses）を提案する。RACHは、生態学的制約文法によって許容潜在トレードオフ空間を先に定義し、スイッチベースの生成モデルでその空間内を探索し、観察された勾配パターンターゲットに対するABCリジェクション法によって各生物学的経路の事後確率を推定する。因果構造を事前に固定する必要がない点が、従来の構造比較アプローチとの本質的な違いである。
 
 ---
 
