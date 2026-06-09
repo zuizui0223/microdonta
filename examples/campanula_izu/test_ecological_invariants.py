@@ -13,10 +13,11 @@ design guarantees that the ABC inference depends on:
    With S1 (Bombus-guide link) + S2 (selfing syndrome) both ON, the proxy
    simulation must satisfy the full gradient POM across the isolation axis.
 
-3. GUIDE-ONLY SWITCH (S4 drift) PASSES GUIDE PATTERNS, FAILS SELFING PATTERNS
-   S4 alone should drive guide loss (passes nectar_guide_distance and
-   nectar_guide_rank) but NOT produce the selfing syndrome (fails
-   selfing_distance and selfing_rank), keeping S4 distinguishable from S2.
+3. NULL MODEL ALWAYS PRODUCES NEUTRAL DIVERSITY GRADIENT
+   With all selection switches OFF, drift is still active (Ne from
+   island_distance).  neutral_diversity_isolation must PASS even with
+   all switches OFF — confirming drift is a continuous background process,
+   not a binary S4 switch.
 
 4. PARAMETER CONSTRAINTS ARE CONSISTENT ACROSS BOTH MODULES
    C1-C4 in parameter_constraints.py and parameter_sampling.py must agree
@@ -71,8 +72,8 @@ def _s1_s2() -> PathwaySwitches:
     return PathwaySwitches(direct_pollinator_to_guide=1.0, selfing_mediation=1.0)
 
 
-def _s4_only() -> PathwaySwitches:
-    return PathwaySwitches(drift_null=1.0)
+def _s3_only() -> PathwaySwitches:
+    return PathwaySwitches(island_common_cause=1.0)
 
 
 # ---------------------------------------------------------------------------
@@ -110,41 +111,32 @@ def test_island_syndrome_passes_pom():
 
 
 # ---------------------------------------------------------------------------
-# Test 3: S4 (drift) passes guide patterns, fails selfing patterns
+# Test 3: M0 null (all OFF) produces neutral_diversity gradient
+#         — drift is always-on, Ne from island_distance
 # ---------------------------------------------------------------------------
 
-def test_s4_passes_guide_fails_selfing():
-    result = _run(_s4_only())
+def test_null_produces_neutral_diversity_gradient():
+    """With all selection switches OFF, neutral_diversity must STILL decline
+    with isolation because Ne is always derived from island_distance (not S4).
+
+    This verifies the ecological principle: drift is a continuous background
+    process, not a binary switch.  The gradient emerges from Ne alone.
+    """
+    result = _run(_all_off())
     by_name = {m.pattern: m for m in result.matches}
 
-    guide_slope  = by_name.get("nectar_guide_distance")
-    guide_rank   = by_name.get("nectar_guide_rank")
-    selfing_slope = by_name.get("selfing_distance")
-    selfing_rank  = by_name.get("selfing_rank")
+    nd_pattern = by_name.get("neutral_diversity_isolation")
+    assert nd_pattern is not None, "Pattern 'neutral_diversity_isolation' not found"
 
-    assert guide_slope  is not None, "Pattern 'nectar_guide_distance' not found"
-    assert guide_rank   is not None, "Pattern 'nectar_guide_rank' not found"
-    assert selfing_slope is not None, "Pattern 'selfing_distance' not found"
-    assert selfing_rank  is not None, "Pattern 'selfing_rank' not found"
-
-    guide_ok   = guide_slope.matched or guide_rank.matched
-    selfing_ok = selfing_slope.matched and selfing_rank.matched
-
-    assert guide_ok, (
-        f"FAIL test_s4_passes_guide_fails_selfing: S4 alone did not drive "
-        f"guide loss — neither nectar_guide_distance nor nectar_guide_rank "
-        f"matched.  guide_slope={guide_slope.detail}  "
-        f"guide_rank={guide_rank.detail}"
+    assert nd_pattern.matched, (
+        f"FAIL test_null_produces_neutral_diversity_gradient: "
+        f"neutral_diversity_isolation did not pass with all switches OFF.  "
+        f"drift is always-on (Ne from island_distance) so a negative gradient "
+        f"is always expected.  detail={nd_pattern.detail}"
     )
-    assert not selfing_ok, (
-        f"FAIL test_s4_passes_guide_fails_selfing: S4 alone produced a "
-        f"full selfing syndrome (both selfing_distance and selfing_rank "
-        f"matched).  S4 should be the 'drift null' — guide loss without "
-        f"selfing syndrome.  selfing_slope={selfing_slope.detail}  "
-        f"selfing_rank={selfing_rank.detail}"
-    )
-    print(f"[PASS] test_s4_passes_guide_fails_selfing  "
-          f"guide_matched={guide_ok}  selfing_matched={selfing_ok}")
+    print(f"[PASS] test_null_produces_neutral_diversity_gradient  "
+          f"neutral_diversity matched={nd_pattern.matched}  "
+          f"detail={nd_pattern.detail}")
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +279,7 @@ if __name__ == "__main__":
     tests = [
         test_null_fails_pom,
         test_island_syndrome_passes_pom,
-        test_s4_passes_guide_fails_selfing,
+        test_null_produces_neutral_diversity_gradient,
         test_constraint_modules_consistent,
         test_input_context_excluded_from_abc,
     ]

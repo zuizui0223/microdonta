@@ -24,11 +24,17 @@ Relation to M1-M5
 -----------------
 Each M structure corresponds to a particular switch combination:
 
-    M1  direct_pollinator_to_guide=1  selfing_mediation=0  island_common_cause=0  drift_null=0
-    M2  direct_pollinator_to_guide=0  selfing_mediation=1  island_common_cause=0  drift_null=0
-    M3  direct_pollinator_to_guide=1  selfing_mediation=1  island_common_cause=0  drift_null=0
-    M4  direct_pollinator_to_guide=~  selfing_mediation=~  island_common_cause=1  drift_null=~
-    M5  direct_pollinator_to_guide=0  selfing_mediation=0  island_common_cause=0  drift_null=1
+    M0  direct_pollinator_to_guide=0  selfing_mediation=0  island_common_cause=0  (null: drift+env only)
+    M1  direct_pollinator_to_guide=1  selfing_mediation=0  island_common_cause=0
+    M2  direct_pollinator_to_guide=0  selfing_mediation=1  island_common_cause=0
+    M3  direct_pollinator_to_guide=1  selfing_mediation=1  island_common_cause=0
+    M4  direct_pollinator_to_guide=~  selfing_mediation=~  island_common_cause=1
+
+    NOTE: drift_null (S4) removed.  Genetic drift is always present in finite
+    populations — it is a continuous background process parameterised by
+    drift_strength (θ) and Ne (derived from island_distance in env).
+    The null model M0 = all selection switches OFF; drift + environmental
+    gradient operate freely via θ and Ne.
 
 The switch posterior subsumes and extends structure ranking.
 """
@@ -137,20 +143,11 @@ CAMPANULA_SWITCHES: tuple[BiologicalSwitch, ...] = (
             "any single trait."
         ),
     ),
-    BiologicalSwitch(
-        name="drift_drives_guide_loss",
-        pathway_key="drift_null",
-        biological_question=(
-            "Is guide loss on isolated islands primarily stochastic (genetic drift in "
-            "small populations) rather than driven by natural selection?"
-        ),
-        description=(
-            "Small effective population size on isolated islands amplifies genetic "
-            "drift. If guide expression is selectively neutral or nearly neutral, "
-            "loss may occur by drift alone, independent of pollinator service. "
-            "This is the null hypothesis."
-        ),
-    ),
+    # drift_drives_guide_loss (S4) REMOVED.
+    # Ecological rationale: genetic drift is always operating in finite populations.
+    # It is parameterised continuously via drift_strength (θ) and Ne (env),
+    # not as a binary ON/OFF switch.  The null hypothesis (drift+env alone,
+    # no selection) is represented by M0_null_selection (all switches OFF).
     BiologicalSwitch(
         name="small_pollinator_substitution",
         pathway_key="small_pollinator_pathway",
@@ -224,7 +221,6 @@ def pathway_switches_from_state(
         direct_pollinator_to_guide=key_to_value.get("direct_pollinator_to_guide", 0.0),
         selfing_mediation=key_to_value.get("selfing_mediation", 0.0),
         island_common_cause=key_to_value.get("island_common_cause", 0.0),
-        drift_null=key_to_value.get("drift_null", 0.0),
         small_pollinator_pathway=key_to_value.get("small_pollinator_pathway", 0.0),
     )
 
@@ -238,19 +234,16 @@ def switch_state_to_nearest_structure(state: dict[str, bool]) -> str:
     dp = state.get("guide_attracts_bombus", False)
     sm = state.get("selfing_syndrome_active", False)
     ic = state.get("island_isolation_common_cause", False)
-    dn = state.get("drift_drives_guide_loss", False)
 
     if ic:
         return "M4_common_island_cause"
-    if dn and not dp and not sm:
-        return "M5_drift_null"
     if dp and sm:
         return "M3_direct_plus_mediated"
     if dp:
         return "M1_direct_pollinator_to_guide"
     if sm:
         return "M2_selfing_mediated"
-    return "M5_drift_null"  # all-OFF ≈ null
+    return "M0_null_selection"  # all-OFF = null (drift + env gradient only)
 
 
 # ---------------------------------------------------------------------------

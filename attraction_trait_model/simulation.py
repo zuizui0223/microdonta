@@ -303,10 +303,9 @@ def produce_child(
 
     base_drift_sd = drift_strength(env, params)
 
-    # M5: drift_null amplifies genetic drift
+    # Drift is always present — no binary S4 switch.
+    # Base drift SD comes from ModelParameters.base_drift_strength and Ne.
     drift_sd = base_drift_sd
-    if switches is not None and switches.drift_null > 0:
-        drift_sd = base_drift_sd * (1.0 + switches.drift_null)
 
     # M4: island common cause adds extra drift proportional to island distance
     if switches is not None and switches.island_common_cause > 0:
@@ -535,29 +534,19 @@ def simulate_population(
     Per-generation update:
         H_{t+1} = H_t × (1 - 1 / (2 · Ne_eff))
 
-    where ``Ne_eff`` = ``population_size`` at baseline.
+    where ``Ne_eff`` = ``population_size × env.effective_population_size``.
 
-    Switch effects:
-    * **S4 (drift_null ON)**: amplifies drift on isolated islands.
-      Mechanistically: small island → small Ne → faster allele fixation →
-      lower H.  Amplification scales with ``env.island_distance`` so that
-      the mainland population retains high H while isolated islands lose
-      diversity — producing the negative slope required by the
-      ``neutral_diversity_isolation`` pattern.
-      Formula:  Ne_eff_S4 = Ne / (1 + drift_null × island_distance × 4)
+    Ecological rationale:
+    Genetic drift is ALWAYS present in finite populations — it is not a
+    binary switch.  Ne decreases continuously with island isolation
+    (env.effective_population_size is derived from island_distance via
+    Ne_proxy ≈ 1.0 − 0.765 × isolation).  This means H automatically
+    declines faster on more isolated islands, producing a negative
+    neutral_diversity gradient without any switch being required.
 
-    * **S2 (selfing_mediation) and other switches**: NO direct effect on H.
-      Selfing reduces effective Ne theoretically, but the effect is very
-      mild compared to drift in small island populations and does NOT
-      produce a detectable negative gradient in typical run lengths (40
-      generations).  Keeping S2's H effect at zero enforces identifiability:
-      ``neutral_diversity_isolation`` passes ONLY when S4 is ON, not when
-      only S2 (selfing syndrome) is active.
-
-    Design invariant: with all switches OFF (or S4 OFF), H declines at the
-    same rate in all populations (same Ne = population_size), so the
-    gradient slope is ~0 → pattern FAIL.  Only S4 ON introduces an
-    island-distance-correlated Ne reduction → negative slope → PASS.
+    The drift_null switch (S4) has been removed.  All structures share
+    the same Ne-from-isolation mechanics; the gradient emerges from
+    continuous parameters (drift_strength in θ, Ne in env).
     """
     rng = _get_rng(seed)
     population = initialize_population(population_size, initial_agent=initial_agent, rng=rng)
@@ -568,17 +557,12 @@ def simulate_population(
     neutral_H: float = 0.80
     ne_base: float = max(1.0, float(population_size))
 
-    # S4 island-distance factor: amplifies drift when drift_null is ON.
-    # Computed once per population (env.island_distance is fixed).
-    island_distance: float = clamp(getattr(env, "island_distance", 0.0))
-    drift_null_w: float = (
-        switches.drift_null if switches is not None else 0.0
-    )
-    # Effective Ne reduction factor for S4:
-    #   Ne_eff = Ne_base / (1 + drift_null_w × island_distance × 4)
-    # Larger island_distance + stronger S4 → smaller Ne_eff → faster H loss.
-    s4_ne_divisor: float = 1.0 + drift_null_w * island_distance * 4.0
-    ne_eff: float = ne_base / s4_ne_divisor  # fixed per population per run
+    # Ne is always derived from island isolation — drift is a continuous
+    # background process, not a binary switch.
+    # env.effective_population_size ∈ [0.05, 1.0] (from __post_init__:
+    #   Ne_proxy = max(0.05, 1.0 - 0.765 × island_distance))
+    ne_scale: float = max(0.05, getattr(env, "effective_population_size", 1.0))
+    ne_eff: float = ne_base * ne_scale  # smaller on isolated islands
 
     # Per-generation drift-loss rate (constant, because Ne_eff is fixed)
     drift_loss_per_gen: float = min(0.50, 1.0 / (2.0 * max(1.0, ne_eff)))

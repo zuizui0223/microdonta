@@ -259,14 +259,15 @@ def predict_traits_phenomenological(
         # herkogamy and flower: NOT driven by S3 — requires S2 (selfing syndrome)
 
     # ------------------------------------------------------------------
-    # S4: drift_drives_guide_loss
+    # (S4 removed — drift is always-on via Ne, not a binary switch)
     # ------------------------------------------------------------------
-    # Genetic drift in small populations (high low_ne) causes stochastic
-    # guide loss.  Does NOT produce a full selfing syndrome (null model).
-    # OFF: guide expression is drift-neutral.
-    if switches.drift_null > 0:
-        w = switches.drift_null
-        guide -= w * 0.55 * drift
+    # drift_null switch removed from PathwaySwitches.  In the ABM,
+    # Ne is derived from island_distance and drift is always present.
+    # The phenomenological model retains a getattr fallback for backward
+    # compatibility with any serialized PathwaySwitches objects.
+    _drift_null_w = getattr(switches, "drift_null", 0.0)
+    if _drift_null_w > 0:  # legacy only — will be 0.0 for all new runs
+        guide -= _drift_null_w * 0.55 * drift
 
     # ------------------------------------------------------------------
     # S5: small_pollinator_substitution
@@ -316,24 +317,17 @@ def predict_traits_phenomenological(
     # Design intent: neutral_diversity_isolation FAILS when only S2 is ON
     #   (mild gradient, below threshold) and PASSES when S4 is ON (strong
     #   gradient), making S4 identifiable from S2.
-    neutral_diversity = 0.80  # flat baseline — no isolation effect without switches
+    # Neutral diversity: always declines with isolation via Ne gradient.
+    # Ne_proxy = 1.0 - 0.765 × isolation → more isolated = lower Ne → lower H.
+    # drift is already isolation-correlated (low_ne = 1 - Ne_proxy).
+    # Baseline slope is mild; the phenomenological approximation uses drift
+    # as a proxy for Ne-driven diversity loss.
+    neutral_diversity = clamp01(0.80 - 0.35 * drift)
+    # drift ∈ [0, ~0.5] at max isolation → neutral_diversity ∈ [0.62, 0.80]
+    # This always produces a mild negative slope — ecologically correct.
 
-    if switches.drift_null > 0:
-        w = switches.drift_null
-        # Strong drift-driven loss — primary S4 signature
-        neutral_diversity -= w * 0.60 * drift
-
-    # S2 (selfing_mediation): NO direct effect on neutral diversity.
-    # Selfing theoretically reduces effective Ne through inbreeding, but
-    # the effect is too mild to produce a detectable negative gradient
-    # across the Izu isolation gradient in typical simulation runs.
-    # Keeping this effect at zero enforces identifiability:
-    # neutral_diversity_isolation passes ONLY when S4 (drift_null) is ON.
-    # Rationale: the gradient_slope evaluator checks sign(slope) only;
-    # any non-zero S2 effect would produce a negative slope and spuriously
-    # pass the pattern even without S4, breaking S4 identifiability.
     if switches.selfing_mediation > 0:
-        pass  # intentionally no neutral_diversity effect — see note above
+        pass  # no additional effect; Ne reduction via selfing is negligible
 
     neutral_diversity = clamp01(neutral_diversity)
 

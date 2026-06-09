@@ -176,19 +176,19 @@ def campanula_causal_structures() -> list[CausalStructure]:
             description="Observed covariance arises from island history, Ne, and drift.",
         ),
         CausalStructure(
-            name="M5_drift_null",
+            name="M0_null_selection",
             edges=(
                 CausalEdge(
-                    "drift_strength",
-                    "nectar_guide",
-                    "random_loss",
-                    "Guide loss can arise without pollinator or selfing causal paths.",
+                    "island_isolation",
+                    "effective_population_size",
+                    "negative",
+                    "More isolated islands have smaller populations (fewer colonists, less rescue).",
                 ),
                 CausalEdge(
-                    "random_trait_change",
-                    "nectar_guide",
-                    "random",
-                    "Random trait change contributes to guide variation.",
+                    "effective_population_size",
+                    "neutral_diversity",
+                    "positive",
+                    "Smaller Ne → faster allele fixation → lower heterozygosity (Wright-Fisher).",
                 ),
             ),
             latent_parameters=(
@@ -197,9 +197,19 @@ def campanula_causal_structures() -> list[CausalStructure]:
             ),
             expected_patterns=(
                 "nectar_guide: Oshima > Hachijo",
+                "neutral_diversity: decreases with isolation",
             ),
-            description="Null model where drift or random change explains guide loss.",
-            notes="This model does not require Bombus or selfing to cause guide reduction.",
+            description=(
+                "Null model: no selection-based mechanisms active.  "
+                "Drift is a continuous background process — Ne is derived from "
+                "island isolation, not from a binary switch.  Trait and diversity "
+                "gradients arise purely from environmental gradient + drift."
+            ),
+            notes=(
+                "This is the ecological null.  Drift is ALWAYS present (finite "
+                "populations).  The question is whether selection-based switches "
+                "S1/S2/S3/S5 add explanatory power beyond this null."
+            ),
         ),
     ]
 
