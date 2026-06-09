@@ -213,6 +213,16 @@ def check_ecological_parameter_constraints(
             "guide benefit form an internally inconsistent combination."
         )
 
+    # C4 — background efficiency must be below primary efficiency (0.80).
+    # Unified with parameter_constraints.py. Larsson 2005: halictid per-visit
+    # efficiency 20-55% of Bombus. Values >= 0.80 collapse the guild distinction.
+    if background_pollinator_efficiency >= 0.80:
+        failed.append("C4_background_efficiency_exceeds_primary")
+        notes.append(
+            "C4: background_pollinator_efficiency >= 0.80 (primary efficiency default) "
+            "— functional distinction between pollinator guilds collapses."
+        )
+
     return ConstraintResult(
         valid=len(failed) == 0,
         failed_constraints=tuple(failed),

@@ -22,6 +22,21 @@ def background_pollinator_access(flower_size: float) -> float:
 
     Note: primary pollinators (large-bodied, e.g. Bombus) are large enough to
     access any flower size and are therefore not modulated by this function.
+
+    Functional form — linear `1 - flower_size`:
+        A linear decrease in access with corolla size is a simplifying
+        assumption.  It is mechanistically motivated by:
+        - Inouye (1980) Am. Nat.: body-size matching between bee width and
+          corolla-tube diameter determines access in resource-partitioned
+          pollinator communities.
+        - Harder (1985) Oecologia: small bees more effectively exploit
+          shallow or narrow corollas; large Bombus force open or bypass
+          tight tubes.
+        No Campanula-specific measurement of halictid access vs corolla
+        size is currently available; the linear form is a working assumption
+        pending field data.  A sigmoidal or threshold form may be more
+        realistic if corolla-size variation is concentrated near a critical
+        access threshold.
     """
 
     return clamp(1.0 - flower_size)

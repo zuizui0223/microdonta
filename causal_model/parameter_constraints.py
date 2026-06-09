@@ -345,7 +345,18 @@ def check_ecological_parameter_constraints(
         outcrossing provides near-zero benefit yet guide expression
         dramatically increases pollinator attraction makes no fitness sense.
 
-    C4 / C5  informational tradeoff classifications (never reject).
+    C4  background_pollinator_efficiency < 0.80
+        Background (trait-non-responsive) pollinators must be less efficient
+        per visit than primary (trait-responsive) pollinators.  Primary
+        efficiency is fixed at 0.80 (ModelParameters default, justified by
+        Larsson 2005: halictid pollen transfer 20–55% of Bombus per visit).
+        The functional distinction between the two guilds collapses if the
+        background guild is equally or more efficient — the model would then
+        have no identifiable primary channel.  Upper bound 0.80 corresponds
+        to the primary_pollinator_efficiency default; values >= 0.80 are
+        biologically implausible for the background guild in this system.
+
+    C5 / C6  informational tradeoff classifications (never reject).
     """
 
     failed: list[str] = []
@@ -382,6 +393,18 @@ def check_ecological_parameter_constraints(
             f"C3: guide_cost({gc:.3f}) > 0.20 AND "
             f"outcrossing_benefit({ob:.3f}) < 0.05 AND "
             f"direct_pollinator_guide_benefit({dgb:.3f}) > 0.80"
+        )
+
+    # C4 — background efficiency must be strictly below primary efficiency (0.80).
+    # Larsson 2005 (Oikos 109): halictid pollen transfer 20-55% of Bombus per
+    # visit across several plant families.  Values >= 0.80 collapse the functional
+    # distinction between the two pollinator guilds.
+    if spe >= 0.80:
+        failed.append("C4_background_efficiency_exceeds_primary")
+        notes_parts.append(
+            f"C4: background_pollinator_efficiency({spe:.3f}) >= 0.80 "
+            f"(primary_pollinator_efficiency default) — functional distinction "
+            f"between guilds collapses; biologically implausible for halictids"
         )
 
     valid = len(failed) == 0
