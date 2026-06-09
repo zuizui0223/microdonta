@@ -242,7 +242,7 @@ def _gradient_columns(outputs_by_pop: dict[str, Any], abm: bool = False) -> dict
 # Simulation backends
 # ---------------------------------------------------------------------------
 
-def simulate_structure_proxy(structure, model_params) -> tuple[dict[str, str], dict[str, Any]]:
+def simulate_structure_proxy(structure, model_params) -> tuple[dict, dict[str, Any]]:
     """Run proxy simulation for all 4 gradient populations."""
     from causal_model.switches import switches_for_structure as _sfs
     _sw = _sfs(structure.name)
@@ -252,10 +252,6 @@ def simulate_structure_proxy(structure, model_params) -> tuple[dict[str, str], d
     )
     outputs_dict = simulate_campanula_gradient(_sw, params=model_params, environments=_grad_envs)
     outputs_list = list(outputs_dict.values())
-
-    # Pairwise Oshima vs Hachijo (used for ABC acceptance — backward compat)
-    from causal_model.simulation import relations_from_outputs as _rfo
-    relations = _rfo(outputs_list, left="Oshima", right="Hachijo")
 
     output_rows = [
         {
@@ -270,7 +266,7 @@ def simulate_structure_proxy(structure, model_params) -> tuple[dict[str, str], d
         }
         for out in outputs_list
     ]
-    return relations, {
+    return {}, {
         "final_values": output_rows,
         "generation_rows": [],
         "outputs_list": outputs_list,
@@ -311,25 +307,13 @@ def simulate_structure_stochastic_abm(
         avg["Bombus_frequency"] = env.bombus_frequency
         final_by_population[population_name] = avg
 
-    oshima  = final_by_population.get("Oshima", {})
-    hachijo = final_by_population.get("Hachijo", {})
-    relations = {
-        "nectar_guide":    relation_from_values("Oshima", oshima.get("mean_nectar_guide", 0.5), "Hachijo", hachijo.get("mean_nectar_guide", 0.5)),
-        "selfing_rate":    relation_from_values("Oshima", oshima.get("selfing_rate",      0.5), "Hachijo", hachijo.get("selfing_rate",      0.5)),
-        "herkogamy":       relation_from_values("Oshima", oshima.get("mean_herkogamy",    0.5), "Hachijo", hachijo.get("mean_herkogamy",    0.5)),
-        "flower_size":     relation_from_values("Oshima", oshima.get("mean_flower_size",  0.5), "Hachijo", hachijo.get("mean_flower_size",  0.5)),
-        "Fis":             relation_from_values("Oshima", oshima.get("Fis_proxy",         0.5), "Hachijo", hachijo.get("Fis_proxy",         0.5)),
-        "Bombus_frequency": "Oshima > Hachijo",
-    }
-
-    # Build ABMPopulationProxy objects for gradient pattern evaluation
     abm_outputs_list = [
         ABMPopulationProxy(pop, final_dict, _POP_ENV.get(pop))
         for pop, final_dict in final_by_population.items()
     ]
 
     final_rows = [{"population": n, **v} for n, v in final_by_population.items()]
-    return relations, {
+    return {}, {
         "final_values": final_rows,
         "generation_rows": generation_rows,
         "outputs_list": abm_outputs_list,
@@ -445,7 +429,6 @@ def run_research_mode(
                 "selfing_tradeoff_class": param_set.get("selfing_tradeoff_class", ""),
                 "guide_net_benefit": param_set.get("guide_net_benefit", ""),
                 "selfing_net_benefit": param_set.get("selfing_net_benefit", ""),
-                **{f"relation_{k}": v for k, v in rels.items()},
                 **_grad_eval_cols,
                 **_grad_trait_cols,
             }
@@ -982,11 +965,10 @@ if "research_result" in st.session_state:
                 st.caption("Weighted ABC distance")
             stretch_df(df_summary, hide_index=True)
         if not df_runs.empty:
-            relation_cols = [c for c in df_runs.columns if c.startswith("relation_")]
             show_cols = [
-                "causal_hypothesis", "pattern_matches", "abc_distance",
-                "weighted_abc_distance", "admissible_by_epsilon",
-            ] + relation_cols
+                "causal_hypothesis", "pattern_matches", "pattern_total",
+                "abc_distance", "weighted_abc_distance", "admissible_by_epsilon",
+            ]
             stretch_df(
                 df_runs[[c for c in show_cols if c in df_runs.columns]].head(200),
                 hide_index=True,
