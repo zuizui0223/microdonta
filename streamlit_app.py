@@ -64,8 +64,6 @@ from examples.campanula_izu.pattern_evaluator import (
     weighted_pattern_distance,
 )
 from examples.campanula_izu.proxy_simulation import (
-    default_campanula_proxy_environments,
-    simulate_campanula_causal_structure,
     simulate_campanula_isolation_gradient,
 )
 
