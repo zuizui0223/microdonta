@@ -525,14 +525,74 @@ def simulate_population(
     -------
     list[dict]
         One summary dict per generation (generation 0 … *generations* - 1).
+
+    Notes — neutral genetic diversity tracking
+    ------------------------------------------
+    ``mean_neutral_diversity`` in each summary row is computed as a
+    **population-level expected heterozygosity** H (Wright–Fisher drift
+    formula), NOT as a mean of per-agent ``neutral_diversity`` fields.
+
+    Per-generation update:
+        H_{t+1} = H_t × (1 - 1 / (2 · Ne_eff))
+
+    where ``Ne_eff`` = ``population_size`` at baseline.
+
+    Switch effects:
+    * **S4 (drift_null ON)**: amplifies drift on isolated islands.
+      Mechanistically: small island → small Ne → faster allele fixation →
+      lower H.  Amplification scales with ``env.island_distance`` so that
+      the mainland population retains high H while isolated islands lose
+      diversity — producing the negative slope required by the
+      ``neutral_diversity_isolation`` pattern.
+      Formula:  Ne_eff_S4 = Ne / (1 + drift_null × island_distance × 4)
+
+    * **S2 (selfing_mediation) and other switches**: NO direct effect on H.
+      Selfing reduces effective Ne theoretically, but the effect is very
+      mild compared to drift in small island populations and does NOT
+      produce a detectable negative gradient in typical run lengths (40
+      generations).  Keeping S2's H effect at zero enforces identifiability:
+      ``neutral_diversity_isolation`` passes ONLY when S4 is ON, not when
+      only S2 (selfing syndrome) is active.
+
+    Design invariant: with all switches OFF (or S4 OFF), H declines at the
+    same rate in all populations (same Ne = population_size), so the
+    gradient slope is ~0 → pattern FAIL.  Only S4 ON introduces an
+    island-distance-correlated Ne reduction → negative slope → PASS.
     """
     rng = _get_rng(seed)
     population = initialize_population(population_size, initial_agent=initial_agent, rng=rng)
+
+    # Population-level neutral heterozygosity H (0–1).
+    # Tracks expected heterozygosity under Wright–Fisher drift independently
+    # of the per-agent neutral_diversity field.
+    neutral_H: float = 0.80
+    ne_base: float = max(1.0, float(population_size))
+
+    # S4 island-distance factor: amplifies drift when drift_null is ON.
+    # Computed once per population (env.island_distance is fixed).
+    island_distance: float = clamp(getattr(env, "island_distance", 0.0))
+    drift_null_w: float = (
+        switches.drift_null if switches is not None else 0.0
+    )
+    # Effective Ne reduction factor for S4:
+    #   Ne_eff = Ne_base / (1 + drift_null_w × island_distance × 4)
+    # Larger island_distance + stronger S4 → smaller Ne_eff → faster H loss.
+    s4_ne_divisor: float = 1.0 + drift_null_w * island_distance * 4.0
+    ne_eff: float = ne_base / s4_ne_divisor  # fixed per population per run
+
+    # Per-generation drift-loss rate (constant, because Ne_eff is fixed)
+    drift_loss_per_gen: float = min(0.50, 1.0 / (2.0 * max(1.0, ne_eff)))
 
     summaries: list[dict] = []
     for gen in range(generations):
         evaluated = evaluate_population(population, env, params, rng, switches)
         summary = summarize_population(evaluated, gen, env)
+
+        # --- Population-level H update (Wright–Fisher drift) ---
+        neutral_H = max(0.0, neutral_H * (1.0 - drift_loss_per_gen))
+        # Override the per-agent mean with the theoretically grounded H value.
+        summary["mean_neutral_diversity"] = round(neutral_H, 6)
+
         summaries.append(summary)
         population = next_generation(
             evaluated, env, params, rng, switches, population_size

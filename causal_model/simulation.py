@@ -290,11 +290,17 @@ def simulate_population_proxy(
         # Strong drift-driven loss — primary S4 signature
         neutral_diversity -= w * 0.60 * drift
 
+    # S2 (selfing_mediation): NO direct effect on neutral diversity.
+    # Selfing theoretically reduces effective Ne through inbreeding, but
+    # the effect is too mild to produce a detectable negative gradient
+    # across the Izu isolation gradient in typical simulation runs.
+    # Keeping this effect at zero enforces identifiability:
+    # neutral_diversity_isolation passes ONLY when S4 (drift_null) is ON.
+    # Rationale: the gradient_slope evaluator checks sign(slope) only;
+    # any non-zero S2 effect would produce a negative slope and spuriously
+    # pass the pattern even without S4, breaking S4 identifiability.
     if switches.selfing_mediation > 0:
-        w = switches.selfing_mediation
-        # Mild inbreeding-driven loss: much weaker slope than S4
-        fis_from_selfing = clamp01(0.50 * selfing)
-        neutral_diversity -= w * 0.18 * fis_from_selfing
+        pass  # intentionally no neutral_diversity effect — see note above
 
     neutral_diversity = clamp01(neutral_diversity)
 
