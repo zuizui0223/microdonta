@@ -27,6 +27,8 @@ environments_from_population_env(env_table)
 
 from __future__ import annotations
 
+import math
+
 from attraction_trait_model import Environment, ModelParameters
 from causal_model.simulation import (
     PopulationProxyOutput,
@@ -258,3 +260,113 @@ def simulate_campanula_gradient(
         )
         for pop_name, env in environments.items()
     }
+
+
+# ---------------------------------------------------------------------------
+# Continuous isolation gradient — no named populations
+# ---------------------------------------------------------------------------
+
+def env_from_isolation(isolation: float) -> Environment:
+    """Derive an Environment purely from isolation distance in [0, 1].
+
+    All other environmental variables are estimated from the four Izu Island
+    populations (mainland, Oshima, Kozushima, Hachijo) via linear regression
+    on isolation, except migration_rate (exponential decay).
+
+    Fitted from population_env.csv:
+        Bombus_frequency      = max(0, 0.80 - 0.94  * iso)   R²≈0.99
+        pollinator_environment = 0.88 - 0.635 * iso           R²≈0.97
+        effective_population_size = 1.00 - 0.765 * iso        R²≈0.93
+        small_pollinator_frequency = 0.50 + 0.118 * iso       R²≈0.88
+        migration_rate        = 0.15 * exp(-3.19 * iso)       R²≈0.99
+
+    Parameters
+    ----------
+    isolation:
+        Normalised isolation distance from mainland in [0, 1].
+        0 = mainland, 1 = maximally isolated island.
+    """
+    iso = float(max(0.0, min(1.0, isolation)))
+    return Environment(
+        name=f"iso_{iso:.3f}",
+        bombus_frequency=max(0.0, 0.80 - 0.94 * iso),
+        small_pollinator_frequency=min(1.0, 0.50 + 0.118 * iso),
+        pollinator_environment=max(0.0, 0.88 - 0.635 * iso),
+        migration_rate=0.15 * math.exp(-3.19 * iso),
+        effective_population_size=max(0.0, 1.00 - 0.765 * iso),
+        island_distance=iso,
+    )
+
+
+def simulate_campanula_isolation_gradient(
+    switches: PathwaySwitches,
+    params: ModelParameters | None = None,
+    n_points: int = 8,
+    isolation_range: tuple[float, float] = (0.0, 1.0),
+) -> tuple[dict[str, PopulationProxyOutput], dict[str, dict]]:
+    """Simulate a continuous isolation gradient without named populations.
+
+    Generates ``n_points`` environments parameterised purely by isolation
+    distance.  All other environmental variables are derived from isolation
+    via empirically-fitted functions (see :func:`env_from_isolation`).
+
+    Parameters
+    ----------
+    switches:
+        PathwaySwitches specifying which pathways are active.
+    params:
+        Latent ecological parameters. Defaults to ModelParameters defaults.
+    n_points:
+        Number of evenly-spaced isolation points. Default 8.
+    isolation_range:
+        (min_iso, max_iso) spanning the gradient. Default (0.0, 1.0).
+
+    Returns
+    -------
+    (outputs_dict, synth_pop_env)
+        outputs_dict:
+            {pop_name: PopulationProxyOutput} keyed by ``"iso_X.XXX"``.
+        synth_pop_env:
+            Synthetic population-environment table in the same format as
+            ``load_population_env()`` output.  Used as ``env_table`` argument
+            to :func:`pattern_evaluator.evaluate_patterns`.
+            Each entry contains ``isolation``, ``distance_from_mainland``
+            (= isolation × 290 km, for predictor lookups in POM), and the
+            derived environmental variables.
+    """
+    params = params or ModelParameters()
+    lo, hi = isolation_range
+    if n_points < 2:
+        iso_values = [lo]
+    else:
+        step = (hi - lo) / (n_points - 1)
+        iso_values = [lo + step * i for i in range(n_points)]
+
+    _placeholder = CausalStructure(
+        name="isolation_gradient_inference",
+        description="Continuous isolation gradient — population-free",
+        edges=[],
+        expected_patterns=[],
+        latent_parameters=[],
+    )
+
+    outputs_dict: dict[str, PopulationProxyOutput] = {}
+    synth_pop_env: dict[str, dict] = {}
+
+    for iso in iso_values:
+        env = env_from_isolation(iso)
+        output = simulate_population_proxy(_placeholder, env, params, switches=switches)
+        outputs_dict[env.name] = output
+        synth_pop_env[env.name] = {
+            "isolation": iso,
+            # distance_from_mainland in km (Izu max ≈ 290 km)
+            # used by gradient_slope pattern predictor lookup
+            "distance_from_mainland": round(iso * 290.0, 1),
+            "Bombus_frequency": env.bombus_frequency,
+            "small_pollinator_frequency": env.small_pollinator_frequency,
+            "pollinator_environment": env.pollinator_environment,
+            "migration_rate": env.migration_rate,
+            "effective_population_size_proxy": env.effective_population_size,
+        }
+
+    return outputs_dict, synth_pop_env

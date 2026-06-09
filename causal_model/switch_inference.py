@@ -471,7 +471,6 @@ def run_switch_posterior_inference(
     """
 
     from examples.campanula_izu.observed_data import (
-        load_population_env,
         observed_gradient_only_patterns,
     )
     from examples.campanula_izu.pattern_evaluator import (
@@ -479,25 +478,16 @@ def run_switch_posterior_inference(
         weighted_pattern_distance,
     )
     from examples.campanula_izu.proxy_simulation import (
-        default_campanula_gradient_environments,
-        environments_from_population_env,
-        simulate_campanula_gradient,
+        simulate_campanula_isolation_gradient,
     )
 
     rng = random.Random(seed)
     preset = predefined_tradeoff_presets()[preset_name]
     threshold = _acceptance_threshold(acceptance_rule)
 
-    pop_env = load_population_env()
     # POM = gradient-direction patterns only (gradient_slope + rank_order).
-    # We do NOT use pairwise comparisons (Oshima vs Hachijo) because the
-    # target hypothesis is the *isolation gradient itself* (island syndrome),
-    # not specific endpoint population contrasts.
+    # The simulation uses a continuous isolation gradient (no named populations).
     all_patterns = observed_gradient_only_patterns()
-    grad_envs = (
-        environments_from_population_env(pop_env)
-        if pop_env else default_campanula_gradient_environments()
-    )
 
     constraint_passed, constraint_rejected = sample_all_sets_with_rejection_log(
         preset, n_attempts, seed=seed
@@ -514,11 +504,11 @@ def run_switch_posterior_inference(
         pw = pathway_switches_from_state(state, switches)
 
         try:
-            outputs_dict = simulate_campanula_gradient(
-                pw, params=model_params, environments=grad_envs
+            outputs_dict, synth_pop_env = simulate_campanula_isolation_gradient(
+                pw, params=model_params, n_points=8,
             )
             outputs_list = list(outputs_dict.values())
-            eval_result = evaluate_patterns(outputs_list, all_patterns, pop_env)
+            eval_result = evaluate_patterns(outputs_list, all_patterns, synth_pop_env)
         except Exception:
             if progress_callback:
                 _el = _time.monotonic() - t_start
@@ -708,7 +698,6 @@ def run_switch_posterior_inference_abm(
 
     from attraction_trait_model.simulation import simulate_population
     from examples.campanula_izu.observed_data import (
-        load_population_env,
         observed_gradient_only_patterns,
     )
     from examples.campanula_izu.pattern_evaluator import (
@@ -717,21 +706,29 @@ def run_switch_posterior_inference_abm(
         weighted_pattern_distance,
     )
     from examples.campanula_izu.proxy_simulation import (
-        default_campanula_gradient_environments,
-        environments_from_population_env,
+        env_from_isolation,
     )
 
     rng = random.Random(seed)
     preset = predefined_tradeoff_presets()[preset_name]
     threshold = _acceptance_threshold(acceptance_rule)
 
-    pop_env = load_population_env()
     # POM = gradient-direction patterns only (island syndrome gradient).
     all_patterns = observed_gradient_only_patterns()
-    environments = (
-        environments_from_population_env(pop_env)
-        if pop_env else default_campanula_gradient_environments()
-    )
+
+    # Build a continuous isolation gradient (4 points for ABM performance).
+    _abm_n_points = 4
+    _abm_iso_values = [i / (_abm_n_points - 1) for i in range(_abm_n_points)]
+    _abm_envs = {f"iso_{iso:.3f}": env_from_isolation(iso) for iso in _abm_iso_values}
+    _abm_synth_pop_env = {
+        name: {
+            "isolation": env.island_distance,
+            "distance_from_mainland": round(env.island_distance * 290.0, 1),
+            "Bombus_frequency": env.bombus_frequency,
+        }
+        for name, env in _abm_envs.items()
+    }
+    environments = _abm_envs
 
     constraint_passed, constraint_rejected = sample_all_sets_with_rejection_log(
         preset, n_attempts, seed=seed
@@ -780,11 +777,11 @@ def run_switch_posterior_inference_abm(
 
         # Build ABMPopulationProxy objects for gradient pattern evaluation
         outputs_list = [
-            ABMPopulationProxy(pop, final_dict, pop_env.get(pop))
+            ABMPopulationProxy(pop, final_dict, _abm_synth_pop_env.get(pop))
             for pop, final_dict in pop_finals.items()
         ]
         try:
-            eval_result = evaluate_patterns(outputs_list, all_patterns, pop_env)
+            eval_result = evaluate_patterns(outputs_list, all_patterns, _abm_synth_pop_env)
         except Exception:
             continue
 

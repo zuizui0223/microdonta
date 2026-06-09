@@ -64,11 +64,9 @@ from examples.campanula_izu.pattern_evaluator import (
     weighted_pattern_distance,
 )
 from examples.campanula_izu.proxy_simulation import (
-    default_campanula_gradient_environments,
     default_campanula_proxy_environments,
-    environments_from_population_env,
     simulate_campanula_causal_structure,
-    simulate_campanula_gradient,
+    simulate_campanula_isolation_gradient,
 )
 
 st.set_page_config(
@@ -244,14 +242,12 @@ def _gradient_columns(outputs_by_pop: dict[str, Any], abm: bool = False) -> dict
 # ---------------------------------------------------------------------------
 
 def simulate_structure_proxy(structure, model_params) -> tuple[dict, dict[str, Any]]:
-    """Run proxy simulation for all 4 gradient populations."""
+    """Run proxy simulation on a continuous isolation gradient (no named populations)."""
     from causal_model.switches import switches_for_structure as _sfs
     _sw = _sfs(structure.name)
-    _grad_envs = (
-        environments_from_population_env(_POP_ENV)
-        if _POP_ENV else default_campanula_gradient_environments()
+    outputs_dict, synth_env = simulate_campanula_isolation_gradient(
+        _sw, params=model_params, n_points=8,
     )
-    outputs_dict = simulate_campanula_gradient(_sw, params=model_params, environments=_grad_envs)
     outputs_list = list(outputs_dict.values())
 
     output_rows = [
@@ -272,6 +268,7 @@ def simulate_structure_proxy(structure, model_params) -> tuple[dict, dict[str, A
         "generation_rows": [],
         "outputs_list": outputs_list,
         "outputs_by_pop": outputs_dict,
+        "synth_pop_env": synth_env,
     }
 
 
@@ -279,11 +276,13 @@ def simulate_structure_stochastic_abm(
     structure, model_params,
     generations: int, population_size: int, replicates: int, seed: int,
 ) -> tuple[dict[str, str], dict[str, Any]]:
-    """Run ABM for all 4 gradient populations."""
-    _grad_envs = (
-        environments_from_population_env(_POP_ENV)
-        if _POP_ENV else default_campanula_gradient_environments()
-    )
+    """Run ABM on a continuous isolation gradient (4 points)."""
+    from examples.campanula_izu.proxy_simulation import env_from_isolation
+    _n_abm = 4
+    _grad_envs = {
+        f"iso_{i / (_n_abm - 1):.3f}": env_from_isolation(i / (_n_abm - 1))
+        for i in range(_n_abm)
+    }
     switches = switches_for_structure(structure.name)
     final_by_population: dict[str, dict[str, float]] = {}
     generation_rows: list[dict[str, Any]] = []
@@ -308,8 +307,16 @@ def simulate_structure_stochastic_abm(
         avg["Bombus_frequency"] = env.bombus_frequency
         final_by_population[population_name] = avg
 
+    _abm_synth_env = {
+        name: {
+            "isolation": env.island_distance,
+            "distance_from_mainland": round(env.island_distance * 290.0, 1),
+            "Bombus_frequency": env.bombus_frequency,
+        }
+        for name, env in _grad_envs.items()
+    }
     abm_outputs_list = [
-        ABMPopulationProxy(pop, final_dict, _POP_ENV.get(pop))
+        ABMPopulationProxy(pop, final_dict, _abm_synth_env.get(pop))
         for pop, final_dict in final_by_population.items()
     ]
 
@@ -318,6 +325,7 @@ def simulate_structure_stochastic_abm(
         "final_values": final_rows,
         "generation_rows": generation_rows,
         "outputs_list": abm_outputs_list,
+        "synth_pop_env": _abm_synth_env,
         "outputs_by_pop": final_by_population,
         "abm": True,
     }
@@ -373,9 +381,10 @@ def run_research_mode(
             _outputs_list = payload.get("outputs_list", [])
             _is_abm = payload.get("abm", False)
             _grad_pats = observed_gradient_only_patterns()
+            _synth_env  = payload.get("synth_pop_env", _POP_ENV)
             if _outputs_list and _grad_pats:
                 try:
-                    _eval   = evaluate_patterns(_outputs_list, _grad_pats, _POP_ENV)
+                    _eval   = evaluate_patterns(_outputs_list, _grad_pats, _synth_env)
                     _wrate  = _eval.weighted_match_rate
                     _thresh = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
                     _ok     = _wrate >= _thresh - 1e-9
