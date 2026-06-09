@@ -181,17 +181,19 @@ def simulate_population_proxy(
     # pollinator service and reproductive-assurance pressure.
     # OFF: isolation has no direct trait effect.
     #
-    # DESIGN NOTE -- guide is deliberately NOT driven by S3:
+    # DESIGN NOTE -- guide is NOT driven by S3 at all:
     # Nectar-guide retention/loss is determined by pollinator IDENTITY
     # (Bombus specifically), not pollinator quantity.  Guides function as
     # long-range Bombus attractants; small halictids use them less.
     # S3 (isolation) reduces pollinator service overall but does NOT
-    # directly eliminate guides -- that requires S1 (Bombus absence) or
-    # S4 (genetic drift).  This makes S1 identifiable: only the Bombus-
+    # directly affect guide expression -- that requires S1 (Bombus absence)
+    # or S4 (genetic drift).  This makes S1 identifiable: only the Bombus-
     # guide pathway produces a guide divergence above RELATION_TOLERANCE.
     #
-    # Max S3 guide contribution = 0.07 * (0.85 - 0.35) = 0.035 < 0.05
-    # → S3 alone cannot exceed RELATION_TOLERANCE for the guide pattern.
+    # Previously coefficient was 0.07, but that allowed mainland-Hachijo
+    # guide difference = 0.07 * 0.85 = 0.0595 > RELATION_TOLERANCE (0.05),
+    # violating the design intent when a full gradient (incl. mainland) is
+    # used as POM.  Set to 0.00 to strictly enforce the design.
     if switches.island_common_cause > 0:
         w = switches.island_common_cause
         # Isolation drives selfing syndrome regardless of selfing_net.
@@ -201,7 +203,7 @@ def simulate_population_proxy(
         selfing   += w * 0.55 * selfing_drive
         herkogamy -= w * 0.40 * isolation
         flower    -= w * 0.28 * isolation
-        guide     -= w * 0.07 * isolation  # weak: guide loss needs S1 or S4
+        # guide: S3 has zero direct effect on nectar guide (needs S1 or S4)
 
     # ------------------------------------------------------------------
     # S4: drift_drives_guide_loss

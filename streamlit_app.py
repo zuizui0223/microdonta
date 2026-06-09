@@ -31,6 +31,7 @@ from causal_model.abc_distance import (
     compute_run_distances,
     epsilon_for_rule,
 )
+from causal_model.switch_inference import GRADIENT_THRESH_MAP  # single source of truth
 from causal_model.parameter_constraints import (
     LITERATURE_SOURCES,
     predefined_tradeoff_presets,
@@ -372,39 +373,38 @@ def run_research_mode(
             _outputs_list = payload.get("outputs_list", [])
             _is_abm = payload.get("abm", False)
             _grad_pats = observed_gradient_only_patterns()
-            _THRESH_MAP = {
-                "strict_6_of_6":   1.000,
-                "relaxed_5_of_6":  6 / 7,
-                "relaxed_4_of_6":  5 / 7,
-                "weighted_strict": 1.000,
-                "weighted_lax":    0.800,
-            }
             if _outputs_list and _grad_pats:
                 try:
-                    _eval = evaluate_patterns(_outputs_list, _grad_pats, _POP_ENV)
+                    _eval   = evaluate_patterns(_outputs_list, _grad_pats, _POP_ENV)
                     _wrate  = _eval.weighted_match_rate
-                    _thresh = _THRESH_MAP.get(acceptance_rule, 1.0)
+                    _thresh = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
                     _ok     = _wrate >= _thresh - 1e-9
                     dist_metrics = {
-                        "pattern_matches":      _eval.n_matched,
-                        "pattern_total":        _eval.n_total,
-                        "abc_distance":         round(1.0 - _wrate, 4),
+                        "pattern_matches":       _eval.n_matched,
+                        "pattern_total":         _eval.n_total,
+                        "abc_distance":          round(1.0 - _wrate, 4),
                         "weighted_abc_distance": round(1.0 - _wrate, 4),
-                        "epsilon":              round(1.0 - _thresh, 4),
-                        "accepted_by_epsilon":  _ok,
-                        "weighted_accepted":    _ok,
-                        "acceptance_rule":      acceptance_rule,
+                        "epsilon":               round(1.0 - _thresh, 4),
+                        "accepted_by_epsilon":   _ok,
+                        "weighted_accepted":     _ok,
+                        "acceptance_rule":       acceptance_rule,
                     }
-                except Exception:
-                    dist_metrics = compute_run_distances(
-                        observed_rels=OBSERVED_RELS, simulated_rels=rels,
-                        weights=PATTERN_WEIGHTS, rule=acceptance_rule,
-                    )
+                except Exception as _exc:
+                    import traceback as _tb
+                    print(f"[WARN] evaluate_patterns failed: {_exc}\n{_tb.format_exc()}")
+                    dist_metrics = {
+                        "pattern_matches": 0, "pattern_total": len(_grad_pats),
+                        "abc_distance": 1.0, "weighted_abc_distance": 1.0,
+                        "epsilon": 0.0, "accepted_by_epsilon": False,
+                        "weighted_accepted": False, "acceptance_rule": acceptance_rule,
+                    }
             else:
-                dist_metrics = compute_run_distances(
-                    observed_rels=OBSERVED_RELS, simulated_rels=rels,
-                    weights=PATTERN_WEIGHTS, rule=acceptance_rule,
-                )
+                dist_metrics = {
+                    "pattern_matches": 0, "pattern_total": 0,
+                    "abc_distance": 1.0, "weighted_abc_distance": 1.0,
+                    "epsilon": 0.0, "accepted_by_epsilon": False,
+                    "weighted_accepted": False, "acceptance_rule": acceptance_rule,
+                }
             _grad_eval_cols: dict = {}  # gradient IS the main eval; no separate tracking needed
 
             # Per-population trait value columns for gradient visualization
@@ -633,16 +633,18 @@ with st.sidebar:
         _rules,
         index=_rules.index("strict_6_of_6") if "strict_6_of_6" in _rules else 0,
         format_func=lambda r: {
-            "strict_6_of_6":   "strict (eps=0, all 6 must match)",
-            "relaxed_5_of_6":  "relaxed (eps=1/6, >=5 must match)",
-            "relaxed_4_of_6":  "lax (eps=2/6, >=4 must match)",
-            "weighted_strict": "weighted strict (weighted eps=0)",
-            "weighted_lax":    "weighted lax (weighted eps=0.20)",
+            "strict_6_of_6":   "strict (all 6 gradient patterns must match)",
+            "relaxed_5_of_6":  "relaxed (>=5/6 gradient patterns)",
+            "relaxed_4_of_6":  "lax (>=4/6 gradient patterns)",
+            "weighted_strict": "weighted strict (weighted match = 1.0)",
+            "weighted_lax":    "weighted lax (weighted match >= 0.80)",
         }.get(r, r),
     )
+    from causal_model.switch_inference import GRADIENT_N_PATTERNS as _N_PAT
+    _thresh_display = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
     st.caption(
-        f"eps = {epsilon_for_rule(acceptance_rule, len(OBSERVED_RELS)):.4f} "
-        f"| distance = 1 - matches / {len(OBSERVED_RELS)}"
+        f"POM: {_N_PAT} gradient-direction patterns · "
+        f"threshold = weighted_match_rate >= {_thresh_display:.3f}"
     )
     run_button = st.button("Run RACH workflow", type="primary", use_container_width=True)
 
@@ -842,11 +844,12 @@ if run_gradient_button:
         _g_done = _pidx + 1
         _g_elapsed = _gtime.monotonic() - _g_t0
         _g_eta = (_g_elapsed / _g_done) * (_g_total - _g_done) if _g_done > 0 else 0
-        _g_accepted = sum(1 for r in _grad_rows if r["n_matched"] == r["n_total"])
+        _g_thresh = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
+        _g_accepted = sum(1 for r in _grad_rows if r["weighted_match_rate"] >= _g_thresh - 1e-9)
         _g_bar.progress(_g_done / _g_total,
                         text=f"Island Gradient: {_g_done}/{_g_total} ({100*_g_done//_g_total}%)")
         _g_stat.caption(
-            f"accepted (all 7 matched): {_g_accepted} · "
+            f"accepted (rule={acceptance_rule}): {_g_accepted} · "
             f"elapsed {_g_elapsed:.0f}s · ETA {_g_eta:.0f}s"
         )
 

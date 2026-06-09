@@ -9,6 +9,5 @@ nectar_guide_distance,gradient_slope,nectar_guide,,,,distance_from_mainland,nega
 selfing_distance,gradient_slope,selfing_rate,,,,distance_from_mainland,positive,,1.0,conceptual_gradient,selfing rate increases with isolation distance
 herkogamy_distance,gradient_slope,herkogamy,,,,distance_from_mainland,negative,,0.8,conceptual_gradient,herkogamy decreases with isolation distance
 Fis_distance,gradient_slope,Fis,,,,distance_from_mainland,positive,,1.0,conceptual_gradient,inbreeding coefficient increases with isolation distance
-Bombus_distance,gradient_slope,Bombus_frequency,,,,distance_from_mainland,negative,,1.0,field/literature,Bombus frequency decreases along isolation gradient
 nectar_guide_rank,rank_order,nectar_guide,,,,,decreasing,,1.0,conceptual_gradient,nectar guide rank decreases along isolation gradient
 selfing_rank,rank_order,selfing_rate,,,,,increasing,,1.0,conceptual_gradient,selfing rate rank increases along isolation gradient

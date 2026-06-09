@@ -404,28 +404,37 @@ def compute_coactivation_table(
 # Main inference function
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Gradient POM acceptance thresholds  (single source of truth)
+# ---------------------------------------------------------------------------
+# POM = 6 gradient-direction patterns (4 gradient_slope + 2 rank_order).
+# Bombus_distance removed — it was tautological (always matches because
+# Bombus_frequency is injected from the environment, not simulated).
+#
+# Rule name semantics (for the 6-pattern gradient POM):
+#   strict_all       → 1.000  (all 6 must match by weight)
+#   relaxed_5_of_6   → 5/6    (≥5/6 weighted)
+#   relaxed_4_of_6   → 4/6    (≥4/6 weighted)
+#   weighted_strict  → 1.000
+#   weighted_lax     → 0.800
+#
+# Kept under legacy names ("strict_6_of_6" etc.) so existing UI widgets
+# and CSV exports remain unchanged.
+GRADIENT_THRESH_MAP: dict[str, float] = {
+    "strict_6_of_6":   1.000,
+    "relaxed_5_of_6":  5 / 6,
+    "relaxed_4_of_6":  4 / 6,
+    "weighted_strict": 1.000,
+    "weighted_lax":    0.800,
+}
+
+# Number of gradient POM patterns (used for epsilon display in UI)
+GRADIENT_N_PATTERNS: int = 6
+
+
 def _acceptance_threshold(acceptance_rule: str) -> float:
-    """Map an ABC acceptance rule name to a minimum weighted_match_rate threshold.
-
-    The POM uses ONLY the 7 gradient-direction patterns (5 gradient_slope +
-    2 rank_order).  Pairwise population comparisons are excluded because the
-    core hypothesis is the *gradient itself* (island syndrome: traits change
-    monotonically with isolation distance), not specific named-population
-    endpoint contrasts.
-
-        strict_6_of_6   -> 1.000  (all 7 must match)
-        relaxed_5_of_6  -> 0.857  (>=6/7 must match by weight)
-        relaxed_4_of_6  -> 0.714  (>=5/7)
-        weighted_strict -> 1.000
-        weighted_lax    -> 0.800
-    """
-    return {
-        "strict_6_of_6":   1.000,
-        "relaxed_5_of_6":  6 / 7,
-        "relaxed_4_of_6":  5 / 7,
-        "weighted_strict": 1.000,
-        "weighted_lax":    0.800,
-    }.get(acceptance_rule, 1.000)
+    """Map an ABC acceptance rule name to a minimum weighted_match_rate threshold."""
+    return GRADIENT_THRESH_MAP.get(acceptance_rule, 1.000)
 
 
 def run_switch_posterior_inference(
@@ -440,8 +449,8 @@ def run_switch_posterior_inference(
 ) -> SwitchPosteriorResult:
     """Run switch posterior inference via ABC rejection — 4-population gradient POM.
 
-    Evaluates all 13 observed patterns (pairwise + gradient_slope + rank_order)
-    across mainland / Oshima / Kozushima / Hachijo simultaneously.
+    Evaluates 6 gradient-direction patterns (gradient_slope + rank_order,
+    Bombus_distance excluded as tautological) across all simulated populations.
     Acceptance criterion: weighted_match_rate >= threshold (mapped from acceptance_rule).
 
     Parameters
