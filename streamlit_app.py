@@ -633,11 +633,8 @@ with st.sidebar:
         _preset_keys,
         index=_preset_keys.index("literature_grounded") if "literature_grounded" in _preset_keys else 0,
         format_func=lambda k: {
-            "literature_grounded":  "literature_grounded  ★ primary",
-            "broad_prior":          "broad_prior  (sensitivity sweep)",
-            "guide_pollinator_link":"guide_pollinator_link  (S1 scenario)",
-            "reproductive_assurance":"reproductive_assurance  (S2 scenario)",
-            "drift_null":           "drift_null  (S4 null model)",
+            "literature_grounded": "literature_grounded  (empirical prior)",
+            "broad_prior":         "broad_prior  (sensitivity sweep)",
         }.get(k, k),
     )
     backend = st.selectbox(
@@ -756,11 +753,15 @@ if preset.literature_sources:
         st.dataframe(pd.DataFrame(_src_rows), width="stretch", hide_index=True)
 else:
     _preset_hints = {
-        "literature_grounded":   "Primary analysis preset — Izu Campanula literature-calibrated ranges.",
-        "broad_prior":           "Sensitivity sweep — maximally wide ranges; compare with literature_grounded.",
-        "guide_pollinator_link": "S1 scenario — guide retention driven by Bombus attraction.",
-        "reproductive_assurance":"S2 scenario — selfing syndrome driven by pollinator scarcity.",
-        "drift_null":            "S4 null model — guide loss by drift without adaptive selfing syndrome.",
+        "literature_grounded": (
+            "Empirical prior π(θ) — ranges calibrated from Izu Campanula literature "
+            "(Inoue 1986; Larsson 2005; Charlesworth & Charlesworth 1987). "
+            "Use for primary RACH analysis."
+        ),
+        "broad_prior": (
+            "Wide uniform prior for sensitivity analysis — compare BFs with "
+            "literature_grounded to test prior dependence."
+        ),
     }
     st.caption(_preset_hints.get(preset_name, preset.description))
 
