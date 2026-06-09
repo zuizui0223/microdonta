@@ -203,19 +203,27 @@ def simulate_population_proxy(
     if switches.island_common_cause > 0:
         w = switches.island_common_cause
         # S3 as "single upstream cause": isolation reduces pollinator service
-        # overall, creating reproductive-assurance pressure.  The magnitude of
-        # that pressure is modulated by (1 - ob): a plant with high outcrossing
-        # benefit resists RA-selfing more strongly than one with low ob.
-        # This modulation is PART of the S3 causal path (isolation → RA pressure
-        # → selfing evolution), NOT a separate mechanism leaking in from S1/S2.
-        # ob is a latent parameter, not a named switch — S3's identity as
-        # "island common cause" is preserved; it operates independently of
-        # Bombus presence (S1) or selfing syndrome selection (S2).
+        # overall, creating reproductive-assurance pressure on selfing rate.
+        # The magnitude is modulated by (1 - ob): plants with high outcrossing
+        # benefit resist RA-selfing more strongly.
+        #
+        # DESIGN CHANGE — S3 drives selfing ONLY, NOT herkogamy/flower:
+        # Morphological selfing syndrome (reduced herkogamy, smaller flowers)
+        # requires SUSTAINED selection on floral architecture — that is the
+        # role of S2 (selfing_mediation).  S3 represents the environmental
+        # FORCING (isolation → pollinator scarcity → RA selfing) but does NOT
+        # by itself produce coordinated floral evolution.  Without S2, plants
+        # may self more frequently but retain ancestral floral form.
+        #
+        # Identifiability consequence: S3+S4 can no longer mimic S2.
+        # S2 is the only pathway that simultaneously drives selfing, herkogamy,
+        # flower-size, and the correlated syndrome POM.  S3 only explains the
+        # selfing gradient (selfing_distance, selfing_rank, selfing_Fis_corr).
+        #
+        # guide: S3 has zero direct effect on nectar guide (needs S1 or S4)
         selfing_drive = isolation * clamp01(0.55 + (1.0 - ob) * 0.45)
         selfing   += w * 0.55 * selfing_drive
-        herkogamy -= w * 0.40 * isolation
-        flower    -= w * 0.28 * isolation
-        # guide: S3 has zero direct effect on nectar guide (needs S1 or S4)
+        # herkogamy and flower: NOT driven by S3 — requires S2 (selfing syndrome)
 
     # ------------------------------------------------------------------
     # S4: drift_drives_guide_loss
