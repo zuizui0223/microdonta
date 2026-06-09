@@ -1,12 +1,39 @@
 """Generic deterministic proxy simulation for causal structure evaluation.
 
+WARNING — DIAGNOSTIC USE ONLY, NOT A VALID RACH f(θ,s)
+--------------------------------------------------------
+This module implements a deterministic proxy simulator with hand-coded
+functional relationships (e.g. ``guide += w * 1.30 * bombus * bgb * ob``).
+These are researcher-coded approximations, NOT emergent from individual-level
+rules.
+
+Under RACH theory, the canonical simulator f(θ,s) must be:
+    A_ε = {(θ,s) ∈ Θ×{0,1}^K : d(f(θ,s), y_obs) ≤ ε}
+
+The canonical RACH f(θ,s) for this project is the stochastic individual-based
+ABM in ``attraction_trait_model/simulation.py``.
+
+Using this proxy as f in RACH means the switch posteriors P(S_j=ON | A_ε)
+reflect the researcher's hand-coded assumptions about how switches affect
+traits, NOT patterns emergent from individual-level ecological dynamics.
+Results from this proxy are suitable for:
+  - Fast broad screening and debugging
+  - Sanity-checking the inference pipeline
+  - Visualising expected qualitative relationships
+Results from this proxy are NOT suitable for:
+  - Valid RACH switch posterior inference
+  - Publication-quality causal claims
+  - Any inference where you want posteriors to reflect data rather than
+    researcher assumptions
+
 Design principle
 ----------------
 Each biological switch controls whether an environmental difference
-(e.g. Bombus presence on Oshima but not Hachijo) propagates into a
-trait difference. With all switches OFF, the two populations start
-from the same neutral baseline and diverge only trivially (Bombus
-frequency and a small drift-driven Fis shift). Meaningful trait
+(e.g. primary pollinator presence at low isolation vs absence at high
+isolation) propagates into a trait difference. With all switches OFF,
+the two populations start from the same neutral baseline and diverge
+only trivially (primary_pollinator_frequency and a small drift-driven
+Fis shift). Meaningful trait
 divergence requires at least one relevant switch to be ON.
 
 This ensures that:
@@ -77,8 +104,8 @@ def simulate_population_proxy(
     a phenotypic response:
 
     S1  direct_pollinator_to_guide
-        Bombus presence (Oshima) vs absence (Hachijo) drives guide
-        retention/loss. OFF: guide does not track Bombus.
+        Primary pollinator presence (low isolation) vs absence (high isolation)
+        drives guide retention/loss. OFF: guide does not track primary pollinator.
 
     S2  selfing_mediation
         Pollination gap + positive selfing net benefit drives convergent
@@ -116,7 +143,7 @@ def simulate_population_proxy(
     ne_proxy       = clamp01(env.effective_population_size)
     low_ne         = clamp01(1.0 - ne_proxy)
     background_poll = clamp01(env.background_pollinator_frequency)
-    # convenience alias used in S1 formula below
+    # convenience alias used in S1 formula below (primary pollinator, e.g. Bombus)
     bombus = primary_poll
 
     # ------------------------------------------------------------------
@@ -146,9 +173,9 @@ def simulate_population_proxy(
     # ------------------------------------------------------------------
     # S1: guide_attracts_bombus  (direct_pollinator_to_guide)
     # ------------------------------------------------------------------
-    # Bombus present (Oshima) → guide maintained/increased by direct benefit.
-    # Bombus absent  (Hachijo) → guide not reinforced; opportunity cost applies.
-    # OFF: guide stays at neutral baseline regardless of Bombus.
+    # Primary pollinator present (high isolation_distance=0) → guide maintained/increased by direct benefit.
+    # Primary pollinator absent  (high isolation_distance) → guide not reinforced; opportunity cost applies.
+    # OFF: guide stays at neutral baseline regardless of primary pollinator.
     if switches.direct_pollinator_to_guide > 0:
         w = switches.direct_pollinator_to_guide
         # Positive term when Bombus present; negative penalty when absent.
@@ -257,8 +284,8 @@ def simulate_population_proxy(
     selfing   = clamp01(selfing)
 
     # Fis: driven by realised selfing rate + drift contribution.
-    # Even with all switches OFF, high drift (Hachijo) produces a slightly
-    # higher Fis than low drift (Oshima), but the difference (~0.035)
+    # Even with all switches OFF, high drift (high isolation) produces a slightly
+    # higher Fis than low drift (low isolation), but the difference (~0.035)
     # is below RELATION_TOLERANCE (0.05) so Fis does not spuriously match.
     fis = clamp01(0.03 + 0.68 * selfing + 0.14 * drift)
 

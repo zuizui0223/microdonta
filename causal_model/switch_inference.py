@@ -58,6 +58,10 @@ _ABM_KEY_MAP: dict[str, str] = {
     "Fis":           "Fis_proxy",
 }
 
+# DEPRECATED: hardcodes Campanula Izu population names in framework layer.
+# The active ABM inference path (run_switch_posterior_inference_abm) uses
+# generic isolation-gradient populations (iso_0.000...iso_1.000) and does
+# not call this function. Kept for backward compatibility only.
 # primary_pollinator_frequency is environmental; inject directly from env.
 _ABM_PRIMARY_POLL: dict[str, float] = {"Oshima": 0.35, "Hachijo": 0.00}
 
@@ -468,6 +472,19 @@ def run_switch_posterior_inference(
 ) -> SwitchPosteriorResult:
     """Run switch posterior inference via ABC rejection — 4-population gradient POM.
 
+    WARNING — PROXY BACKEND: NOT A VALID RACH f(θ,s)
+    -------------------------------------------------
+    This function uses the deterministic proxy simulator
+    (``causal_model.simulation.simulate_population_proxy``) as f(θ,s).
+    The proxy contains hand-coded functional relationships; switch posteriors
+    from this function may reflect researcher assumptions rather than data.
+
+    Use :func:`run_switch_posterior_inference_abm` for valid RACH inference
+    using the stochastic individual-based ABM as the canonical f(θ,s).
+
+    This function is retained for backward compatibility and fast diagnostic
+    screening only.
+
     Evaluates 6 gradient-direction patterns (gradient_slope + rank_order,
     Bombus_distance excluded as tautological) across all simulated populations.
     Acceptance criterion: weighted_match_rate >= threshold (mapped from acceptance_rule).
@@ -605,6 +622,12 @@ def abm_outputs_to_relations(
     tolerance: float = _ABM_RELATION_TOLERANCE,
 ) -> dict[str, str]:
     """Convert averaged ABM final-generation outputs to ordinal relation strings.
+
+    DEPRECATED: hardcodes Campanula Izu population names (Oshima, Hachijo) in
+    the framework layer. The active ABM inference path
+    (run_switch_posterior_inference_abm) uses generic isolation-gradient
+    populations (iso_0.000...iso_1.000) and does not call this function.
+    Kept for backward compatibility only.
 
     Parameters
     ----------

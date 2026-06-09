@@ -49,8 +49,8 @@ def default_campanula_proxy_environments() -> dict[str, Environment]:
             background_pollinator_frequency=0.55,
             community_pollinator_abundance=0.62,
             migration_rate=0.05,
-            effective_population_size=0.55,
             island_distance=0.35,
+            # effective_population_size derived from island_distance by Environment.__post_init__
         ),
         "Hachijo": Environment(
             name="Hachijo",
@@ -58,8 +58,8 @@ def default_campanula_proxy_environments() -> dict[str, Environment]:
             background_pollinator_frequency=0.72,
             community_pollinator_abundance=0.34,
             migration_rate=0.01,
-            effective_population_size=0.22,
             island_distance=0.90,
+            # effective_population_size derived from island_distance by Environment.__post_init__
         ),
     }
 
@@ -174,8 +174,10 @@ def environments_from_population_env(
             background_pollinator_frequency=float(row.get("background_pollinator_frequency", 0.5)),
             community_pollinator_abundance=float(row.get("community_pollinator_abundance", 0.5)),
             migration_rate=float(row.get("migration_rate", 0.05)),
-            effective_population_size=float(row.get("effective_population_size_proxy", 0.5)),
             island_distance=float(row.get("isolation", 0.0)),
+            # effective_population_size derived from island_distance by Environment.__post_init__
+            # (effective_population_size_proxy from CSV is intentionally ignored to avoid
+            #  double-counting Ne: Ne is a consequence of isolation, not independent)
         )
     return result
 
@@ -189,8 +191,8 @@ def default_campanula_gradient_environments() -> dict[str, Environment]:
             background_pollinator_frequency=0.50,
             community_pollinator_abundance=0.88,
             migration_rate=0.15,
-            effective_population_size=1.00,
             island_distance=0.00,
+            # effective_population_size derived from island_distance by Environment.__post_init__
         ),
         "Oshima": Environment(
             name="Oshima",
@@ -198,8 +200,8 @@ def default_campanula_gradient_environments() -> dict[str, Environment]:
             background_pollinator_frequency=0.50,
             community_pollinator_abundance=0.62,
             migration_rate=0.05,
-            effective_population_size=0.75,
             island_distance=0.35,
+            # effective_population_size derived from island_distance by Environment.__post_init__
         ),
         "Kozushima": Environment(
             name="Kozushima",
@@ -207,8 +209,8 @@ def default_campanula_gradient_environments() -> dict[str, Environment]:
             background_pollinator_frequency=0.55,
             community_pollinator_abundance=0.44,
             migration_rate=0.02,
-            effective_population_size=0.45,
             island_distance=0.60,
+            # effective_population_size derived from island_distance by Environment.__post_init__
         ),
         "Hachijo": Environment(
             name="Hachijo",
@@ -216,8 +218,8 @@ def default_campanula_gradient_environments() -> dict[str, Environment]:
             background_pollinator_frequency=0.60,
             community_pollinator_abundance=0.34,
             migration_rate=0.01,
-            effective_population_size=0.35,
             island_distance=0.85,
+            # effective_population_size derived from island_distance by Environment.__post_init__
         ),
     }
 
@@ -293,8 +295,8 @@ def env_from_isolation(isolation: float) -> Environment:
         background_pollinator_frequency=min(1.0, 0.50 + 0.118 * iso),
         community_pollinator_abundance=max(0.0, 0.88 - 0.635 * iso),
         migration_rate=0.15 * math.exp(-3.19 * iso),
-        effective_population_size=max(0.0, 1.00 - 0.765 * iso),
         island_distance=iso,
+        # effective_population_size derived from island_distance by Environment.__post_init__
     )
 
 

@@ -1108,7 +1108,13 @@ if "sp_result" in st.session_state:
             "BF > 3 is now achievable with sufficient draws."
         )
     else:
-        st.caption("Backend: proxy_causal (fast screen)")
+        st.warning(
+            "Proxy is not a valid RACH simulator. Switch posteriors from the proxy "
+            "backend are diagnostic only and may reflect researcher assumptions "
+            "(hand-coded functional relationships) rather than data. "
+            "Use stochastic_abm for valid RACH switch posterior inference."
+        )
+        st.caption("Backend: proxy_causal (diagnostic screen only)")
 
     if len(sp.accepted_rows) < 30:
         st.warning(
@@ -1142,6 +1148,14 @@ if "sp_result" in st.session_state:
                 "Posterior probability that each biological mechanism is active "
                 "in parameter-space regions compatible with observed patterns. "
                 "Prior = 0.5 (uninformative). BF > 3 = supported; BF < 1/3 = opposed."
+            )
+            st.info(
+                "Pattern weights reflect observation reliability: "
+                "field_derived patterns receive standard weight (1.0), "
+                "except herkogamy and flower_size (0.8, weaker field evidence). "
+                "neutral_diversity_isolation receives 1.2 as it is the primary S4 vs S2 discriminator. "
+                "See the epistemic_status and weight_rationale columns in observed_patterns.csv "
+                "for full documentation."
             )
             df_post = pd.DataFrame(sp.posterior_table)
             if not df_post.empty:
