@@ -549,6 +549,9 @@ def run_switch_posterior_inference(
             "acceptance_rule":          acceptance_rule,
             "guide_tradeoff_class":     param_set.get("guide_tradeoff_class", ""),
             "selfing_tradeoff_class":   param_set.get("selfing_tradeoff_class", ""),
+            # Per-pattern match data — used by identifiability.pattern_contribution()
+            "per_pattern_matched": {m.pattern: (m.matched, m.weight)
+                                    for m in eval_result.matches},
             **pop_trait_cols,
         }
 
@@ -824,6 +827,9 @@ def run_switch_posterior_inference_abm(
             "acceptance_rule":        acceptance_rule,
             "guide_tradeoff_class":   param_set.get("guide_tradeoff_class", ""),
             "selfing_tradeoff_class": param_set.get("selfing_tradeoff_class", ""),
+            # Per-pattern match data — used by identifiability.pattern_contribution()
+            "per_pattern_matched": {m.pattern: (m.matched, m.weight)
+                                    for m in eval_result.matches},
             **pop_trait_cols,
         }
 

@@ -1060,9 +1060,10 @@ if "sp_result" in st.session_state:
             "Try a more relaxed acceptance rule (e.g. relaxed_5_of_6) or more draws."
         )
     else:
-        sp_tab1, sp_tab2, sp_tab3, sp_tab4 = st.tabs([
+        sp_tab1, sp_tab2, sp_tab3, sp_tab4, sp_tab5 = st.tabs([
             "Posterior P(ON)",
             "Co-activation",
+            "RACH Theory Metrics",
             "Parameter space",
             "Downloads",
         ])
@@ -1133,6 +1134,105 @@ if "sp_result" in st.session_state:
                 st.info("Not enough accepted samples for co-activation table.")
 
         with sp_tab3:
+            st.markdown("### RACH Theory Metrics — mechanism identifiability & causal degeneracy")
+            st.caption(
+                "Formal quantification of how much the gradient pattern targets (A_ε) constrain "
+                "the causal mechanism space. Derived from the accepted ABC sample."
+            )
+            try:
+                from causal_model.identifiability import (
+                    compute_rach_theory_metrics,
+                    identifiability_summary,
+                    pattern_contribution_table,
+                )
+                _rach_metrics = compute_rach_theory_metrics(sp.accepted_rows, CAMPANULA_SWITCHES)
+                _id_summary   = identifiability_summary(sp.accepted_rows, CAMPANULA_SWITCHES)
+
+                # --- Top-level degeneracy metrics ---
+                mc1, mc2, mc3, mc4 = st.columns(4)
+                mc1.metric(
+                    "H(S|A_ε) causal degeneracy",
+                    f"{_rach_metrics.causal_degeneracy:.3f} bits",
+                    help="Joint entropy of accepted switch vectors. 0 = single mechanism; "
+                         f"max = {_rach_metrics.n_switches} bits."
+                )
+                mc2.metric(
+                    "Degeneracy reduction",
+                    f"{_rach_metrics.degeneracy_reduction:.3f} bits",
+                    help=f"K − H(S|A_ε) where K={_rach_metrics.n_switches} bits. "
+                         "How much A_ε constrains mechanism combinations."
+                )
+                mc3.metric(
+                    "Total identifiability",
+                    f"{_rach_metrics.total_identifiability:.3f} bits",
+                    help="Sum of I_j over all switches (marginal information gained)."
+                )
+                mc4.metric(
+                    "Max degeneracy K",
+                    f"{_rach_metrics.max_degeneracy:.0f} bits",
+                    help=f"K = {_rach_metrics.n_switches} bits (uninformative prior over all switches)."
+                )
+
+                # --- Per-switch identifiability table & chart ---
+                st.markdown("#### Mechanism identifiability I_j (bits per switch)")
+                st.caption(
+                    "I_j = H(prior) − H(posterior | A_ε).  "
+                    "I_j = 1 → fully identified.  I_j = 0 → posterior equals prior (unidentified)."
+                )
+                df_id = pd.DataFrame(_id_summary)
+                if not df_id.empty:
+                    st.bar_chart(
+                        df_id.set_index("switch")[["I_j (bits)"]],
+                        width="stretch",
+                    )
+                    stretch_df(
+                        df_id[[
+                            "switch", "P_prior_ON", "P_posterior_ON",
+                            "H_posterior", "I_j (bits)", "n_ON", "n_accepted", "interpretation",
+                        ]],
+                        hide_index=True,
+                    )
+
+                # --- Pattern contribution (LOO) ---
+                st.markdown("#### Pattern contribution C_k(j) — leave-one-out identifiability")
+                st.caption(
+                    "C_k(j) = I_j(all patterns) − I_j(LOO-k). "
+                    "Positive = pattern k increases identifiability of switch j. "
+                    "Requires per_pattern_matched data from the accepted sample."
+                )
+                _contrib = pattern_contribution_table(sp.accepted_rows, CAMPANULA_SWITCHES)
+                if _contrib:
+                    df_contrib = pd.DataFrame(_contrib)
+                    # Show only non-trivial rows (|C_k_j| > 0.001)
+                    df_contrib_nz = df_contrib[df_contrib["C_k_j"].abs() > 0.001].sort_values(
+                        "C_k_j", ascending=False
+                    )
+                    if not df_contrib_nz.empty:
+                        st.bar_chart(
+                            df_contrib_nz.set_index(
+                                df_contrib_nz["pattern"] + " → " + df_contrib_nz["switch"]
+                            )[["C_k_j"]],
+                            width="stretch",
+                        )
+                        stretch_df(df_contrib_nz, hide_index=True)
+                    else:
+                        st.info(
+                            "All |C_k(j)| ≈ 0 — either every pattern is redundant or "
+                            "no per_pattern_matched data was captured. "
+                            "Re-run with proxy_causal backend to populate pattern-level data."
+                        )
+                else:
+                    st.info(
+                        "Pattern contribution requires per_pattern_matched data. "
+                        "This is populated automatically on the next inference run."
+                    )
+
+            except ImportError as _e:
+                st.error(f"causal_model.identifiability not available: {_e}")
+            except Exception as _e:
+                st.warning(f"Could not compute RACH theory metrics: {_e}")
+
+        with sp_tab4:
             st.markdown("### Accepted switch states in parameter space")
             df_sp = pd.DataFrame(sp.accepted_rows)
             sw_names = [sw.name for sw in CAMPANULA_SWITCHES]
@@ -1176,7 +1276,7 @@ if "sp_result" in st.session_state:
                     "connecting switch inference back to conventional structure comparison."
                 )
 
-        with sp_tab4:
+        with sp_tab5:
             col_dl1, col_dl2 = st.columns(2)
             with col_dl1:
                 st.download_button(
