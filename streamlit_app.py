@@ -594,17 +594,6 @@ st.info(
 with st.expander("RACH workflow", expanded=True):
     stretch_df(pd.DataFrame(WORKFLOW_STEPS), hide_index=True)
 
-with st.expander("Observed pattern targets (empirical data)", expanded=False):
-    _obs_cols = ["pattern", "relation", "weight", "left_value",
-                 "right_value", "source", "notes"]
-    _obs_df = pd.DataFrame(_OBS_TABLE)
-    _obs_display = _obs_df[[c for c in _obs_cols if c in _obs_df.columns]]
-    stretch_df(_obs_display, hide_index=True)
-    st.caption(
-        "Observable ecological gradient pattern targets (role=response_target). "
-        "input_context rows (predictor variables) are shown but excluded from ABC acceptance. "
-        "Weights are used for weighted ABC distance. Source: Inoue & Amano (1986) + field."
-    )
 
 # ---------------------------------------------------------------------------
 # Sidebar
