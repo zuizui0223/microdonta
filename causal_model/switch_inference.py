@@ -58,8 +58,8 @@ _ABM_KEY_MAP: dict[str, str] = {
     "Fis":           "Fis_proxy",
 }
 
-# Bombus_frequency is environmental (always matches observed); inject directly.
-_ABM_BOMBUS: dict[str, float] = {"Oshima": 0.35, "Hachijo": 0.00}
+# primary_pollinator_frequency is environmental; inject directly from env.
+_ABM_PRIMARY_POLL: dict[str, float] = {"Oshima": 0.35, "Hachijo": 0.00}
 
 # Minimum trait difference to call a directional relation (same as proxy tolerance)
 _ABM_RELATION_TOLERANCE: float = 0.05
@@ -409,7 +409,7 @@ def compute_coactivation_table(
 # ---------------------------------------------------------------------------
 # POM = 6 gradient-direction patterns (4 gradient_slope + 2 rank_order).
 # Bombus_distance removed — it was tautological (always matches because
-# Bombus_frequency is injected from the environment, not simulated).
+# primary_pollinator_frequency is injected from the environment, not simulated).
 #
 # Rule name semantics (for the 6-pattern gradient POM):
 #   strict_all       → 1.000  (all 6 must match by weight)
@@ -522,7 +522,7 @@ def run_switch_posterior_inference(
         # Build relation strings for the 4 populations for diagnostics
         pop_trait_cols: dict = {}
         for pop, out in outputs_dict.items():
-            for var in ("nectar_guide", "selfing_rate", "herkogamy", "flower_size", "Fis", "Bombus_frequency"):
+            for var in ("nectar_guide", "selfing_rate", "herkogamy", "flower_size", "Fis", "primary_pollinator_frequency"):
                 pop_trait_cols[f"{pop}_{var}"] = round(getattr(out, var, float("nan")), 4)
 
         row = {
@@ -607,10 +607,10 @@ def abm_outputs_to_relations(
             relations[var] = "Oshima > Hachijo"
         else:
             relations[var] = "Oshima < Hachijo"
-    # Bombus_frequency is fixed by the environment — always matches
-    b_o = _ABM_BOMBUS["Oshima"]
-    b_h = _ABM_BOMBUS["Hachijo"]
-    relations["Bombus_frequency"] = (
+    # primary_pollinator_frequency is fixed by the environment — always matches
+    b_o = _ABM_PRIMARY_POLL["Oshima"]
+    b_h = _ABM_PRIMARY_POLL["Hachijo"]
+    relations["primary_pollinator_frequency"] = (
         "Oshima > Hachijo" if b_o - b_h > tolerance
         else "Oshima < Hachijo" if b_h - b_o > tolerance
         else "Oshima ~= Hachijo"
@@ -724,7 +724,7 @@ def run_switch_posterior_inference_abm(
         name: {
             "isolation": env.island_distance,
             "distance_from_mainland": round(env.island_distance * 290.0, 1),
-            "Bombus_frequency": env.bombus_frequency,
+            "primary_pollinator_frequency": env.primary_pollinator_frequency,
         }
         for name, env in _abm_envs.items()
     }
@@ -769,7 +769,7 @@ def run_switch_posterior_inference_abm(
                 abm_failed = True
                 break
             avg = _average_replicate_finals(rep_finals)
-            avg["Bombus_frequency"] = env.bombus_frequency  # inject from environment
+            avg["primary_pollinator_frequency"] = env.primary_pollinator_frequency  # inject from environment
             pop_finals[pop_name] = avg
 
         if abm_failed or len(pop_finals) < 2:
@@ -795,7 +795,7 @@ def run_switch_posterior_inference_abm(
             pop_trait_cols[f"{pop}_herkogamy"]     = round(float(fd.get("mean_herkogamy",    float("nan"))), 4)
             pop_trait_cols[f"{pop}_flower_size"]   = round(float(fd.get("mean_flower_size",  float("nan"))), 4)
             pop_trait_cols[f"{pop}_Fis"]           = round(float(fd.get("Fis_proxy",         float("nan"))), 4)
-            pop_trait_cols[f"{pop}_Bombus_frequency"] = round(float(fd.get("Bombus_frequency", float("nan"))), 4)
+            pop_trait_cols[f"{pop}_primary_pollinator_frequency"] = round(float(fd.get("primary_pollinator_frequency", float("nan"))), 4)
 
         row = {
             "sample_id": str(uuid.uuid4()),

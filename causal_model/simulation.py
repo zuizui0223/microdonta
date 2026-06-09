@@ -55,7 +55,7 @@ class PopulationProxyOutput:
     herkogamy: float
     flower_size: float
     Fis: float
-    Bombus_frequency: float
+    primary_pollinator_frequency: float
     outcrossing_opportunity: float
 
 
@@ -106,12 +106,14 @@ def simulate_population_proxy(
     # ------------------------------------------------------------------
     # Environmental inputs
     # ------------------------------------------------------------------
-    bombus     = env.bombus_frequency             # Oshima: 0.35  Hachijo: 0.00
-    poll_gap   = clamp01(1.0 - env.pollinator_environment)  # O: 0.38  H: 0.66
-    isolation  = clamp01(env.island_distance)     # O: 0.35  H: 0.90
-    ne_proxy   = clamp01(env.effective_population_size)     # O: 0.55  H: 0.22
-    low_ne     = clamp01(1.0 - ne_proxy)          # O: 0.45  H: 0.78
-    small_poll = clamp01(env.small_pollinator_frequency)    # O: 0.55  H: 0.72
+    primary_poll   = env.primary_pollinator_frequency     # iso=0: 0.80  iso=0.85: 0.00
+    poll_gap       = clamp01(1.0 - env.community_pollinator_abundance)  # gap increases with isolation
+    isolation      = clamp01(env.island_distance)
+    ne_proxy       = clamp01(env.effective_population_size)
+    low_ne         = clamp01(1.0 - ne_proxy)
+    background_poll = clamp01(env.background_pollinator_frequency)
+    # convenience alias used in S1 formula below
+    bombus = primary_poll
 
     # ------------------------------------------------------------------
     # Latent parameters
@@ -120,9 +122,9 @@ def simulate_population_proxy(
     ob  = params.outcrossing_benefit
     sb  = params.selfing_benefit
     ibd = params.inbreeding_depression
-    spe = params.small_pollinator_efficiency
+    spe = params.background_pollinator_efficiency
     ds  = params.base_drift_strength
-    bgb = params.bombus_guide_use  # = direct_pollinator_guide_benefit
+    bgb = params.primary_pollinator_guide_response  # = direct_pollinator_guide_benefit
 
     # Derived
     drift       = clamp01(low_ne * (0.50 + 2.50 * ds))
@@ -224,7 +226,7 @@ def simulate_population_proxy(
     # OFF: halictids do not substitute for Bombus.
     if switches.small_pollinator_pathway > 0:
         w = switches.small_pollinator_pathway
-        sub = spe * small_poll
+        sub = spe * background_poll
         # Suppresses poll_gap driven selfing (proportional to gap)
         selfing -= w * 0.40 * sub * poll_gap
 
@@ -249,7 +251,7 @@ def simulate_population_proxy(
         herkogamy=herkogamy,
         flower_size=flower,
         Fis=fis,
-        Bombus_frequency=bombus,
+        primary_pollinator_frequency=primary_poll,
         outcrossing_opportunity=clamp01(1.0 - selfing),
     )
 
@@ -279,7 +281,7 @@ def relations_from_outputs(
         "herkogamy",
         "flower_size",
         "Fis",
-        "Bombus_frequency",
+        "primary_pollinator_frequency",
     )
     return {
         variable: relation_from_values(

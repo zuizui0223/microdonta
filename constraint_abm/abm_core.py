@@ -31,12 +31,12 @@ def _mean(values: list[float]) -> float:
 # ---------------------------------------------------------------------------
 
 def _env(params: dict) -> Environment:
-    bombus = clamp(params.get("bombus_frequency", params.get("bombus_present", 0.0)))
+    primary = clamp(params.get("bombus_frequency", params.get("bombus_present", 0.0)))
     return Environment(
         name=params.get("population_name", "unknown"),
-        bombus_frequency=bombus,
-        small_pollinator_frequency=clamp(1.0 - bombus),
-        pollinator_environment=clamp(params.get("pollinator_environment", 0.5)),
+        primary_pollinator_frequency=primary,
+        background_pollinator_frequency=clamp(1.0 - primary),
+        community_pollinator_abundance=clamp(params.get("pollinator_environment", 0.5)),
         migration_rate=clamp(params.get("migration_rate", 0.05), 0.0, 1.0),
         effective_population_size=float(params.get("effective_population_size", 100.0)),
         island_distance=float(params.get("island_distance", 0.0)),
@@ -48,10 +48,10 @@ def _mp(params: dict) -> ModelParameters:
     mu_t = params.get("mutation_sd_trait", mu * 0.5)
     return ModelParameters(
         base_outcross_rate=params.get("base_outcross", 0.10),
-        bombus_efficiency=params.get("bombus_pollination_efficiency", 0.86),
-        small_pollinator_efficiency=params.get("other_pollinator_efficiency", 0.34),
-        bombus_guide_use=params.get("bombus_guide_dependence", 0.75),
-        small_pollinator_guide_use=params.get("other_pollinator_guide_use", 0.12),
+        primary_pollinator_efficiency=params.get("bombus_pollination_efficiency", 0.86),
+        background_pollinator_efficiency=params.get("other_pollinator_efficiency", 0.34),
+        primary_pollinator_guide_response=params.get("bombus_guide_dependence", 0.75),
+        background_pollinator_guide_response=params.get("other_pollinator_guide_use", 0.12),
         seed_set_outcrossing=params.get("seed_set_outcrossing", 0.92),
         seed_set_selfing=params.get("seed_set_selfing", 0.46),
         germination_outcrossed=params.get("germination_outcrossed", 0.86),

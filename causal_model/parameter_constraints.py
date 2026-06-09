@@ -156,7 +156,7 @@ _LIT_OUTCROSSING = LiteratureSource(
 _LIT_SMALL_POLLINATOR = LiteratureSource(
     citation="Larsson 2005 Oikos 109:400-408; Raine & Chittka 2007 "
              "PLoS ONE; general Halictidae vs Bombus comparisons",
-    parameter="small_pollinator_efficiency",
+    parameter="background_pollinator_efficiency",
     empirical_range="Halictid pollen transfer ~20-55% of Bombus per visit "
                     "in several plant families.",
     modelled_range=(0.10, 0.60),
@@ -264,7 +264,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
             "outcrossing_benefit":             _LIT_OUTCROSSING.modelled_range,
             "selfing_benefit":                 _LIT_SELFING.modelled_range,
             "inbreeding_depression":           _LIT_INBREEDING.modelled_range,
-            "small_pollinator_efficiency":     _LIT_SMALL_POLLINATOR.modelled_range,
+            "background_pollinator_efficiency":     _LIT_SMALL_POLLINATOR.modelled_range,
             "drift_strength":                  _LIT_DRIFT.modelled_range,
             "direct_pollinator_guide_benefit": _LIT_DIRECT_GUIDE_BENEFIT.modelled_range,
             "cost_of_waiting_for_pollinators": _LIT_WAITING_COST.modelled_range,
@@ -286,7 +286,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
             "outcrossing_benefit":             (0.00, 1.00),
             "selfing_benefit":                 (0.00, 0.80),
             "inbreeding_depression":           (0.00, 0.80),
-            "small_pollinator_efficiency":     (0.00, 0.70),
+            "background_pollinator_efficiency":     (0.00, 0.70),
             "drift_strength":                  (0.00, 0.30),
             "direct_pollinator_guide_benefit": (0.00, 1.00),
             "cost_of_waiting_for_pollinators": (0.00, 1.00),
@@ -333,7 +333,7 @@ def check_ecological_parameter_constraints(
         (Avoids degenerate parameter combinations where selfing is
         catastrophically maladaptive yet still modelled as spreading.)
 
-    C2  NOT (small_pollinator_efficiency > 0.55 AND selfing_benefit > 0.55)
+    C2  NOT (background_pollinator_efficiency > 0.55 AND selfing_benefit > 0.55)
         High small-pollinator substitution AND high selfing advantage
         cannot both be extreme simultaneously. If small pollinators
         adequately replace Bombus, reproductive-assurance selfing pressure
@@ -355,7 +355,7 @@ def check_ecological_parameter_constraints(
     ob   = params.get("outcrossing_benefit", 0.0)
     sb   = params.get("selfing_benefit", 0.0)
     ibd  = params.get("inbreeding_depression", 0.0)
-    spe  = params.get("small_pollinator_efficiency", 0.0)
+    spe  = params.get("background_pollinator_efficiency", 0.0)
     dgb  = params.get("direct_pollinator_guide_benefit", 0.0)
 
     # C1
@@ -370,7 +370,7 @@ def check_ecological_parameter_constraints(
     if spe > 0.55 and sb > 0.55:
         failed.append("C2_small_pollinator_vs_selfing_benefit")
         notes_parts.append(
-            f"C2: small_pollinator_efficiency({spe:.3f}) > 0.55 AND "
+            f"C2: background_pollinator_efficiency({spe:.3f}) > 0.55 AND "
             f"selfing_benefit({sb:.3f}) > 0.55 — simultaneously high "
             f"outcrossing substitute and maximal selfing advantage"
         )

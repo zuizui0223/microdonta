@@ -12,13 +12,38 @@ class ModelParameters:
     These values are not biological truths. They are placeholder defaults used
     to exercise the model equations until CAPOM filtering, sensitivity
     analysis, and field data constrain plausible parameter ranges.
+
+    Pollinator parameters
+    ---------------------
+    primary_pollinator_efficiency
+        Per-visit pollen-transfer efficiency of the trait-responsive guild.
+        High (default 0.8) — these pollinators are large-bodied, carry more
+        pollen per visit, and deposit it more reliably on stigmas.
+
+    primary_pollinator_guide_response
+        Strength of the nectar-guide signal's effect on primary-pollinator
+        visitation rate.  High (default 0.7) — primary pollinators actively
+        use guide patterns as long-range orientation cues.
+
+    background_pollinator_efficiency
+        Per-visit pollen-transfer efficiency of the background guild.
+        Lower (default 0.3) — smaller body, less pollen carried per visit.
+
+    background_pollinator_guide_response
+        Strength of the nectar-guide signal's effect on background-pollinator
+        visitation rate.  Near-zero (default 0.1) — these pollinators navigate
+        mainly by proximity and flower colour/scent, not guide patterns.
     """
 
     base_outcross_rate: float = 0.05
-    bombus_efficiency: float = 0.8
-    small_pollinator_efficiency: float = 0.3
-    bombus_guide_use: float = 0.7
-    small_pollinator_guide_use: float = 0.1
+
+    # --- Trait-responsive, high-efficiency guild (Bombus in Izu system) ---
+    primary_pollinator_efficiency: float = 0.8
+    primary_pollinator_guide_response: float = 0.7
+
+    # --- Background, lower-efficiency guild (halictids in Izu system) ---
+    background_pollinator_efficiency: float = 0.3
+    background_pollinator_guide_response: float = 0.1
 
     seed_set_outcrossing: float = 0.8
     seed_set_selfing: float = 0.5

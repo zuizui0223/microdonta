@@ -63,7 +63,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
                 "outcrossing_benefit": (0.00, 1.00),
                 "selfing_benefit": (0.00, 0.80),
                 "inbreeding_depression": (0.00, 0.80),
-                "small_pollinator_efficiency": (0.00, 0.70),
+                "background_pollinator_efficiency": (0.00, 0.70),
                 "drift_strength": (0.00, 0.25),
                 "direct_pollinator_guide_benefit": (0.00, 1.00),
                 "cost_of_waiting_for_pollinators": (0.00, 1.00),
@@ -81,7 +81,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
                 "outcrossing_benefit": (0.10, 0.70),
                 "selfing_benefit": (0.25, 0.80),
                 "inbreeding_depression": (0.00, 0.45),
-                "small_pollinator_efficiency": (0.00, 0.50),
+                "background_pollinator_efficiency": (0.00, 0.50),
                 "drift_strength": (0.00, 0.20),
                 "direct_pollinator_guide_benefit": (0.00, 0.70),
                 "cost_of_waiting_for_pollinators": (0.20, 0.90),
@@ -98,7 +98,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
                 "outcrossing_benefit": (0.40, 1.00),
                 "selfing_benefit": (0.00, 0.40),
                 "inbreeding_depression": (0.30, 0.80),
-                "small_pollinator_efficiency": (0.20, 0.70),
+                "background_pollinator_efficiency": (0.20, 0.70),
                 "drift_strength": (0.00, 0.15),
                 "direct_pollinator_guide_benefit": (0.30, 1.00),
                 "cost_of_waiting_for_pollinators": (0.00, 0.40),
@@ -115,7 +115,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
                 "outcrossing_benefit": (0.00, 0.70),
                 "selfing_benefit": (0.10, 0.70),
                 "inbreeding_depression": (0.00, 0.60),
-                "small_pollinator_efficiency": (0.00, 0.60),
+                "background_pollinator_efficiency": (0.00, 0.60),
                 "drift_strength": (0.00, 0.20),
                 "direct_pollinator_guide_benefit": (0.00, 0.80),
                 "cost_of_waiting_for_pollinators": (0.10, 0.80),
@@ -133,7 +133,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
                 "outcrossing_benefit": (0.00, 0.60),
                 "selfing_benefit": (0.00, 0.60),
                 "inbreeding_depression": (0.00, 0.60),
-                "small_pollinator_efficiency": (0.00, 0.60),
+                "background_pollinator_efficiency": (0.00, 0.60),
                 "drift_strength": (0.10, 0.30),
                 "direct_pollinator_guide_benefit": (0.00, 0.50),
                 "cost_of_waiting_for_pollinators": (0.00, 0.60),
@@ -167,7 +167,7 @@ def check_ecological_parameter_constraints(
     outcrossing_benefit = params.get("outcrossing_benefit", 0.0)
     selfing_benefit = params.get("selfing_benefit", 0.0)
     inbreeding_depression = params.get("inbreeding_depression", 0.0)
-    small_pollinator_efficiency = params.get("small_pollinator_efficiency", 0.0)
+    background_pollinator_efficiency = params.get("background_pollinator_efficiency", 0.0)
     direct_pollinator_guide_benefit = params.get("direct_pollinator_guide_benefit", 0.0)
 
     failed: list[str] = []
@@ -180,7 +180,7 @@ def check_ecological_parameter_constraints(
             "strong selfing evolution is unlikely under such inbreeding cost."
         )
 
-    if small_pollinator_efficiency > 0.55 and selfing_benefit > 0.75:
+    if background_pollinator_efficiency > 0.55 and selfing_benefit > 0.75:
         failed.append("C2_small_pollinator_vs_selfing_benefit")
         notes.append(
             "C2: high small-pollinator efficiency and extreme selfing benefit were "
@@ -320,9 +320,9 @@ def param_set_to_model_parameters(param_set: dict[str, float]):
     - outcrossing_benefit -> ModelParameters.outcrossing_benefit
     - selfing_benefit -> ModelParameters.selfing_benefit
     - inbreeding_depression -> ModelParameters.inbreeding_depression
-    - small_pollinator_efficiency -> ModelParameters.small_pollinator_efficiency
+    - background_pollinator_efficiency -> ModelParameters.background_pollinator_efficiency
     - drift_strength -> ModelParameters.base_drift_strength
-    - direct_pollinator_guide_benefit -> ModelParameters.bombus_guide_use
+    - direct_pollinator_guide_benefit -> ModelParameters.primary_pollinator_guide_response
     - cost_of_waiting_for_pollinators -> added weakly to effective selfing benefit
     """
 
@@ -337,7 +337,7 @@ def param_set_to_model_parameters(param_set: dict[str, float]):
         outcrossing_benefit=float(param_set.get("outcrossing_benefit", 0.2)),
         selfing_benefit=effective_selfing_benefit,
         inbreeding_depression=float(param_set.get("inbreeding_depression", 0.2)),
-        small_pollinator_efficiency=float(param_set.get("small_pollinator_efficiency", 0.3)),
+        background_pollinator_efficiency=float(param_set.get("background_pollinator_efficiency", 0.3)),
         base_drift_strength=float(param_set.get("drift_strength", 0.05)),
-        bombus_guide_use=float(param_set.get("direct_pollinator_guide_benefit", 0.6)),
+        primary_pollinator_guide_response=float(param_set.get("direct_pollinator_guide_benefit", 0.6)),
     )

@@ -13,7 +13,7 @@ Typical usage::
     from attraction_trait_model.parameters import ModelParameters
     from causal_model.switches import PathwaySwitches
 
-    env = Environment(name="Oshima", bombus_frequency=0.6, ...)
+    env = Environment(name="Oshima", primary_pollinator_frequency=0.6, ...)
     params = ModelParameters()
     switches = PathwaySwitches(direct_pollinator_to_guide=1.0)
     rows = simulate_population(env, params, switches, generations=50, seed=42)
@@ -158,8 +158,8 @@ def choose_reproduction_mode(
     if switches is not None and switches.direct_pollinator_to_guide > 0:
         bonus = (
             switches.direct_pollinator_to_guide
-            * env.bombus_frequency
-            * params.bombus_guide_use
+            * env.primary_pollinator_frequency
+            * params.primary_pollinator_guide_response
             * agent.nectar_guide
         )
         p_out = clamp(p_out + bonus * outcrossing_benefit)

@@ -5,10 +5,10 @@ from .fitness import fitness, flower_cost_effect, guide_cost_effect, reproductiv
 from .inheritance import drift_strength, inherit_trait, selfing_syndrome_shift
 from .parameters import ModelParameters
 from .reproduction import (
+    background_pollinator_access,
     clamp,
     outcrossing_probability,
     selfing_probability,
-    small_pollinator_access,
 )
 from .simulation import (
     choose_reproduction_mode,
@@ -44,6 +44,6 @@ __all__ = [
     "selfing_syndrome_score",
     "selfing_syndrome_shift",
     "simulate_population",
-    "small_pollinator_access",
+    "background_pollinator_access",
     "summarize_population",
 ]

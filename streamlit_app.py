@@ -89,7 +89,7 @@ except Exception:
         "herkogamy": "Oshima > Hachijo",
         "flower_size": "Oshima > Hachijo",
         "Fis": "Oshima < Hachijo",
-        "Bombus_frequency": "Oshima > Hachijo",
+        "primary_pollinator_frequency": "Oshima > Hachijo",
     }
     PATTERN_WEIGHTS = {k: 1.0 for k in OBSERVED_RELS}
     _OBS_TABLE = [
@@ -117,7 +117,7 @@ LATENT_PARAMS = [
     "outcrossing_benefit",
     "selfing_benefit",
     "inbreeding_depression",
-    "small_pollinator_efficiency",
+    "background_pollinator_efficiency",
     "drift_strength",
     "direct_pollinator_guide_benefit",
     "cost_of_waiting_for_pollinators",
@@ -202,7 +202,7 @@ def average_summaries(summaries: list[dict[str, Any]]) -> dict[str, float]:
 # Gradient trait columns helper
 # ---------------------------------------------------------------------------
 
-_GRAD_VARS = ["nectar_guide", "selfing_rate", "herkogamy", "flower_size", "Fis", "Bombus_frequency"]
+_GRAD_VARS = ["nectar_guide", "selfing_rate", "herkogamy", "flower_size", "Fis", "primary_pollinator_frequency"]
 _GRAD_POPS = ["mainland", "Oshima", "Kozushima", "Hachijo"]
 
 
@@ -219,7 +219,7 @@ def _gradient_columns(outputs_by_pop: dict[str, Any], abm: bool = False) -> dict
         "herkogamy": "mean_herkogamy",
         "flower_size": "mean_flower_size",
         "Fis": "Fis_proxy",
-        "Bombus_frequency": "Bombus_frequency",
+        "primary_pollinator_frequency": "primary_pollinator_frequency",
     }
     for pop in _GRAD_POPS:
         out = outputs_by_pop.get(pop)
@@ -258,7 +258,7 @@ def simulate_structure_proxy(structure, model_params) -> tuple[dict, dict[str, A
             "herkogamy": out.herkogamy,
             "flower_size": out.flower_size,
             "Fis": out.Fis,
-            "Bombus_frequency": out.Bombus_frequency,
+            "primary_pollinator_frequency": out.primary_pollinator_frequency,
             "outcrossing_opportunity": out.outcrossing_opportunity,
         }
         for out in outputs_list
@@ -302,16 +302,16 @@ def simulate_structure_stochastic_abm(
                     "structure": structure.name, **row,
                 })
             replicate_finals.append(final_abm_summary(rows))
-        # Inject Bombus_frequency from environment (ABM doesn't track it)
+        # Inject primary_pollinator_frequency from environment (ABM doesn't track it)
         avg = average_summaries(replicate_finals)
-        avg["Bombus_frequency"] = env.bombus_frequency
+        avg["primary_pollinator_frequency"] = env.primary_pollinator_frequency
         final_by_population[population_name] = avg
 
     _abm_synth_env = {
         name: {
             "isolation": env.island_distance,
             "distance_from_mainland": round(env.island_distance * 290.0, 1),
-            "Bombus_frequency": env.bombus_frequency,
+            "primary_pollinator_frequency": env.primary_pollinator_frequency,
         }
         for name, env in _grad_envs.items()
     }
@@ -913,7 +913,7 @@ if "research_result" in st.session_state:
             c_c, c_d = st.columns(2)
             with c_c:
                 st.markdown("**Small-pollinator efficiency vs selfing benefit**")
-                parameter_space_chart(df_runs, "small_pollinator_efficiency", "selfing_benefit")
+                parameter_space_chart(df_runs, "background_pollinator_efficiency", "selfing_benefit")
             with c_d:
                 st.markdown("**Drift strength vs guide cost**")
                 parameter_space_chart(df_runs, "drift_strength", "guide_cost")

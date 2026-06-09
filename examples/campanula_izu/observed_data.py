@@ -43,15 +43,15 @@ notes               str   free-text annotation
 
 population_env.csv column specification
 ----------------------------------------
-population                    str
-distance_from_mainland        float  km
-island_area_km2               float
-Bombus_frequency              float  [0,1]
-small_pollinator_frequency    float  [0,1]
-effective_population_size_proxy float [0,1]
-isolation                     float  [0,1]
-pollinator_environment        float  [0,1]
-migration_rate                float  [0,1]
+population                       str
+distance_from_mainland           float  km
+island_area_km2                  float
+primary_pollinator_frequency     float  [0,1]  trait-responsive, high-efficiency guild
+background_pollinator_frequency  float  [0,1]  trait-non-responsive guild
+effective_population_size_proxy  float  [0,1]
+isolation                        float  [0,1]
+community_pollinator_abundance   float  [0,1]  overall pollinator activity scalar
+migration_rate                   float  [0,1]
 """
 
 from __future__ import annotations
@@ -99,11 +99,11 @@ _FALLBACK_PAIRWISE: list[dict] = [
 _ENV_NUMERIC_COLS = (
     "distance_from_mainland",
     "island_area_km2",
-    "Bombus_frequency",
-    "small_pollinator_frequency",
+    "primary_pollinator_frequency",
+    "background_pollinator_frequency",
     "effective_population_size_proxy",
     "isolation",
-    "pollinator_environment",
+    "community_pollinator_abundance",
     "migration_rate",
 )
 
@@ -267,22 +267,22 @@ def load_population_env(path: str | Path | None = None) -> dict[str, dict]:
                 "population": "Oshima",
                 "distance_from_mainland": 120.0,
                 "island_area_km2": 91.0,
-                "Bombus_frequency": 0.45,
-                "small_pollinator_frequency": 0.50,
+                "primary_pollinator_frequency": 0.45,
+                "background_pollinator_frequency": 0.50,
                 "effective_population_size_proxy": 0.75,
                 "isolation": 0.35,
-                "pollinator_environment": 0.62,
+                "community_pollinator_abundance": 0.62,
                 "migration_rate": 0.05,
             },
             "Hachijo": {
                 "population": "Hachijo",
                 "distance_from_mainland": 290.0,
                 "island_area_km2": 69.0,
-                "Bombus_frequency": 0.00,
-                "small_pollinator_frequency": 0.60,
+                "primary_pollinator_frequency": 0.00,
+                "background_pollinator_frequency": 0.60,
                 "effective_population_size_proxy": 0.35,
                 "isolation": 0.85,
-                "pollinator_environment": 0.34,
+                "community_pollinator_abundance": 0.34,
                 "migration_rate": 0.01,
             },
         }

@@ -45,18 +45,18 @@ def default_campanula_proxy_environments() -> dict[str, Environment]:
     return {
         "Oshima": Environment(
             name="Oshima",
-            bombus_frequency=0.35,
-            small_pollinator_frequency=0.55,
-            pollinator_environment=0.62,
+            primary_pollinator_frequency=0.35,
+            background_pollinator_frequency=0.55,
+            community_pollinator_abundance=0.62,
             migration_rate=0.05,
             effective_population_size=0.55,
             island_distance=0.35,
         ),
         "Hachijo": Environment(
             name="Hachijo",
-            bombus_frequency=0.00,
-            small_pollinator_frequency=0.72,
-            pollinator_environment=0.34,
+            primary_pollinator_frequency=0.00,
+            background_pollinator_frequency=0.72,
+            community_pollinator_abundance=0.34,
             migration_rate=0.01,
             effective_population_size=0.22,
             island_distance=0.90,
@@ -170,9 +170,9 @@ def environments_from_population_env(
     for pop_name, row in env_table.items():
         result[pop_name] = Environment(
             name=pop_name,
-            bombus_frequency=float(row.get("Bombus_frequency", 0.0)),
-            small_pollinator_frequency=float(row.get("small_pollinator_frequency", 0.5)),
-            pollinator_environment=float(row.get("pollinator_environment", 0.5)),
+            primary_pollinator_frequency=float(row.get("primary_pollinator_frequency", 0.0)),
+            background_pollinator_frequency=float(row.get("background_pollinator_frequency", 0.5)),
+            community_pollinator_abundance=float(row.get("community_pollinator_abundance", 0.5)),
             migration_rate=float(row.get("migration_rate", 0.05)),
             effective_population_size=float(row.get("effective_population_size_proxy", 0.5)),
             island_distance=float(row.get("isolation", 0.0)),
@@ -185,36 +185,36 @@ def default_campanula_gradient_environments() -> dict[str, Environment]:
     return {
         "mainland": Environment(
             name="mainland",
-            bombus_frequency=0.80,
-            small_pollinator_frequency=0.50,
-            pollinator_environment=0.88,
+            primary_pollinator_frequency=0.80,
+            background_pollinator_frequency=0.50,
+            community_pollinator_abundance=0.88,
             migration_rate=0.15,
             effective_population_size=1.00,
             island_distance=0.00,
         ),
         "Oshima": Environment(
             name="Oshima",
-            bombus_frequency=0.45,
-            small_pollinator_frequency=0.50,
-            pollinator_environment=0.62,
+            primary_pollinator_frequency=0.45,
+            background_pollinator_frequency=0.50,
+            community_pollinator_abundance=0.62,
             migration_rate=0.05,
             effective_population_size=0.75,
             island_distance=0.35,
         ),
         "Kozushima": Environment(
             name="Kozushima",
-            bombus_frequency=0.20,
-            small_pollinator_frequency=0.55,
-            pollinator_environment=0.44,
+            primary_pollinator_frequency=0.20,
+            background_pollinator_frequency=0.55,
+            community_pollinator_abundance=0.44,
             migration_rate=0.02,
             effective_population_size=0.45,
             island_distance=0.60,
         ),
         "Hachijo": Environment(
             name="Hachijo",
-            bombus_frequency=0.00,
-            small_pollinator_frequency=0.60,
-            pollinator_environment=0.34,
+            primary_pollinator_frequency=0.00,
+            background_pollinator_frequency=0.60,
+            community_pollinator_abundance=0.34,
             migration_rate=0.01,
             effective_population_size=0.35,
             island_distance=0.85,
@@ -275,9 +275,9 @@ def env_from_isolation(isolation: float) -> Environment:
 
     Fitted from population_env.csv:
         Bombus_frequency      = max(0, 0.80 - 0.94  * iso)   R²≈0.99
-        pollinator_environment = 0.88 - 0.635 * iso           R²≈0.97
+        community_pollinator_abundance = 0.88 - 0.635 * iso           R²≈0.97
         effective_population_size = 1.00 - 0.765 * iso        R²≈0.93
-        small_pollinator_frequency = 0.50 + 0.118 * iso       R²≈0.88
+        background_pollinator_frequency = 0.50 + 0.118 * iso       R²≈0.88
         migration_rate        = 0.15 * exp(-3.19 * iso)       R²≈0.99
 
     Parameters
@@ -289,9 +289,9 @@ def env_from_isolation(isolation: float) -> Environment:
     iso = float(max(0.0, min(1.0, isolation)))
     return Environment(
         name=f"iso_{iso:.3f}",
-        bombus_frequency=max(0.0, 0.80 - 0.94 * iso),
-        small_pollinator_frequency=min(1.0, 0.50 + 0.118 * iso),
-        pollinator_environment=max(0.0, 0.88 - 0.635 * iso),
+        primary_pollinator_frequency=max(0.0, 0.80 - 0.94 * iso),
+        background_pollinator_frequency=min(1.0, 0.50 + 0.118 * iso),
+        community_pollinator_abundance=max(0.0, 0.88 - 0.635 * iso),
         migration_rate=0.15 * math.exp(-3.19 * iso),
         effective_population_size=max(0.0, 1.00 - 0.765 * iso),
         island_distance=iso,
@@ -362,9 +362,9 @@ def simulate_campanula_isolation_gradient(
             # distance_from_mainland in km (Izu max ≈ 290 km)
             # used by gradient_slope pattern predictor lookup
             "distance_from_mainland": round(iso * 290.0, 1),
-            "Bombus_frequency": env.bombus_frequency,
-            "small_pollinator_frequency": env.small_pollinator_frequency,
-            "pollinator_environment": env.pollinator_environment,
+            "Bombus_frequency": env.primary_pollinator_frequency,
+            "background_pollinator_frequency": env.background_pollinator_frequency,
+            "community_pollinator_abundance": env.community_pollinator_abundance,
             "migration_rate": env.migration_rate,
             "effective_population_size_proxy": env.effective_population_size,
         }

@@ -13,11 +13,15 @@ def clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
     return max(low, min(high, float(value)))
 
 
-def small_pollinator_access(flower_size: float) -> float:
-    """First-pass access function for small pollinators.
+def background_pollinator_access(flower_size: float) -> float:
+    """Physical access of background pollinators as a function of flower size.
 
-    The provisional assumption is that smaller flowers are easier for small
-    pollinators to access or handle effectively.
+    Background pollinators (small-bodied, e.g. halictids) access smaller
+    flowers more easily; large corollas restrict their entry or handling.
+    Returns a value in [0, 1]: smaller flowers → higher access.
+
+    Note: primary pollinators (large-bodied, e.g. Bombus) are large enough to
+    access any flower size and are therefore not modulated by this function.
     """
 
     return clamp(1.0 - flower_size)
@@ -30,32 +34,55 @@ def outcrossing_probability(
 ) -> float:
     """Probability that an individual reproduces by outcrossing.
 
-    Implements the Issue #2 model rule:
+    Two additive pollinator channels, scaled by community abundance:
 
-    P_outcross_i =
-      base_outcross_rate
-      + pollinator_environment * [
-          bombus_frequency * bombus_efficiency * (1 + bombus_guide_use * G_i)
-          + small_pollinator_frequency * small_pollinator_efficiency
-            * small_pollinator_access(F_i)
-            * (1 + small_pollinator_guide_use * G_i)
-        ]
+        P_outcross =
+          base_outcross_rate
+          + community_pollinator_abundance × [
+                primary_pollinator_frequency
+                × primary_pollinator_efficiency
+                × (1 + primary_pollinator_guide_response × G_i)
+              +
+                background_pollinator_frequency
+                × background_pollinator_efficiency
+                × background_pollinator_access(F_i)
+                × (1 + background_pollinator_guide_response × G_i)
+            ]
+
+    Primary channel (trait-responsive, efficient guild)
+        Visitation rate scales strongly with nectar-guide expression G via
+        ``primary_pollinator_guide_response``.  Per-visit efficiency is high
+        (``primary_pollinator_efficiency`` ≈ 0.8).  This is the channel
+        through which guide loss directly reduces outcrossing.
+
+    Background channel (trait-non-responsive guild)
+        Flower SIZE (not guide) limits access via
+        ``background_pollinator_access(F) = 1 - F``.  Guide expression has
+        minimal influence (``background_pollinator_guide_response`` ≈ 0.1).
+        Per-visit efficiency is lower (``background_pollinator_efficiency``
+        ≈ 0.3).  This channel still contributes to outcrossing even after
+        guide loss.
+
+    Community scalar
+        ``community_pollinator_abundance`` multiplies both channels, encoding
+        landscape-level variation in total pollinator service (habitat quality,
+        resource competition, island area effects).
     """
 
-    bombus_channel = (
-        env.bombus_frequency
-        * params.bombus_efficiency
-        * (1.0 + params.bombus_guide_use * agent.nectar_guide)
+    primary_channel = (
+        env.primary_pollinator_frequency
+        * params.primary_pollinator_efficiency
+        * (1.0 + params.primary_pollinator_guide_response * agent.nectar_guide)
     )
-    small_pollinator_channel = (
-        env.small_pollinator_frequency
-        * params.small_pollinator_efficiency
-        * small_pollinator_access(agent.flower_size)
-        * (1.0 + params.small_pollinator_guide_use * agent.nectar_guide)
+    background_channel = (
+        env.background_pollinator_frequency
+        * params.background_pollinator_efficiency
+        * background_pollinator_access(agent.flower_size)
+        * (1.0 + params.background_pollinator_guide_response * agent.nectar_guide)
     )
     probability = (
         params.base_outcross_rate
-        + env.pollinator_environment * (bombus_channel + small_pollinator_channel)
+        + env.community_pollinator_abundance * (primary_channel + background_channel)
     )
     return clamp(probability)
 
