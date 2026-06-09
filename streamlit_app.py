@@ -4,7 +4,7 @@ Workflow
 --------
 1. Constrain  -- ecological constraint grammar rejects implausible latent parameter combos
 2. Sample     -- random draws from ecology-principled trade-off priors
-3. Simulate   -- named causal structure hypotheses via proxy or stochastic ABM backend
+3. Simulate   -- stochastic ABM: the canonical RACH f(θ,s) for this system
 4. Filter     -- ABC rejection against observable gradient pattern targets (response_target only)
 5. Retain     -- restricted admissible causal hypotheses + compatible parameter ranges
 6. Infer switches -- PathwaySwitch posterior: which biological mechanisms are active?
@@ -42,7 +42,6 @@ from causal_model.range_summary import summarize_parameter_ranges
 from causal_model.switch_inference import (
     CAMPANULA_SWITCHES,
     compute_coactivation_table,
-    run_switch_posterior_inference,
     run_switch_posterior_inference_abm,
 )
 from causal_model.switches import switches_for_structure
@@ -127,7 +126,7 @@ WORKFLOW_STEPS = [
     {"Step": "2. Sample",
      "Meaning": "Randomly sample latent benefit/cost parameters from ecology-principled trade-off priors."},
     {"Step": "3. Simulate",
-     "Meaning": "Run named causal structure hypotheses (proxy fast-screen or stochastic ABM main model)."},
+     "Meaning": "Run named causal structure hypotheses via stochastic ABM — the canonical RACH f(θ,s) for this system."},
     {"Step": "4. Filter",
      "Meaning": "ABC rejection against observable ecological gradient pattern targets (response_target rows only; input_context predictors excluded)."},
     {"Step": "5. Retain",
@@ -137,14 +136,11 @@ WORKFLOW_STEPS = [
 ]
 
 BACKEND_DESCRIPTIONS = {
-    "proxy_causal": (
-        "Fast deterministic proxy -- use for broad screening and debugging. "
-        "Approximates population outcomes without generation-level dynamics."
-    ),
     "stochastic_abm": (
-        "Stochastic individual-based ABM -- the main causal generative model. "
+        "Stochastic individual-based ABM — the canonical RACH f(θ,s) for this system. "
         "Models heritable trait evolution, drift, selection, and reproduction "
-        "explicitly across generations."
+        "explicitly across generations. Switch posteriors P(S|A_ε) reflect "
+        "emergent population dynamics, not hand-coded assumptions."
     ),
 }
 
@@ -637,26 +633,13 @@ with st.sidebar:
             "broad_prior":         "broad_prior  (sensitivity sweep)",
         }.get(k, k),
     )
-    backend = st.selectbox(
-        "Simulation backend",
-        ["proxy_causal", "stochastic_abm"],
-        format_func=lambda x: (
-            "proxy_causal (fast screen)" if x == "proxy_causal"
-            else "stochastic_abm (main model)"
-        ),
-    )
+    backend = "stochastic_abm"
     st.caption(BACKEND_DESCRIPTIONS[backend])
 
-    if backend == "stochastic_abm":
-        n_attempts = st.slider("Prior parameter draws", 20, 500, 80, 20, key="n_attempts_abm")
-        generations = st.slider("ABM generations", 10, 100, 40, 10)
-        population_size = st.slider("ABM population size", 50, 500, 150, 50)
-        replicates = st.slider("ABM replicates per island", 1, 5, 1, 1)
-    else:
-        n_attempts = st.slider("Prior parameter draws", 100, 3000, 500, 100, key="n_attempts_proxy")
-        generations = 0
-        population_size = 0
-        replicates = 0
+    n_attempts = st.slider("Prior parameter draws", 20, 500, 80, 20, key="n_attempts_abm")
+    generations = st.slider("ABM generations", 10, 100, 40, 10)
+    population_size = st.slider("ABM population size", 50, 500, 150, 50)
+    replicates = st.slider("ABM replicates per island", 1, 5, 1, 1)
 
     seed = st.number_input("Random seed", 0, 999999, 42, 1)
     _rules = available_rules()
@@ -686,38 +669,20 @@ with st.sidebar:
         "Infers P(pathway ON | patterns matched) without pre-defining M1-M5 structures. "
         "Jointly samples binary switch states and latent parameters."
     )
-    sp_backend = st.selectbox(
-        "Inference backend",
-        ["proxy_causal", "stochastic_abm"],
-        format_func=lambda x: (
-            "proxy (fast, ~1500 draws)" if x == "proxy_causal"
-            else "stochastic ABM (slow, ~200-500 draws, sharper BF)"
-        ),
-        key="sp_backend",
+    sp_backend = "stochastic_abm"
+    sp_n_attempts = st.slider(
+        "Switch inference draws", 50, 1000, 200, 50,
+        key="sp_n_abm",
+        help="Each draw runs the ABM across the isolation gradient. ~200-500 draws recommended.",
     )
-    if sp_backend == "stochastic_abm":
-        sp_n_attempts = st.slider(
-            "Switch inference draws", 50, 1000, 200, 50,
-            key="sp_n_abm",
-            help="Each draw runs ABM across the isolation gradient. ~289ms/draw. 200 draws ≈ 1 min.",
-        )
-        sp_abm_generations = st.slider("ABM generations", 10, 80, 30, 10, key="sp_gen")
-        sp_abm_popsize    = st.slider("ABM population size", 50, 300, 100, 50, key="sp_pop")
-        sp_abm_replicates = st.slider("ABM replicates", 1, 5, 3, 1, key="sp_rep")
-        _est_sec = int(sp_n_attempts * 0.30 * sp_abm_replicates / 3)
-        st.caption(
-            f"Estimated runtime: ~{_est_sec}s "
-            f"({sp_n_attempts} draws × {sp_abm_replicates} rep × isolation gradient)"
-        )
-    else:
-        sp_n_attempts = st.slider(
-            "Switch inference draws", 200, 3000, 1500, 100,
-            key="sp_n_proxy",
-            help="More draws give sharper posteriors. 1500+ recommended for stable BF estimates.",
-        )
-        sp_abm_generations = 0
-        sp_abm_popsize = 0
-        sp_abm_replicates = 0
+    sp_abm_generations = st.slider("ABM generations", 10, 80, 30, 10, key="sp_gen")
+    sp_abm_popsize    = st.slider("ABM population size", 50, 300, 100, 50, key="sp_pop")
+    sp_abm_replicates = st.slider("ABM replicates", 1, 5, 3, 1, key="sp_rep")
+    _est_sec = int(sp_n_attempts * 0.30 * sp_abm_replicates / 3)
+    st.caption(
+        f"Estimated runtime: ~{_est_sec}s "
+        f"({sp_n_attempts} draws × {sp_abm_replicates} rep × isolation gradient)"
+    )
     run_switch_button = st.button(
         "Run Switch Posterior", use_container_width=True
     )
@@ -765,11 +730,10 @@ else:
     }
     st.caption(_preset_hints.get(preset_name, preset.description))
 
-if backend == "stochastic_abm":
-    st.warning(
-        "Stochastic ABM mode is slower. Start with small draw counts (<=80) "
-        "then increase after confirming the workflow runs correctly."
-    )
+st.caption(
+    "ABM is slower than a proxy. Start with small draw counts (≤80) "
+    "then increase after confirming the workflow runs correctly."
+)
 
 # ---------------------------------------------------------------------------
 # Run M1-M5 comparison
@@ -824,29 +788,18 @@ if run_switch_button:
                          text=f"Switch Posterior: {done}/{total} ({100*done//max(total,1)}%)")
         _sp_stat.caption(status)
 
-    if sp_backend == "stochastic_abm":
-        sp_result = run_switch_posterior_inference_abm(
-            preset_name=preset_name,
-            n_attempts=int(sp_n_attempts),
-            acceptance_rule=acceptance_rule,
-            seed=int(seed) + 1,
-            observed_rels=OBSERVED_RELS,
-            pattern_weights=PATTERN_WEIGHTS,
-            generations=sp_abm_generations,
-            population_size=sp_abm_popsize,
-            replicates=sp_abm_replicates,
-            progress_callback=_sp_progress,
-        )
-    else:
-        sp_result = run_switch_posterior_inference(
-            preset_name=preset_name,
-            n_attempts=int(sp_n_attempts),
-            acceptance_rule=acceptance_rule,
-            seed=int(seed) + 1,
-            observed_rels=OBSERVED_RELS,
-            pattern_weights=PATTERN_WEIGHTS,
-            progress_callback=_sp_progress,
-        )
+    sp_result = run_switch_posterior_inference_abm(
+        preset_name=preset_name,
+        n_attempts=int(sp_n_attempts),
+        acceptance_rule=acceptance_rule,
+        seed=int(seed) + 1,
+        observed_rels=OBSERVED_RELS,
+        pattern_weights=PATTERN_WEIGHTS,
+        generations=sp_abm_generations,
+        population_size=sp_abm_popsize,
+        replicates=sp_abm_replicates,
+        progress_callback=_sp_progress,
+    )
     _sp_bar.progress(1.0, text="Switch Posterior: Done ✓")
     _sp_stat.empty()
     st.session_state["sp_result"] = sp_result
@@ -1083,8 +1036,7 @@ if "research_result" in st.session_state:
 else:
     st.markdown(
         "Configure settings in the sidebar and click **Run RACH workflow** to begin.  \n"
-        "Use **proxy_causal** for fast broad screening, "
-        "then confirm with **stochastic_abm** for the main causal generative model."
+        "The stochastic ABM is the canonical RACH simulator f(θ,s) for this system."
     )
 
 # ============================================================================
@@ -1092,29 +1044,16 @@ else:
 # ============================================================================
 if "sp_result" in st.session_state:
     sp = st.session_state["sp_result"]
-    _sp_backend_used = st.session_state.get("sp_backend_used", "proxy_causal")
     st.divider()
     st.header("Switch Posterior Inference Results")
     st.info(
         "These results infer which biological pathways were active in parameter-space "
-        "regions that reproduced the observable ecological gradient pattern targets -- without any "
+        "regions that reproduced the observable ecological gradient pattern targets — without any "
         "pre-defined M1-M5 structure. The posterior P(switch ON | accepted) is the "
-        "primary inferential output."
+        "primary inferential output.\n\n"
+        "Simulator: stochastic ABM — the canonical RACH f(θ,s). "
+        "Acceptance rate reflects emergent population dynamics, not hand-coded assumptions."
     )
-    if _sp_backend_used == "stochastic_abm":
-        st.success(
-            "Stochastic ABM backend: acceptance rate reflects genuine biological "
-            "discriminability, not proxy model determinism. "
-            "BF > 3 is now achievable with sufficient draws."
-        )
-    else:
-        st.warning(
-            "Proxy is not a valid RACH simulator. Switch posteriors from the proxy "
-            "backend are diagnostic only and may reflect researcher assumptions "
-            "(hand-coded functional relationships) rather than data. "
-            "Use stochastic_abm for valid RACH switch posterior inference."
-        )
-        st.caption("Backend: proxy_causal (diagnostic screen only)")
 
     if len(sp.accepted_rows) < 30:
         st.warning(

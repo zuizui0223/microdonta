@@ -1,4 +1,6 @@
-"""Generic deterministic proxy simulation for causal structure evaluation.
+"""Campanula/Izu proxy simulation — example implementation of SimulatorProtocol.
+
+NOT USED IN STREAMLIT INFERENCE — kept for debugging and as an example only.
 
 WARNING — DIAGNOSTIC USE ONLY, NOT A VALID RACH f(θ,s)
 --------------------------------------------------------
