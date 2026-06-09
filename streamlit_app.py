@@ -1259,11 +1259,16 @@ if "sp_result" in st.session_state:
                             "rule": _rule_label,
                             "n_accepted": _n,
                             "acceptance_rate": f"{_n / max(sp.n_attempts, 1):.1%}",
-                            "H(S|Aε) bits": "n/a (too few)",
-                            "degeneracy_reduction": "n/a",
-                            "total_Ij bits": "n/a",
+                            "H(S|Aε) bits": float("nan"),
+                            "degeneracy_reduction": float("nan"),
+                            "total_Ij bits": float("nan"),
                         })
-                stretch_df(pd.DataFrame(_sens_rows), hide_index=True)
+                _sens_df = pd.DataFrame(_sens_rows)
+                # Ensure numeric columns stay float (mixed str/"n/a" breaks PyArrow)
+                for _col in ("H(S|Aε) bits", "degeneracy_reduction", "total_Ij bits"):
+                    if _col in _sens_df.columns:
+                        _sens_df[_col] = pd.to_numeric(_sens_df[_col], errors="coerce")
+                stretch_df(_sens_df, hide_index=True)
                 st.caption(
                     "Stricter threshold -> smaller accepted set -> lower H(S|A_ε) "
                     "-> higher identifiability. Use this table to choose the threshold "
