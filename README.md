@@ -1,16 +1,35 @@
-# RACH: Restricted Admissible Causal Hypotheses
+# RACH: Causal Admissibility and Degeneracy Framework
 
 **RACH** stands for **Restricted Admissible Causal Hypotheses**.
 
-RACH is a general framework for simulation-based ecological causal inference. It asks:
+RACH is a **causal admissibility and degeneracy framework** for ecological systems.
+It estimates which latent causal mechanisms remain admissible under biological
+constraints and independent observations, and quantifies whether the available
+observations are sufficient to resolve competing mechanisms.
 
-> **Which latent causal mechanisms are admissible, given fixed ecological context, biological axioms, latent parameters, and independent observations?**
+English:
+
+> RACH defines the admissible causal region and quantifies causal admissibility,
+> causal degeneracy, and causal resolvability under biological constraints.
+> It does not select the best model. It estimates which mechanisms remain
+> admissible and how degenerate the causal explanation is.
 
 Japanese:
 
-> **RACHは、固定された生態学的文脈・生物学的公理・潜在パラメータ・独立観測データのもとで、どの潜在因果メカニズムが許容されるかを推定する汎用フレームワークである。**
+> RACHは、生物学的制約と独立観測データのもとで、どの潜在因果メカニズムが許容されるか、
+> また現在の観測集合がどの程度それらを識別できるかを定量化する、
+> 生態学的因果許容性・因果縮退性解析フレームワークである。
+> RACHは単一モデルを選ぶのではなく、許容因果領域を推定し因果縮退性を定量化する。
 
-This repository implements a worked example using the Izu Islands population system of *Campanula punctata* / シマホタルブクロ. The Campanula model is an example, not the definition of RACH.
+**RACH is not a combination of ABM, ABC, and POM.**
+ABM, ABC, and POM are computational components used to approximate the admissible
+causal region A_ε. The framework is defined by its inferential objects:
+causal admissibility (CA_j), causal degeneracy (D), causal resolvability (R),
+observation contribution (OC_k), and next-observation value (NOV).
+
+This repository implements a worked example using the Izu Islands population system
+of *Campanula punctata* / シマホタルブクロ. The Campanula model is an example,
+not the definition of RACH.
 
 ---
 
@@ -33,8 +52,11 @@ x_obs  = fixed empirical context used as simulator input
          e.g. island distance, island area, observed pollinator presence/frequency
 
 θ      = latent ecological parameters to infer or marginalise over
-         e.g. costs, benefits, inbreeding depression, drift scale,
-              pollinator-loss slope, Ne-isolation slope, migration-decay rate
+         benefit/cost: guide_cost, selfing_benefit, inbreeding_depression,
+                       background_pollinator_efficiency, drift_effect_scale,
+                       guide_selection_strength, cost_of_waiting_for_pollinators
+         env slopes (direction fixed by principle; magnitude inferred):
+                       Ne_isolation_slope, migration_decay_rate, pollinator_loss_slope
 
 s      = causal switch state, s ∈ {0,1}^K
          e.g. guide-mediated attraction, selfing-syndrome evolution,

@@ -1,344 +1,359 @@
-# RACH — Restricted Admissible Causal Hypotheses: Formal Theory
+# RACH — Causal Admissibility and Degeneracy Framework: Formal Theory
 
-> **Version**: Issue #8 initial formalisation  
-> **Status**: working document — mathematical definitions subject to revision  
+> **Version**: 2.0 — complete restatement as independent causal framework
 > **Worked example**: *Campanula punctata* along the Izu Islands isolation gradient
 
 ---
 
-## 1. Motivation
+## Overview
 
-Classical model-comparison methods (AIC, Bayes factor over pre-defined structures,
-structural equation modelling) require the analyst to enumerate candidate models
-before seeing data.  In ecology, the true causal mechanism is rarely known in advance,
-and the space of plausible mechanisms is too large to enumerate exhaustively.
+RACH is a **causal admissibility and degeneracy framework** for ecological systems.
 
-RACH takes a different route: instead of defining models, it defines **biological
-constraints** and **observable gradient pattern targets**, then asks which
-mechanism combinations produce parameter-space regions compatible with those targets.
-The result is a *posterior over latent mechanisms*, not a ranked list of pre-specified models.
+It does **not** select the best model from a pre-defined list.  
+It does **not** test whether a hypothesis is true.
 
----
+RACH asks:
 
-## 2. Formal definitions
+> *Under the current biological constraints and independent observations, which latent causal mechanisms remain admissible? How degenerate is the causal explanation? How much does each observation contribute to causal resolution? What would most improve causal resolution?*
 
-### 2.1  Latent parameter space Θ
+Japanese:
 
-Let **θ ∈ Θ ⊂ ℝ^d** denote a vector of latent ecological trade-off parameters.
-In the Campanula example, Θ is the 8-dimensional space of benefit/cost parameters:
+> 現在の生物学的制約と独立観測データのもとで、どの潜在因果メカニズムが許容されるか。因果説明はどれだけ縮退しているか。どの観測が因果識別性に寄与しているか。何を観測すれば因果識別性が最も向上するか。
 
-```
-θ = (guide_cost, outcrossing_benefit, selfing_benefit,
-     inbreeding_depression, background_pollinator_efficiency,
-     drift_strength, direct_pollinator_guide_benefit,
-     cost_of_waiting_for_pollinators)
-```
-
-The prior distribution π(θ) is specified by ecology-principled trade-off presets
-(see `causal_model/parameter_sampling.py`, `predefined_tradeoff_presets()`).
+**RACH is not ABC, ABM, or POM.**  
+ABC, ABM, and POM are computational components used to approximate the admissible
+causal region A_ε. The framework itself is defined by its inferential objects:
+causal admissibility, causal degeneracy, causal resolvability, and next-observation value.
 
 ---
 
-### 2.2  Mechanism (switch) space {0,1}^K
+## 1. The RACH Object
 
-Let **s ∈ {0,1}^K** be a binary vector of *biological switch states*, where K is
-the number of mechanistic pathways under consideration.
-
-**Definition 1 (Biological switch).** A biological switch S_j is a binary variable
-representing whether pathway j is active in the data-generating process:
+A RACH analysis is formally specified as a tuple:
 
 ```
-S_j = 1  ⟺  pathway j is causally active
-S_j = 0  ⟺  pathway j is causally inactive
+RACH = (X, Y, Θ, S, G, f, P_sim, P_obs, d, ε, A_ε, CA, D, R, OC, NOV)
 ```
 
-The Campanula example has K = 5 switches:
+### 1.1 Input spaces
 
-| Symbol | Name                        | Pathway question                                              |
-|--------|-----------------------------|---------------------------------------------------------------|
-| S1     | guide_attracts_bombus       | Does guide phenotype directly attract Bombus (primary poll.)? |
-| S2     | selfing_syndrome_active     | Is selfing syndrome expressed as a breeding system response?  |
-| S3     | island_isolation_common_cause | Does island isolation drive both guide loss and poll. loss?  |
-| S4     | drift_drives_guide_loss     | Does genetic drift drive guide loss independently?           |
-| S5     | small_pollinator_substitution | Are small pollinators substituting for absent Bombus?       |
+| Symbol | Name | Description | Example (Campanula) |
+|--------|------|-------------|---------------------|
+| X | Fixed ecological context | x_obs fed into f; not part of ABC target | island distance, island area, observed Bombus presence |
+| Y | Independent observation space | y_obs used for ABC acceptance | guide expression, selfing rate, herkogamy, flower size, Fis |
+| Θ | Latent parameter space | Unknown ecological quantities inferred via ABC | guide_cost, selfing_benefit, Ne_isolation_slope, ... |
+| S | Causal switch space | {0,1}^K — which mechanisms are active | S1: guide attracts Bombus; S2: selfing syndrome; S3: common cause; S5: small pollinator |
 
-Prior: S_j ~ Bernoulli(0.5) independently (uninformative over mechanism combinations).
+### 1.2 Constraint grammar G
+
+G: Θ → {0, 1}
+
+G(θ) = 1 if θ satisfies all biological feasibility constraints.  
+G(θ) = 0 otherwise → θ is rejected before simulation.
+
+G encodes **axioms** and **directional principles** (not data-dependent):
+
+```
+C1: selfing_benefit - inbreeding_depression ≥ -0.30  (net selfing fitness)
+C2: NOT (background_pollinator_efficiency > 0.55 AND selfing_benefit > 0.55)
+C3: NOT (guide_cost > 0.20 AND outcrossing_benefit < 0.05 AND guide_benefit > 0.80)
+C4: background_pollinator_efficiency < 0.80  (guild functional distinction)
+C5: Ne_isolation_slope > 0  (isolation reduces Ne: directional principle)
+    migration_decay_rate > 0
+    pollinator_loss_slope > 0
+```
+
+### 1.3 Generative dynamics f
+
+f: X × Θ × S → Y_sim
+
+f encodes the **ecological axioms** — dynamics that are unconditionally fixed:
+
+```
+Wright-Fisher / finite-population sampling
+Mendelian / parental trait inheritance
+Stochastic reproduction
+Fitness-proportional selection
+Pollination-to-reproduction rules
+```
+
+f uses x_obs as fixed input context and θ, s as latent arguments.
+
+**Biological principles** encode direction into f's structure; magnitudes remain in θ:
+
+```
+Ne decreases with isolation     (direction: universal principle)
+  Ne = 1 - Ne_isolation_slope × distance   (slope: θ, inferred via ABC)
+
+Migration decays with isolation
+  m = m_0 × exp(-migration_decay_rate × distance)   (rate: θ)
+
+Bombus frequency declines with isolation
+  Bombus = max(0, 0.80 - pollinator_loss_slope × distance)   (slope: θ)
+```
+
+### 1.4 Pattern maps and distance
+
+```
+P_sim:  Y_sim → pattern space
+P_obs:  y_obs → pattern space
+
+d(P_sim(y_sim), P_obs(y_obs)) = 1 - weighted_match_rate
+```
+
+A pattern is matched if the simulated direction (>, <, ~=) equals the observed direction.
+
+### 1.5 The admissible causal region A_ε
+
+```
+A_ε(y_obs, x_obs) = { (θ, s) ∈ Θ × S :
+                       G(θ) = 1,
+                       d(P_sim(f(x_obs; θ, s)), P_obs(y_obs)) ≤ ε }
+```
+
+A_ε is the **core inferential object**.
+
+- A_ε is a subset of parameter-mechanism space, not a probability distribution.
+- ABC approximates A_ε by sampling (θ, s) from the prior and keeping draws with d ≤ ε.
+- The approximation quality depends on sample size and prior coverage.
+- y_obs must contain only **independent observations** (role = response_target).
+  Hypothesis predictions and syndrome definitions are excluded to prevent circular inference.
 
 ---
 
-### 2.3  Simulation model
+## 2. The Five Core RACH Quantities
 
-**Definition 2 (Simulation model).** A function
-
-```
-simulate : Θ × {0,1}^K → Y
-```
-
-mapping a parameter vector θ and switch state s to a simulated output y = simulate(θ, s).
-
-In the Campanula example, Y is the space of ecological gradient outputs (per-population
-trait values along the isolation axis):
+### 2.1 Causal admissibility CA_j
 
 ```
-y = { (pop_i, nectar_guide_i, selfing_rate_i, herkogamy_i, ...) : i = 1..n_points }
+CA_j = P(s_j = 1 | (θ, s) ∈ A_ε)
 ```
 
-Two backends are available:
+CA_j is the **posterior probability that mechanism j is active**, given independent
+observations and biological constraints.
 
-- **Proxy simulation** (`proxy_simulation.simulate_campanula_isolation_gradient`):
-  deterministic, fast (< 1 ms per draw)
-- **Stochastic ABM** (`attraction_trait_model.simulation.simulate_population`):
-  individual-based, stochastic (~ 300 ms per draw per population)
+| CA_j | Bayes factor | Interpretation |
+|------|-------------|----------------|
+| >> 0.5 | BF > 3 | Mechanism j is admissible — supported by data |
+| ≈ 0.5 | BF ≈ 1 | Data non-informative about mechanism j |
+| << 0.5 | BF < 1/3 | Mechanism j is inadmissible — opposed by data |
+
+**Epistemic note**: CA_j is not a proof of causal truth. It is the proportion of
+biologically feasible, observation-compatible parameter-mechanism space in which
+mechanism j is active.
+
+Code: `causal_model/causal_admissibility.py`, `causal_admissibility()`
+
+### 2.2 Causal degeneracy D
+
+```
+D_RACH = H(S | A_ε) = -Σ_{v ∈ {0,1}^K} P(S=v | A_ε) log₂ P(S=v | A_ε)
+```
+
+D measures the **remaining uncertainty about mechanism combinations** after
+conditioning on observations and constraints.
+
+| D | Interpretation |
+|---|----------------|
+| D = 0 | Unique mechanism combination — zero causal ambiguity |
+| D = K | All 2^K combinations equally present — maximum causal degeneracy |
+| 0 < D < K | Partial resolution — some mechanisms identified, others not |
+
+**Causal degeneracy is not a failure.** High D means the available observations
+cannot distinguish competing mechanisms. This is an important scientific finding:
+it tells the researcher which mechanisms are not yet separable given current data.
+
+Code: `causal_model/causal_admissibility.py`, `causal_degeneracy()`
+
+### 2.3 Causal resolvability R
+
+```
+R_RACH = 1 - H(S | A_ε) / H(S) = 1 - D / K
+```
+
+R normalizes causal degeneracy reduction to [0, 1]:
+
+| R | Interpretation |
+|---|----------------|
+| R = 0 | No causal information from observations (D = K) |
+| R = 1 | Complete causal resolution (D = 0) |
+| R ∈ (0, 1) | Partial resolution |
+
+R is the primary scalar summary of **how much the current observation set resolves competing mechanisms**.
+
+Code: `causal_model/causal_admissibility.py`, `causal_resolvability()`
+
+### 2.4 Observation contribution OC_k
+
+```
+OC_k = R_RACH(O) - R_RACH(O \ {k})
+```
+
+OC_k measures how much observation pattern k contributes to causal resolvability.
+Estimated via leave-one-out (LOO) from the accepted sample.
+
+| OC_k | Interpretation |
+|------|----------------|
+| OC_k > 0 | Pattern k increases causal resolution |
+| OC_k ≈ 0 | Pattern k is redundant with other patterns |
+| OC_k < 0 | Removing k would improve resolution (k confounds inference) |
+
+Code: `causal_model/causal_admissibility.py`, `observation_contribution()`
+
+### 2.5 Next-observation value NOV(q)
+
+```
+NOV(q) = E[ R_RACH(O ∪ q) - R_RACH(O) ]
+```
+
+NOV(q) estimates the expected increase in causal resolvability if candidate
+observation q were added to y_obs.
+
+The expectation is over possible outcomes of q (which we do not yet know).
+The current implementation uses a heuristic approximation based on:
+
+1. Current causal admissibility CA_j for the target switches of q
+2. Remaining ambiguity: how far CA_j is from 0 or 1 (most ambiguous → most gain)
+3. Number of target switches per candidate
+
+This approximation gives a **prioritised list of recommended next observations**,
+ranked by expected contribution to causal resolution.
+
+Code: `causal_model/causal_admissibility.py`, `next_observation_value()`
 
 ---
 
-### 2.4  Gradient pattern targets Y_obs
+## 3. Separation of epistemic roles
 
-**Definition 3 (Gradient pattern target).** A pattern target is a qualitative or
-semi-quantitative assertion about the simulated output that can be evaluated as
-*matched* or *unmatched*:
+A central RACH requirement is strict separation between:
 
-```
-pattern k : Y → {0,1}    (or a soft weight ∈ [0,1])
-```
+| Role | Used as | ABC acceptance | Code label |
+|------|---------|---------------|------------|
+| Axiom | Dynamics fixed in f | never | hardcoded in `simulation.py`, `inheritance.py` |
+| Universal principle | Direction fixed in f / G; coefficient in θ | never | G constraint + θ prior |
+| Fixed context | x_obs input to f | never | `input_context` |
+| Independent observation | y_obs in d(·,·) | yes | `response_target` |
+| Hypothesis prediction | Posterior predictive check only | NO | `hypothesis_prediction` |
+| Diagnostic definition | Internal consistency only | NO | `diagnostic_only` |
 
-Pattern targets have a *role* attribute:
+**Why hypothesis_prediction must not be used as y_obs**:
 
-- `response_target`: used as ABC acceptance criterion
-- `input_context`: environmental predictor variable — **excluded** from ABC
+Using predictions derived from the hypothesis to test the same hypothesis creates
+circular inference. P(s | A_ε) would then reflect the researcher's prior assumption,
+not independent data.
 
-The Campanula observed pattern targets are in:
-`examples/campanula_izu/data/observed_patterns.csv`
+Example:
+> "selfing increases along the isolation gradient"
+> This is a **prediction** of S2/S3, not an independent field measurement.
+> Including it in y_obs inflates P(S2=1 | A_ε) regardless of true mechanism.
 
-The set of response_target patterns is accessed via:
-```python
-from examples.campanula_izu.observed_data import response_target_patterns
-```
-
-Evaluation is performed by `examples/campanula_izu/pattern_evaluator.py`:
-```python
-evaluate_patterns(outputs_list, pattern_targets, synth_env) → EvaluationResult
-```
-
----
-
-### 2.5  Ecological constraint grammar C
-
-**Definition 4 (Constraint grammar).** A set of hard constraints C over Θ:
+**Current y_obs** (Campanula worked example, Inoue 1986):
 
 ```
-C = { C1, C2, C3, C4 }
-```
-
-| Constraint | Description                                      | Code                          |
-|------------|--------------------------------------------------|-------------------------------|
-| C1         | Outcrossing benefit ≥ guide cost (guide utility) | `parameter_constraints.py`    |
-| C2         | Selfing benefit ≤ 1 − inbreeding depression      | `parameter_constraints.py`    |
-| C3         | Background pollinator efficiency < primary       | `parameter_constraints.py`    |
-| C4         | Trade-off class consistency                      | `parameter_constraints.py`    |
-
-Parameters violating C are rejected at the sampling stage (before simulation).
-This implements prior knowledge about biological feasibility.
-
----
-
-### 2.6  Admissible causal region A_ε
-
-**Definition 5 (Admissible causal region).** The admissible causal region is:
-
-```
-A_ε = { (θ, s) ∈ Θ × {0,1}^K :
-          θ satisfies C,
-          d(simulate(θ, s), y_obs) ≤ ε }
-```
-
-where d(·, ·) is the pattern-distance metric:
-
-```
-d(y, y_obs) = 1 − weighted_match_rate(y, y_obs)
-            = 1 − (Σ_k w_k · 1[pattern k matched]) / (Σ_k w_k)
-```
-
-and ε = 1 − threshold (e.g., ε = 0 for strict_all_match, ε = 0.2 for relaxed_0.83).
-
-The ABC sample {(θ_i, s_i)}_i is an empirical approximation of the uniform
-distribution over A_ε.
-
----
-
-### 2.7  Posterior over switches
-
-**Definition 6 (Switch posterior).** Given the ABC sample from A_ε:
-
-```
-P(S_j = 1 | A_ε) ≈ (1/|A_ε|) Σ_i  1[s_i(j) = 1]
-```
-
-This is the fraction of accepted samples with switch j ON.
-
-The **Bayes factor** for switch j is:
-
-```
-BF_j = P(S_j=1 | A_ε) / P(S_j=0 | A_ε)
-     = p̂_j / (1 − p̂_j)
-```
-
-Interpretation: BF > 3 → supported; BF > 10 → strongly supported; BF < 1/3 → opposed.
-
-Code: `causal_model/switch_inference.py`, `run_switch_posterior_inference()`
-
----
-
-## 3. Information-theoretic metrics (Phase 2)
-
-### 3.1  Mechanism identifiability I_j
-
-**Definition 7 (Mechanism identifiability).** The identifiability of switch j is
-the reduction in Shannon entropy achieved by conditioning on A_ε:
-
-```
-I_j = H(S_j | prior) − H(S_j | A_ε)
-    = H(0.5) − H(p̂_j)
-    = 1 − (−p̂_j log₂ p̂_j − (1−p̂_j) log₂(1−p̂_j))
-```
-
-where H(·) is binary entropy in bits.
-
-Properties:
-- `I_j = 0`: prior and posterior coincide — A_ε provides no information about S_j
-- `I_j = 1`: posterior is 0 or 1 — S_j is fully determined by A_ε
-- `I_j ∈ (0, 1)`: partial identifiability
-
-| I_j range | Interpretation         |
-|-----------|------------------------|
-| ≥ 0.75    | highly identifiable    |
-| ≥ 0.40    | moderately identifiable|
-| ≥ 0.10    | weakly identifiable    |
-| < 0.10    | not identifiable       |
-
-Code: `causal_model/identifiability.py`, `SwitchIdentifiability.I_j`
-
----
-
-### 3.2  Causal degeneracy D
-
-**Definition 8 (Causal degeneracy).** The causal degeneracy is the joint entropy
-of the switch vector over the accepted sample:
-
-```
-D = H(S | A_ε) = −Σ_{v ∈ {0,1}^K} P(S=v | A_ε) log₂ P(S=v | A_ε)
-```
-
-Properties:
-- `D = 0`: every accepted sample has the same switch vector — A_ε identifies a unique mechanism combination
-- `D = K`: all 2^K switch vectors are equally represented — A_ε provides no information about mechanism combinations
-- In general `D ≤ K` (by the data-processing inequality)
-
-The **degeneracy reduction** R = K − D measures how much A_ε constrains the mechanism space.
-
-Note that `Σ_j I_j ≥ D` (sum of marginal identifiabilities upper-bounds degeneracy
-reduction) only when switches are independent in A_ε; in general the two measures
-are not directly comparable.
-
-Code: `causal_model/identifiability.py`, `RACHTheoryMetrics.causal_degeneracy`
-
----
-
-### 3.3  Pattern contribution C_k(j)
-
-**Definition 9 (Pattern contribution).** The contribution of pattern target k to
-the identifiability of switch j is estimated via leave-one-out (LOO):
-
-```
-C_k(j) = I_j(all patterns) − I_j(A_ε \ {k})
-```
-
-where `A_ε \ {k}` is the hypothetical admissible region obtained by removing
-pattern k from the acceptance criterion.
-
-In practice, `A_ε \ {k}` is approximated from the stored per-pattern match data:
-for each accepted row, the weighted_match_rate is recomputed without pattern k's
-contribution, and the row is retained in the LOO subset if this recomputed rate
-still meets the threshold.
-
-Interpretation:
-- `C_k(j) > 0`: pattern k increases identifiability of switch j (informative about j)
-- `C_k(j) < 0`: removing k would *increase* identifiability (k confounds inference about j)
-- `C_k(j) ≈ 0`: pattern k is irrelevant to switch j's identifiability
-
-Code: `causal_model/identifiability.py`, `pattern_contribution_table()`
-
----
-
-## 4. Known-truth validation
-
-The `test_known_truth.py` file implements known-truth validation:
-
-1. Set the true switch state `s* = {S1=ON, S2=ON}` (guide_attracts_bombus + selfing_syndrome)
-2. Simulate gradient outputs from `s*`
-3. Derive synthetic pattern targets from those outputs
-4. Run RACH inference against those targets
-5. Verify that:
-   - P(S1=ON | A_ε) > 0.5
-   - P(S2=ON | A_ε) > 0.5
-   - P(S4=ON | A_ε) < P(S1) and P(S2)  (drift null is not supported)
-   - I_j(S1) > I_j(S4) and I_j(S2) > I_j(S4)
-   - H(S|A_ε) < K (acceptance criterion provides information)
-
-This provides a mathematical guarantee that RACH correctly recovers the true
-mechanisms when the data are generated by a known process.
-
-Run:
-```
-python examples/campanula_izu/test_known_truth.py
+nectar_guide_pairwise    Oshima > Hachijo   weight=1.0  field_derived
+selfing_rate_pairwise    Oshima < Hachijo   weight=1.0  field_derived
+herkogamy_pairwise       Oshima > Hachijo   weight=0.8  field_derived
+flower_size_pairwise     Oshima > Hachijo   weight=0.8  field_derived
+Fis_pairwise             Oshima < Hachijo   weight=1.0  genetic_derived
 ```
 
 ---
 
-## 5. Code correspondence table
+## 4. RACH vs existing methods
 
-| Mathematical object        | Python location                                    | Function / class                         |
-|----------------------------|----------------------------------------------------|------------------------------------------|
-| Θ (parameter space)        | `causal_model/parameter_sampling.py`               | `predefined_tradeoff_presets()`          |
-| π(θ) (prior)               | `causal_model/parameter_sampling.py`               | `sample_valid_parameter_sets()`          |
-| {0,1}^K (switch space)     | `causal_model/switches.py`                         | `PathwaySwitches`                        |
-| S_j prior                  | `causal_model/switch_inference.py`                 | `BiologicalSwitch.prior_on_prob`         |
-| simulate(θ, s)             | `examples/campanula_izu/proxy_simulation.py`       | `simulate_campanula_isolation_gradient()`|
-| simulate(θ, s) ABM         | `attraction_trait_model/simulation.py`             | `simulate_population()`                  |
-| y_obs pattern targets      | `examples/campanula_izu/data/observed_patterns.csv`| role=response_target rows               |
-| input_context predictors   | `examples/campanula_izu/data/ecological_context.csv`| role=input_context rows                |
-| d(y, y_obs)                | `examples/campanula_izu/pattern_evaluator.py`      | `weighted_pattern_distance()`            |
-| evaluate patterns          | `examples/campanula_izu/pattern_evaluator.py`      | `evaluate_patterns()`                    |
-| Constraint grammar C       | `causal_model/parameter_constraints.py`            | `sample_all_sets_with_rejection_log()`   |
-| Admissible region A_ε      | `causal_model/switch_inference.py`                 | `run_switch_posterior_inference()`       |
-| P(S_j=1 \| A_ε)            | `causal_model/switch_inference.py`                 | `SwitchPosteriorResult.posterior_table`  |
-| Bayes factor BF_j          | `causal_model/switch_inference.py`                 | `posterior_table[*]["Bayes_factor"]`     |
-| Identifiability I_j        | `causal_model/identifiability.py`                  | `SwitchIdentifiability.I_j`              |
-| Causal degeneracy D        | `causal_model/identifiability.py`                  | `RACHTheoryMetrics.causal_degeneracy`    |
-| Degeneracy reduction R     | `causal_model/identifiability.py`                  | `RACHTheoryMetrics.degeneracy_reduction` |
-| Pattern contribution C_k(j)| `causal_model/identifiability.py`                  | `pattern_contribution_table()`           |
-| Constraint posterior shift | `causal_model/identifiability.py`                  | `constraint_posterior_shift()`           |
-| Theory UI                  | `streamlit_app.py`                                 | sp_tab3 "RACH Theory Metrics"            |
-| Known-truth validation     | `examples/campanula_izu/test_known_truth.py`       | `test_posterior_favours_true_switches_s1_s2()` etc. |
+| Method | Target | RACH difference |
+|--------|--------|----------------|
+| AIC/BIC model comparison | Rank pre-enumerated models | RACH does not require model enumeration; posterior is over latent mechanisms |
+| Standard ABC | Posterior over θ or models | RACH adds causal switch space S; primary output is CA_j, D, R, not θ posterior |
+| Pattern-Oriented Modelling | Parameter sets reproducing patterns | RACH additionally quantifies causal degeneracy and observation value |
+| SEM / DAG | Fit coefficients of pre-defined graph | RACH uses binary switches; no likelihood needed; mechanisms are latent binary variables |
+| Causal discovery (PC, FCI) | Recover DAG from conditional independence | RACH is generative; uses simulation to test compatibility; works with small N |
+| Bayesian model comparison | Bayes factors over specified models | RACH BFs are over binary switch states, not pre-specified full models |
+
+**RACH is not a replacement for these methods.** It addresses a specific question:
+*which mechanisms remain admissible given constraints and observations, and how degenerate is the causal explanation?*
 
 ---
 
-## 6. Relationship to existing causal inference methods
+## 5. Implementation correspondence
 
-| Method | Mechanism | RACH difference |
-|---|---|---|
-| AIC/BIC model comparison | Ranks pre-enumerated models by fit + complexity | RACH does not require pre-enumeration; posterior is over latent mechanisms, not structures |
-| Structural equation modelling (SEM) | Fits coefficients of pre-defined DAG | RACH uses binary switches and ABC; no likelihood function needed |
-| Approximate Bayesian Computation (ABC) | Matches summary statistics | RACH uses ecological constraint grammar C to pre-filter parameter space; pattern targets are qualitative (direction/rank), not numeric summaries |
-| Causal discovery (PC, FCI) | Recovers DAG skeleton from conditional independence tests | RACH is generative; mechanism states are latent variables inferred from simulation-compatible parameter regions |
-| Random forest / regression | Predicts outcome from features | RACH infers latent causal states, not predictive relationships |
+| RACH object | Python file | Function / class |
+|-------------|-------------|-----------------|
+| A_ε (admissible region) | `causal_model/switch_inference.py` | `run_switch_posterior_inference()` |
+| G(θ) = 1 constraint | `causal_model/parameter_constraints.py` | `check_ecological_parameter_constraints()` |
+| f(x_obs; θ, s) proxy | `examples/campanula_izu/campanula_phenomenological.py` | `simulate_campanula_isolation_gradient()` |
+| f(x_obs; θ, s) ABM | `attraction_trait_model/simulation.py` | `simulate_population()` |
+| P_sim / P_obs / d | `examples/campanula_izu/pattern_evaluator.py` | `evaluate_patterns()` |
+| y_obs (response_target) | `examples/campanula_izu/data/observed_patterns.csv` | role=response_target rows |
+| x_obs (input_context) | `examples/campanula_izu/data/observed_patterns.csv` | role=input_context rows |
+| CA_j causal admissibility | `causal_model/causal_admissibility.py` | `causal_admissibility()` |
+| D causal degeneracy | `causal_model/causal_admissibility.py` | `causal_degeneracy()` |
+| R causal resolvability | `causal_model/causal_admissibility.py` | `causal_resolvability()` |
+| OC_k observation contribution | `causal_model/causal_admissibility.py` | `observation_contribution()` |
+| NOV(q) next-observation value | `causal_model/causal_admissibility.py` | `next_observation_value()` |
+| θ prior (presets) | `causal_model/parameter_constraints.py` | `predefined_tradeoff_presets()` |
+| θ sampling | `causal_model/parameter_sampling.py` | `sample_valid_parameter_sets()` |
+| env slope θ extraction | `causal_model/parameter_sampling.py` | `env_slopes_from_param_set()` |
+| Streamlit RACH UI | `streamlit_app.py` | "Causal Admissibility" tab |
 
 ---
 
-## 7. Limitations and future work
+## 6. General RACH vs Campanula worked example
 
-1. **ABC approximation**: A_ε is an empirical approximation; posterior estimates improve with more draws.
-2. **Switch independence prior**: S_j ~ Bernoulli(0.5) independently may not hold if pathways are biologically correlated.
-3. **Proxy vs ABM**: Proxy simulation is deterministic; stochastic ABM is preferred for Bayes factor computation.
-4. **Pattern completeness**: Gradient pattern targets must be chosen carefully to avoid confounding C_k(j) estimates.
-5. **Identifiability guarantee**: I_j > 0 is a necessary but not sufficient condition for causal identification; confounding pathways may inflate I_j.
+**General RACH theory** (applies to any ecological system):
+
+```
+Admissible causal region A_ε(y_obs, x_obs)
+Causal admissibility CA_j
+Causal degeneracy D
+Causal resolvability R
+Observation contribution OC_k
+Next-observation value NOV(q)
+```
+
+**Campanula Izu worked example** (system-specific):
+
+```
+Switches: S1 guide→Bombus, S2 selfing syndrome, S3 island common cause, S5 small pollinator
+y_obs: Inoue 1986 Oshima/Hachijo pairwise comparisons
+x_obs: island distance, Bombus frequency, island area
+θ: guide_cost, selfing_benefit, Ne_isolation_slope, migration_decay_rate, ...
+f: phenomenological model + stochastic ABM
+```
+
+RACH as a general method does not require Campanula-specific choices.
+Any ecological system with:
+1. A generative simulation model f
+2. A biological constraint grammar G
+3. Independent field observations y_obs
+4. A fixed ecological context x_obs
+
+can be analysed with RACH.
+
+---
+
+## 7. Suggested manuscript claim
+
+English:
+
+> We introduce RACH, a causal admissibility and degeneracy framework for ecological systems. Rather than selecting a single best model, RACH estimates the admissible causal region: the subset of latent parameter–mechanism space that satisfies biological constraints and reproduces independent observations under fixed ecological context. RACH quantifies causal admissibility (CA_j), causal degeneracy (D), causal resolvability (R), observation contribution (OC_k), and the expected value of additional observations (NOV). This framework distinguishes supported mechanisms from cases where the available observations lack sufficient causal resolution.
+
+Japanese:
+
+> 本研究では、生態学的因果メカニズムの許容性と縮退性を定量化するRACHを提案する。RACHは単一の最良モデルを選択するのではなく、生物学的制約を満たし、独立観測データを再現可能な潜在パラメータ・メカニズム空間の部分集合を許容因果領域として推定する。さらに、各因果メカニズムの許容性（CA_j）、因果縮退性（D）、因果識別可能性（R）、観測の寄与（OC_k）、および追加観測の価値（NOV）を定量化する。このフレームワークにより、支持されるメカニズムと、現在の観測集合では識別不能なメカニズム群を区別することができる。
+
+---
+
+## 8. Limitations
+
+1. **ABC approximation**: A_ε is approximated by finite sampling. Posterior estimates stabilise with more draws (≥ 500 recommended for stable CA_j; ≥ 2000 for D).
+
+2. **Switch independence prior**: S_j ~ Bernoulli(0.5) independently. If biological pathways are correlated in the prior, marginalise over the correlated prior instead.
+
+3. **NOV approximation**: `next_observation_value()` uses a heuristic ambiguity-reduction approximation, not the true expectation over q's outcome distribution. Use as a priority guide, not a precise forecast.
+
+4. **Proxy vs ABM**: The deterministic phenomenological model gives reproducible but deterministic A_ε estimates. The stochastic ABM is preferred for publication-quality inference because acceptance probability P(accept | θ, s) is continuous rather than binary.
+
+5. **Causal identification vs admissibility**: High CA_j means mechanism j is present in many observation-compatible parameter regions. It does not guarantee causal identification in the interventionist sense (do-calculus). Confounding pathways can inflate CA_j; experimental manipulations are needed for stronger causal claims.
+
+6. **y_obs completeness**: Causal degeneracy D is always relative to the current y_obs set. Adding more independent observations can only reduce D (or leave it unchanged); it cannot increase D.

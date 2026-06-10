@@ -1082,19 +1082,19 @@ if "sp_result" in st.session_state:
         ])
 
         with sp_tab1:
-            st.markdown("### P(switch ON | patterns matched)")
+            st.markdown("### Causal admissibility CA_j — P(mechanism active | A_ε)")
             st.caption(
-                "Posterior probability that each biological mechanism is active "
-                "in parameter-space regions compatible with observed patterns. "
-                "Prior = 0.5 (uninformative). BF > 3 = supported; BF < 1/3 = opposed."
+                "CA_j = P(s_j = 1 | (θ,s) ∈ A_ε) — the causal admissibility of each mechanism: "
+                "the fraction of biologically feasible, observation-compatible parameter-mechanism "
+                "space in which mechanism j is active. Prior = 0.5 (uninformative). "
+                "BF > 3 = admissible; BF < 1/3 = inadmissible."
             )
             st.info(
-                "Pattern weights reflect observation reliability: "
-                "field_derived patterns receive standard weight (1.0), "
-                "except herkogamy and flower_size (0.8, weaker field evidence). "
-                "neutral_diversity_isolation receives 1.2 as it is the primary S4 vs S2 discriminator. "
-                "See the epistemic_status and weight_rationale columns in observed_patterns.csv "
-                "for full documentation."
+                "y_obs = 5 field-derived pairwise measurements (Inoue 1986): "
+                "guide, selfing rate, herkogamy, flower size, Fis (Oshima vs Hachijo). "
+                "hypothesis_prediction patterns (gradients) and diagnostic_only patterns "
+                "(syndrome definitions) are excluded from ABC acceptance to prevent circular inference. "
+                "See observed_patterns.csv roles for full documentation."
             )
             df_post = pd.DataFrame(sp.posterior_table)
             if not df_post.empty:
@@ -1155,107 +1155,166 @@ if "sp_result" in st.session_state:
                 st.info("Not enough accepted samples for co-activation table.")
 
         with sp_tab3:
-            st.markdown("### RACH Theory Metrics — mechanism identifiability & causal degeneracy")
+            st.markdown("### Causal Admissibility & Degeneracy — RACH Theory Metrics")
             st.caption(
-                "Formal quantification of how much the gradient pattern targets (A_ε) constrain "
-                "the causal mechanism space. Derived from the accepted ABC sample."
+                "RACH does not select the best model. It quantifies **causal admissibility** "
+                "(which mechanisms are compatible with observations), **causal degeneracy** "
+                "(remaining ambiguity), **causal resolvability** (fraction resolved), "
+                "**observation contribution** (what each pattern adds), and "
+                "**next-observation value** (what to measure next)."
             )
             try:
+                from causal_model.causal_admissibility import (
+                    rach_summary,
+                    observation_contribution as _oc_fn,
+                    next_observation_value,
+                    compute_causal_admissibility_table,
+                )
                 from causal_model.identifiability import (
                     compute_rach_theory_metrics,
-                    identifiability_summary,
                     pattern_contribution_table,
                 )
-                _rach_metrics = compute_rach_theory_metrics(sp.accepted_rows, CAMPANULA_SWITCHES)
-                _id_summary   = identifiability_summary(sp.accepted_rows, CAMPANULA_SWITCHES)
 
-                # --- Top-level degeneracy metrics ---
-                mc1, mc2, mc3, mc4 = st.columns(4)
+                _rs = rach_summary(sp.accepted_rows, CAMPANULA_SWITCHES)
+                _rach_metrics = compute_rach_theory_metrics(sp.accepted_rows, CAMPANULA_SWITCHES)
+
+                # --- Top-level RACH metrics (5 quantities) ---
+                mc1, mc2, mc3, mc4, mc5 = st.columns(5)
                 mc1.metric(
-                    "H(S|A_ε) causal degeneracy",
-                    f"{_rach_metrics.causal_degeneracy:.3f} bits",
-                    help="Joint entropy of accepted switch vectors. 0 = single mechanism; "
-                         f"max = {_rach_metrics.n_switches} bits."
+                    "Causal resolvability R",
+                    f"{_rs.causal_resolvability:.3f}",
+                    help="R = 1 - D/K. 0 = completely unresolved; 1 = unique mechanism identified."
                 )
                 mc2.metric(
-                    "Degeneracy reduction",
-                    f"{_rach_metrics.degeneracy_reduction:.3f} bits",
-                    help=f"K − H(S|A_ε) where K={_rach_metrics.n_switches} bits. "
-                         "How much A_ε constrains mechanism combinations."
+                    "Causal degeneracy D",
+                    f"{_rs.causal_degeneracy:.3f} bits",
+                    help="H(S|A_ε): remaining uncertainty about mechanism combinations. "
+                         f"Max = {_rs.n_switches} bits (uninformative)."
                 )
                 mc3.metric(
-                    "Total identifiability",
-                    f"{_rach_metrics.total_identifiability:.3f} bits",
-                    help="Sum of I_j over all switches (marginal information gained)."
+                    "Max degeneracy K",
+                    f"{_rs.max_degeneracy:.0f} bits",
+                    help=f"K = {_rs.n_switches} switches → {_rs.n_switches} bits max entropy."
                 )
                 mc4.metric(
-                    "Max degeneracy K",
-                    f"{_rach_metrics.max_degeneracy:.0f} bits",
-                    help=f"K = {_rach_metrics.n_switches} bits (uninformative prior over all switches)."
+                    "n(A_ε) accepted",
+                    f"{_rs.n_accepted}",
+                    help="Size of the admissible causal region sample."
+                )
+                mc5.metric(
+                    "Total identifiability",
+                    f"{_rach_metrics.total_identifiability:.3f} bits",
+                    help="Sum of per-switch I_j (marginal entropy reduction)."
                 )
 
-                # --- Per-switch identifiability table & chart ---
-                st.markdown("#### Mechanism identifiability I_j (bits per switch)")
+                st.divider()
+
+                # --- CA_j: Causal admissibility per switch ---
+                st.markdown("#### Causal admissibility CA_j")
                 st.caption(
-                    "I_j = H(prior) − H(posterior | A_ε).  "
-                    "I_j = 1 → fully identified.  I_j = 0 → posterior equals prior (unidentified)."
+                    "CA_j = P(s_j = 1 | A_ε) — the probability that mechanism j is active "
+                    "in parameter-mechanism space compatible with observations and constraints. "
+                    "Prior = 0.5. BF > 3 = admissible; BF < 1/3 = inadmissible."
                 )
-                df_id = pd.DataFrame(_id_summary)
-                if not df_id.empty:
+                _ca_table = compute_causal_admissibility_table(sp.accepted_rows, CAMPANULA_SWITCHES)
+                df_ca = pd.DataFrame(_ca_table)
+                if not df_ca.empty:
                     st.bar_chart(
-                        df_id.set_index("switch")[["I_j (bits)"]],
+                        df_ca.set_index("switch")[["CA_j"]],
                         width="stretch",
                     )
                     stretch_df(
-                        df_id[[
-                            "switch", "P_prior_ON", "P_posterior_ON",
-                            "H_posterior", "I_j (bits)", "n_ON", "n_accepted", "interpretation",
+                        df_ca[[
+                            "switch", "biological_question", "CA_j",
+                            "prior_on_prob", "Bayes_factor", "interpretation",
+                            "n_ON", "n_accepted",
                         ]],
                         hide_index=True,
                     )
 
-                # --- Pattern contribution (LOO) ---
-                st.markdown("#### Pattern contribution C_k(j) — leave-one-out identifiability")
+                st.divider()
+
+                # --- OC_k: Observation contribution (resolvability LOO) ---
+                st.markdown("#### Observation contribution OC_k")
                 st.caption(
-                    "C_k(j) = I_j(all patterns) − I_j(LOO-k). "
-                    "Positive = pattern k increases identifiability of switch j. "
-                    "Requires per_pattern_matched data from the accepted sample."
+                    "OC_k = R(O) − R(O \\ {k}) — how much each observation pattern "
+                    "contributes to causal resolvability via leave-one-out. "
+                    "Positive = pattern increases resolution. "
+                    "OC_k ≈ 0 = redundant with other patterns."
                 )
-                _contrib = pattern_contribution_table(sp.accepted_rows, CAMPANULA_SWITCHES)
-                if _contrib:
-                    df_contrib = pd.DataFrame(_contrib)
-                    # Show only non-trivial rows (|C_k_j| > 0.001)
-                    df_contrib_nz = df_contrib[df_contrib["C_k_j"].abs() > 0.001].sort_values(
-                        "C_k_j", ascending=False
+                _oc_results = _oc_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
+                if _oc_results:
+                    df_oc = pd.DataFrame([
+                        {"pattern": r.pattern, "switch": r.switch,
+                         "OC_k": r.OC_k, "R_full": r.R_full, "R_loo": r.R_loo,
+                         "n_loo": r.n_loo}
+                        for r in _oc_results
+                    ])
+                    df_oc_nz = df_oc[df_oc["OC_k"].abs() > 0.0001].sort_values(
+                        "OC_k", ascending=False
                     )
-                    if not df_contrib_nz.empty:
+                    if not df_oc_nz.empty:
                         st.bar_chart(
-                            df_contrib_nz.set_index(
-                                df_contrib_nz["pattern"] + " -> " + df_contrib_nz["switch"]
-                            )[["C_k_j"]],
+                            df_oc_nz.set_index(
+                                df_oc_nz["pattern"] + " → " + df_oc_nz["switch"]
+                            )[["OC_k"]],
                             width="stretch",
                         )
-                        stretch_df(df_contrib_nz, hide_index=True)
+                        stretch_df(df_oc_nz, hide_index=True)
                     else:
                         st.info(
-                            "All |C_k(j)| ≈ 0 — the current pattern set is redundant or "
-                            "weakly discriminating: removing any single pattern does not "
-                            "change which samples are accepted (LOO has no effect). "
-                            "Adding quantitative or trait-correlation patterns increases "
-                            "discrimination and makes C_k(j) nonzero."
+                            "All OC_k ≈ 0 — the current 5-pattern y_obs set is internally "
+                            "consistent but each individual pattern has low marginal contribution. "
+                            "This is expected when patterns are correlated or the accepted set "
+                            "is small. Adding independent observations increases OC_k variance."
                         )
                 else:
                     st.info(
-                        "Pattern contribution requires per_pattern_matched data. "
-                        "This is populated automatically on the next inference run."
+                        "Observation contribution requires per_pattern_matched data. "
+                        "Run inference first to populate this field."
                     )
 
-                # --- Acceptance rule sensitivity comparison ---
-                st.markdown("#### Acceptance rule sensitivity")
+                st.divider()
+
+                # --- NOV(q): Next-observation value ---
+                st.markdown("#### Next-observation value NOV(q)")
                 st.caption(
-                    "How H(S|A_ε), degeneracy reduction, and total I_j change when "
-                    "the ABC threshold is relaxed. Computed by re-filtering the same "
-                    "accepted rows at each threshold — no re-simulation needed."
+                    "NOV(q) ≈ E[ R(O ∪ q) − R(O) ] — expected increase in causal resolvability "
+                    "if candidate observation q were added to y_obs. "
+                    "Ranked by estimated resolvability gain. "
+                    "⚠ This is a heuristic approximation based on current CA_j ambiguity."
+                )
+                _nov_results = next_observation_value(sp.accepted_rows, CAMPANULA_SWITCHES)
+                if _nov_results:
+                    df_nov = pd.DataFrame([
+                        {
+                            "candidate":    r.candidate,
+                            "priority":     r.priority,
+                            "ΔR (approx)":  r.expected_resolvability_gain,
+                            "target_switches": ", ".join(r.target_switches),
+                            "rationale":    r.rationale[:100],
+                        }
+                        for r in _nov_results
+                    ])
+                    # Highlight high-priority rows
+                    st.bar_chart(
+                        df_nov.set_index("candidate")[["ΔR (approx)"]],
+                        width="stretch",
+                    )
+                    stretch_df(df_nov, hide_index=True)
+                    st.caption(
+                        f"Current causal resolvability R = {_rs.causal_resolvability:.3f}. "
+                        "Collecting the top-ranked observation is expected to increase R most."
+                    )
+
+                st.divider()
+
+                # --- Acceptance rule sensitivity (R-based) ---
+                st.markdown("#### Acceptance rule sensitivity (causal resolvability)")
+                st.caption(
+                    "How causal resolvability R and degeneracy D change when the "
+                    "ABC tolerance ε is relaxed. Computed by re-filtering the accepted "
+                    "rows — no re-simulation needed."
                 )
                 _thresh_map = {
                     "strict_all (1.000)":    1.000,
@@ -1263,49 +1322,51 @@ if "sp_result" in st.session_state:
                     "relaxed_0.67 (0.667)":  4 / 6,
                     "weighted_lax (0.800)":  0.800,
                 }
-                _all_rows = sp.accepted_rows  # already accepted at some threshold
+                from causal_model.causal_admissibility import (
+                    causal_degeneracy as _cd_fn,
+                    causal_resolvability as _cr_fn,
+                )
                 _sens_rows = []
                 for _rule_label, _thr in _thresh_map.items():
                     _filtered = [
-                        r for r in _all_rows
+                        r for r in sp.accepted_rows
                         if r.get("weighted_match_rate", 0.0) >= _thr - 1e-9
                     ]
                     _n = len(_filtered)
                     if _n >= 3:
+                        _D = _cd_fn(_filtered, CAMPANULA_SWITCHES)
+                        _R = _cr_fn(_filtered, CAMPANULA_SWITCHES)
                         _m = compute_rach_theory_metrics(_filtered, CAMPANULA_SWITCHES)
                         _sens_rows.append({
                             "rule": _rule_label,
                             "n_accepted": _n,
-                            "acceptance_rate": f"{_n / max(sp.n_attempts, 1):.1%}",
-                            "H(S|Aε) bits": round(_m.causal_degeneracy, 3),
-                            "degeneracy_reduction": round(_m.degeneracy_reduction, 3),
-                            "total_Ij bits": round(_m.total_identifiability, 3),
+                            "D (bits)":   round(_D, 3),
+                            "R":          round(_R, 3),
+                            "total_Ij":   round(_m.total_identifiability, 3),
                         })
                     else:
                         _sens_rows.append({
                             "rule": _rule_label,
                             "n_accepted": _n,
-                            "acceptance_rate": f"{_n / max(sp.n_attempts, 1):.1%}",
-                            "H(S|Aε) bits": float("nan"),
-                            "degeneracy_reduction": float("nan"),
-                            "total_Ij bits": float("nan"),
+                            "D (bits)":   float("nan"),
+                            "R":          float("nan"),
+                            "total_Ij":   float("nan"),
                         })
                 _sens_df = pd.DataFrame(_sens_rows)
-                # Ensure numeric columns stay float (mixed str/"n/a" breaks PyArrow)
-                for _col in ("H(S|Aε) bits", "degeneracy_reduction", "total_Ij bits"):
+                for _col in ("D (bits)", "R", "total_Ij"):
                     if _col in _sens_df.columns:
                         _sens_df[_col] = pd.to_numeric(_sens_df[_col], errors="coerce")
                 stretch_df(_sens_df, hide_index=True)
                 st.caption(
-                    "Stricter threshold -> smaller accepted set -> lower H(S|A_ε) "
-                    "-> higher identifiability. Use this table to choose the threshold "
-                    "that balances n_accepted vs degeneracy reduction."
+                    "Stricter ε → smaller A_ε → lower D → higher R. "
+                    "Trade-off: stricter threshold gives cleaner causal inference "
+                    "but fewer accepted samples."
                 )
 
             except ImportError as _e:
-                st.error(f"causal_model.identifiability not available: {_e}")
+                st.error(f"causal_admissibility module not available: {_e}")
             except Exception as _e:
-                st.warning(f"Could not compute RACH theory metrics: {_e}")
+                st.warning(f"Could not compute RACH causal admissibility metrics: {_e}")
 
         with sp_tab4:
             st.markdown("### Accepted switch states in parameter space")

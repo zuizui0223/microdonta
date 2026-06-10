@@ -61,6 +61,7 @@ from examples.campanula_izu.observed_data import (
     load_observed_pattern_table,
     observed_gradient_only_patterns,
     response_target_patterns,
+    ABC_TARGET_ROLES,
 )
 from examples.campanula_izu.pattern_evaluator import evaluate_patterns
 from examples.campanula_izu.campanula_phenomenological import simulate_campanula_isolation_gradient
@@ -246,13 +247,14 @@ def test_input_context_excluded_from_abc():
     all_rows = load_observed_pattern_table()
     rt_rows  = response_target_patterns()
 
-    # a) response_target_patterns() must contain only response_target rows
-    excluded_in_rt = [r for r in rt_rows if r.get("role") != "response_target"]
+    # a) response_target_patterns() must contain only ABC-target rows
+    #    (role == "observed_target" or legacy "response_target")
+    excluded_in_rt = [r for r in rt_rows if r.get("role") not in ABC_TARGET_ROLES]
     assert not excluded_in_rt, (
         f"FAIL test_input_context_excluded_from_abc (a): "
         f"response_target_patterns() returned {len(excluded_in_rt)} "
-        f"non-response_target row(s): {[r['pattern'] for r in excluded_in_rt]}. "
-        f"Only response_target rows should be included."
+        f"non-ABC-target row(s): {[r['pattern'] for r in excluded_in_rt]}. "
+        f"Only observed_target / response_target rows should be included."
     )
 
     # b) evaluate_patterns() must skip all excluded-role rows via the role guard.
@@ -292,8 +294,8 @@ def test_input_context_excluded_from_abc():
         f"n_total differs: mixed={result_mixed.n_total} vs hp={result_hp.n_total}. "
         f"input_context rows are leaking into EvaluationResult."
     )
-    n_excluded = sum(1 for r in all_rows if r.get("role") != "response_target")
-    n_abc = sum(1 for r in all_rows if r.get("role") == "response_target")
+    n_excluded = sum(1 for r in all_rows if r.get("role") not in ABC_TARGET_ROLES)
+    n_abc = sum(1 for r in all_rows if r.get("role") in ABC_TARGET_ROLES)
     print(
         f"[PASS] test_input_context_excluded_from_abc  "
         f"n_abc_patterns={n_abc}  "

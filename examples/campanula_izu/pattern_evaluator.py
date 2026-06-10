@@ -197,7 +197,9 @@ def evaluate_patterns(
         #   仮説予測 (hypothesis pred) → hypothesis_prediction (excluded)
         #   循環  (circular design)    → diagnostic_only (excluded)
         #   入力  (env input)          → input_context (excluded)
-        role = row.get("role", "response_target")
+        # observed_target (canonical) / response_target (legacy alias) → included.
+        # All other roles excluded from ABC acceptance.
+        role = row.get("role", "observed_target")
         if role in ("input_context", "diagnostic_only", "hypothesis_prediction"):
             continue
         ptype = row.get("type", "pairwise_relation")
