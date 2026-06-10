@@ -198,8 +198,12 @@ def test_posterior_favours_true_switches_s1_s2():
     # drift_drives_guide_loss was removed; drift is always-on via Ne parameter.
     p_s4 = 0.0
 
-    # S1 (guide_attracts_bombus) is identifiable from guide divergence pattern:
-    # only S1 can produce nectar_guide Oshima > Hachijo above RELATION_TOLERANCE.
+    # S1 (guide_attracts_bombus) is partially confounded with S3
+    # (island_isolation_common_cause): S3 can now produce a guide divergence
+    # just above RELATION_TOLERANCE (~0.05-0.06) at typical ob values, but
+    # S1 produces a much larger effect (~0.30-0.43).  P(S1|A_ε) should exceed
+    # 0.5 when the true generator is S1 because S1=OFF + S3=ON draws compete
+    # with S1=ON draws (S1=OFF + S3=OFF draws are rejected by the guide pattern).
     assert p_s1 > 0.5, (
         f"FAIL test_posterior_favours_true_switches_s1_s2: "
         f"P(S1=ON|A_ε)={p_s1:.3f} -- should be > 0.5 when S1 is the true generator."
@@ -209,8 +213,7 @@ def test_posterior_favours_true_switches_s1_s2():
     # mechanisms can produce herkogamy and flower_size divergence above tolerance.
     # With two-endpoint (Oshima/Hachijo) gradient data, P(S2|A_ε) ≈ 0.5 even
     # when the true generator is S2.  This is biologically honest confounding,
-    # not a model failure.  The weaker assertion here reflects that S2 should
-    # not be LESS supported than the prior, and that S1 remains identifiable.
+    # not a model failure.
     p_s3 = sum(1 for r in accepted if r.get("island_isolation_common_cause")) / n
     assert p_s2 >= 0.3, (
         f"FAIL test_posterior_favours_true_switches_s1_s2: "

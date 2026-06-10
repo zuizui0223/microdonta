@@ -207,10 +207,9 @@ def predict_traits_phenomenological(
         selfing   += w * 0.70 * sm
         herkogamy -= w * 0.52 * sm
         flower    -= w * 0.48 * sm
-        guide     -= w * 0.04 * sm  # negligible: guide needs S1 or S4, not S2
-        # Max guide_diff from S2 alone = 0.04 * (0.66-0.38) * 1.0 = 0.011 << 0.05
-        # Combined with S3 max: 0.011 + 0.035 = 0.046 < 0.05
-        # → S2 alone or S2+S3 combined still cannot exceed RELATION_TOLERANCE.
+        guide     -= w * 0.04 * sm  # negligible: guide needs S1 or S3, not S2 alone
+        # Max guide_diff from S2 alone ~= 0.04 * poll_gap_diff * 1.0 ~= 0.011 << 0.05
+        # S2 alone cannot drive detectable guide divergence.
 
     # ------------------------------------------------------------------
     # S3: island_isolation_common_cause
@@ -220,56 +219,31 @@ def predict_traits_phenomenological(
     # pollinator service and reproductive-assurance pressure.
     # OFF: isolation has no direct trait effect.
     #
-    # DESIGN NOTE -- guide is NOT driven by S3 at all:
-    # Nectar-guide retention/loss is determined by pollinator IDENTITY
-    # (Bombus specifically), not pollinator quantity.  Guides function as
-    # long-range Bombus attractants; small halictids use them less.
-    # S3 (isolation) reduces pollinator service overall but does NOT
-    # directly affect guide expression -- that requires S1 (Bombus absence)
-    # or S4 (genetic drift).  This makes S1 identifiable: only the Bombus-
-    # guide pathway produces a guide divergence above RELATION_TOLERANCE.
+    # Partial guide effect (~30 % of S1's direct Bombus mechanism):
+    # Sustained isolation reduces total pollinator service, weakening
+    # selection for long-range attractants (guides) even without Bombus-
+    # specific absence.  Fewer pollinators visit regardless of guide
+    # quality → reduced return on guide investment → gradual guide decay.
+    # Coefficient 0.13 yields Oshima/Hachijo guide_diff ~0.05–0.06 at
+    # typical ob values — just above RELATION_TOLERANCE (0.05), so S3 alone
+    # can produce a detectable guide divergence in some parameter draws.
+    # Identifiability consequence: CA(guide_attracts_bombus) is now
+    # partially data-driven rather than structurally forced to 1.0.
+    # S1 remains the stronger mechanism (~0.30–0.43 guide range vs 0.06–0.09
+    # for S3), so P(S1 | guide_pattern) > 0.5 when S1 is the true generator.
     #
-    # Previously coefficient was 0.07, but that allowed mainland-Hachijo
-    # guide difference = 0.07 * 0.85 = 0.0595 > RELATION_TOLERANCE (0.05),
-    # violating the design intent when a full gradient (incl. mainland) is
-    # used as POM.  Set to 0.00 to strictly enforce the design.
+    # Partial herkogamy / flower effects (~30 % of S2's coordinated syndrome):
+    # Sustained isolation creates ongoing reproductive-assurance pressure that
+    # gradually reduces herkogamy and flower investment even without the full
+    # S2 co-evolutionary feedback.  CA(selfing_syndrome) < 1.0 reflects real
+    # data-level S2/S3 confounding, not a modelling shortcut.
     if switches.island_common_cause > 0:
         w = switches.island_common_cause
-        # S3 as "single upstream cause": isolation reduces pollinator service
-        # overall, creating reproductive-assurance pressure on selfing rate.
-        # The magnitude is modulated by (1 - ob): plants with high outcrossing
-        # benefit resist RA-selfing more strongly.
-        #
-        # S3 drives selfing strongly, and produces partial herkogamy / flower
-        # reduction (~30 % of S2's coordinated syndrome magnitude).
-        #
-        # Biological rationale: sustained island isolation creates ongoing
-        # reproductive-assurance selection pressure that — over many generations —
-        # can gradually reduce herkogamy and flower investment even without the
-        # full co-evolutionary selfing-syndrome feedback (S2).  The effect is
-        # weaker and less coordinated than S2, but non-negligible at the two-
-        # endpoint Oshima/Hachijo comparison level.
-        #
-        # Identifiability consequence: S1+S3 (without S2) CAN produce pairwise
-        # pattern matches for herkogamy and flower_size, making S2 vs S3
-        # genuinely ambiguous from two-endpoint data alone.  Full S2 identification
-        # requires a gradient (intermediate islands) or a bagging experiment.
-        # This is the biologically honest design: CA(selfing_syndrome) < 1.0
-        # reflects real data-level confounding, not a modelling shortcut.
-        #
-        # guide: S3 has a negligible direct effect on nectar guide expression.
-        # Island isolation reduces total pollinator service but not the
-        # Bombus-specific reinforcement that maintains guide expression.
-        # Coefficient 0.015 yields a maximum guide contribution of ~0.010 —
-        # well below RELATION_TOLERANCE (0.05), so S3 alone never produces
-        # a detectable guide divergence.  guide_attracts_bombus (S1) remains
-        # the only pathway that exceeds the pairwise-relation tolerance.
         selfing_drive = isolation * clamp01(0.55 + (1.0 - ob) * 0.45)
         selfing   += w * 0.55 * selfing_drive
-        # Partial morphological effects (~30 % of S2): see rationale above.
-        herkogamy -= w * 0.16 * selfing_drive
-        flower    -= w * 0.13 * selfing_drive
-        guide     -= w * 0.015 * selfing_drive   # negligible; < RELATION_TOLERANCE
+        herkogamy -= w * 0.16 * selfing_drive   # ~30 % of S2 magnitude
+        flower    -= w * 0.13 * selfing_drive   # ~30 % of S2 magnitude
+        guide     -= w * 0.13 * selfing_drive   # partial; ~30 % of S1 magnitude
 
     # ------------------------------------------------------------------
     # (S4 removed — drift is always-on via Ne, not a binary switch)
