@@ -96,21 +96,25 @@ def test_loo_includes_previously_rejected():
     results = observation_contribution(evaluated_rows, _TEST_SWITCHES, threshold=THRESHOLD)
     assert results, "Should return non-empty OC_k results"
 
-    # Find OC_k for pattern_A, any switch
+    # OC_k is pattern-level: exactly one entry per pattern (not per switch).
     oc_A = [r for r in results if r.pattern == "pattern_A"]
-    assert oc_A, "Should have OC_k for pattern_A"
+    assert len(oc_A) == 1, (
+        f"OC_k is pattern-level: expected exactly 1 entry for pattern_A, got {len(oc_A)}. "
+        "It must NOT be replicated per switch."
+    )
+    oc_A_k = oc_A[0]
+    assert oc_A_k.level == "pattern"
+    assert oc_A_k.n_switches == len(_TEST_SWITCHES)
 
     # The LOO set for pattern_A must include row_X (previously rejected)
-    oc_A_s1 = next((r for r in oc_A if r.switch == "S1"), None)
-    assert oc_A_s1 is not None
-    assert oc_A_s1.n_loo > oc_A_s1.n_full, (
-        f"LOO set (n={oc_A_s1.n_loo}) must be larger than full accepted set "
-        f"(n={oc_A_s1.n_full}) when removing pattern_A causes row_X to pass. "
+    assert oc_A_k.n_loo > oc_A_k.n_full, (
+        f"LOO set (n={oc_A_k.n_loo}) must be larger than full accepted set "
+        f"(n={oc_A_k.n_full}) when removing pattern_A causes row_X to pass. "
         f"This verifies observation_contribution() uses evaluated_rows, not accepted_rows."
     )
     print(f"[PASS] test_loo_includes_previously_rejected  "
-          f"n_full={oc_A_s1.n_full}  n_loo={oc_A_s1.n_loo}  "
-          f"OC_k(pattern_A)={oc_A_s1.OC_k:.4f}")
+          f"n_full={oc_A_k.n_full}  n_loo={oc_A_k.n_loo}  "
+          f"OC_k(pattern_A)={oc_A_k.OC_k:.4f}")
 
 
 # ---------------------------------------------------------------------------
@@ -133,12 +137,12 @@ def test_accepted_only_underestimates_oc():
     oc_eval = observation_contribution(evaluated_rows, _TEST_SWITCHES, threshold=THRESHOLD)
     oc_acc  = observation_contribution(accepted_rows,  _TEST_SWITCHES, threshold=THRESHOLD)
 
-    # Find OC for pattern_A, switch S1
-    def _get(results, pat, sw):
-        return next((r for r in results if r.pattern == pat and r.switch == sw), None)
+    # OC_k is pattern-level: one entry per pattern.
+    def _get(results, pat):
+        return next((r for r in results if r.pattern == pat), None)
 
-    ea = _get(oc_eval, "pattern_A", "S1")
-    aa = _get(oc_acc,  "pattern_A", "S1")
+    ea = _get(oc_eval, "pattern_A")
+    aa = _get(oc_acc,  "pattern_A")
 
     assert ea is not None and aa is not None
 

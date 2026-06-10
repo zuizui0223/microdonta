@@ -967,6 +967,7 @@ if _step_idx == 0:
             best_config as _best_config,
             ensemble_ca_j as _ensemble_ca_j,
             sensitivity_range as _sensitivity_range,
+            classify_switch_robustness as _classify_robustness,
         )
         from causal_model.switch_inference import GRADIENT_THRESH_MAP as _THRESH_MAP
         from causal_model.parameter_sampling import predefined_tradeoff_presets as _presets_fn
@@ -1052,22 +1053,17 @@ if _step_idx == 0:
             _ca_avg   = _ensemble_ca_j(_ens_res, min_accepted=1)
 
             st.markdown("#### ロバスト結論サマリー")
-            if _ca_avg and _ens_sens_cur:
-                _rob_rows = []
-                for _sw in _sw_names:
-                    _ca_v = _ca_avg.get(_sw, float("nan"))
-                    _s_v  = _ens_sens_cur.get(_sw, float("nan"))
-                    _verdict = (
-                        "✅ ON  🔒 Robust"  if _ca_v > 2/3 and _s_v < 0.20 else
-                        "❌ OFF 🔒 Robust"  if _ca_v < 1/3 and _s_v < 0.20 else
-                        "✅ ON  ⚠ 感度大"  if _ca_v > 2/3 else
-                        "❌ OFF ⚠ 感度大"  if _ca_v < 1/3 else
-                        "〜 不定  ⚠ 要追加観測"
-                    )
-                    _rob_rows.append({
-                        "switch": _sw, "ensemble CA_j": round(_ca_v, 3),
-                        "sensitivity": round(_s_v, 3), "verdict": _verdict,
-                    })
+            _rob_verdicts = _classify_robustness(_ens_res)
+            st.session_state["_ens_robustness"] = _rob_verdicts
+            if _rob_verdicts:
+                _icon = {"ON": "✅ ON", "OFF": "❌ OFF", "indeterminate": "〜 不定"}
+                _rob_rows = [{
+                    "switch": _rv.switch,
+                    "ensemble CA_j": _rv.mean_ca_j,
+                    "sensitivity": _rv.sensitivity_range,
+                    "verdict": f"{_icon.get(_rv.call, _rv.call)}  "
+                               + ("🔒 Robust" if _rv.is_robust else "⚠ 先験/ε 感度大"),
+                } for _rv in _rob_verdicts]
                 stretch_df(pd.DataFrame(_rob_rows), hide_index=True)
 
             _best = _best_config(_ens_res, min_accepted=int(_ens_min_n))
@@ -1400,18 +1396,24 @@ elif _step_idx == 4:
 
     st.markdown("### OC_k = R(O) − R(O \\ {k})")
     st.caption("LOO: パターン k を除いたときの R_RACH の低下量。OC_k > 0 → k は resolvability に貢献。")
+    st.caption(
+        "**OC_k は pattern-level**（switch 別ではありません）。R_RACH はスイッチ結合 "
+        "s ∈ {0,1}^K の*同時*分解能なので、OC_k はパターン k がメカニズム結合全体の "
+        "分解能をどれだけ変えるかを表し、パターンごとに 1 値です。"
+    )
 
     if _oc_ok:
         if _oc_results:
             _df_oc = pd.DataFrame([
-                {"pattern": r.pattern, "switch": r.switch, "OC_k": round(r.OC_k, 4),
-                 "R_full": round(r.R_full, 4), "R_loo": round(r.R_loo, 4), "n_loo": r.n_loo}
+                {"pattern": r.pattern, "level": r.level, "OC_k": round(r.OC_k, 4),
+                 "R_full": round(r.R_full, 4), "R_loo": round(r.R_loo, 4),
+                 "n_loo": r.n_loo, "n_switches": r.n_switches}
                 for r in _oc_results
             ])
             _df_oc_nz = _df_oc[_df_oc["OC_k"].abs() > 0.0001].sort_values("OC_k", ascending=False)
             if not _df_oc_nz.empty:
                 st.bar_chart(
-                    _df_oc_nz.set_index(_df_oc_nz["pattern"] + " → " + _df_oc_nz["switch"])[["OC_k"]],
+                    _df_oc_nz.set_index("pattern")[["OC_k"]],
                     width="stretch",
                 )
                 stretch_df(_df_oc_nz, hide_index=True)
@@ -1434,6 +1436,7 @@ elif _step_idx == 5:
     sp = st.session_state["sp_result"]
 
     _ens_sens_nov = st.session_state.get("_ens_sens", {})
+    _sensitive_sw_names = [k for k, v in _ens_sens_nov.items() if v >= 0.20]
     if _ens_sens_nov:
         _sen_nov = {k: v for k, v in _ens_sens_nov.items() if v >= 0.20}
         if _sen_nov:
@@ -1455,7 +1458,8 @@ elif _step_idx == 5:
             rach_summary as _rach_summary_fn2,
         )
         _rs2         = _rach_summary_fn2(sp.accepted_rows, CAMPANULA_SWITCHES)
-        _nov_results = _nov_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
+        _nov_results = _nov_fn(sp.accepted_rows, CAMPANULA_SWITCHES,
+                               sensitive_switches=_sensitive_sw_names)
         _nov_ok = True
     except Exception as _nov_err:
         _nov_ok = False
@@ -1469,6 +1473,8 @@ elif _step_idx == 5:
         if _nov_ok and _nov_results:
             _df_nov = pd.DataFrame([
                 {"priority": r.priority, "candidate": r.candidate,
+                 "→ sensitive": "⚠ " + ", ".join(r.sensitive_targets)
+                                if r.targets_sensitive_switch else "",
                  "ΔR (approx)": round(r.expected_resolvability_gain, 4),
                  "target switches": ", ".join(r.target_switches),
                  "rationale": r.rationale[:120]}
@@ -1612,11 +1618,13 @@ elif _step_idx == 7:
         _thresh_dl = GRADIENT_THRESH_MAP.get(_sp_settings.get("acceptance_rule", acceptance_rule), 1.0)
         _oc_dl_res  = _oc_dl(getattr(sp, "evaluated_rows", None) or sp.accepted_rows,
                              CAMPANULA_SWITCHES, threshold=_thresh_dl)
-        _nov_dl_res = _nov_dl(sp.accepted_rows, CAMPANULA_SWITCHES)
+        _sens_dl = [k for k, v in st.session_state.get("_ens_sens", {}).items() if v >= 0.20]
+        _nov_dl_res = _nov_dl(sp.accepted_rows, CAMPANULA_SWITCHES,
+                              sensitive_switches=_sens_dl)
         _rs_dl_res  = _rs_dl(sp.accepted_rows, CAMPANULA_SWITCHES)
         _rm_dl_res  = _rm_dl(sp.accepted_rows, CAMPANULA_SWITCHES)
         _df_oc_dl = pd.DataFrame([
-            {"pattern": r.pattern, "switch": r.switch,
+            {"pattern": r.pattern, "level": r.level, "n_switches": r.n_switches,
              "OC_k": round(r.OC_k, 4), "R_full": round(r.R_full, 4),
              "R_loo": round(r.R_loo, 4), "n_full": r.n_full, "n_loo": r.n_loo}
             for r in _oc_dl_res
@@ -1626,6 +1634,8 @@ elif _step_idx == 7:
              "NOV_delta_R": round(r.expected_resolvability_gain, 4),
              "R_current": round(r.current_R, 4),
              "target_switches": ", ".join(r.target_switches),
+             "targets_sensitive_switch": r.targets_sensitive_switch,
+             "sensitive_targets": ", ".join(r.sensitive_targets),
              "rationale": r.rationale[:300]}
             for r in _nov_dl_res
         ]) if _nov_dl_res else pd.DataFrame()
@@ -1645,7 +1655,61 @@ elif _step_idx == 7:
         _df_nov_dl = pd.DataFrame()
         _df_summary_dl = pd.DataFrame()
 
+    # Ensemble provenance: the main RACH result is reported from the
+    # ensemble-selected best setting, so the reproducible ZIP must carry the
+    # ensemble scan, the robust/sensitive verdicts, and the selected setting.
+    _df_ens_dl = pd.DataFrame()
+    _df_rob_dl = pd.DataFrame()
+    _df_best_dl = pd.DataFrame()
+    if "_ens_results" in st.session_state:
+        try:
+            from causal_model.ensemble import (
+                classify_switch_robustness as _csr_dl,
+                best_config as _bc_dl,
+            )
+            _ens_dl_res = st.session_state["_ens_results"]
+            _sw_dl = [sw.name for sw in CAMPANULA_SWITCHES]
+            _ens_rows_dl = []
+            for _r in _ens_dl_res:
+                _row = {"preset": _r.preset_name, "acceptance_rule": _r.acceptance_rule,
+                        "threshold": _r.threshold, "n_accepted": _r.n_accepted,
+                        "n_evaluated": _r.n_evaluated,
+                        "D_RACH": _r.D_RACH, "R_RACH": _r.R_RACH}
+                for _sw in _sw_dl:
+                    _row[f"CA_{_sw}"] = _r.ca_j.get(_sw, float("nan"))
+                _ens_rows_dl.append(_row)
+            _df_ens_dl = pd.DataFrame(_ens_rows_dl)
+
+            _rob_dl = _csr_dl(_ens_dl_res)
+            _df_rob_dl = pd.DataFrame([
+                {"switch": r.switch, "mean_CA_j": r.mean_ca_j,
+                 "sensitivity_range": r.sensitivity_range,
+                 "is_robust": r.is_robust, "call": r.call, "verdict": r.verdict}
+                for r in _rob_dl
+            ])
+
+            _best_dl = _bc_dl(_ens_dl_res, min_accepted=20)
+            if _best_dl is not None:
+                _best_row = {
+                    "preset": _best_dl.preset_name,
+                    "acceptance_rule": _best_dl.acceptance_rule,
+                    "threshold": _best_dl.threshold,
+                    "n_accepted": _best_dl.n_accepted,
+                    "n_evaluated": _best_dl.n_evaluated,
+                    "D_RACH": _best_dl.D_RACH, "R_RACH": _best_dl.R_RACH,
+                }
+                for _sw in _sw_dl:
+                    _best_row[f"CA_{_sw}"] = _best_dl.ca_j.get(_sw, float("nan"))
+                _df_best_dl = pd.DataFrame([_best_row])
+        except Exception:
+            _df_ens_dl = pd.DataFrame()
+            _df_rob_dl = pd.DataFrame()
+            _df_best_dl = pd.DataFrame()
+
     _zip_contents = {
+        f"{_sp_tag}_ensemble_results":         _df_ens_dl,
+        f"{_sp_tag}_robustness_table":         _df_rob_dl,
+        f"{_sp_tag}_best_setting_summary":     _df_best_dl,
         f"{_sp_tag}_accepted_rows":            _df_accepted,
         f"{_sp_tag}_evaluated_rows":           _df_evaluated,
         f"{_sp_tag}_posterior_table":          _df_posterior,
@@ -1662,7 +1726,8 @@ elif _step_idx == 7:
         use_container_width=True, type="primary",
     )
     st.caption(
-        "ZIP: accepted_rows · evaluated_rows · posterior_table · "
+        "ZIP: ensemble_results · robustness_table · best_setting_summary · "
+        "accepted_rows · evaluated_rows · posterior_table · "
         "observation_contribution · nov_table · rach_summary"
     )
     st.divider()
