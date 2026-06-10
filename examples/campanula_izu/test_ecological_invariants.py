@@ -1,23 +1,36 @@
 """Ecological invariant tests for the Campanula / Izu RACH model.
 
-These tests verify that the simulation honours the fundamental ecological
-design guarantees that the ABC inference depends on:
+IMPORTANT — two distinct pattern sets are used here:
 
-1. NULL MODEL FAILS POM
-   With all pathway switches OFF, the proxy simulation must NOT satisfy the
-   gradient POM (6 gradient-direction patterns).  If the null model always
-   passed the POM, every switch combination would be accepted, making the
-   Bayes factors uninformative.
+  response_target   : 5 field_derived pairwise patterns (Oshima vs Hachijo,
+                      Inoue 1986).  These are the ONLY valid y_obs for RACH
+                      inference.  Used in ABC acceptance.
 
-2. ISLAND-SYNDROME SWITCHES PASS POM
-   With S1 (Bombus-guide link) + S2 (selfing syndrome) both ON, the proxy
-   simulation must satisfy the full gradient POM across the isolation axis.
+  hypothesis_prediction: 6 gradient/rank patterns expected from hypotheses
+                      but NOT directly measured.  Excluded from ABC to prevent
+                      circular inference (using hypothesis predictions to test
+                      hypotheses).  USED IN THESE TESTS for model mechanics
+                      verification only — verifying the model CAN produce the
+                      expected gradients when the relevant switches are ON.
 
-3. NULL MODEL ALWAYS PRODUCES NEUTRAL DIVERSITY GRADIENT
-   With all selection switches OFF, drift is still active (Ne from
-   island_distance).  neutral_diversity_isolation must PASS even with
-   all switches OFF — confirming drift is a continuous background process,
-   not a binary S4 switch.
+These tests verify model MECHANICS, not ABC inference validity:
+
+1. NULL MODEL FAILS GRADIENT POM (mechanics test, hypothesis_prediction)
+   With all switches OFF, the model must NOT satisfy the gradient POM
+   (hypothesis_prediction patterns).  This verifies the gradient patterns
+   have discriminating power for model diagnostics.
+
+2. ISLAND-SYNDROME SWITCHES PASS GRADIENT POM (mechanics test)
+   With S1+S2 ON, the model must satisfy the full gradient.
+   Confirms the selection mechanisms produce the expected gradients.
+
+3. NULL MODEL PRODUCES NEUTRAL DIVERSITY GRADIENT (axiom test)
+   Wright-Fisher drift is always active (finite population axiom).
+   neutral_diversity must decline with isolation even with all switches OFF.
+
+4. PARAMETER CONSTRAINTS CONSISTENT ACROSS MODULES
+
+5. INPUT_CONTEXT / hypothesis_prediction EXCLUDED FROM ABC WEIGHTED_MATCH_RATE
 
 4. PARAMETER CONSTRAINTS ARE CONSISTENT ACROSS BOTH MODULES
    C1-C4 in parameter_constraints.py and parameter_sampling.py must agree
@@ -57,9 +70,30 @@ from examples.campanula_izu.campanula_phenomenological import simulate_campanula
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _gradient_patterns_for_mechanics():
+    """Return gradient/rank patterns for MODEL MECHANICS tests.
+
+    These are hypothesis_prediction patterns (excluded from ABC to prevent
+    circular inference), re-labelled as response_target so evaluate_patterns()
+    will process them.  This is valid here because we are testing MODEL
+    BEHAVIOR (can the simulation produce the expected gradients?) not ABC
+    inference validity.  The role override is local to this test module.
+    """
+    all_rows = load_observed_pattern_table()
+    rows = [
+        row for row in all_rows
+        if row.get("role") == "hypothesis_prediction"
+        and row.get("type") in ("gradient_slope", "rank_order")
+    ]
+    # Override role so evaluate_patterns() processes them (role guard skips
+    # hypothesis_prediction; for mechanics tests we want all evaluated)
+    return [{**r, "role": "response_target"} for r in rows]
+
+
 def _run(sw: PathwaySwitches, n_points: int = 8):
+    """Run phenomenological model and evaluate against gradient mechanics patterns."""
     outputs, synth_env = simulate_campanula_isolation_gradient(sw, n_points=n_points)
-    patterns = observed_gradient_only_patterns()
+    patterns = _gradient_patterns_for_mechanics()
     result = evaluate_patterns(list(outputs.values()), patterns, synth_env)
     return result
 
@@ -193,80 +227,78 @@ def test_constraint_modules_consistent():
 # ---------------------------------------------------------------------------
 
 def test_input_context_excluded_from_abc():
-    """Verify input_context rows are not counted in weighted_match_rate.
+    """Verify input_context, diagnostic_only, and hypothesis_prediction rows are
+    not counted in weighted_match_rate.
 
-    The Bombus_frequency_pairwise row has role=input_context.  It must be
-    absent from the EvaluationResult produced by evaluate_patterns().
+    Role taxonomy (three excluded roles):
+    - input_context: env predictor variable, always matches by construction
+    - diagnostic_only: syndrome/mechanism definition (circular)
+    - hypothesis_prediction: gradient expected from hypothesis, not field data
+
+    Only response_target rows (5 field_derived pairwise, Inoue 1986) enter ABC.
 
     Two checks:
-    a) response_target_patterns() returns no input_context rows.
-    b) evaluate_patterns() with a mixed list (gradient rows + one synthetic
-       input_context row) produces the same weighted_match_rate as with the
-       response_target-only list — the defensive role guard must filter it out.
-
-    Note: pairwise rows (e.g. nectar_guide_pairwise) require named populations
-    (Oshima, Hachijo) that do not exist in the synthetic isolation gradient.
-    The test therefore uses gradient_slope / rank_order rows only, plus one
-    injected input_context row with the same type, to isolate the role guard.
+    a) response_target_patterns() contains no excluded-role rows.
+    b) evaluate_patterns() with a mixed list (response_target rows + one
+       synthetic input_context row) produces the same weighted_match_rate —
+       the role guard must filter it out.
     """
     all_rows = load_observed_pattern_table()
     rt_rows  = response_target_patterns()
 
-    # a) response_target_patterns() must contain no input_context rows
-    input_context_in_rt = [r for r in rt_rows if r.get("role") == "input_context"]
-    assert not input_context_in_rt, (
+    # a) response_target_patterns() must contain only response_target rows
+    excluded_in_rt = [r for r in rt_rows if r.get("role") != "response_target"]
+    assert not excluded_in_rt, (
         f"FAIL test_input_context_excluded_from_abc (a): "
-        f"response_target_patterns() returned {len(input_context_in_rt)} "
-        f"input_context row(s): {[r['pattern'] for r in input_context_in_rt]}. "
+        f"response_target_patterns() returned {len(excluded_in_rt)} "
+        f"non-response_target row(s): {[r['pattern'] for r in excluded_in_rt]}. "
         f"Only response_target rows should be included."
     )
 
-    # b) evaluate_patterns() must skip input_context rows via the role guard.
-    #    Build a gradient-only test list so no named population lookup is needed.
+    # b) evaluate_patterns() must skip all excluded-role rows via the role guard.
+    #    Use hypothesis_prediction gradient rows as base (they now exist instead
+    #    of gradient response_target rows) plus a synthetic input_context row.
     sw = PathwaySwitches()
     outputs, synth_env = simulate_campanula_isolation_gradient(sw, n_points=8)
 
-    gradient_rt = [
-        r for r in rt_rows
-        if r.get("type", "") in ("gradient_slope", "rank_order")
-    ]
-    # Synthetic input_context row: same type as gradient, but role=input_context.
-    # If the guard works, adding this row must NOT change weighted_match_rate.
+    gradient_hp = _gradient_patterns_for_mechanics()  # hypothesis_prediction rows
+    # Synthetic input_context row with enormous weight — must NOT change rate
     synthetic_input_ctx = {
         "pattern": "synthetic_predictor",
         "type": "gradient_slope",
-        "variable": "nectar_guide",          # same variable — would always match
+        "variable": "nectar_guide",
         "populations": "",
         "predictor": "distance_from_mainland",
-        "expected_direction": "negative",    # matches the real gradient
-        "weight": "999.0",                   # enormous weight — would dominate if not skipped
+        "expected_direction": "negative",
+        "weight": "999.0",
         "role": "input_context",
     }
-    mixed_rows = gradient_rt + [synthetic_input_ctx]
+    mixed_rows = gradient_hp + [synthetic_input_ctx]
 
-    result_rt    = evaluate_patterns(list(outputs.values()), gradient_rt,  synth_env)
-    result_mixed = evaluate_patterns(list(outputs.values()), mixed_rows,   synth_env)
+    result_hp    = evaluate_patterns(list(outputs.values()), gradient_hp,   synth_env)
+    result_mixed = evaluate_patterns(list(outputs.values()), mixed_rows,    synth_env)
 
-    assert result_mixed.weighted_match_rate == result_rt.weighted_match_rate, (
+    assert result_mixed.weighted_match_rate == result_hp.weighted_match_rate, (
         f"FAIL test_input_context_excluded_from_abc (b): "
         f"evaluate_patterns() with mixed list gave "
         f"weighted_match_rate={result_mixed.weighted_match_rate:.4f} but "
-        f"with response_target-only list gave "
-        f"{result_rt.weighted_match_rate:.4f}. "
-        f"The role guard is not excluding input_context rows correctly. "
+        f"with hypothesis_prediction-only list gave "
+        f"{result_hp.weighted_match_rate:.4f}. "
+        f"The role guard is not excluding input_context rows. "
         f"(A weight-999 input_context row was injected.)"
     )
-    assert result_mixed.n_total == result_rt.n_total, (
+    assert result_mixed.n_total == result_hp.n_total, (
         f"FAIL test_input_context_excluded_from_abc (b): "
-        f"n_total differs: mixed={result_mixed.n_total} vs rt={result_rt.n_total}. "
+        f"n_total differs: mixed={result_mixed.n_total} vs hp={result_hp.n_total}. "
         f"input_context rows are leaking into EvaluationResult."
     )
-    n_input_ctx = sum(1 for r in all_rows if r.get("role") == "input_context")
+    n_excluded = sum(1 for r in all_rows if r.get("role") != "response_target")
+    n_abc = sum(1 for r in all_rows if r.get("role") == "response_target")
     print(
         f"[PASS] test_input_context_excluded_from_abc  "
-        f"n_input_context_in_csv={n_input_ctx}  "
-        f"n_response_target_gradient={result_rt.n_total}  "
-        f"match_rate_unchanged={result_rt.weighted_match_rate:.3f}"
+        f"n_abc_patterns={n_abc}  "
+        f"n_excluded={n_excluded}  "
+        f"match_rate_unchanged={result_hp.weighted_match_rate:.3f}"
     )
 
 

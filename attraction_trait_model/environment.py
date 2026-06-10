@@ -59,11 +59,27 @@ class Environment:
     def __post_init__(self) -> None:
         """Derive effective_population_size from island_distance if not explicitly set.
 
-        Ecological rationale: Ne decreases with isolation because:
-        1. Smaller, more isolated islands support smaller populations
-        2. Reduced gene flow means less demographic rescue
-        Fitted from Izu Island data: Ne_proxy ≈ 1.0 - 0.765 × isolation (R²=0.93)
-        Ne is a consequence of isolation, not an independent variable.
+        Epistemic taxonomy
+        ------------------
+        DIRECTION (普遍的原理 — universal ecological principle):
+            Ne decreases with isolation.  Applies to all island populations:
+            more isolated islands are smaller and receive less gene flow.
+            This is a general biogeographic principle, not system-specific.
+
+        COEFFICIENT 0.765 (観測データ — system-specific empirical input):
+            The linear coefficient is fitted to Izu Island data (R²=0.93).
+            It is specific to this archipelago and MUST be treated as an
+            empirical input, NOT as a universal constant.
+            Source: independent population census / allozyme survey data.
+            If this coefficient were derived from the same neutral-diversity
+            data used in observed_patterns.csv, it would create circularity
+            in the neutral_diversity_isolation pattern evaluation.
+
+        Mathematical consequence:
+            Ne is a CONSEQUENCE of isolation, not an independent variable.
+            It is fixed as an environmental input (like Bombus frequency),
+            not sampled as a latent parameter θ.  This is valid ONLY if the
+            0.765 coefficient comes from data independent of y_obs.
         """
         if self.effective_population_size < 0:
             self.effective_population_size = max(0.05, 1.0 - 0.765 * self.island_distance)

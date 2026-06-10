@@ -170,15 +170,35 @@ def evaluate_patterns(
 
     result = EvaluationResult()
     for row in observed_rows:
-        # Defensive role guard: skip input_context and diagnostic_only rows.
-        # input_context: predictor variables injected from env, not simulated.
-        # diagnostic_only: patterns designed to match a specific switch
-        #   assumption — using them in ABC creates circular inference because
-        #   the posterior P(S|A_ε) reflects the researcher's assumption rather
-        #   than emergent data patterns.  These rows are kept in the CSV for
-        #   transparency and post-hoc diagnostics but must NOT enter ABC.
+        # Role taxonomy — only 'response_target' rows enter ABC.
+        #
+        # input_context:
+        #   Predictor variables (e.g. Bombus_frequency) injected from
+        #   ecological_context, not simulated.  Always matches by construction
+        #   → circular if counted toward acceptance.
+        #
+        # diagnostic_only:
+        #   Patterns whose structure encodes a switch assumption (syndrome
+        #   definition, S1/S2 mechanism description).  Using them in ABC
+        #   means P(S|A_ε) reflects researcher assumptions, not data.
+        #
+        # hypothesis_prediction:
+        #   Gradient/rank patterns that are PREDICTIONS from the causal
+        #   hypotheses, not independent field measurements.  E.g.
+        #   "selfing increases with isolation" is what we expect IF S2 is
+        #   active — treating it as y_obs makes the inference circular.
+        #   Only the 5 pairwise field_derived patterns (Oshima vs Hachijo,
+        #   Inoue 1986) are truly independent observations.
+        #
+        # Taxonomy:
+        #   公理  (axiom)              → encoded in f(θ,s) mechanics
+        #   普遍  (universal principle) → encoded in f(θ,s) mechanics
+        #   観測  (field observation)  → response_target (used in ABC)
+        #   仮説予測 (hypothesis pred) → hypothesis_prediction (excluded)
+        #   循環  (circular design)    → diagnostic_only (excluded)
+        #   入力  (env input)          → input_context (excluded)
         role = row.get("role", "response_target")
-        if role in ("input_context", "diagnostic_only"):
+        if role in ("input_context", "diagnostic_only", "hypothesis_prediction"):
             continue
         ptype = row.get("type", "pairwise_relation")
         weight = float(row.get("weight", 1.0))

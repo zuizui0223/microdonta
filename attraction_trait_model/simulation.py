@@ -545,22 +545,25 @@ def simulate_population(
     **population-level expected heterozygosity** H (Wright–Fisher drift
     formula), NOT as a mean of per-agent ``neutral_diversity`` fields.
 
-    Per-generation update:
+    Per-generation update (公理 — mathematical axiom):
         H_{t+1} = H_t × (1 - 1 / (2 · Ne_eff))
 
-    where ``Ne_eff`` = ``population_size × env.effective_population_size``.
+    This is the Wright-Fisher expected heterozygosity formula.  It is a
+    mathematical axiom of population genetics, not a hypothesis.  It
+    applies to ALL finite sexual populations regardless of organism or
+    system.
 
-    Ecological rationale:
-    Genetic drift is ALWAYS present in finite populations — it is not a
-    binary switch.  Ne decreases continuously with island isolation
-    (env.effective_population_size is derived from island_distance via
-    Ne_proxy ≈ 1.0 − 0.765 × isolation).  This means H automatically
-    declines faster on more isolated islands, producing a negative
-    neutral_diversity gradient without any switch being required.
+    Ne_eff = population_size × env.effective_population_size
 
-    The drift_null switch (S4) has been removed.  All structures share
-    the same Ne-from-isolation mechanics; the gradient emerges from
-    continuous parameters (drift_strength in θ, Ne in env).
+    where env.effective_population_size encodes:
+    - DIRECTION (普遍的原理): Ne decreases with isolation (universal)
+    - COEFFICIENT 0.765 (観測データ): fitted to Izu Island data; system-
+      specific empirical input, treated as fixed known value
+
+    Genetic drift is ALWAYS present (縛り — universal constraint).
+    The drift_null switch (S4) has been removed because it attempted to
+    make drift binary, which contradicts the axiom that all finite
+    populations experience drift continuously.
     """
     rng = _get_rng(seed)
     population = initialize_population(population_size, initial_agent=initial_agent, rng=rng)
