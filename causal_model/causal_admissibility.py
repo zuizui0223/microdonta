@@ -431,19 +431,28 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
         outcomes=[
             CandidateOutcome(
                 name="high_ra_on_hachijo",
-                description="Bagged/open seed-set ratio higher on Hachijo: pollination limitation confirmed.",
+                description=(
+                    "Bagged/open seed-set ratio higher on Hachijo: pollination limitation "
+                    "confirmed → higher selfing rate on Hachijo."
+                ),
                 prior_probability=0.6,
                 extra_pattern_rows=[
-                    _pw("bagging_pairwise_RA", "selfing_benefit",
+                    # selfing_benefit is a θ parameter (not in ABMPopulationProxy).
+                    # selfing_rate is the population-level simulation output that captures
+                    # the same reproductive-assurance signal.
+                    _pw("bagging_pairwise_RA", "selfing_rate",
                         "Oshima", "Hachijo", "Oshima < Hachijo", weight=1.0),
                 ],
             ),
             CandidateOutcome(
                 name="equal_ra_both_islands",
-                description="Bagged/open ratio similar on both islands: halictids compensate (S4 favoured).",
+                description=(
+                    "Bagged/open ratio similar on both islands: halictids compensate (S4 favoured) "
+                    "→ Hachijo selfing rate not elevated above Oshima."
+                ),
                 prior_probability=0.4,
                 extra_pattern_rows=[
-                    _pw("bagging_pairwise_RA", "selfing_benefit",
+                    _pw("bagging_pairwise_RA", "selfing_rate",
                         "Oshima", "Hachijo", "Oshima > Hachijo", weight=1.0),
                 ],
             ),
