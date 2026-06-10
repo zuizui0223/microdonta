@@ -686,21 +686,44 @@ def generation_timeseries_long(df_generation_rows: pd.DataFrame) -> pd.DataFrame
 # UI
 # ============================================================================
 
-st.title("RACH — Causal Admissibility & Degeneracy Framework")
-st.markdown(
-    "**RACH** (*Restricted Admissible Causal Hypotheses*) defines the **admissible causal region** "
-    "A_ε — the subset of latent parameter–mechanism space that satisfies biological constraints "
-    "and reproduces independent observations — then quantifies **which mechanisms remain admissible** "
-    "and **how degenerate the causal explanation is**."
-)
-st.info(
-    "**Worked example:** *Campanula punctata* (シマホタルブクロ) along the Izu Islands isolation gradient.  \n"
-    "The Campanula system illustrates RACH theory. The framework itself is general — "
-    "any ecological system with a generative model f, constraint grammar G, "
-    "and independent observations y_obs can be analysed with RACH."
-)
+# ---------------------------------------------------------------------------
+# Navigation steps
+# ---------------------------------------------------------------------------
+_STEPS = [
+    "① Ensemble",
+    "② RACH Inference",
+    "③ CA_j",
+    "④ D · R",
+    "⑤ OC_k",
+    "⑥ NOV",
+    "⑦ Parameter A_ε",
+    "⑧ Downloads",
+]
 
-# --- Theory panel -------------------------------------------------------
+_STEP_SUBTITLES = {
+    "① Ensemble":        "Prior sensitivity grid — robustness check",
+    "② RACH Inference":  "Run A_ε sampling (ABM backend)",
+    "③ CA_j":            "Causal admissibility P(s_j=1 | A_ε)",
+    "④ D · R":           "Degeneracy & resolvability",
+    "⑤ OC_k":            "Observation contribution (LOO)",
+    "⑥ NOV":             "Next-observation value",
+    "⑦ Parameter A_ε":   "Accepted (θ,s) in parameter space",
+    "⑧ Downloads":       "Export all tables as CSV / ZIP",
+}
+
+if "nav_step" not in st.session_state:
+    st.session_state["nav_step"] = _STEPS[0]
+
+# ---------------------------------------------------------------------------
+# Page header (always shown)
+# ---------------------------------------------------------------------------
+st.title("RACH — Causal Admissibility & Degeneracy Framework")
+st.caption(
+    "**RACH** (*Restricted Admissible Causal Hypotheses*) — "
+    "estimates the admissible causal region A_ε and quantifies "
+    "CA_j, D, R, OC_k, NOV.  "
+    "Worked example: *Campanula punctata* / Izu Islands."
+)
 with st.expander("RACH formal definition", expanded=False):
     st.markdown(r"""
 **Core RACH object — admissible causal region:**
@@ -773,9 +796,9 @@ with st.expander("RACH inference workflow", expanded=False):
 # Sidebar
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.header("RACH inference settings")
+    st.header("⚙ 設定")
 
-    # --- Shared: preset and acceptance rule ---
+    # ── Shared inference settings ──────────────────────────────────────────
     presets = predefined_tradeoff_presets()
     _preset_keys = list(presets.keys())
     preset_name = st.selectbox(
@@ -783,11 +806,9 @@ with st.sidebar:
         _preset_keys,
         index=_preset_keys.index("literature_grounded") if "literature_grounded" in _preset_keys else 0,
         format_func=lambda k: {
-            "literature_grounded": "literature_grounded  (empirical prior — primary)",
+            "literature_grounded": "literature_grounded  (empirical — primary)",
             "broad_prior":         "broad_prior  (sensitivity sweep)",
         }.get(k, k),
-        help="literature_grounded uses ranges calibrated from Izu Campanula literature. "
-             "broad_prior is for prior-sensitivity comparison.",
     )
     _rules = available_rules()
     acceptance_rule = st.selectbox(
@@ -795,1343 +816,880 @@ with st.sidebar:
         _rules,
         index=_rules.index("weighted_lax") if "weighted_lax" in _rules else 0,
         format_func=lambda r: {
-            "strict_all":      "strict — all 5 patterns must match (ε=0)",
-            "weighted_strict": "weighted strict — weighted match = 1.0",
-            "weighted_lax":    "weighted lax — weighted match ≥ 0.80  ← recommended",
-            "relaxed_0.83":    "relaxed — ≥4/5 patterns",
-            "relaxed_0.67":    "lax — ≥3/5 patterns",
+            "strict_all":      "strict — all 5 must match",
+            "weighted_strict": "weighted strict — match = 1.0",
+            "weighted_lax":    "weighted lax — match ≥ 0.80  ← recommended",
+            "relaxed_0.83":    "relaxed — ≥4/5",
+            "relaxed_0.67":    "lax — ≥3/5",
         }.get(r, r),
     )
     from causal_model.switch_inference import GRADIENT_N_PATTERNS as _N_PAT
     _thresh_display = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
-    st.caption(
-        f"y_obs: {_N_PAT} response_target patterns · "
-        f"ε threshold: weighted_match_rate ≥ {_thresh_display:.3f}"
-    )
+    st.caption(f"y_obs: {_N_PAT} patterns · threshold ≥ {_thresh_display:.3f}")
     seed = st.number_input("Random seed", 0, 999999, 42, 1)
 
-    st.divider()
-
-    # =========================================================
-    # PRIMARY: RACH inference — switch posterior (CA_j, D, R)
-    # =========================================================
-    st.subheader("RACH inference — A_ε & core quantities")
-    st.caption(
-        "Jointly samples (θ, s) from the prior, runs f(x_obs; θ, s), "
-        "and accepts draws with d ≤ ε to approximate A_ε. "
-        "Computes CA_j, D, R, OC_k, NOV from the accepted sample."
-    )
-    st.markdown(
-        "**推奨フロー:**  \n"
-        "① **Ensemble** タブでグリッド走査 → ベスト設定・ロバスト結論を確認  \n"
-        "② ベスト設定で **Run RACH inference** → CA_j / D / R を報告  \n"
-        "③ 感度が大きいスイッチに対して **NOV** → 次の観測を計画",
-        help="Ensemble は複数の (θ-prior, ε) を同時に試し、先験依存しない結論だけを抽出します。"
-    )
-    sp_backend = "stochastic_abm"
-    st.caption(BACKEND_DESCRIPTIONS[sp_backend])
-    sp_n_attempts = st.slider(
-        "Joint prior draws  (θ, s)",
-        50, 1000, 200, 50,
-        key="sp_n_abm",
-        help="Each draw samples (θ, s) jointly and runs the ABM across the 4-island gradient. "
-             "≥200 draws recommended for stable CA_j; ≥500 for stable D.",
-    )
-    sp_abm_generations = st.slider("ABM generations", 10, 80, 30, 10, key="sp_gen")
-    sp_abm_popsize    = st.slider("ABM population size", 50, 300, 100, 50, key="sp_pop")
-    sp_abm_replicates = st.slider("ABM replicates per island", 1, 5, 3, 1, key="sp_rep")
-    _est_sec = int(sp_n_attempts * 0.30 * sp_abm_replicates / 3)
-    st.caption(
-        f"Estimated runtime: ~{_est_sec}s "
-        f"({sp_n_attempts} draws × {sp_abm_replicates} rep × 4 islands)"
-    )
-    run_switch_button = st.button(
-        "Run RACH inference", type="primary", use_container_width=True
-    )
-
-    st.divider()
-
-    # =========================================================
-    # SECONDARY: Structure comparison (M1-M5 enumeration)
-    # =========================================================
-    with st.expander("Supplementary: M1-M5 structure comparison", expanded=False):
-        st.caption(
-            "Compares pre-defined causal structures by admissibility rate. "
-            "Useful for connecting switch posterior results to conventional "
-            "hypothesis enumeration. This is a secondary analysis — "
-            "the switch posterior above is the primary RACH output."
+    # ── ABM settings ───────────────────────────────────────────────────────
+    with st.expander("ABM 設定 (② で使用)", expanded=False):
+        sp_n_attempts = st.slider(
+            "Joint prior draws (θ,s)", 50, 1000, 200, 50, key="sp_n_abm",
         )
-        backend = "stochastic_abm"
-        st.caption(BACKEND_DESCRIPTIONS[backend])
-        n_attempts = st.slider("Prior parameter draws", 20, 500, 80, 20, key="n_attempts_abm")
-        generations = st.slider("ABM generations", 10, 100, 40, 10, key="m5_gen")
-        population_size = st.slider("ABM population size", 50, 500, 150, 50, key="m5_pop")
-        replicates = st.slider("ABM replicates per island", 1, 5, 1, 1, key="m5_rep")
-        run_button = st.button("Run structure comparison", use_container_width=True)
+        sp_abm_generations = st.slider("ABM generations", 10, 80, 30, 10, key="sp_gen")
+        sp_abm_popsize     = st.slider("ABM population size", 50, 300, 100, 50, key="sp_pop")
+        sp_abm_replicates  = st.slider("ABM replicates / island", 1, 5, 3, 1, key="sp_rep")
+        _est_sec = int(sp_n_attempts * 0.30 * sp_abm_replicates / 3)
+        st.caption(f"推定実行時間: ~{_est_sec}s")
 
-preset = presets[preset_name]
-with st.expander(f"θ prior ranges — {preset_name}", expanded=False):
-    st.caption(preset.description)
-    _lit_map = {src.parameter: src for src in LITERATURE_SOURCES}
-    _prior_rows = []
-    for key, (lo, hi) in preset.ranges.items():
-        src = _lit_map.get(key)
-        _prior_rows.append({
-            "Parameter": key,
-            "Lower": lo,
-            "Upper": hi,
-            "Empirical basis": src.empirical_range if src else "broad",
-            "Source": src.citation if src else "n/a",
-        })
-    st.dataframe(pd.DataFrame(_prior_rows), width="stretch", hide_index=True)
-    if preset.literature_sources:
-        st.markdown("**Literature sources**")
-        _src_rows = [
-            {
-                "Parameter": s.parameter,
-                "Modelled range": f"({s.modelled_range[0]}, {s.modelled_range[1]})",
-                "Empirical range": s.empirical_range,
-                "Citation": s.citation,
-                "Notes": s.notes,
-            }
-            for s in preset.literature_sources
-        ]
-        st.dataframe(pd.DataFrame(_src_rows), width="stretch", hide_index=True)
+    st.divider()
+
+    # ── Step navigation ────────────────────────────────────────────────────
+    st.subheader("分析ステップ")
+
+    _has_ens = "_ens_results" in st.session_state
+    _has_inf = "sp_result" in st.session_state
+
+    def _nav_icon(i: int) -> str:
+        if i == 0:
+            return "✅" if _has_ens else "▶"
+        if i == 1:
+            return "✅" if _has_inf else ("▶" if _has_ens else "⬜")
+        return "🟢" if _has_inf else "🔒"
+
+    _nav_labels = [f"{_nav_icon(i)}  {s}" for i, s in enumerate(_STEPS)]
+    _cur_idx    = _STEPS.index(st.session_state.get("nav_step", _STEPS[0]))
+
+    _sel_label = st.radio(
+        "ステップ選択",
+        _nav_labels,
+        index=_cur_idx,
+        label_visibility="collapsed",
+    )
+    for _i, _lbl in enumerate(_nav_labels):
+        if _sel_label == _lbl:
+            st.session_state["nav_step"] = _STEPS[_i]
+            break
+
+    st.divider()
+
+    # ── θ prior ranges ─────────────────────────────────────────────────────
+    _preset_obj = presets[preset_name]
+    with st.expander(f"θ prior ranges — {preset_name}", expanded=False):
+        st.caption(_preset_obj.description)
+        _lit_map   = {src.parameter: src for src in LITERATURE_SOURCES}
+        _prior_rows = []
+        for key, (lo, hi) in _preset_obj.ranges.items():
+            src = _lit_map.get(key)
+            _prior_rows.append({
+                "Parameter": key, "Lower": lo, "Upper": hi,
+                "Empirical basis": src.empirical_range if src else "broad",
+                "Source": src.citation if src else "n/a",
+            })
+        st.dataframe(pd.DataFrame(_prior_rows), width="stretch", hide_index=True)
+
+    # ── Supplementary: M1-M5 ──────────────────────────────────────────────
+    with st.expander("補足: M1-M5 構造比較", expanded=False):
+        _m5_backend = "stochastic_abm"
+        _m5_n       = st.slider("Prior draws", 20, 500, 80, 20, key="n_attempts_abm")
+        _m5_gen     = st.slider("ABM generations", 10, 100, 40, 10, key="m5_gen")
+        _m5_pop     = st.slider("ABM population size", 50, 500, 150, 50, key="m5_pop")
+        _m5_rep     = st.slider("ABM replicates / island", 1, 5, 1, 1, key="m5_rep")
+        run_button  = st.button("Run structure comparison", use_container_width=True)
 
 # ---------------------------------------------------------------------------
-# Run M1-M5 comparison
+# M1-M5 supplementary run (sidebar button)
 # ---------------------------------------------------------------------------
 if run_button:
-    _prog_bar  = st.progress(0.0, text="Starting…")
-    _stat_text = st.empty()
+    _m5_bar  = st.progress(0.0, text="M1-M5: starting…")
+    _m5_stat = st.empty()
 
-    def _update_progress(done: int, total: int, status: str) -> None:
-        frac = done / total if total > 0 else 0.0
-        _prog_bar.progress(frac, text=f"{done}/{total} runs ({100*frac:.0f}%)")
-        _stat_text.caption(status)
+    def _m5_cb(done, total, status):
+        _m5_bar.progress(done / total if total > 0 else 0.0,
+                         text=f"M1-M5: {done}/{total} ({100*done//max(total,1)}%)")
+        _m5_stat.caption(status)
 
-    result = run_research_mode(
-        preset_name=preset_name,
-        n_attempts=n_attempts,
-        seed=int(seed),
-        acceptance_rule=acceptance_rule,
-        backend=backend,
-        generations=generations,
-        population_size=population_size,
-        replicates=replicates,
-        progress_callback=_update_progress,
+    _m5_result = run_research_mode(
+        preset_name=preset_name, n_attempts=_m5_n, seed=int(seed),
+        acceptance_rule=acceptance_rule, backend=_m5_backend,
+        generations=_m5_gen, population_size=_m5_pop, replicates=_m5_rep,
+        progress_callback=_m5_cb,
     )
-    _prog_bar.progress(1.0, text="Done ✓")
-    _stat_text.empty()
-    st.session_state["research_result"] = result
+    _m5_bar.progress(1.0, text="Done ✓")
+    _m5_stat.empty()
+    st.session_state["research_result"] = _m5_result
     st.session_state["research_settings"] = {
-        "preset_name": preset_name,
-        "n_attempts": n_attempts,
-        "seed": int(seed),
-        "acceptance_rule": acceptance_rule,
-        "backend": backend,
-        "generations": generations,
-        "population_size": population_size,
-        "replicates": replicates,
+        "preset_name": preset_name, "n_attempts": _m5_n,
+        "seed": int(seed), "acceptance_rule": acceptance_rule,
+        "backend": _m5_backend,
+        "generations": _m5_gen, "population_size": _m5_pop, "replicates": _m5_rep,
     }
 
-# ---------------------------------------------------------------------------
-# Run island gradient inference
-# ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-# Run switch posterior inference
-# ---------------------------------------------------------------------------
-if run_switch_button:
-    import time as _sptime
-    _sp_bar  = st.progress(0.0, text="Switch Posterior: starting…")
-    _sp_stat = st.empty()
-
-    def _sp_progress(done: int, total: int, status: str) -> None:
-        _sp_bar.progress(done / total if total > 0 else 0.0,
-                         text=f"Switch Posterior: {done}/{total} ({100*done//max(total,1)}%)")
-        _sp_stat.caption(status)
-
-    sp_result = run_switch_posterior_inference_abm(
-        preset_name=preset_name,
-        n_attempts=int(sp_n_attempts),
-        acceptance_rule=acceptance_rule,
-        seed=int(seed) + 1,
-        observed_rels=OBSERVED_RELS,
-        pattern_weights=PATTERN_WEIGHTS,
-        generations=sp_abm_generations,
-        population_size=sp_abm_popsize,
-        replicates=sp_abm_replicates,
-        progress_callback=_sp_progress,
-    )
-    _sp_bar.progress(1.0, text="Switch Posterior: Done ✓")
-    _sp_stat.empty()
-    st.session_state["sp_result"] = sp_result
-    st.session_state["sp_backend_used"] = sp_backend
-    st.session_state["sp_settings"] = {
-        "preset_name": preset_name,
-        "seed": int(seed) + 1,
-        "acceptance_rule": acceptance_rule,
-        "backend": sp_backend,
-    }
-
-# ---------------------------------------------------------------------------
-# M1-M5 Results  (supplementary)
-# ---------------------------------------------------------------------------
 if "research_result" in st.session_state:
-    result = st.session_state["research_result"]
-    settings = st.session_state.get("research_settings", {})
-    df_acc_params = result["constraint_passed_params"]
-    df_rej = result["rejected_params"]
-    df_runs = result["all_runs"]
-    df_acc_runs = result["admissible_runs"]
-    df_ranges = result["compatible_ranges"]
-    df_summary = result["hypothesis_summary"]
-    df_final_values = result["final_values"]
-    df_generation_rows = result["generation_rows"]
-
-    st.divider()
-    st.subheader("Supplementary: M1-M5 structure comparison")
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Prior draws", settings.get("n_attempts", n_attempts))
-    c2.metric("Constraint-passed", len(df_acc_params))
-    c3.metric("Constraint-rejected", len(df_rej))
-    c4.metric("Admissible runs", len(df_acc_runs))
-    if not df_summary.empty:
-        best = df_summary.iloc[0]
-        c5.metric(
-            "Best hypothesis",
-            str(best["causal_hypothesis"]),
-            f"admissibility {best['admissibility_rate']:.2f}",
-        )
-    else:
-        c5.metric("Best hypothesis", "none")
-
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "Hypothesis ranking",
-        "Parameter space",
-        "Compatible ranges",
-        "Simulated values",
-        "ABM time series",
-        "Tables & downloads",
-    ])
-
-    with tab1:
-        st.markdown("### Restricted admissible causal hypotheses")
-        st.caption(
-            "Admissibility = fraction of parameter-set runs where gradient pattern targets "
-            f"were matched (rule: {settings.get('acceptance_rule', acceptance_rule)})."
-        )
-        if df_summary.empty:
-            st.warning("No runs completed.")
+    _m5r = st.session_state["research_result"]
+    with st.expander("補足結果: M1-M5 構造比較", expanded=False):
+        _m5_df_sum = _m5r["hypothesis_summary"]
+        if not _m5_df_sum.empty:
+            st.bar_chart(_m5_df_sum.set_index("causal_hypothesis")[["admissibility_rate"]],
+                         width="stretch")
+            stretch_df(_m5_df_sum, hide_index=True)
         else:
-            st.bar_chart(
-                df_summary.set_index("causal_hypothesis")[["admissibility_rate"]],
+            st.warning("No admissible runs.")
+
+# ===========================================================================
+# Main step content (vertical navigation)
+# ===========================================================================
+_current_step = st.session_state.get("nav_step", _STEPS[0])
+_step_idx     = _STEPS.index(_current_step)
+_has_ens      = "_ens_results" in st.session_state
+_has_inf      = "sp_result" in st.session_state
+
+st.divider()
+st.subheader(_current_step)
+st.caption(_STEP_SUBTITLES.get(_current_step, ""))
+
+
+def _next_btn(label: str, next_step: str) -> None:
+    if st.button(label, type="primary", use_container_width=True):
+        st.session_state["nav_step"] = next_step
+        st.rerun()
+
+
+# ===========================================================================
+# ① Ensemble
+# ===========================================================================
+if _step_idx == 0:
+    st.markdown(
+        "複数の (θ-prior preset, ε ルール) を網羅的に走査し、先験依存しない結論だけを抽出します。  \n"
+        "ここで得たベスト設定を ② RACH Inference に引き継ぎます。"
+    )
+
+    try:
+        from causal_model.ensemble import (
+            run_ensemble as _run_ensemble,
+            best_config as _best_config,
+            ensemble_ca_j as _ensemble_ca_j,
+            sensitivity_range as _sensitivity_range,
+        )
+        from causal_model.switch_inference import GRADIENT_THRESH_MAP as _THRESH_MAP
+        from causal_model.parameter_sampling import predefined_tradeoff_presets as _presets_fn
+        _ensemble_ok = True
+        _ensemble_err = ""
+    except Exception as _e:
+        _ensemble_ok = False
+        _ensemble_err = str(_e)
+
+    if not _ensemble_ok:
+        st.error(f"Ensemble module load failed: {_ensemble_err}")
+    else:
+        _all_presets = list(_presets_fn().keys())
+        _all_rules   = list(_THRESH_MAP.keys())
+
+        _ec1, _ec2 = st.columns(2)
+        with _ec1:
+            _ens_presets = st.multiselect(
+                "θ-prior presets", options=_all_presets, default=_all_presets,
+            )
+        with _ec2:
+            _ens_rules = st.multiselect(
+                "ε ルール", options=_all_rules,
+                default=["weighted_lax", "relaxed_0.83", "relaxed_0.67"],
+            )
+
+        _ec3, _ec4, _ec5 = st.columns(3)
+        with _ec3:
+            _ens_backend_sel = st.radio(
+                "Backend", ["proxy (fast)", "abm (slow)"], index=0, horizontal=True,
+            )
+            _ens_backend_key = "proxy" if _ens_backend_sel.startswith("proxy") else "abm"
+        with _ec4:
+            _ens_n = st.slider(
+                "Draws / config", 50, 500,
+                200 if _ens_backend_key == "proxy" else 100, 50,
+            )
+        with _ec5:
+            _ens_min_n = st.number_input("Min accepted", 5, 100, 20, 5)
+        _ens_seed = st.number_input("Seed", value=42, step=1, key="ens_seed")
+
+        if st.button("▶ Run Ensemble", type="primary", use_container_width=True):
+            if not _ens_presets or not _ens_rules:
+                st.warning("プリセットとルールを1つ以上選択してください。")
+            else:
+                _n_configs  = len(_ens_presets) * len(_ens_rules)
+                _ens_prog   = st.progress(0.0, text="Starting ensemble…")
+                _ens_status = st.empty()
+
+                def _ens_cb(done, total, preset, rule):
+                    _ens_prog.progress(done / max(total, 1),
+                                       text=f"{preset} / {rule}  ({done}/{total})")
+                    _ens_status.caption(f"Running: {preset} + {rule}")
+
+                from examples.campanula_izu.observed_data import (
+                    load_observed_patterns as _lop,
+                    load_pattern_weights   as _lpw,
+                )
+                with st.spinner(f"{_n_configs} configs 実行中…"):
+                    _ens_results = _run_ensemble(
+                        presets=_ens_presets, acceptance_rules=_ens_rules,
+                        switches=CAMPANULA_SWITCHES,
+                        n_attempts=_ens_n, seed=int(_ens_seed),
+                        backend=_ens_backend_key,
+                        observed_rels=_lop(), pattern_weights=_lpw(),
+                        progress_callback=_ens_cb,
+                    )
+                _ens_prog.progress(1.0, text="Done ✓")
+                _ens_status.empty()
+                st.session_state["_ens_results"] = _ens_results
+                try:
+                    st.session_state["_ens_sens"] = _sensitivity_range(_ens_results)
+                except Exception:
+                    pass
+                # Auto-advance to ②
+                st.session_state["nav_step"] = _STEPS[1]
+                st.rerun()
+
+        if "_ens_results" in st.session_state:
+            _ens_res  = st.session_state["_ens_results"]
+            _sw_names = [sw.name for sw in CAMPANULA_SWITCHES]
+            _ens_sens_cur = st.session_state.get("_ens_sens", {})
+            _ca_avg   = _ensemble_ca_j(_ens_res, min_accepted=1)
+
+            st.markdown("#### ロバスト結論サマリー")
+            if _ca_avg and _ens_sens_cur:
+                _rob_rows = []
+                for _sw in _sw_names:
+                    _ca_v = _ca_avg.get(_sw, float("nan"))
+                    _s_v  = _ens_sens_cur.get(_sw, float("nan"))
+                    _verdict = (
+                        "✅ ON  🔒 Robust"  if _ca_v > 2/3 and _s_v < 0.20 else
+                        "❌ OFF 🔒 Robust"  if _ca_v < 1/3 and _s_v < 0.20 else
+                        "✅ ON  ⚠ 感度大"  if _ca_v > 2/3 else
+                        "❌ OFF ⚠ 感度大"  if _ca_v < 1/3 else
+                        "〜 不定  ⚠ 要追加観測"
+                    )
+                    _rob_rows.append({
+                        "switch": _sw, "ensemble CA_j": round(_ca_v, 3),
+                        "sensitivity": round(_s_v, 3), "verdict": _verdict,
+                    })
+                stretch_df(pd.DataFrame(_rob_rows), hide_index=True)
+
+            _best = _best_config(_ens_res, min_accepted=int(_ens_min_n))
+            if _best:
+                st.success(
+                    f"**推奨設定 → ② で使用:** `{_best.preset_name}` + `{_best.acceptance_rule}`  "
+                    f"(R={_best.R_RACH:.3f},  n={_best.n_accepted})"
+                )
+
+            st.divider()
+            st.markdown("#### 設定比較テーブル")
+            _ens_rows = []
+            for _r in _ens_res:
+                _row = {"preset": _r.preset_name, "rule": _r.acceptance_rule,
+                        "ε": _r.threshold, "n_accepted": _r.n_accepted,
+                        "D_RACH": _r.D_RACH, "R_RACH": _r.R_RACH,
+                        "_is_best": (_r is _best)}
+                for _sw in _sw_names:
+                    _row[f"CA_{_sw[:10]}"] = _r.ca_j.get(_sw, float("nan"))
+                _ens_rows.append(_row)
+            _df_ens = pd.DataFrame(_ens_rows)
+            _df_disp = _df_ens.drop(columns=["_is_best"])
+            st.dataframe(
+                _df_disp.style.apply(
+                    lambda row: [
+                        "background-color: #d4edda" if _ens_rows[row.name]["_is_best"] else ""
+                        for _ in row
+                    ], axis=1,
+                ), use_container_width=True,
+            )
+
+            _c1, _c2 = st.columns(2)
+            with _c1:
+                st.markdown("**Ensemble CA_j**")
+                if _ca_avg:
+                    st.bar_chart(
+                        pd.DataFrame([{"switch": k, "CA_j": v} for k, v in _ca_avg.items()])
+                        .set_index("switch"), width="stretch",
+                    )
+            with _c2:
+                st.markdown("**感度レンジ (max − min CA_j)**")
+                if _ens_sens_cur:
+                    st.bar_chart(
+                        pd.DataFrame([{"switch": k, "sensitivity": v} for k, v in _ens_sens_cur.items()])
+                        .set_index("switch"), width="stretch",
+                    )
+                    st.caption("< 0.20 → ロバスト。≥ 0.20 → 先験依存。")
+
+            st.line_chart(
+                pd.DataFrame([{"config": f"{_r.preset_name}/{_r.acceptance_rule}", **_r.ca_j}
+                               for _r in _ens_res]).set_index("config"),
                 width="stretch",
             )
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.bar_chart(
-                    df_summary.set_index("causal_hypothesis")[["mean_abc_distance"]],
-                    width="stretch",
+            st.divider()
+            st.download_button("⬇ ensemble_comparison.csv", _df_disp.to_csv(index=False).encode("utf-8"),
+                               "ensemble_comparison.csv", "text/csv")
+            st.divider()
+            _next_btn("② RACH Inference へ進む →", _STEPS[1])
+
+
+# ===========================================================================
+# ② RACH Inference
+# ===========================================================================
+elif _step_idx == 1:
+    if _has_ens:
+        try:
+            from causal_model.ensemble import best_config as _bc2
+            _best2 = _bc2(st.session_state["_ens_results"], min_accepted=20)
+            _sens2 = st.session_state.get("_ens_sens", {})
+            if _best2:
+                st.info(
+                    f"**Ensemble 推奨設定:** `{_best2.preset_name}` + `{_best2.acceptance_rule}`  "
+                    f"(R={_best2.R_RACH:.3f})  \nサイドバーの設定をこれに合わせてから実行してください。"
                 )
-                st.caption("Unweighted ABC distance (1 - matches/6)")
-            with col_b:
-                st.bar_chart(
-                    df_summary.set_index("causal_hypothesis")[["mean_weighted_abc_distance"]],
-                    width="stretch",
-                )
-                st.caption("Weighted ABC distance")
-            stretch_df(df_summary, hide_index=True)
-        if not df_runs.empty:
-            show_cols = [
-                "causal_hypothesis", "pattern_matches", "pattern_total",
-                "abc_distance", "weighted_abc_distance", "admissible_by_epsilon",
-            ]
-            stretch_df(
-                df_runs[[c for c in show_cols if c in df_runs.columns]].head(200),
-                hide_index=True,
-            )
+            _sensitive2 = [k for k, v in _sens2.items() if v >= 0.20]
+            if _sensitive2:
+                st.warning(f"感度大 (≥0.20): **{', '.join(_sensitive2)}** — ⑥ NOV で追加観測計画を。")
+        except Exception:
+            pass
+    else:
+        st.info("① Ensemble を先に実行するとベスト設定が自動推奨されます。スキップも可。")
 
-    with tab2:
-        st.markdown("### Admissible vs rejected runs in latent parameter space")
-        if df_runs.empty:
-            st.warning("No run data.")
-        else:
-            c_a, c_b = st.columns(2)
-            with c_a:
-                st.markdown("**Guide cost vs outcrossing benefit**")
-                parameter_space_chart(df_runs, "guide_cost", "outcrossing_benefit")
-            with c_b:
-                st.markdown("**Selfing benefit vs inbreeding depression**")
-                parameter_space_chart(df_runs, "selfing_benefit", "inbreeding_depression")
-            c_c, c_d = st.columns(2)
-            with c_c:
-                st.markdown("**Small-pollinator efficiency vs selfing benefit**")
-                parameter_space_chart(df_runs, "background_pollinator_efficiency", "selfing_benefit")
-            with c_d:
-                st.markdown("**Drift strength vs guide cost**")
-                parameter_space_chart(df_runs, "drift_strength", "guide_cost")
-
-    with tab3:
-        st.markdown("### Compatible latent parameter ranges")
-        st.caption(
-            "These ranges are the inferential output of RACH -- "
-            "the admissible region of latent parameter space, not manually chosen values."
-        )
-        if df_ranges.empty:
-            st.warning("No admissible runs. Try a more relaxed acceptance rule or more draws.")
-        else:
-            stretch_df(df_ranges, hide_index=True)
-            st.bar_chart(df_ranges.set_index("Parameter")[["Median"]], width="stretch")
-
-    with tab4:
-        st.markdown("### Simulated trait values along isolation gradient")
-        st.caption(
-            ":information_source: **Fis** shown here is a computational proxy "
-            "(heterozygosity deficit estimate), not a true genetic Fis from microsatellite data. "
-            "Interpret Fis values as indicative trends only."
-        )
-        long_values = final_values_long(df_final_values)
-        if long_values.empty:
-            st.warning("No final simulated values available.")
-        else:
-            sel_var = st.selectbox("Variable", sorted(long_values["variable"].unique()), key="tab4_var")
-            sel_hyp = st.selectbox(
-                "Causal hypothesis", sorted(long_values["causal_hypothesis"].unique()),
-                key="tab4_hyp",
-            )
-            sub = long_values[
-                (long_values["variable"] == sel_var) &
-                (long_values["causal_hypothesis"] == sel_hyp)
-            ]
-            if not sub.empty:
-                st.bar_chart(
-                    sub.groupby("population")["value"].mean().to_frame(),
-                    width="stretch",
-                )
-            stretch_df(df_final_values.head(300), hide_index=True)
-
-    with tab5:
-        st.markdown("### Stochastic ABM generation trajectories")
-        ts = generation_timeseries_long(df_generation_rows)
-        if ts.empty:
-            st.info("Run in stochastic_abm mode to see generation trajectories.")
-        else:
-            col_ts1, col_ts2 = st.columns(2)
-            with col_ts1:
-                var = st.selectbox("Variable", sorted(ts["variable"].unique()), key="tab5_var")
-            with col_ts2:
-                structure_ts = st.selectbox(
-                    "Hypothesis", sorted(ts["structure"].unique()), key="tab5_hyp",
-                )
-            sub = ts[(ts["variable"] == var) & (ts["structure"] == structure_ts)]
-            if not sub.empty:
-                line_df = sub.groupby(
-                    ["generation", "population"], as_index=False
-                )["value"].mean()
-                line_wide = line_df.pivot(
-                    index="generation", columns="population", values="value"
-                )
-                st.line_chart(line_wide, width="stretch")
-            stretch_df(df_generation_rows.head(300), hide_index=True)
-
-    with tab6:
-        st.markdown("### Raw tables and downloads")
-        stretch_df(df_runs.head(200), hide_index=True)
-        _tag = _run_tag(settings)
-
-        # --- Bulk ZIP download (all tables in one click) ---
-        _zip_files = {
-            f"{_tag}_all_runs":               df_runs,
-            f"{_tag}_admissible_runs":        df_acc_runs,
-            f"{_tag}_final_values":           df_final_values,
-            f"{_tag}_compatible_ranges":      df_ranges,
-            f"{_tag}_hypothesis_summary":     df_summary,
-            f"{_tag}_constraint_passed_params": df_acc_params,
-            f"{_tag}_rejected_params":        df_rej,
-        }
-        if not df_generation_rows.empty:
-            _zip_files[f"{_tag}_generation_timeseries"] = df_generation_rows
-        st.download_button(
-            "⬇ Download ALL tables as ZIP",
-            _build_zip(_zip_files),
-            f"{_tag}_rach_all.zip",
-            "application/zip",
-            use_container_width=True,
-            type="primary",
-        )
-        st.divider()
-
-        # --- Individual downloads ---
-        d1, d2, d3 = st.columns(3)
-        with d1:
-            st.download_button("all_runs.csv", to_csv_bytes(df_runs),
-                               f"{_tag}_all_runs.csv", "text/csv")
-            st.download_button("admissible_runs.csv", to_csv_bytes(df_acc_runs),
-                               f"{_tag}_admissible_runs.csv", "text/csv")
-            st.download_button("final_values.csv", to_csv_bytes(df_final_values),
-                               f"{_tag}_final_values.csv", "text/csv")
-        with d2:
-            st.download_button("compatible_ranges.csv", to_csv_bytes(df_ranges),
-                               f"{_tag}_compatible_ranges.csv", "text/csv")
-            st.download_button("hypothesis_summary.csv", to_csv_bytes(df_summary),
-                               f"{_tag}_hypothesis_summary.csv", "text/csv")
-            if not df_generation_rows.empty:
-                st.download_button(
-                    "generation_timeseries.csv",
-                    to_csv_bytes(df_generation_rows),
-                    f"{_tag}_generation_timeseries.csv",
-                    "text/csv",
-                )
-        with d3:
-            st.download_button(
-                "constraint_passed_params.csv",
-                to_csv_bytes(df_acc_params),
-                f"{_tag}_constraint_passed_params.csv",
-                "text/csv",
-            )
-            st.download_button(
-                "rejected_params.csv",
-                to_csv_bytes(df_rej),
-                f"{_tag}_rejected_params.csv",
-                "text/csv",
-            )
-
-else:
     st.markdown(
-        "Configure settings in the sidebar and click **Run RACH inference** to begin.  \n"
-        "This runs the primary RACH workflow: samples (θ, s) jointly, simulates f(x_obs; θ, s), "
-        "and computes CA_j, D, R, OC_k, NOV from the admissible causal region A_ε."
+        f"**現在の設定:** `{preset_name}` + `{acceptance_rule}` · threshold ≥ {_thresh_display:.3f}  \n"
+        f"ABM: {st.session_state.get('sp_n_abm', 200)} draws · "
+        f"{st.session_state.get('sp_gen', 30)} gen · "
+        f"{st.session_state.get('sp_pop', 100)} pop · "
+        f"{st.session_state.get('sp_rep', 3)} rep"
     )
 
-# ============================================================================
-# RACH Inference Results  (Switch Posterior / A_ε quantities)
-# ============================================================================
-if "sp_result" in st.session_state:
+    if st.button("▶ Run RACH Inference", type="primary", use_container_width=True):
+        _sp_bar  = st.progress(0.0, text="Switch Posterior: starting…")
+        _sp_stat = st.empty()
+
+        def _sp_progress(done: int, total: int, status: str) -> None:
+            _sp_bar.progress(done / total if total > 0 else 0.0,
+                             text=f"Switch Posterior: {done}/{total} ({100*done//max(total,1)}%)")
+            _sp_stat.caption(status)
+
+        sp_result = run_switch_posterior_inference_abm(
+            preset_name=preset_name,
+            n_attempts=int(st.session_state.get("sp_n_abm", 200)),
+            acceptance_rule=acceptance_rule,
+            seed=int(seed) + 1,
+            observed_rels=OBSERVED_RELS,
+            pattern_weights=PATTERN_WEIGHTS,
+            generations=st.session_state.get("sp_gen", 30),
+            population_size=st.session_state.get("sp_pop", 100),
+            replicates=st.session_state.get("sp_rep", 3),
+            progress_callback=_sp_progress,
+        )
+        _sp_bar.progress(1.0, text="Switch Posterior: Done ✓")
+        _sp_stat.empty()
+        st.session_state["sp_result"]   = sp_result
+        st.session_state["sp_settings"] = {
+            "preset_name": preset_name, "seed": int(seed) + 1,
+            "acceptance_rule": acceptance_rule, "backend": "stochastic_abm",
+        }
+        # Auto-advance to ③ CA_j
+        st.session_state["nav_step"] = _STEPS[2]
+        st.rerun()
+
+    if _has_inf:
+        _sp = st.session_state["sp_result"]
+        st.success(
+            f"✅ 推論完了 — |A_ε| = {len(_sp.accepted_rows)} accepted  "
+            f"(acceptance rate {_sp.acceptance_rate:.1%})"
+        )
+        if len(_sp.accepted_rows) < 30:
+            st.warning(f"accepted = {len(_sp.accepted_rows)} < 30 → 推定不安定。draws を増やすか ε を緩めてください。")
+        _next_btn("③ CA_j で結果を見る →", _STEPS[2])
+
+
+# ===========================================================================
+# Steps ③–⑧ require inference results
+# ===========================================================================
+elif _step_idx >= 2 and not _has_inf:
+    st.info("② RACH Inference を先に実行してください。")
+    _next_btn("② RACH Inference へ", _STEPS[1])
+
+# ===========================================================================
+# ③ CA_j
+# ===========================================================================
+elif _step_idx == 2:
     sp = st.session_state["sp_result"]
-    st.divider()
-    st.header("RACH Inference Results")
-    st.caption(
-        "Worked example: *Campanula punctata* / Izu Islands · "
-        "y_obs = 5 field-derived pairwise patterns (Inoue 1986) · "
-        "f = stochastic ABM · K = 4 causal switches"
-    )
-    st.info(
-        "**What this shows:** RACH samples (θ, s) jointly from the prior, runs f(x_obs; θ, s), "
-        "and retains draws where simulated patterns match y_obs (d ≤ ε). "
-        "The retained sample approximates A_ε. "
-        "The five core quantities — CA_j, D, R, OC_k, NOV — are computed from A_ε.  \n"
-        "No structure was pre-defined. The posterior reflects which mechanisms are "
-        "jointly present in biologically feasible, observation-compatible parameter space."
-    )
+    _sp_settings = st.session_state.get("sp_settings", {})
+    _thresh_sp   = GRADIENT_THRESH_MAP.get(_sp_settings.get("acceptance_rule", acceptance_rule), 1.0)
+
+    _mc1, _mc2, _mc3, _mc4 = st.columns(4)
+    _mc1.metric("|A_ε| accepted", len(sp.accepted_rows))
+    _mc2.metric("Total draws", sp.n_attempts)
+    _mc3.metric("Acceptance rate", f"{sp.acceptance_rate:.1%}")
+    _mc4.metric("K (switches)", len(CAMPANULA_SWITCHES))
 
     if len(sp.accepted_rows) < 30:
-        st.warning(
-            f"Only {len(sp.accepted_rows)} accepted samples — estimates are unstable. "
-            "Increase draws or use a more relaxed ε for reliable inference."
-        )
-
-    # --- A_ε summary metrics ---
-    sp_c1, sp_c2, sp_c3, sp_c4 = st.columns(4)
-    sp_c1.metric("|A_ε| accepted", len(sp.accepted_rows),
-                 help="Number of (θ,s) draws retained in the admissible causal region.")
-    sp_c2.metric("Total draws", sp.n_attempts,
-                 help="Total joint (θ,s) prior draws attempted.")
-    sp_c3.metric("Acceptance rate", f"{sp.acceptance_rate:.1%}",
-                 help="Fraction of draws accepted into A_ε. Low rate → tighter causal constraint.")
-    sp_c4.metric("K (switches)", len(CAMPANULA_SWITCHES),
-                 help="Dimension of the causal switch space S = {0,1}^K.")
+        st.warning(f"Only {len(sp.accepted_rows)} accepted — estimates unstable.")
 
     if not sp.accepted_rows:
-        st.warning(
-            "No samples were accepted. "
-            "Try a more relaxed acceptance rule (e.g. relaxed_5_of_6) or more draws."
-        )
+        st.error("No accepted samples. Use a more relaxed ε or increase draws.")
     else:
-        # ------------------------------------------------------------------
-        # Robust Conclusions panel (shown before tabs, always visible)
-        # ------------------------------------------------------------------
         try:
-            from causal_model.causal_admissibility import causal_degeneracy as _cd_pre, causal_resolvability as _cr_pre
-            _D_pre = _cd_pre(sp.accepted_rows, CAMPANULA_SWITCHES)
-            _R_pre = _cr_pre(sp.accepted_rows, CAMPANULA_SWITCHES)
-            _n_accepted_pre = len(sp.accepted_rows)
-            _ca_pre = {
-                sw.name: round(sum(1 for r in sp.accepted_rows if r.get(sw.name)) / _n_accepted_pre, 3)
+            _n_acc = len(sp.accepted_rows)
+            _ca_now = {
+                sw.name: round(sum(1 for r in sp.accepted_rows if r.get(sw.name)) / _n_acc, 3)
                 for sw in CAMPANULA_SWITCHES
             }
-            # Classify switches: robust if sensitivity < 0.20, sensitive otherwise
-            _ens_sens = st.session_state.get("_ens_sens", {})
-            with st.expander("**Robust Conclusions** (A_ε のサマリー)", expanded=True):
+            _ens_sens_rc = st.session_state.get("_ens_sens", {})
+            with st.expander("**Robust Conclusions** (A_ε サマリー)", expanded=True):
                 _rc_cols = st.columns(len(CAMPANULA_SWITCHES))
                 for _i, sw in enumerate(CAMPANULA_SWITCHES):
-                    _ca_val = _ca_pre.get(sw.name, 0.5)
-                    _sens_val = _ens_sens.get(sw.name)
-                    _bf = _ca_val / (1 - _ca_val + 1e-9)
-                    if _ca_val > 2/3:
-                        _verdict = "✅ ON"
-                    elif _ca_val < 1/3:
-                        _verdict = "❌ OFF"
-                    else:
-                        _verdict = "〜 不定"
-                    if _sens_val is not None:
-                        _robust_label = "🔒 Robust" if _sens_val < 0.20 else f"⚠ 感度={_sens_val:.2f}"
-                    else:
-                        _robust_label = "（Ensemble未実行）"
-                    _rc_cols[_i].metric(
-                        label=sw.name[:18],
-                        value=f"CA={_ca_val:.2f}",
-                        delta=f"{_verdict}  {_robust_label}",
-                        delta_color="normal",
+                    _cv  = _ca_now.get(sw.name, 0.5)
+                    _sv  = _ens_sens_rc.get(sw.name)
+                    _verd = "✅ ON" if _cv > 2/3 else ("❌ OFF" if _cv < 1/3 else "〜 不定")
+                    _rlbl = (
+                        "🔒 Robust" if _sv is not None and _sv < 0.20
+                        else (f"⚠ 感度={_sv:.2f}" if _sv is not None else "(Ensemble未実行)")
                     )
-                if _ens_sens:
-                    _sensitive_switches = [k for k, v in _ens_sens.items() if v >= 0.20]
-                    _robust_switches    = [k for k, v in _ens_sens.items() if v < 0.20]
-                    if _robust_switches:
-                        st.success(f"**ロバスト結論** (感度 < 0.20): {', '.join(_robust_switches)}")
-                    if _sensitive_switches:
-                        st.warning(
-                            f"**先験依存** (感度 ≥ 0.20): {', '.join(_sensitive_switches)}  \n"
-                            "→ NOV タブで追加観測の優先度を確認してください。"
-                        )
-                else:
-                    st.info("① Ensemble タブを先に実行すると、ロバスト性の判定が自動表示されます。")
+                    _rc_cols[_i].metric(sw.name[:18], f"CA={_cv:.2f}",
+                                        delta=f"{_verd}  {_rlbl}", delta_color="normal")
+                _rob_sw = [k for k, v in _ens_sens_rc.items() if v < 0.20] if _ens_sens_rc else []
+                _sen_sw = [k for k, v in _ens_sens_rc.items() if v >= 0.20] if _ens_sens_rc else []
+                if _rob_sw:
+                    st.success(f"**ロバスト結論** (感度 < 0.20): {', '.join(_rob_sw)}")
+                if _sen_sw:
+                    st.warning(f"**先験依存** (感度 ≥ 0.20): {', '.join(_sen_sw)}  \n→ ⑥ NOV で追加観測計画を。")
+                if not _ens_sens_rc:
+                    st.info("① Ensemble を先に実行するとロバスト性の判定が表示されます。")
         except Exception:
             pass
 
-        # ------------------------------------------------------------------
-        # Tab order follows logical analysis flow:
-        # ① Ensemble (robustness check) → ② CA_j → ③ D/R → ④ OC_k →
-        # ⑤ NOV (for sensitive switches) → Parameter space → Downloads
-        # ------------------------------------------------------------------
-        _tabs_ordered = st.tabs([
-            "① Ensemble — robustness",
-            "② CA_j — causal admissibility",
-            "③ D · R — degeneracy & resolvability",
-            "④ OC_k — observation contribution",
-            "⑤ NOV — next-observation value",
-            "Parameter space A_ε",
-            "Downloads",
-        ])
-        # Map original variable names to display positions
-        sp_tab7 = _tabs_ordered[0]   # Ensemble content → first tab
-        sp_tab1 = _tabs_ordered[1]   # CA_j
-        sp_tab2 = _tabs_ordered[2]   # D / R
-        sp_tab3 = _tabs_ordered[3]   # OC_k
-        sp_tab4 = _tabs_ordered[4]   # NOV
-        sp_tab5 = _tabs_ordered[5]   # Parameter space
-        sp_tab6 = _tabs_ordered[6]   # Downloads
+        st.markdown("### CA_j = P(s_j = 1 | A_ε)")
+        st.caption(
+            "Prior = 0.5 (Bernoulli). **BF > 3** → admissible (CA_j > 0.75). **BF < 1/3** → inadmissible (CA_j < 0.25)."
+        )
+        st.info(
+            "**Known-truth benchmark 知見 (S3 注意):**  \n"
+            "S3 (island_isolation_common_cause) が S1 (guide_attracts_bombus) と部分的に混同します。  \n"
+            "S3 の guide 係数 (0.13) は S1=OFF+S3=ON の描出が S1=ON と競合します。S3 の CA_j は S1 と同時に確認してください。"
+        )
 
-        with sp_tab1:
-            st.markdown("### CA_j = P(s_j = 1 | A_ε)")
-            st.caption(
-                "Causal admissibility: the fraction of observation-compatible, "
-                "biologically feasible (θ,s) space in which mechanism j is active.  \n"
-                "Prior = 0.5 (Bernoulli). **BF > 3** → admissible. **BF < 1/3** → inadmissible. "
-                "CA_j ≈ 0.5 → current y_obs is non-informative about mechanism j."
-            )
-            df_post = pd.DataFrame(sp.posterior_table)
-            if not df_post.empty:
+        df_post = pd.DataFrame(sp.posterior_table)
+        if not df_post.empty:
+            st.bar_chart(df_post.set_index("switch")[["P_prior_ON", "P_posterior_ON"]], width="stretch")
+            st.caption("左バー = 事前 P(ON) = 0.5.  右バー = CA_j = P(ON | A_ε).")
+            stretch_df(df_post[[
+                "switch", "biological_question", "P_prior_ON",
+                "P_posterior_ON", "Bayes_factor", "interpretation", "n_ON", "n_accepted",
+            ]], hide_index=True)
+            st.markdown("#### Biological interpretation")
+            for _row in sp.posterior_table:
+                _interp = str(_row.get("interpretation", ""))
+                _icon = (
+                    "✅ supported"        if _interp.startswith("supported") else
+                    "〜 weakly supported" if _interp.startswith("weakly s") else
+                    "❌ opposed"          if _interp.startswith("opposed") else
+                    "— uninformative"
+                )
+                _bf    = _row.get("Bayes_factor")
+                _bfstr = f"BF={_bf:.2f}" if _bf is not None else "BF=n/a"
+                st.markdown(
+                    f"**{_icon} · {_row['switch']}** CA_j={_row['P_posterior_ON']:.3f} ({_bfstr})  \n"
+                    f"*{_row.get('biological_question', '')[:100]}*"
+                )
+
+        with st.expander("Switch co-activation P(A ON ∩ B ON | A_ε)", expanded=False):
+            _coact = compute_coactivation_table(sp.accepted_rows)
+            if _coact:
+                _df_coact = pd.DataFrame(_coact)
+                stretch_df(_df_coact, hide_index=True)
+                try:
+                    _piv = _df_coact.pivot(index="switch_A", columns="switch_B", values="P_both_ON")
+                    st.dataframe(_piv.round(3), width="stretch")
+                except Exception:
+                    pass
+            else:
+                st.info("Not enough accepted samples.")
+
+        st.divider()
+        _next_btn("④ D · R へ →", _STEPS[3])
+
+
+# ===========================================================================
+# ④ D · R
+# ===========================================================================
+elif _step_idx == 3:
+    sp = st.session_state["sp_result"]
+
+    try:
+        from causal_model.causal_admissibility import (
+            rach_summary as _rach_summary_fn,
+            causal_degeneracy as _cd_fn,
+            causal_resolvability as _cr_fn,
+        )
+        from causal_model.identifiability import compute_rach_theory_metrics as _rach_metrics_fn
+        _rs           = _rach_summary_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
+        _rach_metrics = _rach_metrics_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
+        _dr_ok = True
+    except Exception as _dr_err:
+        _dr_ok = False
+
+    st.markdown("### D = H(S | A_ε) · R = 1 − D/K")
+    st.info(
+        "**Known-truth benchmark 知見:** 複合スイッチ状態 (S1+S2, S1+S3 など) では "
+        "R_RACH ≈ 0.19–0.24 が典型的。これは観測データ不足による縮退で、失敗ではなく発見です。"
+    )
+
+    if _dr_ok:
+        _dm1, _dm2, _dm3, _dm4, _dm5 = st.columns(5)
+        _dm1.metric("R — resolvability",  f"{_rs.causal_resolvability:.3f}")
+        _dm2.metric("D — degeneracy",     f"{_rs.causal_degeneracy:.3f} bits")
+        _dm3.metric("K — max entropy",    f"{_rs.max_degeneracy:.0f} bits")
+        _dm4.metric("|A_ε|",              f"{_rs.n_accepted}")
+        _dm5.metric("Total I_j",          f"{_rach_metrics.total_identifiability:.3f} bits")
+
+        st.divider()
+        st.markdown("#### ε 感度 — D と R の ε 依存性")
+        _thresh_map2 = {
+            "weighted_lax (≥0.800)":    0.800,
+            "relaxed_0.83 (≥0.833)":    5/6,
+            "weighted_strict (=1.000)": 1.000,
+            "relaxed_0.67 (≥0.667)":    4/6,
+        }
+        _sens_rows2 = []
+        for _lbl, _thr in _thresh_map2.items():
+            _filt = [r for r in sp.accepted_rows if r.get("weighted_match_rate", 0.0) >= _thr - 1e-9]
+            _n    = len(_filt)
+            if _n >= 3:
+                _sens_rows2.append({
+                    "ε rule": _lbl, "|A_ε|": _n,
+                    "D (bits)": round(_cd_fn(_filt, CAMPANULA_SWITCHES), 3),
+                    "R":        round(_cr_fn(_filt, CAMPANULA_SWITCHES), 3),
+                    "total I_j": round(_rach_metrics_fn(_filt, CAMPANULA_SWITCHES).total_identifiability, 3),
+                })
+            else:
+                _sens_rows2.append({"ε rule": _lbl, "|A_ε|": _n,
+                                    "D (bits)": float("nan"), "R": float("nan"), "total I_j": float("nan")})
+        stretch_df(pd.DataFrame(_sens_rows2), hide_index=True)
+
+        st.divider()
+        st.markdown("#### Per-switch identifiability I_j")
+        if hasattr(_rach_metrics, "identifiability_table") and _rach_metrics.identifiability_table:
+            _df_ij = pd.DataFrame(_rach_metrics.identifiability_table)
+            if not _df_ij.empty and "switch" in _df_ij.columns:
+                _ijcol = [c for c in _df_ij.columns if "identifiability" in c.lower() or c == "I_j"]
+                if _ijcol:
+                    st.bar_chart(_df_ij.set_index("switch")[[_ijcol[0]]], width="stretch")
+                stretch_df(_df_ij, hide_index=True)
+    else:
+        st.error(f"RACH modules failed: {_dr_err}")
+
+    st.divider()
+    _next_btn("⑤ OC_k へ →", _STEPS[4])
+
+
+# ===========================================================================
+# ⑤ OC_k
+# ===========================================================================
+elif _step_idx == 4:
+    sp = st.session_state["sp_result"]
+
+    try:
+        from causal_model.causal_admissibility import observation_contribution as _oc_fn
+        _oc_source  = getattr(sp, "evaluated_rows", None) or sp.accepted_rows
+        _thresh_sp2 = GRADIENT_THRESH_MAP.get(
+            st.session_state.get("sp_settings", {}).get("acceptance_rule", acceptance_rule), 1.0)
+        _oc_results = _oc_fn(_oc_source, CAMPANULA_SWITCHES, threshold=_thresh_sp2)
+        _oc_ok = True
+    except Exception as _oc_err:
+        _oc_ok = False
+
+    st.markdown("### OC_k = R(O) − R(O \\ {k})")
+    st.caption("LOO: パターン k を除いたときの R_RACH の低下量。OC_k > 0 → k は resolvability に貢献。")
+
+    if _oc_ok:
+        if _oc_results:
+            _df_oc = pd.DataFrame([
+                {"pattern": r.pattern, "switch": r.switch, "OC_k": round(r.OC_k, 4),
+                 "R_full": round(r.R_full, 4), "R_loo": round(r.R_loo, 4), "n_loo": r.n_loo}
+                for r in _oc_results
+            ])
+            _df_oc_nz = _df_oc[_df_oc["OC_k"].abs() > 0.0001].sort_values("OC_k", ascending=False)
+            if not _df_oc_nz.empty:
                 st.bar_chart(
-                    df_post.set_index("switch")[["P_prior_ON", "P_posterior_ON"]],
+                    _df_oc_nz.set_index(_df_oc_nz["pattern"] + " → " + _df_oc_nz["switch"])[["OC_k"]],
                     width="stretch",
                 )
-                st.caption(
-                    "Left bar = prior P(ON) = 0.5.  Right bar = CA_j = P(ON | A_ε).  \n"
-                    "A bar shift away from 0.5 means the accepted sample favours "
-                    "that mechanism being ON (shift up) or OFF (shift down)."
-                )
-                stretch_df(
-                    df_post[[
-                        "switch", "biological_question", "P_prior_ON",
-                        "P_posterior_ON", "Bayes_factor", "interpretation",
-                        "n_ON", "n_accepted",
-                    ]],
-                    hide_index=True,
-                )
-                st.markdown("#### Biological interpretation")
-                for row in sp.posterior_table:
-                    interp = str(row.get("interpretation", ""))
-                    icon = (
-                        "✅ supported" if interp.startswith("supported")
-                        else "〜 weakly supported" if interp.startswith("weakly s")
-                        else "❌ opposed" if interp.startswith("opposed")
-                        else "— uninformative"
-                    )
-                    bf = row.get("Bayes_factor")
-                    bf_str = f"BF={bf:.2f}" if bf is not None else "BF=n/a"
-                    st.markdown(
-                        f"**{icon} · {row['switch']}** "
-                        f"CA_j={row['P_posterior_ON']:.3f} ({bf_str})  \n"
-                        f"*{row.get('biological_question', '')[:100]}*"
-                    )
-
-            # Co-activation as secondary detail
-            with st.expander("Switch co-activation P(A ON ∩ B ON | A_ε)", expanded=False):
-                st.caption(
-                    "High co-activation = two mechanisms tend to be simultaneously ON "
-                    "in observation-compatible parameter regions."
-                )
-                coact = compute_coactivation_table(sp.accepted_rows)
-                if coact:
-                    df_coact = pd.DataFrame(coact)
-                    stretch_df(df_coact, hide_index=True)
-                    try:
-                        pivot = df_coact.pivot(
-                            index="switch_A", columns="switch_B", values="P_both_ON"
-                        )
-                        st.dataframe(pivot.round(3), width="stretch")
-                    except Exception:
-                        pass
-                else:
-                    st.info("Not enough accepted samples.")
-
-        # ------------------------------------------------------------------
-        # Load RACH modules once (shared across tabs)
-        # ------------------------------------------------------------------
-        try:
-            from causal_model.causal_admissibility import (
-                rach_summary as _rach_summary_fn,
-                causal_degeneracy as _cd_fn,
-                causal_resolvability as _cr_fn,
-                observation_contribution as _oc_fn,
-                next_observation_value as _nov_fn,
-                compute_causal_admissibility_table as _ca_table_fn,
-            )
-            from causal_model.identifiability import compute_rach_theory_metrics as _rach_metrics_fn
-            _rs = _rach_summary_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
-            _rach_metrics = _rach_metrics_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
-            # Pre-compute OC_k and heuristic NOV once (used in tabs AND downloads)
-            _oc_source = getattr(sp, "evaluated_rows", None) or sp.accepted_rows
-            _oc_results = _oc_fn(_oc_source, CAMPANULA_SWITCHES, threshold=_thresh_display)
-            _nov_results = _nov_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
-            _rach_modules_ok = True
-        except Exception as _rach_err:
-            _rach_modules_ok = False
-            _oc_results = []
-            _nov_results = []
-
-        # ---- sp_tab2: D · R — causal degeneracy & resolvability -----------
-        with sp_tab2:
-            st.markdown("### D = H(S | A_ε) — causal degeneracy")
-            st.markdown("### R = 1 − D/K — causal resolvability")
-            st.caption(
-                "**D** measures remaining uncertainty about mechanism combinations after "
-                "conditioning on y_obs and G(θ). High D = many switch combos remain admissible.  \n"
-                "**R** normalises D to [0,1]. R=0: no resolution. R=1: unique mechanism identified.  \n"
-                "High D is **not a failure** — it means the current observation set cannot yet "
-                "distinguish competing mechanisms. This is itself a scientific finding."
-            )
-            if _rach_modules_ok:
-                mc1, mc2, mc3, mc4, mc5 = st.columns(5)
-                mc1.metric("R — causal resolvability", f"{_rs.causal_resolvability:.3f}",
-                           help="R = 1 − D/K. Fraction of causal uncertainty resolved by y_obs.")
-                mc2.metric("D — causal degeneracy", f"{_rs.causal_degeneracy:.3f} bits",
-                           help=f"H(S|A_ε). Max = K = {_rs.n_switches} bits.")
-                mc3.metric("K — max degeneracy", f"{_rs.max_degeneracy:.0f} bits",
-                           help=f"{_rs.n_switches} switches → {_rs.n_switches} bits max entropy.")
-                mc4.metric("|A_ε|", f"{_rs.n_accepted}",
-                           help="Number of accepted (θ,s) draws.")
-                mc5.metric("Total I_j", f"{_rach_metrics.total_identifiability:.3f} bits",
-                           help="Sum of per-switch marginal entropy reduction I_j.")
-
-                st.divider()
-                st.markdown("#### ε sensitivity — how D and R change with acceptance threshold")
-                st.caption(
-                    "Stricter ε → smaller A_ε → lower D → higher R.  \n"
-                    "Re-filtered from the accepted sample — no re-simulation needed."
-                )
-                _thresh_map = {
-                    "weighted_lax (≥0.800)":   0.800,
-                    "relaxed_0.83 (≥0.833)":   5 / 6,
-                    "weighted_strict (=1.000)": 1.000,
-                    "relaxed_0.67 (≥0.667)":   4 / 6,
-                }
-                _sens_rows = []
-                for _rule_label, _thr in _thresh_map.items():
-                    _filtered = [
-                        r for r in sp.accepted_rows
-                        if r.get("weighted_match_rate", 0.0) >= _thr - 1e-9
-                    ]
-                    _n = len(_filtered)
-                    if _n >= 3:
-                        _D = _cd_fn(_filtered, CAMPANULA_SWITCHES)
-                        _R = _cr_fn(_filtered, CAMPANULA_SWITCHES)
-                        _m = _rach_metrics_fn(_filtered, CAMPANULA_SWITCHES)
-                        _sens_rows.append({
-                            "ε rule": _rule_label,
-                            "|A_ε|": _n,
-                            "D (bits)": round(_D, 3),
-                            "R": round(_R, 3),
-                            "total I_j": round(_m.total_identifiability, 3),
-                        })
-                    else:
-                        _sens_rows.append({
-                            "ε rule": _rule_label, "|A_ε|": _n,
-                            "D (bits)": float("nan"), "R": float("nan"),
-                            "total I_j": float("nan"),
-                        })
-                _sens_df = pd.DataFrame(_sens_rows)
-                for _col in ("D (bits)", "R", "total I_j"):
-                    if _col in _sens_df.columns:
-                        _sens_df[_col] = pd.to_numeric(_sens_df[_col], errors="coerce")
-                stretch_df(_sens_df, hide_index=True)
-
-                st.divider()
-                st.markdown("#### Per-switch identifiability I_j")
-                st.caption(
-                    "I_j = H(s_j prior) − H(s_j | A_ε) = 1 − H(CA_j). "
-                    "How much the accepted sample reduces uncertainty about switch j. "
-                    "I_j = 1 → fully identified. I_j = 0 → uninformative."
-                )
-                if hasattr(_rach_metrics, "identifiability_table") and _rach_metrics.identifiability_table:
-                    df_ij = pd.DataFrame(_rach_metrics.identifiability_table)
-                    if not df_ij.empty and "switch" in df_ij.columns:
-                        _ij_col = [c for c in df_ij.columns if "identifiability" in c.lower() or c == "I_j"]
-                        if _ij_col:
-                            st.bar_chart(df_ij.set_index("switch")[[_ij_col[0]]], width="stretch")
-                        stretch_df(df_ij, hide_index=True)
+                stretch_df(_df_oc_nz, hide_index=True)
             else:
-                st.error(f"Could not load RACH modules: {_rach_err}")
+                st.info("All OC_k ≈ 0. パターン間が相関しているか |A_ε| が小さい場合に起こります。")
+            stretch_df(_df_oc, hide_index=True)
+        else:
+            st.info("OC_k データなし。推論を再実行してください。")
+    else:
+        st.error(f"OC_k computation failed: {_oc_err}")
 
-        # ---- sp_tab3: OC_k — observation contribution ----------------------
-        with sp_tab3:
-            st.markdown("### OC_k = R(O) − R(O \\ {k})")
-            st.caption(
-                "**Observation contribution**: how much each pattern in y_obs contributes "
-                "to causal resolvability, estimated by leave-one-out (LOO).  \n"
-                "**OC_k > 0** → removing this pattern reduces R (it adds information).  \n"
-                "**OC_k ≈ 0** → pattern is redundant with others.  \n"
-                "**OC_k < 0** → rare; pattern may confound inference."
+    st.divider()
+    _next_btn("⑥ NOV へ →", _STEPS[5])
+
+
+# ===========================================================================
+# ⑥ NOV
+# ===========================================================================
+elif _step_idx == 5:
+    sp = st.session_state["sp_result"]
+
+    _ens_sens_nov = st.session_state.get("_ens_sens", {})
+    if _ens_sens_nov:
+        _sen_nov = {k: v for k, v in _ens_sens_nov.items() if v >= 0.20}
+        if _sen_nov:
+            st.info(
+                "**Ensemble 感度分析 → 優先 NOV ターゲット:**  \n" +
+                "  \n".join(f"- **{k}** (感度={v:.2f})"
+                            for k, v in sorted(_sen_nov.items(), key=lambda x: -x[1]))
             )
-            if _rach_modules_ok:
-                if _oc_results:
-                    df_oc = pd.DataFrame([
-                        {"pattern": r.pattern, "switch": r.switch,
-                         "OC_k": round(r.OC_k, 4),
-                         "R_full": round(r.R_full, 4),
-                         "R_loo": round(r.R_loo, 4),
-                         "n_loo": r.n_loo}
-                        for r in _oc_results
-                    ])
-                    df_oc_nz = df_oc[df_oc["OC_k"].abs() > 0.0001].sort_values("OC_k", ascending=False)
-                    if not df_oc_nz.empty:
-                        st.bar_chart(
-                            df_oc_nz.set_index(df_oc_nz["pattern"] + " → " + df_oc_nz["switch"])[["OC_k"]],
-                            width="stretch",
-                        )
-                        stretch_df(df_oc_nz, hide_index=True)
-                    else:
-                        st.info(
-                            "All OC_k ≈ 0. Each individual pattern has low marginal contribution "
-                            "to resolvability — expected when patterns are correlated or |A_ε| is small. "
-                            "Adding independent observations (genetic, manipulative) increases OC_k variance."
-                        )
-                    stretch_df(df_oc, hide_index=True)
-                else:
-                    st.info("No per-pattern data available. Run inference to populate OC_k.")
-            else:
-                st.error(f"Could not load RACH modules: {_rach_err}")
+        else:
+            st.success("全スイッチ 感度 < 0.20 でロバストです。")
+    else:
+        st.caption("① Ensemble を実行すると、どのスイッチの NOV を優先すべきか自動推奨されます。")
 
-        # ---- sp_tab4: NOV — next-observation value -------------------------
-        with sp_tab4:
-            st.markdown("### NOV(q) ≈ E[ R(O ∪ q) − R(O) ]")
+    st.markdown("### NOV(q) ≈ E[ R(O ∪ q) − R(O) ]")
 
-            # Context from sensitivity analysis
-            _ens_sens_nov = st.session_state.get("_ens_sens", {})
-            if _ens_sens_nov:
-                _sensitive_nov = {k: v for k, v in _ens_sens_nov.items() if v >= 0.20}
-                if _sensitive_nov:
-                    st.info(
-                        "**感度分析からの推奨観測ターゲット**  \n"
-                        "以下のスイッチは先験依存が大きく (感度 ≥ 0.20)、"
-                        "NOV が最も役立ちます:  \n" +
-                        "  \n".join(
-                            f"- **{k}** (感度={v:.2f})"
-                            for k, v in sorted(_sensitive_nov.items(), key=lambda x: -x[1])
-                        )
-                    )
-                else:
-                    st.success(
-                        "全スイッチが感度 < 0.20 でロバストです。"
-                        "NOV は追加的な精度向上には有用ですが、結論は既に先験に依存しません。"
-                    )
-            else:
-                st.caption(
-                    "Ensemble タブを先に実行すると、"
-                    "どのスイッチの NOV を優先すべきか自動推奨されます。"
+    try:
+        from causal_model.causal_admissibility import (
+            next_observation_value as _nov_fn,
+            rach_summary as _rach_summary_fn2,
+        )
+        _rs2         = _rach_summary_fn2(sp.accepted_rows, CAMPANULA_SWITCHES)
+        _nov_results = _nov_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
+        _nov_ok = True
+    except Exception as _nov_err:
+        _nov_ok = False
+
+    _nov_mode = st.radio(
+        "NOV estimation method", ["Heuristic (instant)", "Simulation (accurate)"],
+        horizontal=True,
+    )
+
+    if _nov_mode == "Heuristic (instant)":
+        if _nov_ok and _nov_results:
+            _df_nov = pd.DataFrame([
+                {"priority": r.priority, "candidate": r.candidate,
+                 "ΔR (approx)": round(r.expected_resolvability_gain, 4),
+                 "target switches": ", ".join(r.target_switches),
+                 "rationale": r.rationale[:120]}
+                for r in _nov_results
+            ])
+            st.bar_chart(_df_nov.set_index("candidate")[["ΔR (approx)"]], width="stretch")
+            st.caption(f"Current R = {_rs2.causal_resolvability:.3f}.")
+            stretch_df(_df_nov, hide_index=True)
+        elif not _nov_ok:
+            st.error(f"NOV computation failed: {_nov_err}")
+        else:
+            st.info("No candidate observations configured.")
+
+    else:
+        _thresh_sp3 = GRADIENT_THRESH_MAP.get(
+            st.session_state.get("sp_settings", {}).get("acceptance_rule", acceptance_rule), 1.0)
+        _nov_backend_sel2 = st.radio(
+            "Outcome backend", ["proxy (fast)", "abm (slow, high-fidelity)"],
+            index=0, horizontal=True,
+        )
+        _nov_backend_key2 = "proxy" if _nov_backend_sel2.startswith("proxy") else "abm"
+        _nov_n2  = st.slider("Draws / outcome", 50, 500, 200 if _nov_backend_key2 == "proxy" else 50, 50)
+        _nov_seed2 = st.number_input("Seed", value=42, step=1, key="nov_seed2")
+
+        if st.button("▶ Run Simulation NOV", type="primary"):
+            from causal_model.causal_admissibility import next_observation_value_simulation
+            _nov_prog2  = st.progress(0.0, text="Starting NOV simulation…")
+            _nov_stat2  = st.empty()
+
+            def _nov_cb2(cand_name, outcome_name, done, total):
+                _nov_prog2.progress(done / max(total, 1),
+                                    text=f"{cand_name} / {outcome_name} ({done}/{total})")
+                _nov_stat2.caption(f"Running: {cand_name} → {outcome_name}")
+
+            with st.spinner("NOV simulation 実行中…"):
+                _nov_sim = next_observation_value_simulation(
+                    observed_rels=OBSERVED_RELS, pattern_weights=PATTERN_WEIGHTS,
+                    switches=CAMPANULA_SWITCHES, n_attempts=_nov_n2,
+                    preset_name=preset_name, acceptance_rule=acceptance_rule,
+                    seed=int(_nov_seed2), threshold=_thresh_sp3,
+                    progress_callback=_nov_cb2,
+                    current_accepted_rows=sp.accepted_rows,
+                    nov_backend=_nov_backend_key2,
                 )
+            _nov_prog2.progress(1.0, text="Done")
+            _nov_stat2.empty()
+            st.session_state["_nov_sim_results"] = _nov_sim
 
-            _nov_mode = st.radio(
-                "NOV estimation method",
-                ["Heuristic (instant)", "Simulation (accurate)"],
-                horizontal=True,
-                help=(
-                    "**Heuristic**: estimates ΔR from current CA_j ambiguity — instant but approximate.  \n"
-                    "**Simulation**: re-runs ABC for each candidate's possible outcomes and "
-                    "integrates over outcome probabilities — accurate but takes several minutes."
-                ),
+        if "_nov_sim_results" in st.session_state:
+            _sim_res2 = st.session_state["_nov_sim_results"]
+            _df_nov_sim = pd.DataFrame([
+                {"priority": r.priority, "candidate": r.candidate,
+                 "NOV (ΔR)": round(r.expected_resolvability_gain, 4),
+                 "R_current": round(r.current_R, 4),
+                 "R_expected": round(r.current_R + r.expected_resolvability_gain, 4),
+                 "target switches": ", ".join(r.target_switches)}
+                for r in _sim_res2
+            ])
+            st.bar_chart(_df_nov_sim.set_index("candidate")[["NOV (ΔR)"]], width="stretch")
+            stretch_df(_df_nov_sim, hide_index=True)
+            with st.expander("Outcome details"):
+                for _r2 in _sim_res2:
+                    st.markdown(f"**{_r2.candidate}** (p={_r2.priority}): {_r2.rationale[:300]}")
+
+    st.divider()
+    _next_btn("⑦ Parameter A_ε へ →", _STEPS[6])
+
+
+# ===========================================================================
+# ⑦ Parameter A_ε
+# ===========================================================================
+elif _step_idx == 6:
+    sp = st.session_state["sp_result"]
+
+    st.markdown("### 受容された (θ, s) の分布")
+    _df_sp = pd.DataFrame(sp.accepted_rows)
+    _sw_names2 = [sw.name for sw in CAMPANULA_SWITCHES]
+    _avail = [p for p in [
+        "guide_cost", "outcrossing_benefit", "selfing_benefit",
+        "inbreeding_depression", "drift_strength",
+        "Ne_isolation_slope", "migration_decay_rate", "pollinator_loss_slope",
+    ] if p in _df_sp.columns]
+
+    if len(_avail) >= 2:
+        _sc1, _sc2, _sc3 = st.columns(3)
+        with _sc1:
+            _color_sw = st.selectbox(
+                "Colour by switch", [s for s in _sw_names2 if s in _df_sp.columns], key="sp_color",
             )
+        with _sc2:
+            _xp = st.selectbox("X axis (θ)", _avail, key="sp_x")
+        with _sc3:
+            _yp = st.selectbox("Y axis (θ)", _avail, index=min(1, len(_avail)-1), key="sp_y")
+        _pdf = _df_sp[[_xp, _yp, _color_sw]].dropna().copy()
+        _pdf[_color_sw] = _pdf[_color_sw].map({True: "ON", False: "OFF"})
+        st.scatter_chart(_pdf, x=_xp, y=_yp, color=_color_sw, size=40)
+    else:
+        st.info("No parameter columns in accepted rows.")
 
-            if _nov_mode == "Heuristic (instant)":
-                st.caption(
-                    "**Next-observation value**: expected increase in causal resolvability "
-                    "if candidate observation q is added to y_obs.  \n"
-                    "Ranked by estimated ΔR. Computed from current CA_j via heuristic approximation "
-                    "(most ambiguous switches → most gain).  \n"
-                    "⚠ Heuristic, not the true expectation over q's outcome distribution. "
-                    "Use as a priority guide for future data collection."
+    if "nearest_structure" in _df_sp.columns:
+        with st.expander("Nearest M-structure distribution", expanded=False):
+            st.bar_chart(_df_sp["nearest_structure"].value_counts(), width="stretch")
+
+    st.divider()
+    _next_btn("⑧ Downloads へ →", _STEPS[7])
+
+
+# ===========================================================================
+# ⑧ Downloads
+# ===========================================================================
+elif _step_idx == 7:
+    import json as _json
+    sp = st.session_state["sp_result"]
+    _sp_settings = st.session_state.get("sp_settings", {})
+    _sp_tag = _run_tag(_sp_settings)
+
+    def _ser(rows):
+        out = []
+        for r in rows:
+            row = dict(r)
+            ppm = row.get("per_pattern_matched")
+            if isinstance(ppm, dict):
+                row["per_pattern_matched"] = _json.dumps(
+                    {k: [bool(v[0]), float(v[1])] for k, v in ppm.items()}
                 )
-                if _rach_modules_ok:
-                    if _nov_results:
-                        df_nov = pd.DataFrame([
-                            {
-                                "priority":        r.priority,
-                                "candidate":       r.candidate,
-                                "ΔR (approx)":     round(r.expected_resolvability_gain, 4),
-                                "target switches": ", ".join(r.target_switches),
-                                "rationale":       r.rationale[:120],
-                            }
-                            for r in _nov_results
-                        ])
-                        st.bar_chart(df_nov.set_index("candidate")[["ΔR (approx)"]], width="stretch")
-                        st.caption(
-                            f"Current R = {_rs.causal_resolvability:.3f}.  "
-                            "Top-ranked candidate is expected to increase R most. "
-                            "Collecting all candidates would approach R → 1."
-                        )
-                        stretch_df(df_nov, hide_index=True)
-                    else:
-                        st.info("No candidate observations configured.")
-                else:
-                    st.error(f"Could not load RACH modules: {_rach_err}")
+            out.append(row)
+        return out
 
-            else:  # Simulation NOV
-                st.caption(
-                    "**Simulation NOV**: for each candidate observation q, enumerates its possible "
-                    "empirical outcomes (e.g. 'monotone gradient' vs 'stepped gradient'), re-runs "
-                    "ABC with each augmented y_obs, and integrates R over outcomes weighted by "
-                    "prior probability.  \n"
-                    "NOV(q) = Σ_v  p(v) · R(O ∪ {q=v})  −  R(O)  \n"
-                    "Each candidate requires 2–3 ABC runs. Total ≈ "
-                    f"{8 * 2} runs × n_attempts draws."
-                )
-                _nov_backend = st.radio(
-                    "Outcome backend",
-                    options=["proxy (fast)", "abm (slow, high-fidelity)"],
-                    index=0,
-                    horizontal=True,
-                    help=(
-                        "proxy: ~50x faster, sufficient for ranking. "
-                        "abm: each draw runs 6 ABM replicates — 16 outcomes × 100 draws ≈ 10–60 min."
-                    ),
-                )
-                _nov_backend_key = "proxy" if _nov_backend.startswith("proxy") else "abm"
-                _default_n = 200 if _nov_backend_key == "proxy" else 50
-                _nov_n = st.slider(
-                    "Draws per outcome (n_attempts)",
-                    min_value=50, max_value=500, value=_default_n, step=50,
-                    help="proxy: 200 draws ≈ 2–5 s per candidate. abm: keep ≤ 100.",
-                )
-                _nov_seed_inp = st.number_input("Seed", value=42, step=1)
+    _df_accepted  = pd.DataFrame(_ser(sp.accepted_rows))
+    _df_posterior = pd.DataFrame(sp.posterior_table)
+    _evaluated    = getattr(sp, "evaluated_rows", None) or sp.accepted_rows
+    _df_evaluated = pd.DataFrame(_ser(_evaluated))
 
-                if st.button("▶ Run Simulation NOV", type="primary"):
-                    if not _rach_modules_ok:
-                        st.error(f"Could not load RACH modules: {_rach_err}")
-                    else:
-                        from causal_model.causal_admissibility import next_observation_value_simulation
-                        from examples.campanula_izu.observed_data import (
-                            load_observed_patterns as _load_obs,
-                            load_pattern_weights as _load_pw,
-                        )
-                        _obs_rels = _load_obs()
-                        _pw_weights = _load_pw()
+    try:
+        from causal_model.causal_admissibility import (
+            observation_contribution as _oc_dl,
+            next_observation_value   as _nov_dl,
+            rach_summary             as _rs_dl,
+        )
+        from causal_model.identifiability import compute_rach_theory_metrics as _rm_dl
+        _thresh_dl = GRADIENT_THRESH_MAP.get(_sp_settings.get("acceptance_rule", acceptance_rule), 1.0)
+        _oc_dl_res  = _oc_dl(getattr(sp, "evaluated_rows", None) or sp.accepted_rows,
+                             CAMPANULA_SWITCHES, threshold=_thresh_dl)
+        _nov_dl_res = _nov_dl(sp.accepted_rows, CAMPANULA_SWITCHES)
+        _rs_dl_res  = _rs_dl(sp.accepted_rows, CAMPANULA_SWITCHES)
+        _rm_dl_res  = _rm_dl(sp.accepted_rows, CAMPANULA_SWITCHES)
+        _df_oc_dl = pd.DataFrame([
+            {"pattern": r.pattern, "switch": r.switch,
+             "OC_k": round(r.OC_k, 4), "R_full": round(r.R_full, 4),
+             "R_loo": round(r.R_loo, 4), "n_full": r.n_full, "n_loo": r.n_loo}
+            for r in _oc_dl_res
+        ]) if _oc_dl_res else pd.DataFrame()
+        _df_nov_dl = pd.DataFrame([
+            {"priority": r.priority, "candidate": r.candidate,
+             "NOV_delta_R": round(r.expected_resolvability_gain, 4),
+             "R_current": round(r.current_R, 4),
+             "target_switches": ", ".join(r.target_switches),
+             "rationale": r.rationale[:300]}
+            for r in _nov_dl_res
+        ]) if _nov_dl_res else pd.DataFrame()
+        _df_summary_dl = pd.DataFrame([{
+            "n_switches": _rs_dl_res.n_switches, "n_accepted": _rs_dl_res.n_accepted,
+            "D_RACH": round(_rs_dl_res.causal_degeneracy, 4),
+            "K_max": round(_rs_dl_res.max_degeneracy, 4),
+            "R_RACH": round(_rs_dl_res.causal_resolvability, 4),
+            "total_Ij": round(_rm_dl_res.total_identifiability, 4),
+            "threshold": _thresh_dl,
+            "acceptance_rule": _sp_settings.get("acceptance_rule", ""),
+            "preset": _sp_settings.get("preset_name", ""),
+            "seed": _sp_settings.get("seed", ""),
+        }])
+    except Exception:
+        _df_oc_dl = pd.DataFrame()
+        _df_nov_dl = pd.DataFrame()
+        _df_summary_dl = pd.DataFrame()
 
-                        _nov_progress = st.progress(0.0, text="Starting NOV simulation…")
-                        _nov_status = st.empty()
-                        _nov_done_count = [0]
-                        _nov_total = sum(
-                            len(c.outcomes)
-                            for c in __import__(
-                                "causal_model.causal_admissibility",
-                                fromlist=["CAMPANULA_CANDIDATE_OBSERVATIONS"]
-                            ).CAMPANULA_CANDIDATE_OBSERVATIONS
-                            if c.outcomes
-                        )
+    _zip_contents = {
+        f"{_sp_tag}_accepted_rows":            _df_accepted,
+        f"{_sp_tag}_evaluated_rows":           _df_evaluated,
+        f"{_sp_tag}_posterior_table":          _df_posterior,
+        f"{_sp_tag}_observation_contribution": _df_oc_dl,
+        f"{_sp_tag}_nov_table":                _df_nov_dl,
+        f"{_sp_tag}_rach_summary":             _df_summary_dl,
+    }
 
-                        def _nov_cb(cand_name, outcome_name, done, total):
-                            _nov_done_count[0] = done
-                            pct = done / max(total, 1)
-                            _nov_progress.progress(pct, text=f"{cand_name} / {outcome_name} ({done}/{total})")
-                            _nov_status.caption(f"Running: {cand_name} → {outcome_name}")
+    st.download_button(
+        "⬇ Download ALL RACH inference tables as ZIP",
+        _build_zip(_zip_contents),
+        f"{_sp_tag}_rach_inference.zip",
+        "application/zip",
+        use_container_width=True, type="primary",
+    )
+    st.caption(
+        "ZIP: accepted_rows · evaluated_rows · posterior_table · "
+        "observation_contribution · nov_table · rach_summary"
+    )
+    st.divider()
 
-                        with st.spinner("Running simulation NOV…"):
-                            _nov_sim_results = next_observation_value_simulation(
-                                observed_rels=_obs_rels,
-                                pattern_weights=_pw_weights,
-                                switches=CAMPANULA_SWITCHES,
-                                n_attempts=_nov_n,
-                                preset_name=st.session_state.get("preset_name", "literature_grounded"),
-                                acceptance_rule=st.session_state.get("acceptance_rule", "weighted_lax"),
-                                seed=int(_nov_seed_inp),
-                                threshold=_thresh_display,
-                                progress_callback=_nov_cb,
-                                current_accepted_rows=sp.accepted_rows,
-                                nov_backend=_nov_backend_key,
-                            )
-
-                        _nov_progress.progress(1.0, text="Done")
-                        _nov_status.empty()
-                        st.session_state["_nov_sim_results"] = _nov_sim_results
-
-                if "_nov_sim_results" in st.session_state:
-                    _sim_res = st.session_state["_nov_sim_results"]
-                    df_nov_sim = pd.DataFrame([
-                        {
-                            "priority":        r.priority,
-                            "candidate":       r.candidate,
-                            "NOV (ΔR)":        round(r.expected_resolvability_gain, 4),
-                            "R_current":       round(r.current_R, 4),
-                            "R_expected":      round(r.current_R + r.expected_resolvability_gain, 4),
-                            "target switches": ", ".join(r.target_switches),
-                        }
-                        for r in _sim_res
-                    ])
-                    st.bar_chart(df_nov_sim.set_index("candidate")[["NOV (ΔR)"]], width="stretch")
-                    st.caption(
-                        f"Baseline R = {_sim_res[0].current_R:.3f} (same A_ε).  "
-                        "NOV > 0 = collecting this observation expected to improve causal resolution."
-                    )
-                    stretch_df(df_nov_sim, hide_index=True)
-                    with st.expander("Outcome details (rationale)"):
-                        for r in _sim_res:
-                            st.markdown(f"**{r.candidate}** (priority={r.priority}): {r.rationale[:300]}")
-
-        # ---- sp_tab5: Parameter space A_ε ----------------------------------
-        with sp_tab5:
-            st.markdown("### Accepted (θ, s) in latent parameter space")
-            st.caption(
-                "Each point is one accepted (θ, s) draw — a member of A_ε. "
-                "Colour by switch state to see which θ regions are compatible with "
-                "each mechanism being ON vs OFF."
-            )
-            df_sp = pd.DataFrame(sp.accepted_rows)
-            sw_names = [sw.name for sw in CAMPANULA_SWITCHES]
-            avail = [
-                p for p in [
-                    "guide_cost", "outcrossing_benefit",
-                    "selfing_benefit", "inbreeding_depression", "drift_strength",
-                    "Ne_isolation_slope", "migration_decay_rate", "pollinator_loss_slope",
-                ]
-                if p in df_sp.columns
-            ]
-            if len(avail) >= 2:
-                col_sw, col_x, col_y = st.columns(3)
-                with col_sw:
-                    color_switch = st.selectbox(
-                        "Colour by switch",
-                        [s for s in sw_names if s in df_sp.columns],
-                        key="sp_color",
-                    )
-                with col_x:
-                    x_p = st.selectbox("X axis (θ parameter)", avail, key="sp_x")
-                with col_y:
-                    y_p = st.selectbox(
-                        "Y axis (θ parameter)", avail,
-                        index=min(1, len(avail) - 1),
-                        key="sp_y",
-                    )
-                plot_df = df_sp[[x_p, y_p, color_switch]].dropna().copy()
-                plot_df[color_switch] = plot_df[color_switch].map({True: "ON", False: "OFF"})
-                st.scatter_chart(plot_df, x=x_p, y=y_p, color=color_switch, size=40)
-            else:
-                st.info("No parameter columns found in accepted rows.")
-
-            if "nearest_structure" in df_sp.columns:
-                with st.expander("Nearest M-structure distribution", expanded=False):
-                    st.bar_chart(df_sp["nearest_structure"].value_counts(), width="stretch")
-                    st.caption(
-                        "Maps each accepted switch state to the nearest M1-M5 label — "
-                        "connecting switch posterior back to conventional structure comparison."
-                    )
-
-        # ---- sp_tab6: Downloads --------------------------------------------
-        with sp_tab6:
-            import json as _json
-
-            _sp_settings = st.session_state.get("sp_settings", {})
-            _sp_tag = _run_tag(_sp_settings)
-
-            # --- helpers to serialize special columns -----------------------
-            def _serialize_per_pattern(rows: list[dict]) -> list[dict]:
-                """Copy rows, serialising per_pattern_matched dicts to JSON strings."""
-                out = []
-                for r in rows:
-                    row = dict(r)
-                    ppm = row.get("per_pattern_matched")
-                    if isinstance(ppm, dict):
-                        # tuples (matched, weight) → JSON arrays for CSV portability
-                        row["per_pattern_matched"] = _json.dumps(
-                            {k: [bool(v[0]), float(v[1])] for k, v in ppm.items()}
-                        )
-                    out.append(row)
-                return out
-
-            _df_sp_accepted  = pd.DataFrame(_serialize_per_pattern(sp.accepted_rows))
-            _df_sp_posterior = pd.DataFrame(sp.posterior_table)
-
-            _evaluated_rows = getattr(sp, "evaluated_rows", None) or sp.accepted_rows
-            _df_sp_evaluated = pd.DataFrame(_serialize_per_pattern(_evaluated_rows))
-
-            # OC_k table (pattern-level; switch column is repeated for each switch)
-            if _rach_modules_ok and _oc_results:
-                _df_oc = pd.DataFrame([
-                    {"pattern": r.pattern, "switch": r.switch,
-                     "OC_k": round(r.OC_k, 4),
-                     "R_full": round(r.R_full, 4), "R_loo": round(r.R_loo, 4),
-                     "n_full": r.n_full, "n_loo": r.n_loo}
-                    for r in _oc_results
-                ])
-            else:
-                _df_oc = pd.DataFrame()
-
-            # Heuristic NOV table
-            if _rach_modules_ok and _nov_results:
-                _df_nov = pd.DataFrame([
-                    {"priority": r.priority, "candidate": r.candidate,
-                     "NOV_delta_R": round(r.expected_resolvability_gain, 4),
-                     "R_current": round(r.current_R, 4),
-                     "target_switches": ", ".join(r.target_switches),
-                     "rationale": r.rationale[:300]}
-                    for r in _nov_results
-                ])
-            else:
-                _df_nov = pd.DataFrame()
-
-            # RACH summary
-            if _rach_modules_ok:
-                _df_rach_summary = pd.DataFrame([{
-                    "n_switches": _rs.n_switches,
-                    "n_accepted": _rs.n_accepted,
-                    "D_RACH": round(_rs.causal_degeneracy, 4),
-                    "K_max": round(_rs.max_degeneracy, 4),
-                    "R_RACH": round(_rs.causal_resolvability, 4),
-                    "total_Ij": round(_rach_metrics.total_identifiability, 4),
-                    "threshold": _thresh_display,
-                    "acceptance_rule": _sp_settings.get("acceptance_rule", ""),
-                    "preset": _sp_settings.get("preset_name", ""),
-                    "n_attempts": _sp_settings.get("n_attempts", ""),
-                    "seed": _sp_settings.get("seed", ""),
-                }])
-            else:
-                _df_rach_summary = pd.DataFrame()
-
-            _zip_contents = {
-                f"{_sp_tag}_accepted_rows":           _df_sp_accepted,
-                f"{_sp_tag}_evaluated_rows":          _df_sp_evaluated,
-                f"{_sp_tag}_posterior_table":         _df_sp_posterior,
-                f"{_sp_tag}_observation_contribution": _df_oc,
-                f"{_sp_tag}_nov_table":               _df_nov,
-                f"{_sp_tag}_rach_summary":            _df_rach_summary,
-            }
-
-            st.download_button(
-                "⬇ Download ALL RACH inference tables as ZIP",
-                _build_zip(_zip_contents),
-                f"{_sp_tag}_rach_inference.zip",
-                "application/zip",
-                use_container_width=True,
-                type="primary",
-            )
-            st.caption(
-                "ZIP contains: accepted_rows · evaluated_rows · posterior_table · "
-                "observation_contribution · nov_table · rach_summary  \n"
-                "`evaluated_rows.csv` is required to reproduce OC_k (LOO re-acceptance "
-                "can recover previously-rejected draws that become accepted when a pattern is removed)."
-            )
-            st.divider()
-
-            col_dl1, col_dl2, col_dl3 = st.columns(3)
-            with col_dl1:
-                st.download_button(
-                    "accepted_rows.csv  (A_ε sample)",
-                    _df_sp_accepted.to_csv(index=False).encode("utf-8"),
-                    f"{_sp_tag}_accepted_rows.csv", "text/csv",
-                )
-                st.download_button(
-                    "evaluated_rows.csv  (all draws)",
-                    _df_sp_evaluated.to_csv(index=False).encode("utf-8"),
-                    f"{_sp_tag}_evaluated_rows.csv", "text/csv",
-                    help="Required for unbiased OC_k reproduction.",
-                )
-            with col_dl2:
-                st.download_button(
-                    "posterior_table.csv  (CA_j, BF)",
-                    _df_sp_posterior.to_csv(index=False).encode("utf-8"),
-                    f"{_sp_tag}_posterior_table.csv", "text/csv",
-                )
-                if not _df_oc.empty:
-                    st.download_button(
-                        "observation_contribution.csv  (OC_k)",
-                        _df_oc.to_csv(index=False).encode("utf-8"),
-                        f"{_sp_tag}_observation_contribution.csv", "text/csv",
-                    )
-            with col_dl3:
-                if not _df_nov.empty:
-                    st.download_button(
-                        "nov_table.csv  (heuristic NOV)",
-                        _df_nov.to_csv(index=False).encode("utf-8"),
-                        f"{_sp_tag}_nov_table.csv", "text/csv",
-                    )
-                if not _df_rach_summary.empty:
-                    st.download_button(
-                        "rach_summary.csv",
-                        _df_rach_summary.to_csv(index=False).encode("utf-8"),
-                        f"{_sp_tag}_rach_summary.csv", "text/csv",
-                    )
-
-        # ---- sp_tab7: Ensemble — sensitivity analysis -----------------------
-        with sp_tab7:
-            st.markdown("### Ensemble sensitivity analysis")
-            st.caption(
-                "Run ABC inference across multiple (θ-prior preset, ε acceptance rule) "
-                "combinations.  Quantifies how robust CA_j and R_RACH are to the choice "
-                "of prior and ε.  "
-                "**Ensemble CA_j** = n_accepted-weighted average across all configurations.  "
-                "**Sensitivity range** = max − min CA_j per switch (near-zero → robust)."
-            )
-
-            try:
-                from causal_model.ensemble import (
-                    run_ensemble as _run_ensemble,
-                    best_config as _best_config,
-                    ensemble_ca_j as _ensemble_ca_j,
-                    sensitivity_range as _sensitivity_range,
-                )
-                from causal_model.switch_inference import GRADIENT_THRESH_MAP as _THRESH_MAP
-                from causal_model.parameter_sampling import predefined_tradeoff_presets as _presets_fn
-                _ensemble_ok = True
-                _ensemble_err = ""
-            except Exception as _e:
-                _ensemble_ok = False
-                _ensemble_err = str(_e)
-
-            if not _ensemble_ok:
-                st.error(f"Ensemble module load failed: {_ensemble_err}")
-            else:
-                _all_presets = list(_presets_fn().keys())
-                _all_rules   = list(_THRESH_MAP.keys())
-
-                _ens_col1, _ens_col2 = st.columns(2)
-                with _ens_col1:
-                    _ens_presets = st.multiselect(
-                        "θ-prior presets",
-                        options=_all_presets,
-                        default=_all_presets,
-                        help="literature_grounded = Izu-calibrated prior. broad_prior = wide sensitivity prior.",
-                    )
-                with _ens_col2:
-                    _ens_rules = st.multiselect(
-                        "ABC acceptance rules (ε)",
-                        options=_all_rules,
-                        default=["weighted_lax", "relaxed_0.83", "relaxed_0.67"],
-                        help="Each rule maps to a weighted_match_rate threshold.",
-                    )
-
-                _ens_col3, _ens_col4, _ens_col5 = st.columns(3)
-                with _ens_col3:
-                    _ens_backend = st.radio(
-                        "Backend",
-                        ["proxy (fast)", "abm (slow)"],
-                        index=0,
-                        horizontal=True,
-                        help="proxy ≈ 1–3 s per config. abm ≈ 30–120 s per config.",
-                    )
-                    _ens_backend_key = "proxy" if _ens_backend.startswith("proxy") else "abm"
-                with _ens_col4:
-                    _ens_n = st.slider(
-                        "Draws per config",
-                        min_value=50, max_value=500,
-                        value=200 if _ens_backend_key == "proxy" else 100,
-                        step=50,
-                    )
-                with _ens_col5:
-                    _ens_min_n = st.number_input(
-                        "Min accepted (for best-config selection)",
-                        min_value=5, max_value=100, value=20, step=5,
-                    )
-
-                _ens_seed = st.number_input("Seed", value=42, step=1, key="ens_seed")
-
-                if st.button("▶ Run Ensemble", type="primary"):
-                    if not _ens_presets or not _ens_rules:
-                        st.warning("Select at least one preset and one acceptance rule.")
-                    else:
-                        _n_configs = len(_ens_presets) * len(_ens_rules)
-                        _ens_progress = st.progress(0.0, text="Starting ensemble…")
-                        _ens_status   = st.empty()
-
-                        def _ens_cb(done, total, preset, rule):
-                            _ens_progress.progress(
-                                done / max(total, 1),
-                                text=f"{preset} / {rule}  ({done}/{total})",
-                            )
-                            _ens_status.caption(f"Running: {preset} + {rule}")
-
-                        from examples.campanula_izu.observed_data import (
-                            load_observed_patterns as _load_obs2,
-                            load_pattern_weights   as _load_pw2,
-                        )
-                        _obs2 = _load_obs2()
-                        _pw2  = _load_pw2()
-
-                        with st.spinner(f"Running {_n_configs} configurations…"):
-                            _ens_results = _run_ensemble(
-                                presets=_ens_presets,
-                                acceptance_rules=_ens_rules,
-                                switches=CAMPANULA_SWITCHES,
-                                n_attempts=_ens_n,
-                                seed=int(_ens_seed),
-                                backend=_ens_backend_key,
-                                observed_rels=_obs2,
-                                pattern_weights=_pw2,
-                                progress_callback=_ens_cb,
-                            )
-                        _ens_progress.progress(1.0, text="Done")
-                        _ens_status.empty()
-                        st.session_state["_ens_results"] = _ens_results
-
-                if "_ens_results" in st.session_state:
-                    _ens_res = st.session_state["_ens_results"]
-                    _sw_names = [sw.name for sw in CAMPANULA_SWITCHES]
-
-                    # Cache sensitivity range in session state for other tabs
-                    try:
-                        _sens_cache = _sensitivity_range(_ens_res)
-                        st.session_state["_ens_sens"] = _sens_cache
-                    except Exception:
-                        pass
-
-                    # --- Robust summary at top of Ensemble tab ---
-                    st.markdown("#### ロバスト結論サマリー")
-                    _ens_ca_avg_top = _ensemble_ca_j(_ens_res, min_accepted=1)
-                    _ens_sens_top   = st.session_state.get("_ens_sens", {})
-                    if _ens_ca_avg_top and _ens_sens_top:
-                        _rob_rows = []
-                        for _sw in _sw_names:
-                            _ca_v  = _ens_ca_avg_top.get(_sw, float("nan"))
-                            _s_v   = _ens_sens_top.get(_sw, float("nan"))
-                            _verdict = (
-                                "✅ ON  🔒 Robust"    if _ca_v > 2/3 and _s_v < 0.20 else
-                                "❌ OFF  🔒 Robust"   if _ca_v < 1/3 and _s_v < 0.20 else
-                                "✅ ON  ⚠ 感度大"    if _ca_v > 2/3 else
-                                "❌ OFF  ⚠ 感度大"   if _ca_v < 1/3 else
-                                "〜 不定  ⚠ 要追加観測"
-                            )
-                            _rob_rows.append({
-                                "switch":           _sw,
-                                "ensemble CA_j":    round(_ca_v, 3),
-                                "sensitivity range": round(_s_v, 3),
-                                "verdict":          _verdict,
-                            })
-                        stretch_df(pd.DataFrame(_rob_rows), hide_index=True)
-                        _best_for_inf = _best_config(_ens_res, min_accepted=int(_ens_min_n))
-                        if _best_for_inf:
-                            st.success(
-                                f"**② 推論に使うべき設定**:  "
-                                f"`{_best_for_inf.preset_name}` + `{_best_for_inf.acceptance_rule}`  "
-                                f"(R_RACH={_best_for_inf.R_RACH:.3f},  n={_best_for_inf.n_accepted})  \n"
-                                "サイドバーの θ-prior preset と ε を上記に合わせて "
-                                "**Run RACH inference** を実行してください。"
-                            )
-                    st.divider()
-
-                    # --- Comparison table ---
-                    st.markdown("#### Configuration comparison")
-                    _best = _best_config(_ens_res, min_accepted=int(_ens_min_n))
-                    _ens_rows = []
-                    for r in _ens_res:
-                        row = {
-                            "preset":          r.preset_name,
-                            "rule":            r.acceptance_rule,
-                            "ε":               r.threshold,
-                            "n_accepted":      r.n_accepted,
-                            "n_evaluated":     r.n_evaluated,
-                            "D_RACH":          r.D_RACH,
-                            "R_RACH":          r.R_RACH,
-                        }
-                        for sw in _sw_names:
-                            row[f"CA_{sw[:12]}"] = r.ca_j.get(sw, float("nan"))
-                        row["_is_best"] = (r is _best)
-                        _ens_rows.append(row)
-
-                    _df_ens = pd.DataFrame(_ens_rows)
-
-                    def _highlight_best(row):
-                        if row.get("_is_best"):
-                            return ["background-color: #d4edda"] * len(row)
-                        return [""] * len(row)
-
-                    _df_display = _df_ens.drop(columns=["_is_best"])
-                    st.dataframe(
-                        _df_display.style.apply(
-                            lambda row: ["background-color: #d4edda" if _ens_rows[row.name]["_is_best"] else "" for _ in row],
-                            axis=1,
-                        ),
-                        use_container_width=True,
-                    )
-                    if _best:
-                        st.success(
-                            f"**Best config** (highest R_RACH with n_accepted ≥ {int(_ens_min_n)}):  "
-                            f"`{_best.preset_name}` + `{_best.acceptance_rule}`  →  "
-                            f"R_RACH = {_best.R_RACH:.3f},  n_accepted = {_best.n_accepted}"
-                        )
-
-                    st.divider()
-
-                    # --- Ensemble CA_j bar chart ---
-                    st.markdown("#### Ensemble CA_j  (n_accepted-weighted average)")
-                    _ca_avg = _ensemble_ca_j(_ens_res, min_accepted=1)
-                    if _ca_avg:
-                        _df_ca_avg = pd.DataFrame(
-                            [{"switch": k, "ensemble CA_j": v} for k, v in _ca_avg.items()]
-                        )
-                        st.bar_chart(_df_ca_avg.set_index("switch"), width="stretch")
-                        st.caption(
-                            "Grey line at 0.5 = prior (no information). "
-                            "Values > 0.5 = switch likely ON. Values < 0.5 = switch likely OFF."
-                        )
-
-                    st.divider()
-
-                    # --- Sensitivity range ---
-                    st.markdown("#### Sensitivity range  (max − min CA_j across configs)")
-                    _sens = _sensitivity_range(_ens_res)
-                    if _sens:
-                        _df_sens = pd.DataFrame(
-                            [{"switch": k, "sensitivity_range": v} for k, v in _sens.items()]
-                        )
-                        st.bar_chart(_df_sens.set_index("switch"), width="stretch")
-                        st.caption(
-                            "Near-zero → result is robust to prior/ε choice.  "
-                            "Large range → result is prior/ε sensitive; interpret with caution."
-                        )
-
-                    # --- CA_j per switch across configs (line chart) ---
-                    st.markdown("#### CA_j per config per switch")
-                    _df_ca_lines = pd.DataFrame([
-                        {"config": f"{r.preset_name}/{r.acceptance_rule}", **r.ca_j}
-                        for r in _ens_res
-                    ]).set_index("config")
-                    st.line_chart(_df_ca_lines, width="stretch")
-
-                    # --- Download ---
-                    st.divider()
-                    _df_ens_dl = _df_display.copy()
-                    st.download_button(
-                        "⬇ Download ensemble_comparison.csv",
-                        _df_ens_dl.to_csv(index=False).encode("utf-8"),
-                        "ensemble_comparison.csv",
-                        "text/csv",
-                    )
+    _dl1, _dl2, _dl3 = st.columns(3)
+    with _dl1:
+        st.download_button("accepted_rows.csv",
+            _df_accepted.to_csv(index=False).encode("utf-8"),
+            f"{_sp_tag}_accepted_rows.csv", "text/csv")
+        st.download_button("evaluated_rows.csv",
+            _df_evaluated.to_csv(index=False).encode("utf-8"),
+            f"{_sp_tag}_evaluated_rows.csv", "text/csv")
+    with _dl2:
+        st.download_button("posterior_table.csv",
+            _df_posterior.to_csv(index=False).encode("utf-8"),
+            f"{_sp_tag}_posterior_table.csv", "text/csv")
+        if not _df_oc_dl.empty:
+            st.download_button("observation_contribution.csv",
+                _df_oc_dl.to_csv(index=False).encode("utf-8"),
+                f"{_sp_tag}_observation_contribution.csv", "text/csv")
+    with _dl3:
+        if not _df_nov_dl.empty:
+            st.download_button("nov_table.csv",
+                _df_nov_dl.to_csv(index=False).encode("utf-8"),
+                f"{_sp_tag}_nov_table.csv", "text/csv")
+        if not _df_summary_dl.empty:
+            st.download_button("rach_summary.csv",
+                _df_summary_dl.to_csv(index=False).encode("utf-8"),
+                f"{_sp_tag}_rach_summary.csv", "text/csv")
 
