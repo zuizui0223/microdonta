@@ -170,9 +170,15 @@ def evaluate_patterns(
 
     result = EvaluationResult()
     for row in observed_rows:
-        # Defensive role guard: skip input_context rows regardless of how the
-        # list was assembled.  Predictor variables must not count toward ABC.
-        if row.get("role", "response_target") == "input_context":
+        # Defensive role guard: skip input_context and diagnostic_only rows.
+        # input_context: predictor variables injected from env, not simulated.
+        # diagnostic_only: patterns designed to match a specific switch
+        #   assumption — using them in ABC creates circular inference because
+        #   the posterior P(S|A_ε) reflects the researcher's assumption rather
+        #   than emergent data patterns.  These rows are kept in the CSV for
+        #   transparency and post-hoc diagnostics but must NOT enter ABC.
+        role = row.get("role", "response_target")
+        if role in ("input_context", "diagnostic_only"):
             continue
         ptype = row.get("type", "pairwise_relation")
         weight = float(row.get("weight", 1.0))

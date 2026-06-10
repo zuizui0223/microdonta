@@ -164,6 +164,18 @@ def choose_reproduction_mode(
         )
         p_out = clamp(p_out + bonus * outcrossing_benefit)
 
+    # M4 (S3) pathway: island isolation as common cause — reproductive assurance
+    # pressure from pollinator community impoverishment.
+    # Isolation reduces the full pollinator community (not just Bombus), creating
+    # direct RA pressure independent of the S1 guide-Bombus mechanism.
+    # Effect: reduce p_out proportional to island_distance × S3 weight.
+    # This aligns with the phenomenological model (S3 drives selfing via RA,
+    # not via trait-specific selection).  Ne-based drift is NOT amplified here
+    # (that was double-counting: Ne already decreases with island_distance).
+    if switches is not None and switches.island_common_cause > 0:
+        ra_pressure = switches.island_common_cause * env.island_distance * 0.30
+        p_out = clamp(p_out - ra_pressure)
+
     p_self = selfing_probability(agent, p_out)
 
     r = rng.random()
@@ -266,6 +278,7 @@ def produce_child(
     params: ModelParameters,
     rng: random.Random,
     switches: Optional["PathwaySwitches"] = None,
+    population_size: int = 1,
 ) -> PlantAgent:
     """Generate a child agent from *parent* via inheritance, mutation, and drift.
 
@@ -301,15 +314,16 @@ def produce_child(
     mut_sd_self = getattr(params, "mutation_sd_selfing_ability", 0.03)
     trait_corr = getattr(params, "trait_correlation_strength", 0.02)
 
-    base_drift_sd = drift_strength(env, params)
+    base_drift_sd = drift_strength(env, params, population_size=population_size)
 
     # Drift is always present — no binary S4 switch.
     # Base drift SD comes from ModelParameters.base_drift_strength and Ne.
+    # S3 (island_common_cause) effect is applied in choose_reproduction_mode
+    # as RA pressure on outcrossing probability — NOT as drift amplification.
+    # Drift amplification for M4 is removed: Ne already decreases with
+    # island_distance via env.effective_population_size, so adding island-
+    # proportional drift on top would double-count the isolation effect.
     drift_sd = base_drift_sd
-
-    # M4: island common cause adds extra drift proportional to island distance
-    if switches is not None and switches.island_common_cause > 0:
-        drift_sd = drift_sd + env.island_distance * switches.island_common_cause * 0.1
 
     nectar_guide = inherit_trait(parent.nectar_guide, mut_sd_guide, drift_sd, rng)
     flower_size = inherit_trait(parent.flower_size, mut_sd_flower, drift_sd, rng)
@@ -389,7 +403,7 @@ def next_generation(
     children: list[PlantAgent] = []
     for _ in range(n):
         parent = select_parent(evaluated_population, rng)
-        child = produce_child(parent, env, params, rng, switches)
+        child = produce_child(parent, env, params, rng, switches, population_size=n)
         children.append(child)
     return children
 

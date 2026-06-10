@@ -11,15 +11,41 @@ from .parameters import ModelParameters
 from .reproduction import clamp
 
 
-def drift_strength(env: Environment, params: ModelParameters) -> float:
-    """Return drift strength scaled by effective population size.
+def drift_strength(
+    env: Environment,
+    params: ModelParameters,
+    population_size: int = 1,
+) -> float:
+    """Return per-individual drift SD scaled by actual effective population size.
 
-    The value is bounded to avoid explosive drift when effective population
-    size is very small and to keep trait changes in a provisional model range.
+    Uses the same Ne definition as the Wright-Fisher H update in
+    simulate_population:
+        Ne_eff = population_size × env.effective_population_size
+
+    where ``env.effective_population_size`` ∈ [0.05, 1.0] is a relative
+    measure derived from island isolation
+    (Ne_proxy = max(0.05, 1.0 − 0.765 × island_distance)).
+
+    Previously used ``max(1.0, ne_scale)`` alone (ne_scale ∈ [0.05, 1.0]),
+    which decoupled individual trait drift from population-level H loss.
+    The fix multiplies by population_size so both mechanisms share the same
+    Ne, matching biological reality: drift affects all loci equally.
+
+    Parameters
+    ----------
+    env:
+        Population environment (provides effective_population_size).
+    params:
+        Model parameters (provides base_drift_strength).
+    population_size:
+        Current census population size N.  Defaults to 1 for backward-
+        compatibility with callers that do not pass this argument; however,
+        simulate_population always passes the actual value.
     """
 
-    effective_ne = max(1.0, float(env.effective_population_size))
-    return clamp(params.base_drift_strength / math.sqrt(effective_ne), 0.0, 0.25)
+    ne_scale = max(0.05, float(env.effective_population_size))
+    actual_ne = max(1.0, float(population_size) * ne_scale)
+    return clamp(params.base_drift_strength / math.sqrt(actual_ne), 0.0, 0.25)
 
 
 def _normal(rng: Any, mean: float, sd: float) -> float:
