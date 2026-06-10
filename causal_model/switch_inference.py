@@ -261,6 +261,12 @@ class SwitchPosteriorResult:
     ----------
     accepted_rows:
         Full records for accepted samples, including switch states and distances.
+    evaluated_rows:
+        ALL evaluated rows (accepted + rejected), each with per_pattern_matched.
+        Required for unbiased observation_contribution() (OC_k) computation:
+        when pattern k is removed from y_obs some previously-rejected rows
+        can cross the acceptance threshold and must be counted in the LOO set.
+        If not stored by the backend, this equals accepted_rows (biased estimate).
     rejected_count:
         Total rejected samples (parameter constraint failures + ABC rejections).
     n_attempts:
@@ -270,6 +276,7 @@ class SwitchPosteriorResult:
     """
 
     accepted_rows: list[dict]
+    evaluated_rows: list[dict]
     rejected_count: int
     n_attempts: int
     posterior_table: list[dict]
@@ -530,6 +537,7 @@ def run_switch_posterior_inference(
 
     import time as _time
     accepted_rows: list[dict] = []
+    evaluated_rows: list[dict] = []   # ALL evaluated draws (accepted + rejected)
     total_steps = len(constraint_passed)
     t_start = _time.monotonic()
 
@@ -615,6 +623,10 @@ def run_switch_posterior_inference(
             **pop_trait_cols,
         }
 
+        # Store ALL evaluated rows (not only accepted).
+        # evaluated_rows is required for unbiased OC_k via LOO:
+        # removing pattern k can make previously-rejected rows cross the threshold.
+        evaluated_rows.append(row)
         if accepted:
             accepted_rows.append(row)
 
@@ -634,6 +646,7 @@ def run_switch_posterior_inference(
 
     return SwitchPosteriorResult(
         accepted_rows=accepted_rows,
+        evaluated_rows=evaluated_rows,
         rejected_count=rejected_count,
         n_attempts=n_attempts,
         posterior_table=posterior_table,
@@ -798,6 +811,7 @@ def run_switch_posterior_inference_abm(
 
     import time as _time
     accepted_rows: list[dict] = []
+    evaluated_rows: list[dict] = []   # ALL evaluated draws (accepted + rejected)
     total_steps = len(constraint_passed)
     t_start = _time.monotonic()
 
@@ -920,6 +934,8 @@ def run_switch_posterior_inference_abm(
             **pop_trait_cols,
         }
 
+        # Store ALL evaluated rows for unbiased OC_k computation.
+        evaluated_rows.append(row)
         if accepted:
             accepted_rows.append(row)
 
@@ -941,6 +957,7 @@ def run_switch_posterior_inference_abm(
 
     return SwitchPosteriorResult(
         accepted_rows=accepted_rows,
+        evaluated_rows=evaluated_rows,
         rejected_count=rejected_count,
         n_attempts=n_attempts,
         posterior_table=posterior_table,

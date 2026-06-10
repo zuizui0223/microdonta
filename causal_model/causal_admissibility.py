@@ -517,9 +517,9 @@ def causal_resolvability(
 
 
 def observation_contribution(
-    accepted_rows: list[dict],
+    evaluated_rows: list[dict],
     switches,        # Sequence[BiologicalSwitch]
-    threshold: float = 1.0,
+    threshold: float = 0.8,
 ) -> list[ObservationContribution]:
     """Compute OC_k = R(O) - R(O \\ {k}) for each pattern (leave-one-out).
 
@@ -529,23 +529,35 @@ def observation_contribution(
 
     Parameters
     ----------
-    accepted_rows:
-        Accepted sample rows with ``per_pattern_matched`` field.
+    evaluated_rows:
+        ALL evaluated rows (accepted + rejected), each with ``per_pattern_matched``.
+        Must NOT be filtered to accepted_rows only.  When pattern k is removed
+        some previously-rejected rows may cross the threshold and must be counted.
+        Passing only accepted_rows produces a downward-biased OC_k estimate.
     switches:
         Sequence of BiologicalSwitch definitions.
     threshold:
-        ABC acceptance threshold used for LOO re-evaluation.
+        ABC acceptance threshold (weighted_match_rate) used for LOO re-evaluation.
+        Should match the threshold used in the original inference run.
 
     Returns
     -------
     list[ObservationContribution]
         One per (pattern, switch) pair.
     """
-    rows_with_data = [r for r in accepted_rows if isinstance(r.get("per_pattern_matched"), dict)]
+    # Rows that have per_pattern_matched data (simulation succeeded)
+    rows_with_data = [
+        r for r in evaluated_rows
+        if isinstance(r.get("per_pattern_matched"), dict)
+    ]
     if not rows_with_data:
         return []
 
-    R_full = causal_resolvability(rows_with_data, switches)
+    # Full-set accepted rows and resolvability (baseline)
+    full_accepted = [r for r in rows_with_data if r.get("weighted_match_rate", 0.0) >= threshold]
+    if not full_accepted:
+        return []
+    R_full = causal_resolvability(full_accepted, switches)
 
     all_pattern_names: set[str] = set()
     for r in rows_with_data:
@@ -553,13 +565,17 @@ def observation_contribution(
 
     results: list[ObservationContribution] = []
     for pattern_k in sorted(all_pattern_names):
-        # Re-evaluate: would this row still be accepted without pattern k?
+        # Re-evaluate ALL rows (not just accepted_rows) without pattern k.
+        # This is the correct LOO: some rejected rows may become accepted once
+        # pattern k is removed from the distance computation.
         loo_accepted: list[dict] = []
         for r in rows_with_data:
             ppm = r["per_pattern_matched"]
             entry = ppm.get(pattern_k)
             if entry is None:
-                loo_accepted.append(r)
+                # Pattern k not in this row's eval; use original acceptance
+                if r.get("weighted_match_rate", 0.0) >= threshold:
+                    loo_accepted.append(r)
                 continue
             matched_k, weight_k = entry
             total_w = sum(w for _, w in ppm.values())
@@ -580,7 +596,7 @@ def observation_contribution(
                 R_full=R_full,
                 R_loo=R_loo,
                 n_loo=len(loo_accepted),
-                n_full=len(rows_with_data),
+                n_full=len(full_accepted),
             ))
 
     return results
