@@ -1,491 +1,197 @@
 # Literature comparison and novelty of RACH
 
-**RACH = Restricted Admissible Causal Hypotheses**
-
-This document compares RACH with related modelling and inference traditions and
-clarifies what is genuinely new, what is inherited from previous methods, and
-what claims should be avoided.
-
-RACH should be described as a **causal admissibility and degeneracy framework**:
-
-```text
-RACH estimates which latent causal mechanisms remain admissible under
-biological constraints and independent observations, and quantifies how much
-causal uncertainty remains.
-```
-
-It should not be described as simply a combination of ABM, ABC, and POM.
-Those methods are computational components. The RACH-specific contribution is
-the definition and analysis of the admissible causal region and its information
-structure.
+This document compares RACH to related frameworks, states defensible novelty claims, and lists known validity limitations.
 
 ---
 
 ## 1. Relation to Pattern-Oriented Modeling (POM)
 
-Pattern-Oriented Modeling uses multiple empirical patterns to construct, reject,
-and refine ecological or agent-based models. The central insight is that complex
-systems cannot be fully matched in every detail, so carefully chosen patterns
-provide stronger constraints on model structure than a single endpoint.
+**Key POM references:** Grimm et al. (2005) *Science*; Grimm & Railsback (2012) *Agent-Based and Individual-Based Modeling*.
 
-RACH inherits this logic but changes the inferential target.
+POM uses multiple qualitative and quantitative patterns observed in ecological systems to constrain, calibrate, and reject agent-based models. A model that reproduces a wide set of patterns is considered better calibrated than one that reproduces only a few.
 
-| Aspect | POM | RACH |
+| | POM | RACH |
 |---|---|---|
-| Main question | Which model reproduces multiple patterns? | Which causal mechanisms remain admissible in A_ε? |
-| Model object | Agent-/individual-based model calibrated to patterns | Constrained parameter–switch region A_ε |
-| Output | Pattern match, model plausibility | CA_j, D_RACH, R_RACH, OC_k, NOV(q) |
-| Role of patterns | Calibration / validation targets | Independent observations y_obs with strict role labels |
-| Treatment of ambiguity | Often model refinement | Quantified as causal degeneracy |
+| **Inferential target** | Which model structure reproduces the patterns? | Which latent causal mechanisms remain admissible in A_ε, and how degenerate is the causal explanation? |
+| **Primary output** | Pattern match scores; model ranking | CA_j, D_RACH, R_RACH, OC_k, NOV(q) |
+| **Pattern roles** | Patterns used uniformly for calibration | Separated into `observed_target`, `input_context`, `hypothesis_prediction`, `diagnostic_only` to prevent circular inference |
+| **Degeneracy** | Not quantified; multiple good models treated as a problem | Explicitly quantified as D_RACH = H(S\|A_ε); high degeneracy is scientific information |
+| **Observational guidance** | No formal metric for which new data to collect | OC_k and NOV(q) guide future data collection |
 
-RACH therefore extends the POM idea in two ways:
+**What RACH borrows from POM:** the idea that multiple independent patterns jointly constrain the model space.
 
-1. It explicitly separates epistemic roles:
-
-```text
-observed_target
-input_context
-hypothesis_prediction
-diagnostic_only
-```
-
-2. It treats remaining causal ambiguity as a measurable output, not just a
-failure of model selection.
-
-**Recommended wording**:
-
-```text
-RACH builds on the pattern-oriented modelling insight that multiple patterns can
-constrain complex ecological models, but reframes the target from pattern-matched
-model selection to causal mechanism admissibility and degeneracy.
-```
+**What RACH adds:** the admissible causal region A_ε as a formal inferential object; causal-switch inference over s ∈ {0,1}^K; mechanism-level admissibility CA_j; and the information-theoretic quantities D_RACH, R_RACH, OC_k, NOV(q).
 
 ---
 
 ## 2. Relation to Approximate Bayesian Computation (ABC)
 
-Approximate Bayesian Computation approximates posterior inference for models with
-intractable likelihoods by simulating from the prior and accepting draws whose
-summary statistics are close to the observed summaries.
+**Key ABC references:** Beaumont et al. (2002) *Genetics*; Tavaré et al. (1997) *Genetics*; Sisson, Fan & Beaumont (2018) *Handbook of ABC*.
 
-RACH uses ABC-style rejection to approximate A_ε, but the inferential target is
-different.
+ABC approximates posterior distributions over parameters when likelihoods are intractable, by simulating data and accepting parameter draws whose summary statistics are within tolerance ε of observed summaries.
 
-| Aspect | ABC | RACH |
+| | ABC | RACH |
 |---|---|---|
-| Main target | Posterior over parameters or models | Admissible causal region A_ε and switch information |
-| Acceptance | distance(summary_sim, summary_obs) ≤ ε | distance(P_sim(f(x_obs;θ,s)), P_obs(y_obs)) ≤ ε, plus G(θ)=1 |
-| Output | posterior samples, posterior probabilities | CA_j, D_RACH, R_RACH, OC_k, NOV(q) |
-| Interpretation | approximate Bayesian posterior | conditional causal admissibility under specified constraints |
+| **Inferential target** | Posterior p(θ\|y_obs) | Admissible causal region A_ε; CA_j = P(s_j = 1 \| A_ε) |
+| **Primary output** | Parameter posterior samples | Mechanism admissibility, degeneracy, resolvability |
+| **Switch states** | Not part of the model | s ∈ {0,1}^K sampled jointly with θ |
+| **Degeneracy** | Diffuse posterior not separately diagnosed | D_RACH explicitly quantifies causal ambiguity |
+| **Model comparison** | Bayes factor / marginal likelihood approximation | Not model comparison; all admissible (θ, s) pairs are retained |
 
-RACH should acknowledge ABC as the computational approximation engine, but should
-not reduce itself to ABC. The RACH object is:
+**What RACH borrows from ABC:** rejection sampling from a prior using a distance-based acceptance criterion; the use of simulation when likelihoods are intractable.
 
-```text
-A_ε(y_obs, x_obs) = {(θ,s): G(θ)=1 and d(P_sim(f(x_obs;θ,s)), P_obs(y_obs)) ≤ ε}
-```
+**What RACH adds:** a causal switch layer s on top of θ; the distinction between parameter uncertainty and mechanism uncertainty; explicit treatment of high degeneracy as a result rather than a problem.
 
-ABC approximates this region by rejection sampling.
-
-**Recommended wording**:
-
-```text
-RACH uses likelihood-free rejection as a numerical approximation to the
-admissible causal region, but its reported quantities are mechanism-level
-admissibility and causal degeneracy rather than ordinary parameter posteriors
-alone.
-```
+**Pitfall RACH avoids:** ABC-based Bayes factors and model probabilities can be unstable and sensitive to summary statistics and ε (Robert et al. 2011 *PNAS*). RACH does not compute Bayes factors across models. It estimates CA_j as an empirical frequency inside A_ε and reports degeneracy directly.
 
 ---
 
-## 3. Relation to ABC model choice and likelihood-free model selection
+## 3. Relation to ABC model choice / likelihood-free model choice
 
-ABC model choice usually compares discrete candidate models and estimates model
-posterior probabilities or Bayes factors. This can be problematic when summary
-statistics are not sufficient for discriminating models.
+**Key references:** Pudlo et al. (2016) *Bioinformatics* (ABC-RF); Marin et al. (2012) *Statistics and Computing*.
 
-RACH avoids framing the result as choosing a single true model. Instead, it
-samples a vector of causal switches:
+ABC model choice samples a set of discrete candidate models M_1, ..., M_K and estimates posterior model probabilities P(M_k \| y_obs) using ABC rejection or random forest classifiers.
 
-```text
-s ∈ {0,1}^K
-```
-
-This allows mechanisms to be non-exclusive and co-active.
-
-| Aspect | ABC model choice | RACH |
+| | ABC model choice | RACH |
 |---|---|---|
-| Model space | Discrete alternatives M_1, ..., M_n | Switch space {0,1}^K |
-| Main output | P(M_k | data) | P(s_j=1 | A_ε), H(S|A_ε) |
-| Mechanisms | Often mutually exclusive | Can overlap / co-occur |
-| Ambiguity | Often treated as poor discrimination | Explicitly quantified as D_RACH |
+| **Model space** | Discrete mutually exclusive models | Non-exclusive binary switches; 2^K switch combinations |
+| **Output** | P(M_k \| y_obs) | CA_j = P(s_j = 1 \| A_ε) per mechanism independently |
+| **Mechanism overlap** | Not supported; each model is exclusive | Multiple mechanisms can be simultaneously ON |
+| **Degeneracy** | Not computed | D_RACH and R_RACH quantify unresolved degeneracy |
 
-This distinction is central for ecology, where multiple mechanisms can generate
-the same observed pattern and can operate simultaneously.
-
-**Recommended wording**:
-
-```text
-RACH replaces exclusive model-choice language with mechanism-admissibility
-language. It estimates support for each causal switch and the remaining entropy
-over switch combinations, rather than forcing a single model label.
-```
+RACH should be positioned as **mechanism-admissibility analysis**, not classifier-style model selection. It is especially appropriate when competing mechanisms are not mutually exclusive — a common situation in ecology.
 
 ---
 
-## 4. Relation to individual-based and agent-based models
+## 4. Relation to individual-based / agent-based models (ABM/IBM)
 
-Agent-based models and individual-based models generate system-level patterns
-from rules operating at the level of individuals or agents. In ecology, these
-models are often used to simulate trait inheritance, demographic stochasticity,
-selection, dispersal, reproduction, and interaction networks.
+**Key references:** Grimm et al. (2005, 2012); Railsback & Grimm (2019) *Agent-Based and Individual-Based Modeling* (2nd ed.); ODD protocol (Grimm et al. 2010 *Ecological Modelling*).
 
-RACH can use an ABM or IBM as its generative dynamics f:
+ABMs generate emergent ecological dynamics from individual-level rules. They serve both as explanatory tools and as forward simulators for ABC or POM.
 
-```text
-f(x_obs; θ, s)
-```
-
-But RACH is not identical to the ABM.
-
-| Aspect | ABM / IBM | RACH |
+| | ABM | RACH |
 |---|---|---|
-| Main object | Generative simulator | Inference framework built around A_ε |
-| Focus | Emergence from individual rules | Which mechanisms remain admissible under constraints |
-| Output | Simulated trajectories / patterns | CA_j, D_RACH, R_RACH, OC_k, NOV(q) |
-| Generality | System-specific simulator | General framework; ABM is one possible f |
+| **Role** | Generative simulator of ecological dynamics | Not an ABM; uses an ABM as f(x_obs; θ, s) |
+| **Output** | Population-level emergent patterns | Pattern-space match under specified (θ, s) |
+| **Causal inference** | Emergent behavior explained verbally | Formal CA_j, D_RACH, R_RACH, OC_k |
 
-In the Campanula example, the ABM implements stochastic reproduction,
-inheritance, drift, and selection. That ABM is the worked example's f, not the
-entire definition of RACH.
-
-**Recommended wording**:
-
-```text
-The Campanula ABM is the generative component of the worked example. RACH itself
-is the admissibility framework wrapped around any suitable generative ecological
-model.
-```
+**Important:** The Campanula ABM in this repository is the worked example used to implement f. It is not the definition of RACH. RACH can be applied with any generative simulator — phenomenological, stochastic, ABM, ODE, or other — as long as f maps (x_obs, θ, s) to a comparable pattern space.
 
 ---
 
-## 5. Relation to structural causal models, SEM, and potential outcomes
+## 5. Relation to structural causal models / causal graphs / SEM
 
-Structural causal models, structural equation models, and potential-outcome
-frameworks formalise causal assumptions and causal effects. They are powerful
-when interventions, treatment assignments, counterfactuals, or graph structures
-are well specified.
+**Key references:** Pearl (2009) *Causality*; Spirtes, Glymour & Scheines (2001) *Causation, Prediction, and Search*; Peters et al. (2014) *JMLR*.
 
-RACH is related but does not claim to solve the same problem.
+Structural causal models (SCMs) and structural equation models (SEMs) encode causal assumptions as directed graphs and estimate causal effects or test causal graph structure.
 
-| Aspect | SCM / SEM / potential outcomes | RACH |
+| | SCM / SEM | RACH |
 |---|---|---|
-| Main causal object | Structural equations, DAGs, interventions, counterfactuals | Mechanism-switch admissibility under generative constraints |
-| Data requirement | Often observational/experimental variables with effect identification assumptions | Independent ecological patterns plus generative simulator |
-| Output | Causal effects / graph implications | Mechanisms compatible with f, G, π, d, ε, x_obs, y_obs |
-| Claim strength | Can identify causal effects under assumptions | Identifies admissible mechanisms, not causal truth |
+| **Causal assumptions** | Encoded as DAG edges and structural equations | Encoded as biological axioms in f and constraint grammar G(θ) |
+| **Inference** | Estimate causal effects or test interventional distributions | Estimate which causal switch combinations remain admissible |
+| **Data requirement** | Often requires interventional or longitudinal data | Accepts observational patterns under biological constraints |
+| **Output** | Causal effect estimates or graph skeleton | A_ε; CA_j; D_RACH; R_RACH |
 
-RACH should therefore avoid claiming that it proves true causality. Instead:
-
-```text
-RACH constrains the set of mechanisms that remain compatible with explicit
-biological assumptions and independent observations.
-```
-
-This is most useful in ecological settings where direct intervention is limited,
-mechanisms are non-exclusive, and multiple causal pathways can generate similar
-macro-patterns.
+**Clarification:** RACH does not prove causal truth. It identifies mechanisms that remain admissible under specified biological constraints, priors, simulator, distance function, and observations. This is constraint-based causal admissibility, not effect estimation. RACH results are strengthened by manipulative experiments or independent longitudinal observations.
 
 ---
 
-## 6. Relation to Value of Information and Bayesian experimental design
+## 6. Relation to Value of Information / optimal experimental design
 
-Value of Information analysis and Bayesian experimental design ask how much
-additional information is expected to improve a decision or posterior utility.
+**Key references:** Raiffa & Schlaifer (1961) *Applied Statistical Decision Theory*; Chaloner & Verdinelli (1995) *Statistical Science*; Myung & Pitt (2009) *Psychological Review*.
 
-RACH's NOV(q) is related but narrower:
+Value of Information (VOI) and Expected Value of Sample Information (EVSI) quantify how much a future observation is expected to improve a decision or reduce posterior uncertainty.
 
-```text
-NOV(q) = expected gain in causal resolvability if observation q is added.
-```
-
-| Aspect | VOI / Bayesian experimental design | RACH NOV |
+| | VOI / EVSI | RACH NOV(q) |
 |---|---|---|
-| Objective | Expected utility gain | Expected or heuristic causal-resolvability gain |
-| Utility | Decision utility, KL gain, information gain, cost-adjusted benefit | Increase in R_RACH |
-| Output | Optimal design / value of sample information | Ranked next ecological observations |
-| Current implementation | often full preposterior calculation | heuristic proxy unless P(y_q|A_ε) is specified |
+| **What is valued** | Expected utility gain from information | Expected causal-resolvability gain E[ΔR_RACH] |
+| **Requires** | Utility function and decision model | Only R_RACH and the candidate observation's prior outcome distribution |
+| **Exactness** | Full EVSI is exact if prior and likelihood are specified | Current NOV(q) is heuristic or simulation-based approximation |
 
-The exact RACH NOV is:
-
-```text
-NOV(q) = E_{y_q ~ P(y_q | A_ε)}[R_RACH(O ∪ {q=y_q}) - R_RACH(O)]
-```
-
-The current implementation is a heuristic proxy because the full predictive
-outcome distribution for q is not yet specified.
-
-**Recommended wording**:
-
-```text
-RACH's NOV is inspired by value-of-information logic, but in the current
-implementation it is a causal-resolution priority score rather than a full
-EVSI calculation.
-```
+**Current limitation:** NOV(q) as implemented is either a heuristic priority score (based on current CA_j ambiguity) or a simulation-based approximation (integrating over discrete candidate outcomes with prior-weighted ABC re-runs). It is **not** a full decision-theoretic EVSI. Future work can define a utility function over causal resolution and compute exact preposterior NOV.
 
 ---
 
 ## 7. What is genuinely new in RACH
 
-The individual components are not new by themselves:
+The following claims are defensible:
 
-```text
-Pattern matching        -> related to POM
-Simulation-based filtering -> related to ABC
-Generative individuals  -> related to ABM/IBM
-Causal assumptions      -> related to SCM/SEM
-Future data value       -> related to VOI / Bayesian design
-```
+1. **A_ε as primary inferential object.** RACH defines the admissible causal region A_ε explicitly and treats it as the target of inference, not merely as a by-product of ABC calibration.
 
-The novelty is the integration into a specific inferential object and metric
-system:
+2. **Mechanism-level causal admissibility CA_j.** RACH estimates the conditional probability that each individual causal mechanism is active within A_ε, supporting non-exclusive mechanisms and partial support.
 
-### 7.1 Admissible causal region as the primary object
+3. **Causal degeneracy D_RACH and resolvability R_RACH.** These information-theoretic quantities measure whether the current observation set resolves mechanism uncertainty. High degeneracy is treated as a scientific finding (the data are insufficient to distinguish mechanisms), not as a failure.
 
-RACH centres inference on:
+4. **OC_k — observation contribution.** A leave-one-out metric OC_k = R_RACH(O) − R_RACH(O∖{k}) quantifies how much each observed pattern contributes to mechanism resolution. Critically, OC_k must be computed from all evaluated draws (not only accepted draws) to avoid downward bias when LOO re-acceptance occurs.
 
-```text
-A_ε(y_obs, x_obs)
-```
+5. **NOV(q) — next-observation value.** A forward-looking metric for which future observation is expected to increase causal resolvability most, analogous to VOI but targeted at ecological mechanism resolution without requiring a full utility model.
 
-not on a best model label.
-
-### 7.2 Mechanism-level causal admissibility
-
-RACH estimates:
-
-```text
-CA_j = P(s_j=1 | A_ε)
-```
-
-for each mechanism, allowing mechanisms to be non-exclusive and co-active.
-
-### 7.3 Causal degeneracy and resolvability
-
-RACH reports:
-
-```text
-D_RACH = H(S | A_ε)
-R_RACH = 1 - H(S | A_ε)/K
-```
-
-thereby quantifying how much causal ambiguity remains.
-
-### 7.4 Observation contribution and future-data guidance
-
-RACH defines:
-
-```text
-OC_k = R_RACH(O) - R_RACH(O\{O_k})
-NOV(q) = E[R_RACH(O∪q) - R_RACH(O)]
-```
-
-so that inference can guide future data collection.
-
-### 7.5 Explicit epistemic role separation
-
-RACH separates:
-
-```text
-observed_target       independent observations used for acceptance
-input_context         fixed ecological context passed to f
-hypothesis_prediction posterior prediction, excluded from acceptance
-diagnostic_only       internal consistency, excluded from acceptance
-```
-
-This role separation directly addresses circular inference risk.
+6. **Epistemic role separation.** RACH explicitly labels each observation row as `observed_target`, `input_context`, `hypothesis_prediction`, or `diagnostic_only`, preventing circular inference and tautological calibration.
 
 ---
 
-## 8. What RACH does not claim
+## 8. Validity and limitations
 
-RACH should not claim:
+### Internal mathematical rationality
 
-1. That it is unrelated to ABC, POM, or ABM.
-2. That it proves true causality in nature.
-3. That CA_j is an exact posterior truth probability independent of model assumptions.
-4. That NOV(q) is exact EVSI unless a predictive outcome model and utility are defined.
-5. That high causal degeneracy means failure.
+- A_ε is a well-defined rejection region in Θ × S space under a distance function d and tolerance ε.
+- CA_j is a coherent empirical posterior frequency inside A_ε.
+- D_RACH and R_RACH are coherent entropy summaries of switch-state uncertainty.
+- OC_k is coherent only when computed from `evaluated_rows` (all draws, not only accepted draws), because LOO re-acceptance can recover previously-rejected draws.
 
-Instead, RACH should claim:
+### Biological rationality
 
-```text
-Given specified f, G, π, d, ε, x_obs, and independent y_obs,
-RACH estimates which causal mechanisms remain admissible and how much
-mechanism ambiguity remains.
-```
+- f contains biological axioms: drift, inheritance, stochastic reproduction, natural selection, and pollination-to-reproduction coupling.
+- G(θ) restricts biologically implausible parameter combinations before inference, independently of the observed data.
+- The separation of x_obs (fixed ecological context, e.g. island distance, Bombus frequency) and y_obs (independent observations, e.g. pairwise floral trait comparisons) prevents treating ecological input predictors as response evidence.
 
----
+### Statistical validity concerns
 
-## 9. Validity and rationality analysis
+- **Prior sensitivity.** CA_j, D_RACH, and R_RACH depend on the prior ranges for θ and on the prior probabilities over switch states. Prior sensitivity analysis is required before manuscript-level claims.
+- **ε sensitivity.** Results depend on the acceptance threshold ε (or the ABC acceptance rule and pattern weights). The Streamlit app provides an ε-sensitivity panel; this should be reported in any publication.
+- **Pattern quality.** Current y_obs consists mostly of ordinal pairwise patterns from a two-endpoint (Oshima vs Hachijo) comparison. Numeric observations with measurement uncertainty would yield stronger, more discriminating inference.
+- **Heuristic NOV.** The current heuristic NOV prioritises candidates by current CA_j ambiguity. The simulation-based NOV integrates over discrete outcomes but is not a full EVSI. Neither should be interpreted as exact expected information gain without further validation.
+- **Known-truth recovery.** Before manuscript-level causal claims, RACH should demonstrate recovery of known switch states when data are generated from a known (θ, s). The `test_known_truth.py` tests provide a starting point.
 
-### 9.1 Internal mathematical rationality
+### Claims to avoid
 
-RACH is internally coherent because:
-
-- `A_ε` is a well-defined subset of `Θ × S`.
-- `CA_j` is a conditional probability on `A_ε`.
-- `D_RACH` is a finite entropy on the finite switch space.
-- `R_RACH` is bounded in `[0,1]` when normalised by maximum switch entropy.
-- `OC_k` is bounded in `[-1,1]`.
-- exact `NOV(q)` is well-defined when candidate outcomes are finite or integrable.
-- Monte Carlo estimators are consistent when samples are IID and `π(A_ε)>0`.
-
-These proofs are in `docs/rach_mathematical_foundations.md`.
-
-### 9.2 Biological rationality
-
-RACH is biologically rational when:
-
-- `f` contains defensible ecological dynamics such as inheritance, drift,
-  reproduction, selection, and pollination-to-reproduction rules.
-- `G(θ)` rejects biologically impossible or incoherent parameter combinations.
-- `x_obs` contains fixed ecological context rather than response evidence.
-- `y_obs` contains independent observations rather than hypothesis predictions.
-
-### 9.3 Statistical validity concerns
-
-RACH results depend on:
-
-- prior ranges over θ and s
-- the biological constraint grammar G
-- the simulator f
-- the distance function d
-- the tolerance ε
-- pattern weights
-- the quality and independence of y_obs
-
-Therefore, RACH analysis should include:
-
-```text
-prior sensitivity
-epsilon sensitivity
-pattern-weight sensitivity
-known-truth recovery
-posterior predictive checks
-independent validation observations
-```
-
-### 9.4 Current limitations in this repository
-
-For the current Campanula worked example:
-
-- y_obs is mostly ordinal pairwise patterns rather than full numeric data with uncertainty.
-- NOV is currently heuristic.
-- The ABM is a stylised ecological generator, not a complete mechanistic model of all plant-pollinator processes.
-- CA_j should be interpreted as admissibility under assumptions, not proof of mechanism truth.
+| Claim | Why to avoid |
+|---|---|
+| "RACH proves causal truth" | A_ε is an admissibility region, not a proof of causation |
+| "NOV is exact EVSI" | Current NOV is heuristic or simulation-based approximation without a full utility model |
+| "High CA_j means the mechanism is true" | CA_j = P(s_j = 1 \| A_ε) is a conditional empirical frequency, not proof |
+| "RACH is unrelated to ABC / POM / ABM" | RACH borrows key ideas from all three |
+| "Bayes factors from CA_j are reliable" | BF = CA_j / (1 − CA_j) × prior ratio; reliable only if prior is carefully justified |
 
 ---
 
-## 10. Recommended manuscript wording
+## 9. Recommended manuscript wording
 
-### Short version
+### Framing paragraph
 
-```text
-RACH is related to pattern-oriented modelling and approximate Bayesian
-computation, but differs in its inferential target. Instead of selecting a
-single best model or estimating only parameter posteriors, RACH defines the
-admissible causal region A_ε and quantifies mechanism-level causal
-admissibility, causal degeneracy, and causal resolvability. This reframing is
-useful in ecological systems where multiple non-exclusive mechanisms can
-generate the same observed patterns.
-```
+> RACH (Restricted Admissible Causal Hypotheses) is a causal admissibility and degeneracy framework for ecological systems. It is related to pattern-oriented modelling (POM; Grimm et al. 2005) and approximate Bayesian computation (ABC; Beaumont et al. 2002), but differs in its inferential target. Rather than selecting a single best model or estimating only parameter posteriors, RACH defines the admissible causal region A_ε and quantifies mechanism-level causal admissibility (CA_j), degeneracy (D_RACH), and resolvability (R_RACH). This reframing is useful in ecological systems where multiple non-exclusive mechanisms can generate the same observed patterns.
 
-### Longer version
+### Limitations paragraph
 
-```text
-We introduce RACH, a causal admissibility and degeneracy framework for ecological
-systems. RACH builds on simulation-based inference and pattern-oriented
-modelling, but its inferential target is not a single best model. Instead, RACH
-constructs the admissible causal region: the subset of latent parameter and
-causal-switch space that satisfies biological constraints and reproduces
-independent observations. Within this region, RACH estimates causal
-admissibility for each mechanism and quantifies remaining causal degeneracy via
-switch-state entropy. Observation contribution and next-observation value then
-identify which existing and future observations most improve causal
-resolvability.
-```
-
-### Limitations wording
-
-```text
-RACH does not prove causal truth. It identifies mechanisms that remain admissible
-under the specified biological constraints, priors, simulator, distance function,
-tolerance, context variables, and independent observations. Therefore, RACH
-results should be interpreted as constrained causal admissibility and evaluated
-through prior sensitivity, epsilon sensitivity, known-truth recovery, and
-independent validation data.
-```
+> RACH does not prove causal truth. It identifies causal mechanisms that remain admissible under the specified biological constraints, prior parameter ranges, generative simulator, distance function, and independent observations. Results depend on prior sensitivity, the acceptance threshold ε, and the quality of observed patterns. Heuristic NOV(q) provides a priority ranking for future data collection but is not an exact expected value of sample information. Manuscript-level causal claims require prior sensitivity analysis, ε sensitivity analysis, and known-truth recovery tests.
 
 ---
 
-## 11. Reference anchors
+## References
 
-The following literature families should be cited in a manuscript using RACH.
-
-### Pattern-Oriented Modeling
-
-- Grimm, V. et al. 2005. Pattern-oriented modeling of agent-based complex systems: lessons from ecology. *Science*.
-- Grimm, V. and Railsback, S. F. 2005. *Individual-based Modeling and Ecology*. Princeton University Press.
-
-### Approximate Bayesian Computation
-
-- Beaumont, M. A. et al. 2002. Approximate Bayesian computation in population genetics.
-- Sisson, S. A. et al. 2007. Sequential Monte Carlo without likelihoods. *PNAS*.
-- Jabot, F. et al. EasyABC / ABC methods in ecology.
-
-### ABC model choice cautions
-
-- Robert, C. P. et al. 2011. Lack of confidence in ABC model choice. *PNAS* / arXiv.
-
-### ABM / IBM
-
-- Grimm, V. and Railsback, S. F. 2005. *Individual-based Modeling and Ecology*.
-- Bonabeau, E. 2002. Agent-based modeling: methods and techniques for simulating human systems. *PNAS*.
-
-### Causal inference
-
-- Pearl, J. 2009. *Causality: Models, Reasoning, and Inference*.
-- Rubin, D. B. 1974. Estimating causal effects of treatments in randomized and nonrandomized studies.
-
-### Value of Information / Bayesian design
-
-- Howard, R. A. 1966. Information value theory.
-- Lindley, D. V. 1956. On a measure of information provided by an experiment.
-- Schlaifer, R. and Raiffa, H. 1960s. Applied statistical decision theory.
-
----
-
-## 12. Bottom line
-
-RACH is not new because it uses simulation, pattern matching, or rejection
-sampling. Those are established ideas.
-
-RACH is new as a framework because it makes the following object and quantities
-the primary inference target:
-
-```text
-A_ε, CA_j, D_RACH, R_RACH, OC_k, NOV(q)
-```
-
-This gives ecology a way to state:
-
-```text
-These mechanisms remain admissible.
-These mechanisms are not resolved.
-This is how much causal ambiguity remains.
-This observation contributes most.
-This next observation would most improve causal resolution.
-```
-
-That is the defensible novelty claim.
+- Beaumont, M.A., Zhang, W., & Balding, D.J. (2002). Approximate Bayesian computation in population genetics. *Genetics*, 162, 2025–2035.
+- Chaloner, K., & Verdinelli, I. (1995). Bayesian experimental design: A review. *Statistical Science*, 10(3), 273–304.
+- Grimm, V., Berger, U., Bastiansen, F., Eliassen, S., Ginot, V., Giske, J., et al. (2006). A standard protocol for describing individual-based and agent-based models. *Ecological Modelling*, 198, 115–126.
+- Grimm, V., Revilla, E., Berger, U., Jeltsch, F., Mooij, W.M., Railsback, S.F., et al. (2005). Pattern-oriented modeling of agent-based complex systems: lessons from ecology. *Science*, 310, 987–991.
+- Grimm, V., & Railsback, S.F. (2012). *Agent-Based and Individual-Based Modeling: A Practical Introduction* (2nd ed.). Princeton University Press.
+- Marin, J.-M., Pudlo, P., Robert, C.P., & Ryder, R.J. (2012). Approximate Bayesian computational methods. *Statistics and Computing*, 22, 1167–1180.
+- Myung, J.I., & Pitt, M.A. (2009). Optimal experimental design for model discrimination. *Psychological Review*, 116(3), 499–518.
+- Pearl, J. (2009). *Causality: Models, Reasoning, and Inference* (2nd ed.). Cambridge University Press.
+- Peters, J., Mooij, J.M., Janzing, D., & Schölkopf, B. (2014). Causal discovery with continuous additive noise models. *Journal of Machine Learning Research*, 15, 2009–2053.
+- Pudlo, P., Marin, J.-M., Estoup, A., Cornuet, J.-M., Gautier, M., & Robert, C.P. (2016). Reliable ABC model choice via random forests. *Bioinformatics*, 32, 859–866.
+- Raiffa, H., & Schlaifer, R. (1961). *Applied Statistical Decision Theory*. Harvard University Press.
+- Railsback, S.F., & Grimm, V. (2019). *Agent-Based and Individual-Based Modeling: A Practical Introduction* (2nd ed.). Princeton University Press.
+- Robert, C.P., Cornuet, J.-M., Marin, J.-M., & Pillai, N.S. (2011). Lack of confidence in approximate Bayesian computation model choice. *PNAS*, 108, 15112–15117.
+- Sisson, S.A., Fan, Y., & Beaumont, M.A. (eds.) (2018). *Handbook of Approximate Bayesian Computation*. CRC Press.
+- Spirtes, P., Glymour, C., & Scheines, R. (2001). *Causation, Prediction, and Search* (2nd ed.). MIT Press.
+- Tavaré, S., Balding, D.J., Griffiths, R.C., & Donnelly, P. (1997). Inferring coalescence times from DNA sequence data. *Genetics*, 145, 505–518.
