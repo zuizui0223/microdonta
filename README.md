@@ -18,6 +18,8 @@ This repository implements a worked example using the Izu Islands population sys
 
 **Mathematical foundations:** see [`docs/rach_mathematical_foundations.md`](docs/rach_mathematical_foundations.md) for the well-definedness, metric-bound, and Monte Carlo consistency proof. The theorem proves admissibility well-posedness, not causal truth.
 
+**Literature comparison and novelty:** see [`docs/literature_comparison.md`](docs/literature_comparison.md) for how RACH relates to Pattern-Oriented Modeling, ABC, ABC model choice, ABM/IBM, structural causal models, and Value of Information, and for defensible novelty and limitation claims.
+
 ---
 
 ## Formal definition
