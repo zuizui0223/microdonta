@@ -397,14 +397,19 @@ RACH theory metrics: identifiability and causal degeneracy
 known-truth validation prototype
 ```
 
-Important caution:
+Implementation status:
 
 ```text
-Some current gradient patterns are conceptual or hypothesis-derived.
-They are useful for exploratory model diagnostics, but strict RACH inference should use only independent empirical observed_target rows for ABC acceptance.
+✓ response_target (5 field_derived pairwise) used as y_obs in ABC acceptance
+✓ hypothesis_prediction gradient patterns excluded from ABC (circular inference prevented)
+✓ Ne_isolation_slope / migration_decay_rate / pollinator_loss_slope promoted to θ
+✓ env_slopes_from_param_set() extracts slope θ from each sampled parameter set
+✓ Both proxy and ABM inference backends rebuild environments per-draw using sampled θ slopes
+✓ C5 constraint enforces direction principle: all slopes must be > 0
 ```
 
-A future implementation step is to move fixed isolation-gradient coefficients into θ and to create an `independent_observations.csv` table for observed response values and uncertainty.
+Remaining step: create an `independent_observations.csv` with measurement uncertainty
+to allow weighted ABC distance based on empirical confidence intervals.
 
 ---
 

@@ -51,7 +51,10 @@ from causal_model.parameter_constraints import (
     predefined_tradeoff_presets,
     sample_all_sets_with_rejection_log,
 )
-from causal_model.parameter_sampling import param_set_to_model_parameters
+from causal_model.parameter_sampling import (
+    param_set_to_model_parameters,
+    env_slopes_from_param_set,
+)
 from causal_model.switches import PathwaySwitches
 
 # ABM output column → relation variable name
@@ -500,7 +503,7 @@ def run_switch_posterior_inference(
     """
 
     from examples.campanula_izu.observed_data import (
-        observed_gradient_only_patterns,
+        response_target_patterns,
     )
     from examples.campanula_izu.pattern_evaluator import (
         evaluate_patterns,
@@ -514,9 +517,10 @@ def run_switch_posterior_inference(
     preset = predefined_tradeoff_presets()[preset_name]
     threshold = _acceptance_threshold(acceptance_rule)
 
-    # POM = gradient-direction patterns only (gradient_slope + rank_order).
-    # The simulation uses a continuous isolation gradient (no named populations).
-    all_patterns = observed_gradient_only_patterns()
+    # y_obs = response_target patterns only (5 field_derived pairwise, Inoue 1986).
+    # hypothesis_prediction gradient patterns excluded to prevent circular inference:
+    # using predictions derived from the hypotheses to test the same hypotheses.
+    all_patterns = response_target_patterns()
 
     constraint_passed, constraint_rejected = sample_all_sets_with_rejection_log(
         preset, n_attempts, seed=seed
@@ -529,12 +533,13 @@ def run_switch_posterior_inference(
 
     for _step, param_set in enumerate(constraint_passed):
         model_params = param_set_to_model_parameters(param_set)
+        env_slopes = env_slopes_from_param_set(param_set)   # θ: Ne/migration/pollinator slopes
         state = sample_switch_state(rng, switches)
         pw = pathway_switches_from_state(state, switches)
 
         try:
             outputs_dict, synth_pop_env = simulate_campanula_isolation_gradient(
-                pw, params=model_params, n_points=8,
+                pw, params=model_params, n_points=8, **env_slopes,
             )
             outputs_list = list(outputs_dict.values())
             eval_result = evaluate_patterns(outputs_list, all_patterns, synth_pop_env)
@@ -736,7 +741,7 @@ def run_switch_posterior_inference_abm(
 
     from attraction_trait_model.simulation import simulate_population
     from examples.campanula_izu.observed_data import (
-        observed_gradient_only_patterns,
+        response_target_patterns,
     )
     from examples.campanula_izu.pattern_evaluator import (
         ABMPopulationProxy,
@@ -751,22 +756,15 @@ def run_switch_posterior_inference_abm(
     preset = predefined_tradeoff_presets()[preset_name]
     threshold = _acceptance_threshold(acceptance_rule)
 
-    # POM = gradient-direction patterns only (island syndrome gradient).
-    all_patterns = observed_gradient_only_patterns()
+    # y_obs = response_target patterns only (5 field_derived pairwise, Inoue 1986).
+    # hypothesis_prediction gradient patterns excluded to prevent circular inference.
+    all_patterns = response_target_patterns()
 
-    # Build a continuous isolation gradient (4 points for ABM performance).
+    # Isolation grid for ABM (4 points covers mainland → Oshima → Kozushima → Hachijo).
+    # Environments are rebuilt PER DRAW using each draw's sampled θ slopes —
+    # Ne, migration, and Bombus frequency all depend on θ, not fixed constants.
     _abm_n_points = 4
     _abm_iso_values = [i / (_abm_n_points - 1) for i in range(_abm_n_points)]
-    _abm_envs = {f"iso_{iso:.3f}": env_from_isolation(iso) for iso in _abm_iso_values}
-    _abm_synth_pop_env = {
-        name: {
-            "isolation": env.island_distance,
-            "distance_from_mainland": round(env.island_distance * 290.0, 1),
-            "primary_pollinator_frequency": env.primary_pollinator_frequency,
-        }
-        for name, env in _abm_envs.items()
-    }
-    environments = _abm_envs
 
     constraint_passed, constraint_rejected = sample_all_sets_with_rejection_log(
         preset, n_attempts, seed=seed
@@ -779,6 +777,23 @@ def run_switch_posterior_inference_abm(
 
     for draw_idx, param_set in enumerate(constraint_passed):
         model_params = param_set_to_model_parameters(param_set)
+        env_slopes = env_slopes_from_param_set(param_set)   # θ: Ne/migration/pollinator slopes
+
+        # Rebuild environments from THIS draw's θ slopes — not a fixed constant.
+        _abm_envs = {
+            f"iso_{iso:.3f}": env_from_isolation(iso, **env_slopes)
+            for iso in _abm_iso_values
+        }
+        _abm_synth_pop_env = {
+            name: {
+                "isolation": env.island_distance,
+                "distance_from_mainland": round(env.island_distance * 290.0, 1),
+                "primary_pollinator_frequency": env.primary_pollinator_frequency,
+            }
+            for name, env in _abm_envs.items()
+        }
+        environments = _abm_envs
+
         state = sample_switch_state(rng, switches)
         pw = pathway_switches_from_state(state, switches)
 
