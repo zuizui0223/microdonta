@@ -965,6 +965,7 @@ if _step_idx == 0:
         from causal_model.ensemble import (
             run_ensemble as _run_ensemble,
             best_config as _best_config,
+            select_best_ensemble_setting as _select_best,
             ensemble_ca_j as _ensemble_ca_j,
             sensitivity_range as _sensitivity_range,
             classify_switch_robustness as _classify_robustness,
@@ -1008,6 +1009,34 @@ if _step_idx == 0:
         with _ec5:
             _ens_min_n = st.number_input("Min accepted", 5, 100, 20, 5)
         _ens_seed = st.number_input("Seed", value=42, step=1, key="ens_seed")
+
+        with st.expander("ベスト設定の安定性フィルタ (issue #25)"):
+            _sf1, _sf2, _sf3 = st.columns(3)
+            with _sf1:
+                _ens_min_rate = st.number_input(
+                    "Min acceptance rate", 0.0, 1.0, 0.02, 0.01, format="%.2f",
+                    help="n_accepted / n_evaluated の下限。厳しすぎる設定（確率的アーティファクト）を除外。",
+                )
+            with _sf2:
+                _ens_use_max_rate = st.checkbox("Max acceptance rate を有効化", value=False)
+                _ens_max_rate = st.number_input(
+                    "Max acceptance rate", 0.0, 1.0, 0.80, 0.05, format="%.2f",
+                    disabled=not _ens_use_max_rate,
+                    help="緩すぎる設定（A_ε がほぼ制約されない）を除外。",
+                )
+            with _sf3:
+                _ens_mode_sel = st.radio(
+                    "Selection criterion", ["max R_RACH", "max accepted"], index=0,
+                    help="フィルタ通過設定の中から R_RACH 最大、または受容数最大を選ぶ。",
+                )
+        _ens_mode_key = "max_R" if _ens_mode_sel.startswith("max R") else "max_accepted"
+        _ens_max_rate_val = _ens_max_rate if _ens_use_max_rate else None
+        st.session_state["_ens_sel_criteria"] = {
+            "min_accepted": int(_ens_min_n),
+            "min_acceptance_rate": float(_ens_min_rate),
+            "max_acceptance_rate": _ens_max_rate_val,
+            "mode": _ens_mode_key,
+        }
 
         if st.button("▶ Run Ensemble", type="primary", use_container_width=True):
             if not _ens_presets or not _ens_rules:
@@ -1066,12 +1095,28 @@ if _step_idx == 0:
                 } for _rv in _rob_verdicts]
                 stretch_df(pd.DataFrame(_rob_rows), hide_index=True)
 
-            _best = _best_config(_ens_res, min_accepted=int(_ens_min_n))
+            _sel_crit = st.session_state.get("_ens_sel_criteria", {})
+            _sel = _select_best(
+                _ens_res,
+                min_accepted=int(_sel_crit.get("min_accepted", _ens_min_n)),
+                min_acceptance_rate=float(_sel_crit.get("min_acceptance_rate", 0.02)),
+                max_acceptance_rate=_sel_crit.get("max_acceptance_rate"),
+                mode=_sel_crit.get("mode", "max_R"),
+            )
+            _best = _sel.best
             if _best:
-                st.success(
-                    f"**推奨設定 → ② で使用:** `{_best.preset_name}` + `{_best.acceptance_rule}`  "
-                    f"(R={_best.R_RACH:.3f},  n={_best.n_accepted})"
-                )
+                if _sel.passed_filters:
+                    st.success(
+                        f"**推奨設定 → ② で使用:** `{_best.preset_name}` + `{_best.acceptance_rule}`  "
+                        f"(R={_best.R_RACH:.3f},  n={_best.n_accepted},  "
+                        f"acc_rate={_best.acceptance_rate:.3f})"
+                    )
+                else:
+                    st.warning(
+                        f"**フォールバック設定 → ② で使用:** `{_best.preset_name}` + "
+                        f"`{_best.acceptance_rule}`  (R={_best.R_RACH:.3f},  n={_best.n_accepted})"
+                    )
+                st.caption(_sel.rationale)
 
             st.divider()
             st.markdown("#### 設定比較テーブル")
@@ -1665,7 +1710,7 @@ elif _step_idx == 7:
         try:
             from causal_model.ensemble import (
                 classify_switch_robustness as _csr_dl,
-                best_config as _bc_dl,
+                select_best_ensemble_setting as _sbs_dl,
             )
             _ens_dl_res = st.session_state["_ens_results"]
             _sw_dl = [sw.name for sw in CAMPANULA_SWITCHES]
@@ -1674,6 +1719,7 @@ elif _step_idx == 7:
                 _row = {"preset": _r.preset_name, "acceptance_rule": _r.acceptance_rule,
                         "threshold": _r.threshold, "n_accepted": _r.n_accepted,
                         "n_evaluated": _r.n_evaluated,
+                        "acceptance_rate": round(_r.acceptance_rate, 4),
                         "D_RACH": _r.D_RACH, "R_RACH": _r.R_RACH}
                 for _sw in _sw_dl:
                     _row[f"CA_{_sw}"] = _r.ca_j.get(_sw, float("nan"))
@@ -1688,7 +1734,15 @@ elif _step_idx == 7:
                 for r in _rob_dl
             ])
 
-            _best_dl = _bc_dl(_ens_dl_res, min_accepted=20)
+            _crit_dl = st.session_state.get("_ens_sel_criteria", {})
+            _sel_dl = _sbs_dl(
+                _ens_dl_res,
+                min_accepted=int(_crit_dl.get("min_accepted", 20)),
+                min_acceptance_rate=float(_crit_dl.get("min_acceptance_rate", 0.02)),
+                max_acceptance_rate=_crit_dl.get("max_acceptance_rate"),
+                mode=_crit_dl.get("mode", "max_R"),
+            )
+            _best_dl = _sel_dl.best
             if _best_dl is not None:
                 _best_row = {
                     "preset": _best_dl.preset_name,
@@ -1696,7 +1750,10 @@ elif _step_idx == 7:
                     "threshold": _best_dl.threshold,
                     "n_accepted": _best_dl.n_accepted,
                     "n_evaluated": _best_dl.n_evaluated,
+                    "acceptance_rate": round(_best_dl.acceptance_rate, 4),
                     "D_RACH": _best_dl.D_RACH, "R_RACH": _best_dl.R_RACH,
+                    "passed_stability_filters": _sel_dl.passed_filters,
+                    "selection_rationale": _sel_dl.rationale,
                 }
                 for _sw in _sw_dl:
                     _best_row[f"CA_{_sw}"] = _best_dl.ca_j.get(_sw, float("nan"))

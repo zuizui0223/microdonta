@@ -37,6 +37,11 @@ class EnsembleResult:
     ca_j: dict[str, float]   # switch_name -> CA_j
     K: int                   # number of switches
 
+    @property
+    def acceptance_rate(self) -> float:
+        """ABC acceptance rate = n_accepted / n_evaluated (0.0 if nothing evaluated)."""
+        return self.n_accepted / self.n_evaluated if self.n_evaluated > 0 else 0.0
+
 
 # Default robustness thresholds (see docs/streamlit_ensemble_first_flow.md, Step 2).
 SENSITIVITY_THRESHOLD = 0.20   # sensitivity_range >= this => prior/epsilon sensitive
@@ -175,15 +180,154 @@ def run_ensemble(
     return results
 
 
+# Default stability filters for ensemble best-setting selection (issue #25).
+DEFAULT_MIN_ACCEPTED       = 20
+DEFAULT_MIN_ACCEPTANCE_RATE = 0.02   # reject configs so strict they may be artefacts
+
+
+@dataclass
+class BestSettingSelection:
+    """Result of ensemble best-setting selection, with the selection rationale.
+
+    ``passed_filters`` is True when ``best`` satisfied every stability filter.
+    When no configuration passes, ``best`` falls back to the least-bad config by
+    ``n_accepted`` and ``passed_filters`` is False — interpret with caution.
+    """
+    best: EnsembleResult | None
+    passed_filters: bool
+    rationale: str
+    n_eligible: int
+    n_total: int
+    criteria: dict
+
+
+def _selection_key(mode: str):
+    """Return the sort key used to pick the best config for a given mode."""
+    if mode == "max_accepted":
+        return lambda r: (r.n_accepted, r.R_RACH)
+    # default: maximise R_RACH, tie-break on n_accepted
+    return lambda r: (r.R_RACH, r.n_accepted)
+
+
+def select_best_ensemble_setting(
+    results: list[EnsembleResult],
+    min_accepted: int = DEFAULT_MIN_ACCEPTED,
+    min_acceptance_rate: float = DEFAULT_MIN_ACCEPTANCE_RATE,
+    max_acceptance_rate: float | None = None,
+    mode: str = "max_R",
+) -> BestSettingSelection:
+    """Select the best ensemble configuration under explicit stability filters.
+
+    The naive rule "max R_RACH among n_accepted >= 20" can over-favour very
+    strict settings whose high resolvability is a small-sample artefact.  This
+    adds acceptance-rate guards so a configuration must also accept a
+    non-trivial fraction of evaluated draws (and optionally not too many).
+
+    Stability filters
+    -----------------
+    * ``min_accepted``         — minimum accepted draws (avoid tiny samples).
+    * ``min_acceptance_rate``  — minimum n_accepted / n_evaluated (avoid configs
+      so strict their resolvability is a stochastic artefact).
+    * ``max_acceptance_rate``  — optional upper bound (avoid configs so lax that
+      A_ε is barely constrained); ``None`` disables it.
+
+    Selection mode
+    --------------
+    * ``"max_R"``        — highest R_RACH among configs passing the filters
+      (tie-break: larger n_accepted).  Default.
+    * ``"max_accepted"`` — largest accepted sample (tie-break: higher R_RACH).
+
+    Fallback
+    --------
+    If no configuration passes the filters, the least-bad config by n_accepted is
+    returned with ``passed_filters=False`` and a cautionary rationale.
+
+    Returns
+    -------
+    BestSettingSelection
+    """
+    criteria = {
+        "min_accepted": min_accepted,
+        "min_acceptance_rate": min_acceptance_rate,
+        "max_acceptance_rate": max_acceptance_rate,
+        "mode": mode,
+    }
+    if not results:
+        return BestSettingSelection(
+            best=None, passed_filters=False,
+            rationale="No ensemble configurations were provided.",
+            n_eligible=0, n_total=0, criteria=criteria,
+        )
+
+    key = _selection_key(mode)
+
+    def _passes(r: EnsembleResult) -> bool:
+        if r.n_accepted < min_accepted:
+            return False
+        if r.acceptance_rate < min_acceptance_rate:
+            return False
+        if max_acceptance_rate is not None and r.acceptance_rate > max_acceptance_rate:
+            return False
+        return True
+
+    eligible = [r for r in results if _passes(r)]
+
+    if eligible:
+        best = max(eligible, key=key)
+        crit_txt = (
+            f"highest R_RACH" if mode == "max_R" else "largest accepted sample"
+        )
+        rationale = (
+            f"Selected `{best.preset_name}` + `{best.acceptance_rule}` because it had "
+            f"the {crit_txt} among {len(eligible)}/{len(results)} configurations passing "
+            f"the stability filters (n_accepted >= {min_accepted}, "
+            f"acceptance_rate >= {min_acceptance_rate:g}"
+            + (f", <= {max_acceptance_rate:g}" if max_acceptance_rate is not None else "")
+            + f"). R_RACH={best.R_RACH:.3f}, n_accepted={best.n_accepted}, "
+            f"acceptance_rate={best.acceptance_rate:.3f}."
+        )
+        return BestSettingSelection(
+            best=best, passed_filters=True, rationale=rationale,
+            n_eligible=len(eligible), n_total=len(results), criteria=criteria,
+        )
+
+    # Fallback: nothing passed the filters.
+    best = max(results, key=lambda r: (r.n_accepted, r.R_RACH))
+    rationale = (
+        f"No configuration passed the stability filters "
+        f"(n_accepted >= {min_accepted}, acceptance_rate >= {min_acceptance_rate:g}"
+        + (f", <= {max_acceptance_rate:g}" if max_acceptance_rate is not None else "")
+        + f"). Showing least-bad fallback `{best.preset_name}` + `{best.acceptance_rule}` "
+        f"by n_accepted ({best.n_accepted}); interpret with caution."
+    )
+    return BestSettingSelection(
+        best=best, passed_filters=False, rationale=rationale,
+        n_eligible=0, n_total=len(results), criteria=criteria,
+    )
+
+
 def best_config(
     results: list[EnsembleResult],
-    min_accepted: int = 20,
+    min_accepted: int = DEFAULT_MIN_ACCEPTED,
+    min_acceptance_rate: float = 0.0,
+    max_acceptance_rate: float | None = None,
+    mode: str = "max_R",
 ) -> EnsembleResult | None:
-    """Return the config with the highest R_RACH among those with n_accepted >= min_accepted."""
-    eligible = [r for r in results if r.n_accepted >= min_accepted]
-    if not eligible:
-        eligible = results  # relax constraint if nothing qualifies
-    return max(eligible, key=lambda x: x.R_RACH) if eligible else None
+    """Return the best ensemble configuration (the ``EnsembleResult`` only).
+
+    Thin wrapper over :func:`select_best_ensemble_setting`.  The default
+    ``min_acceptance_rate=0.0`` preserves the original behaviour (max R_RACH
+    among ``n_accepted >= min_accepted``, relaxing to all configs if none
+    qualify).  Pass ``min_acceptance_rate``/``max_acceptance_rate`` to enable the
+    stability guards described in :func:`select_best_ensemble_setting`.
+    """
+    return select_best_ensemble_setting(
+        results,
+        min_accepted=min_accepted,
+        min_acceptance_rate=min_acceptance_rate,
+        max_acceptance_rate=max_acceptance_rate,
+        mode=mode,
+    ).best
 
 
 def ensemble_ca_j(
@@ -329,7 +473,3 @@ def sensitive_switches(
             results, sensitivity_threshold=sensitivity_threshold)
         if not r.is_robust
     ]
-
-
-# Alias matching the name used in docs/streamlit_ensemble_first_flow.md.
-select_best_ensemble_setting = best_config

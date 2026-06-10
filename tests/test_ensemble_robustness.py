@@ -25,6 +25,59 @@ from causal_model.ensemble import (
     select_best_ensemble_setting,
     best_config,
 )
+
+
+def test_acceptance_rate_property():
+    r = EnsembleResult("p", "r", 0.8, 5, 200, 0.5, 0.6, {"S1": 0.9}, 1)
+    assert r.acceptance_rate == 5 / 200
+    r0 = EnsembleResult("p", "r", 0.8, 0, 0, 0.5, 0.6, {"S1": 0.9}, 1)
+    assert r0.acceptance_rate == 0.0
+
+
+def test_min_acceptance_rate_rejects_strict_artifact():
+    # Config A: high R_RACH but only 3/300 accepted (rate 0.01) -> artefact.
+    # Config B: lower R_RACH, 40/200 accepted (rate 0.20) -> stable.
+    res = [
+        EnsembleResult("strict", "r", 0.95, 3, 300, 0.2, 0.95, {"S1": 1.0}, 1),
+        EnsembleResult("stable", "r", 0.70, 40, 200, 0.4, 0.70, {"S1": 0.8}, 1),
+    ]
+    sel = select_best_ensemble_setting(res, min_accepted=20, min_acceptance_rate=0.02)
+    assert sel.passed_filters
+    assert sel.best.preset_name == "stable"   # strict config filtered out
+
+
+def test_max_acceptance_rate_rejects_too_lax():
+    res = [
+        EnsembleResult("lax", "r", 0.3, 190, 200, 0.1, 0.9, {"S1": 0.9}, 1),
+        EnsembleResult("mid", "r", 0.6, 60, 200, 0.3, 0.7, {"S1": 0.8}, 1),
+    ]
+    sel = select_best_ensemble_setting(res, min_accepted=20,
+                                       min_acceptance_rate=0.02,
+                                       max_acceptance_rate=0.5)
+    assert sel.best.preset_name == "mid"      # lax config (rate 0.95) filtered out
+
+
+def test_fallback_when_no_config_passes():
+    # Both configs have tiny accepted samples below min_accepted.
+    res = [
+        EnsembleResult("a", "r", 0.9, 3, 100, 0.2, 0.9, {"S1": 1.0}, 1),
+        EnsembleResult("b", "r", 0.8, 8, 100, 0.3, 0.8, {"S1": 0.9}, 1),
+    ]
+    sel = select_best_ensemble_setting(res, min_accepted=20, min_acceptance_rate=0.02)
+    assert not sel.passed_filters
+    assert sel.best.preset_name == "b"        # least-bad by n_accepted
+    assert "least-bad" in sel.rationale
+    assert sel.n_eligible == 0
+
+
+def test_mode_max_accepted():
+    res = [
+        EnsembleResult("a", "r", 0.9, 30, 200, 0.2, 0.95, {"S1": 1.0}, 1),
+        EnsembleResult("b", "r", 0.8, 80, 200, 0.3, 0.80, {"S1": 0.9}, 1),
+    ]
+    sel = select_best_ensemble_setting(res, min_accepted=20, min_acceptance_rate=0.02,
+                                       mode="max_accepted")
+    assert sel.best.preset_name == "b"        # largest accepted sample
 from causal_model.causal_admissibility import (
     next_observation_value,
     CandidateObservation,
@@ -65,9 +118,17 @@ def test_sensitive_switches_returns_only_sensitive():
     assert sensitive_switches(_ensemble()) == ["S2"]
 
 
-def test_select_best_ensemble_setting_is_best_config_alias():
-    assert select_best_ensemble_setting is best_config
-    best = select_best_ensemble_setting(_ensemble(), min_accepted=20)
+def test_select_best_ensemble_setting_max_R():
+    sel = select_best_ensemble_setting(_ensemble(), min_accepted=20,
+                                       min_acceptance_rate=0.0)
+    assert sel.best is not None
+    assert sel.passed_filters
+    assert sel.best.R_RACH == max(r.R_RACH for r in _ensemble())
+    assert "highest R_RACH" in sel.rationale
+
+
+def test_best_config_returns_result_only():
+    best = best_config(_ensemble(), min_accepted=20)
     assert best is not None
     assert best.R_RACH == max(r.R_RACH for r in _ensemble())
 

@@ -119,6 +119,8 @@ class BenchmarkCase:
     preset_name: str
     acceptance_rule: str
     seed: int
+    generator_backend: str = "proxy"   # how synthetic y_obs was generated
+    inference_backend: str = "proxy"   # which backend ran RACH inference
 
     # --- filled after inference ---
     n_accepted: int = 0
@@ -132,6 +134,11 @@ class BenchmarkCase:
     mean_abs_ca_error: float = float("nan")
     D_RACH: float = float("nan")
     R_RACH: float = float("nan")
+
+    @property
+    def backend_pair(self) -> str:
+        """e.g. 'proxy->proxy', 'abm->proxy'. proxy->proxy is self-consistency."""
+        return f"{self.generator_backend}->{self.inference_backend}"
 
 
 @dataclass
@@ -158,16 +165,162 @@ def _flip_relation(rel: str, rng: random.Random) -> str:
         return rng.choice([f"{left} > {right}", f"{left} < {right}"])
 
 
+def _pathway_switches_from_true_state(true_state: dict[str, bool]):
+    """Build a PathwaySwitches object from a {switch_name: bool} true state."""
+    from causal_model.switch_inference import CAMPANULA_SWITCHES
+    from causal_model.switches import PathwaySwitches
+    pw_key = {sw.name: sw.pathway_key for sw in CAMPANULA_SWITCHES}
+    return PathwaySwitches(**{
+        pw_key[name]: float(v)
+        for name, v in true_state.items()
+        if name in pw_key
+    })
+
+
+def _relations_to_patterns(
+    relations: dict[str, str],
+    noise_rate: float,
+    seed: int,
+) -> list[dict]:
+    """Apply relation-flip noise and convert to pattern rows (shared schema)."""
+    if noise_rate > 0.0:
+        rng = random.Random(seed)
+        relations = {
+            var: (_flip_relation(rel, rng) if rng.random() < noise_rate else rel)
+            for var, rel in relations.items()
+        }
+    patterns = []
+    for var in _PAIRWISE_VARIABLES:
+        if var not in relations:
+            continue
+        patterns.append({
+            "pattern":          f"{var}_synth",
+            "type":             "pairwise_relation",
+            "variable":         var,
+            "left_population":  "Oshima",
+            "right_population": "Hachijo",
+            "relation":         relations[var],
+            "weight":           str(_DEFAULT_WEIGHTS.get(var, 1.0)),
+            "role":             "observed_target",
+        })
+    return patterns
+
+
+def _representative_model_params(seed: int = 12345):
+    """A fixed, representative constraint-passing θ for ABM synthetic generation.
+
+    Used as the ground-truth ecological parameter vector when generating ABM
+    synthetic observations.  Deterministic given ``seed``.
+    """
+    from causal_model.parameter_constraints import (
+        predefined_tradeoff_presets,
+        sample_all_sets_with_rejection_log,
+    )
+    from causal_model.parameter_sampling import param_set_to_model_parameters
+    preset = predefined_tradeoff_presets()["literature_grounded"]
+    passed, _ = sample_all_sets_with_rejection_log(preset, 32, seed=seed)
+    if not passed:
+        raise RuntimeError("Could not sample a constraint-passing parameter set "
+                           "for ABM synthetic generation.")
+    return param_set_to_model_parameters(passed[0])
+
+
+def _abm_population_finals(
+    pw, model_params, environments, generations, population_size, replicates, seed,
+):
+    """Run the stochastic ABM for each population, averaging replicates.
+
+    Returns ``{pop_name: averaged_final_dict}`` or ``None`` if any ABM run fails.
+    """
+    from attraction_trait_model.simulation import simulate_population
+    from causal_model.switch_inference import _average_replicate_finals
+    pop_finals: dict[str, dict[str, float]] = {}
+    for pop_idx, (pop_name, env) in enumerate(environments.items()):
+        rep_finals: list[dict] = []
+        for rep in range(replicates):
+            run_seed = seed + pop_idx * 10_000 + rep * 1_000
+            try:
+                rows = simulate_population(
+                    env=env, params=model_params, switches=pw,
+                    generations=generations, population_size=population_size,
+                    seed=run_seed,
+                )
+                if rows:
+                    rep_finals.append(rows[-1])
+            except Exception:
+                return None
+        if not rep_finals:
+            return None
+        avg = _average_replicate_finals(rep_finals)
+        avg["primary_pollinator_frequency"] = env.primary_pollinator_frequency
+        pop_finals[pop_name] = avg
+    return pop_finals
+
+
+def _generate_synthetic_patterns_proxy(
+    true_state: dict[str, bool], noise_rate: float, seed: int,
+) -> list[dict]:
+    """Deterministic proxy-model synthetic Oshima/Hachijo relations."""
+    from examples.campanula_izu.campanula_phenomenological import (
+        simulate_campanula_with_switches,
+    )
+    pw = _pathway_switches_from_true_state(true_state)
+    relations, _outputs = simulate_campanula_with_switches(pw)
+    return _relations_to_patterns(relations, noise_rate, seed)
+
+
+def _generate_synthetic_patterns_abm(
+    true_state: dict[str, bool], noise_rate: float, seed: int,
+    generations: int = 30, population_size: int = 120, replicates: int = 3,
+) -> list[dict]:
+    """Stochastic-ABM synthetic Oshima/Hachijo relations under a known state.
+
+    Runs the higher-fidelity individual-based model under ``true_state`` (with a
+    fixed representative θ) and derives ordinal pairwise relations.  Falls back to
+    the proxy generator if the ABM fails to produce usable output.
+    """
+    from causal_model.switch_inference import _ABM_KEY_MAP, _ABM_RELATION_TOLERANCE
+    from examples.campanula_izu.campanula_phenomenological import (
+        default_campanula_gradient_environments,
+    )
+    pw = _pathway_switches_from_true_state(true_state)
+    model_params = _representative_model_params()
+    base = default_campanula_gradient_environments()
+    envs = {"Oshima": base["Oshima"], "Hachijo": base["Hachijo"]}
+
+    pop_finals = _abm_population_finals(
+        pw, model_params, envs, generations, population_size, replicates,
+        seed=seed + 777,
+    )
+    if pop_finals is None:
+        return _generate_synthetic_patterns_proxy(true_state, noise_rate, seed)
+
+    o, h = pop_finals["Oshima"], pop_finals["Hachijo"]
+    relations: dict[str, str] = {}
+    for var, abm_key in _ABM_KEY_MAP.items():
+        diff = float(o.get(abm_key, 0.5)) - float(h.get(abm_key, 0.5))
+        if abs(diff) <= _ABM_RELATION_TOLERANCE:
+            relations[var] = "Oshima ~= Hachijo"
+        elif diff > 0:
+            relations[var] = "Oshima > Hachijo"
+        else:
+            relations[var] = "Oshima < Hachijo"
+    return _relations_to_patterns(relations, noise_rate, seed)
+
+
 def generate_synthetic_patterns(
     true_state: dict[str, bool],
     noise_rate: float = 0.0,
     seed: int = 0,
+    generator_backend: str = "proxy",
+    abm_generations: int = 30,
+    abm_population_size: int = 120,
+    abm_replicates: int = 3,
 ) -> list[dict]:
     """Generate synthetic pairwise pattern targets from a known switch state.
 
-    Uses the proxy model under ``true_state`` to produce Oshima/Hachijo
-    pairwise relations, then optionally corrupts them with independent
-    relation-flip noise.
+    Produces Oshima/Hachijo pairwise relations under ``true_state`` and
+    optionally corrupts them with independent relation-flip noise.
 
     Parameters
     ----------
@@ -177,56 +330,28 @@ def generate_synthetic_patterns(
         Probability of flipping each pairwise relation to an incorrect one.
         0.0 = perfect synthetic signal; 0.1 = 10% noise per pattern.
     seed:
-        RNG seed for noise injection.
+        RNG seed for noise injection (and ABM runs when applicable).
+    generator_backend:
+        ``"proxy"`` (deterministic phenomenological model, default) or
+        ``"abm"`` (stochastic individual-based model — higher fidelity, slower).
+        ABM-generated data tests simulator robustness / misspecification when
+        paired with proxy inference.
+    abm_generations, abm_population_size, abm_replicates:
+        ABM run controls (only used when ``generator_backend == "abm"``).
 
     Returns
     -------
     list[dict]
-        Pattern rows in the format consumed by
+        Pattern rows consumed by
         ``examples.campanula_izu.pattern_evaluator.evaluate_patterns``.
     """
-    from causal_model.switch_inference import CAMPANULA_SWITCHES
-    from causal_model.switches import PathwaySwitches
-    from examples.campanula_izu.campanula_phenomenological import (
-        simulate_campanula_with_switches,
-    )
-
-    # Build PathwaySwitches from the true state dict
-    pw_key = {sw.name: sw.pathway_key for sw in CAMPANULA_SWITCHES}
-    pw = PathwaySwitches(**{
-        pw_key[name]: float(v)
-        for name, v in true_state.items()
-        if name in pw_key
-    })
-
-    # Run proxy model: returns {variable: "Oshima OP Hachijo"}
-    relations, _outputs = simulate_campanula_with_switches(pw)
-
-    # Inject noise
-    if noise_rate > 0.0:
-        rng = random.Random(seed)
-        relations = {
-            var: (_flip_relation(rel, rng) if rng.random() < noise_rate else rel)
-            for var, rel in relations.items()
-        }
-
-    # Convert to pattern dict rows (same schema as observed_patterns.csv)
-    patterns = []
-    for var in _PAIRWISE_VARIABLES:
-        if var not in relations:
-            continue
-        rel = relations[var]
-        patterns.append({
-            "pattern":          f"{var}_synth",
-            "type":             "pairwise_relation",
-            "variable":         var,
-            "left_population":  "Oshima",
-            "right_population": "Hachijo",
-            "relation":         rel,
-            "weight":           str(_DEFAULT_WEIGHTS.get(var, 1.0)),
-            "role":             "observed_target",
-        })
-    return patterns
+    if generator_backend == "abm":
+        return _generate_synthetic_patterns_abm(
+            true_state, noise_rate, seed,
+            generations=abm_generations, population_size=abm_population_size,
+            replicates=abm_replicates,
+        )
+    return _generate_synthetic_patterns_proxy(true_state, noise_rate, seed)
 
 
 # ---------------------------------------------------------------------------
@@ -335,6 +460,118 @@ def _run_pairwise_inference(
     return accepted, n_evaluated
 
 
+def _run_pairwise_inference_abm(
+    synthetic_patterns: list[dict],
+    preset_name: str,
+    n_attempts: int,
+    acceptance_rule: str,
+    seed: int,
+    switches,
+    generations: int = 30,
+    population_size: int = 120,
+    replicates: int = 2,
+) -> tuple[list[dict], int]:
+    """ABM-backend ABC inference against custom synthetic pairwise patterns.
+
+    Mirrors ``_run_pairwise_inference`` but evaluates each draw with the
+    stochastic individual-based model (Oshima/Hachijo only, for speed) instead of
+    the deterministic proxy.  Used for the ``inference_backend="abm"`` modes.
+
+    Returns
+    -------
+    (accepted_rows, n_evaluated)
+    """
+    import math as _math
+    from causal_model.parameter_constraints import (
+        predefined_tradeoff_presets,
+        sample_all_sets_with_rejection_log,
+    )
+    from causal_model.parameter_sampling import (
+        param_set_to_model_parameters,
+        env_slopes_from_param_set,
+    )
+    from causal_model.switch_inference import (
+        GRADIENT_THRESH_MAP,
+        pathway_switches_from_state,
+        sample_switch_state,
+    )
+    from examples.campanula_izu.campanula_phenomenological import (
+        default_campanula_gradient_environments,
+    )
+    from examples.campanula_izu.pattern_evaluator import (
+        ABMPopulationProxy,
+        evaluate_patterns,
+    )
+    from attraction_trait_model.environment import Environment as _Env
+
+    threshold = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
+    preset    = predefined_tradeoff_presets()[preset_name]
+    rng       = random.Random(seed)
+
+    constraint_passed, _ = sample_all_sets_with_rejection_log(preset, n_attempts, seed=seed)
+
+    accepted: list[dict] = []
+    n_evaluated = 0
+
+    for draw_idx, param_set in enumerate(constraint_passed):
+        model_params = param_set_to_model_parameters(param_set)
+        env_slopes   = env_slopes_from_param_set(param_set)
+        state        = sample_switch_state(rng, switches)
+        pw           = pathway_switches_from_state(state, switches)
+
+        _ne_slope = float(env_slopes.get("ne_isolation_slope", 0.765))
+        _mig_rate = float(env_slopes.get("migration_decay_rate", 3.19))
+        _base     = default_campanula_gradient_environments()
+        _envs: dict[str, _Env] = {}
+        _synth_env: dict[str, dict] = {}
+        for _pn in ("Oshima", "Hachijo"):
+            _be  = _base[_pn]
+            _iso = _be.island_distance
+            _mig = _be.migration_rate if _iso == 0.0 else 0.15 * _math.exp(-_mig_rate * _iso)
+            _envs[_pn] = _Env(
+                name=_pn,
+                primary_pollinator_frequency=_be.primary_pollinator_frequency,
+                background_pollinator_frequency=_be.background_pollinator_frequency,
+                community_pollinator_abundance=_be.community_pollinator_abundance,
+                migration_rate=_mig,
+                island_distance=_iso,
+                ne_isolation_slope=_ne_slope,
+            )
+            _synth_env[_pn] = {
+                "isolation":               _iso,
+                "distance_from_mainland":  round(_iso * 290.0, 1),
+                "primary_pollinator_frequency": _be.primary_pollinator_frequency,
+            }
+
+        pop_finals = _abm_population_finals(
+            pw, model_params, _envs, generations, population_size, replicates,
+            seed=seed + draw_idx * 100_000,
+        )
+        if pop_finals is None or len(pop_finals) < 2:
+            continue
+
+        outputs_list = [
+            ABMPopulationProxy(pop, fd, _synth_env.get(pop))
+            for pop, fd in pop_finals.items()
+        ]
+        try:
+            eval_result = evaluate_patterns(outputs_list, synthetic_patterns, _synth_env)
+        except Exception:
+            continue
+
+        n_evaluated += 1
+        if eval_result.weighted_match_rate >= threshold - 1e-9:
+            accepted.append({
+                **state,
+                "weighted_match_rate": round(eval_result.weighted_match_rate, 4),
+                "per_pattern_matched": {
+                    m.pattern: (m.matched, m.weight) for m in eval_result.matches
+                },
+            })
+
+    return accepted, n_evaluated
+
+
 # ---------------------------------------------------------------------------
 # Metrics computation
 # ---------------------------------------------------------------------------
@@ -432,6 +669,11 @@ def run_benchmark(
     acceptance_rule: str = "weighted_lax",
     seed: int = 42,
     n_attempts_sweep: Sequence[int] | None = None,
+    generator_backend: str = "proxy",
+    inference_backend: str = "proxy",
+    abm_generations: int = 30,
+    abm_population_size: int = 120,
+    abm_replicates: int = 2,
     verbose: bool = True,
 ) -> BenchmarkResult:
     """Run the full known-truth recovery benchmark.
@@ -483,15 +725,22 @@ def run_benchmark(
                 preset_name=preset_name,
                 acceptance_rule=acceptance_rule,
                 seed=_seed,
+                generator_backend=generator_backend,
+                inference_backend=inference_backend,
             )
             if verbose:
                 print(
                     f"  [{done+1}/{total}] {label}  noise={noise:.1f}  "
-                    f"n={n_attempts}  seed={_seed}",
+                    f"n={n_attempts}  seed={_seed}  [{generator_backend}->{inference_backend}]",
                     end="", flush=True,
                 )
             t0 = time.monotonic()
-            _case = _run_single_case(case, CAMPANULA_SWITCHES, verbose=False)
+            _case = _run_single_case(
+                case, CAMPANULA_SWITCHES, verbose=False,
+                abm_generations=abm_generations,
+                abm_population_size=abm_population_size,
+                abm_replicates=abm_replicates,
+            )
             _case.elapsed_s = round(time.monotonic() - t0, 2)
             if verbose:
                 print(
@@ -520,6 +769,8 @@ def run_benchmark(
                     preset_name=preset_name,
                     acceptance_rule=acceptance_rule,
                     seed=_seed,
+                    generator_backend=generator_backend,
+                    inference_backend=inference_backend,
                 )
                 if verbose:
                     print(
@@ -528,7 +779,12 @@ def run_benchmark(
                         end="", flush=True,
                     )
                 t0 = time.monotonic()
-                _case = _run_single_case(case, CAMPANULA_SWITCHES, verbose=False)
+                _case = _run_single_case(
+                    case, CAMPANULA_SWITCHES, verbose=False,
+                    abm_generations=abm_generations,
+                    abm_population_size=abm_population_size,
+                    abm_replicates=abm_replicates,
+                )
                 _case.elapsed_s = round(time.monotonic() - t0, 2)
                 if verbose:
                     print(
@@ -545,19 +801,43 @@ def _run_single_case(
     case: BenchmarkCase,
     switches,
     verbose: bool = False,
+    abm_generations: int = 30,
+    abm_population_size: int = 120,
+    abm_replicates: int = 2,
 ) -> BenchmarkCase:
-    """Run ABC inference for one benchmark case and fill results in-place."""
+    """Run ABC inference for one benchmark case and fill results in-place.
+
+    Dispatches on ``case.generator_backend`` (how y_obs is synthesised) and
+    ``case.inference_backend`` (which simulator runs RACH inference).
+    """
     patterns = generate_synthetic_patterns(
-        case.true_state, case.noise_rate, seed=case.seed
+        case.true_state, case.noise_rate, seed=case.seed,
+        generator_backend=case.generator_backend,
+        abm_generations=abm_generations,
+        abm_population_size=abm_population_size,
+        abm_replicates=abm_replicates,
     )
-    accepted, n_eval = _run_pairwise_inference(
-        synthetic_patterns=patterns,
-        preset_name=case.preset_name,
-        n_attempts=case.n_attempts,
-        acceptance_rule=case.acceptance_rule,
-        seed=case.seed + 1,
-        switches=switches,
-    )
+    if case.inference_backend == "abm":
+        accepted, n_eval = _run_pairwise_inference_abm(
+            synthetic_patterns=patterns,
+            preset_name=case.preset_name,
+            n_attempts=case.n_attempts,
+            acceptance_rule=case.acceptance_rule,
+            seed=case.seed + 1,
+            switches=switches,
+            generations=abm_generations,
+            population_size=abm_population_size,
+            replicates=abm_replicates,
+        )
+    else:
+        accepted, n_eval = _run_pairwise_inference(
+            synthetic_patterns=patterns,
+            preset_name=case.preset_name,
+            n_attempts=case.n_attempts,
+            acceptance_rule=case.acceptance_rule,
+            seed=case.seed + 1,
+            switches=switches,
+        )
     case.n_accepted  = len(accepted)
     case.n_evaluated = n_eval
     per, agg = compute_case_metrics(accepted, case.true_state, switches)
@@ -608,6 +888,7 @@ def save_outputs(result: BenchmarkResult, output_dir: str | Path) -> dict[str, P
     cases_fields = [
         "run_id", "true_state_label", "noise_rate", "n_attempts",
         "preset_name", "acceptance_rule",
+        "generator_backend", "inference_backend", "backend_pair",
         "switch_name", "true_on", "ca_j", "predicted_on", "correct", "abs_ca_error",
         "n_accepted", "D_RACH", "R_RACH",
     ]
@@ -623,6 +904,9 @@ def save_outputs(result: BenchmarkResult, output_dir: str | Path) -> dict[str, P
                     "n_attempts":        c.n_attempts,
                     "preset_name":       c.preset_name,
                     "acceptance_rule":   c.acceptance_rule,
+                    "generator_backend": c.generator_backend,
+                    "inference_backend": c.inference_backend,
+                    "backend_pair":      c.backend_pair,
                     "switch_name":       s.switch_name,
                     "true_on":           s.true_on,
                     "ca_j":              _as_row(s.ca_j),
@@ -640,6 +924,7 @@ def save_outputs(result: BenchmarkResult, output_dir: str | Path) -> dict[str, P
     summary_fields = [
         "run_id", "true_state_label", "noise_rate", "n_attempts",
         "preset_name", "acceptance_rule",
+        "generator_backend", "inference_backend", "backend_pair",
         "n_accepted", "n_evaluated",
         "accuracy", "precision", "recall", "f1", "mean_abs_ca_error",
         "D_RACH", "R_RACH", "elapsed_s",
@@ -650,6 +935,39 @@ def save_outputs(result: BenchmarkResult, output_dir: str | Path) -> dict[str, P
         for c in result.cases:
             w.writerow({k: _as_row(getattr(c, k, "")) for k in summary_fields})
     written["known_truth_summary.csv"] = summary_path
+
+    # ---- recovery_by_backend_pair.csv ----
+    backend_path = out / "recovery_by_backend_pair.csv"
+    _bp_groups: dict[str, list[BenchmarkCase]] = {}
+    for c in result.cases:
+        _bp_groups.setdefault(c.backend_pair, []).append(c)
+    backend_fields = [
+        "backend_pair", "generator_backend", "inference_backend", "n_cases",
+        "mean_accuracy", "mean_precision", "mean_recall", "mean_f1",
+        "mean_ca_error", "mean_R_RACH", "mean_D_RACH",
+    ]
+    with backend_path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=backend_fields)
+        w.writeheader()
+        for bp, cases in sorted(_bp_groups.items()):
+            def _bmean(attr):
+                vals = [getattr(c, attr) for c in cases
+                        if not math.isnan(getattr(c, attr))]
+                return round(sum(vals) / len(vals), 4) if vals else float("nan")
+            w.writerow({
+                "backend_pair":      bp,
+                "generator_backend": cases[0].generator_backend,
+                "inference_backend": cases[0].inference_backend,
+                "n_cases":           len(cases),
+                "mean_accuracy":     _as_row(_bmean("accuracy")),
+                "mean_precision":    _as_row(_bmean("precision")),
+                "mean_recall":       _as_row(_bmean("recall")),
+                "mean_f1":           _as_row(_bmean("f1")),
+                "mean_ca_error":     _as_row(_bmean("mean_abs_ca_error")),
+                "mean_R_RACH":       _as_row(_bmean("R_RACH")),
+                "mean_D_RACH":       _as_row(_bmean("D_RACH")),
+            })
+    written["recovery_by_backend_pair.csv"] = backend_path
 
     # ---- recovery_by_noise.csv ----
     noise_path = out / "recovery_by_noise.csv"
@@ -766,6 +1084,32 @@ def _build_parser() -> argparse.ArgumentParser:
             "(default: all 8).  Example: all_off,S1_only,S1_S2"
         ),
     )
+    p.add_argument(
+        "--generator-backend", type=str, default="proxy",
+        choices=["proxy", "abm"],
+        help=(
+            "How synthetic y_obs is generated (default: proxy).  'abm' uses the "
+            "stochastic IBM — proxy->proxy is self-consistency; abm->proxy / "
+            "abm->abm test simulator robustness."
+        ),
+    )
+    p.add_argument(
+        "--inference-backend", type=str, default="proxy",
+        choices=["proxy", "abm"],
+        help="Which simulator runs RACH inference (default: proxy).",
+    )
+    p.add_argument(
+        "--abm-generations", type=int, default=30,
+        help="ABM generations per run (default: 30).",
+    )
+    p.add_argument(
+        "--abm-population-size", type=int, default=120,
+        help="ABM population size per run (default: 120).",
+    )
+    p.add_argument(
+        "--abm-replicates", type=int, default=2,
+        help="ABM replicates per population per draw (default: 2).",
+    )
     return p
 
 
@@ -794,12 +1138,16 @@ def main(argv: list[str] | None = None) -> int:
         "ABC inference under synthetic data.  It does NOT constitute a\n"
         "causal proof about real ecological mechanisms.\n"
     )
+    _backend_pair = f"{args.generator_backend}->{args.inference_backend}"
+    _is_self_consistency = args.generator_backend == "proxy" and args.inference_backend == "proxy"
     print(f"  true_states  : {[lbl for lbl, _ in true_states]}")
     print(f"  noise_rates  : {noise_rates}")
     print(f"  n_attempts   : {args.n_attempts}")
     print(f"  preset       : {args.preset}")
     print(f"  rule         : {args.rule}")
     print(f"  seed         : {args.seed}")
+    print(f"  backend_pair : {_backend_pair}  "
+          f"({'self-consistency' if _is_self_consistency else 'simulator-robustness'})")
     print(f"  output_dir   : {args.output_dir}")
     if n_att_sweep:
         print(f"  n_att_sweep  : {n_att_sweep}")
@@ -813,6 +1161,11 @@ def main(argv: list[str] | None = None) -> int:
         preset_name=args.preset,
         acceptance_rule=args.rule,
         seed=args.seed,
+        generator_backend=args.generator_backend,
+        inference_backend=args.inference_backend,
+        abm_generations=args.abm_generations,
+        abm_population_size=args.abm_population_size,
+        abm_replicates=args.abm_replicates,
         n_attempts_sweep=n_att_sweep,
         verbose=True,
     )

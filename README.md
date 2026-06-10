@@ -97,13 +97,60 @@ python -m causal_model.known_truth_benchmark \
 
 | File | Content |
 |---|---|
-| `known_truth_cases.csv` | One row per (case × switch): CA_j, predicted_on, true_on, correct |
-| `known_truth_summary.csv` | One row per case: accuracy, precision, recall, F1, mean_abs_CA_error, D_RACH, R_RACH |
+| `known_truth_cases.csv` | One row per (case × switch): CA_j, predicted_on, true_on, correct, backend metadata |
+| `known_truth_summary.csv` | One row per case: accuracy, precision, recall, F1, mean_abs_CA_error, D_RACH, R_RACH, backend metadata |
 | `recovery_by_noise.csv` | Metrics averaged by noise_rate |
 | `recovery_by_n_attempts.csv` | Metrics averaged by n_attempts (for convergence sweep) |
+| `recovery_by_backend_pair.csv` | Metrics averaged by generator→inference backend pair |
+
+### Cross-backend recovery (simulator robustness)
+
+The benchmark can vary the **generator** backend (how synthetic `y_obs` is
+produced) and the **inference** backend (which simulator runs RACH inference):
+
+```bash
+# proxy -> proxy: self-consistency (same simulator generates and infers)
+python -m causal_model.known_truth_benchmark --generator-backend proxy --inference-backend proxy
+
+# abm -> proxy: simulator robustness — data from the stochastic IBM, proxy inference
+python -m causal_model.known_truth_benchmark --generator-backend abm --inference-backend proxy \
+    --abm-generations 30 --abm-population-size 120 --abm-replicates 2
+
+# abm -> abm: high-fidelity generation and inference (slowest)
+python -m causal_model.known_truth_benchmark --generator-backend abm --inference-backend abm
+```
+
+**Interpretation.** `proxy→proxy` is a *self-consistency* check: if the data
+were exactly the proxy model, can RACH recover the known switch state?
+`abm→proxy` and `abm→abm` are stronger *simulator-robustness* tests: if the data
+come from a higher-fidelity stochastic ABM, does the pipeline still recover the
+known state under model misspecification? **This remains a specified-simulator
+recovery benchmark, not proof of real-world causal truth.**
+
+## Report generation (manuscript artifacts)
+
+Turn benchmark and ensemble outputs into stable summary documents and figures:
+
+```bash
+# One command — auto-runs a quick benchmark/ensemble if their CSVs are missing
+python -m causal_model.report_results
+
+# Use existing benchmark outputs, regenerate the ensemble scan
+python -m causal_model.report_results --run-ensemble \
+    --benchmark-dir outputs/known_truth_benchmark \
+    --ensemble-dir outputs/ensemble \
+    --output-dir outputs/reports
+```
+
+Outputs under `outputs/reports/`: `benchmark_summary.md`, `ensemble_summary.md`,
+`results_summary.md`, and `figures/*.png`. Reports are manuscript-safe — they
+distinguish synthetic known-truth recovery from empirical admissibility
+inference and never claim real-world causal truth. (Figures require
+`matplotlib`; they are skipped with a notice if it is unavailable.)
 
 ### Tests
 
 ```bash
-pytest tests/test_known_truth_benchmark.py -v
+pytest tests/test_known_truth_benchmark.py tests/test_cross_backend_benchmark.py \
+       tests/test_ensemble_robustness.py tests/test_report_results.py -v
 ```
