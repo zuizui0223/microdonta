@@ -1430,7 +1430,7 @@ if "sp_result" in st.session_state:
                 # Use evaluated_rows (all draws) for unbiased LOO OC_k.
                 # Passing accepted_rows only underestimates OC_k because
                 # previously-rejected rows that would pass without pattern k are missed.
-                _oc_source = sp.evaluated_rows if sp.evaluated_rows else sp.accepted_rows
+                _oc_source = getattr(sp, "evaluated_rows", None) or sp.accepted_rows
                 _oc_results = _oc_fn(_oc_source, CAMPANULA_SWITCHES, threshold=_thresh_display)
                 if _oc_results:
                     df_oc = pd.DataFrame([
