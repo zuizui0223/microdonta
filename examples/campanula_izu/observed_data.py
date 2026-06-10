@@ -1,93 +1,13 @@
-"""Loader for Campanula Izu observed patterns and ecological context data.
+"""Loaders for Campanula / Izu RACH data roles.
 
-Design principle (Issue #7)
----------------------------
-RACH separates two kinds of data:
+RACH separates several epistemic roles:
 
-``ecological_context.csv``  —  **input_context**
-    Environmental predictors that *drive* the simulation: isolation distance,
-    pollinator availability, effective population size, etc.  These are NOT
-    response targets; using them as ABC acceptance criteria would be circular.
+- input_context: fixed empirical context x_obs used by f(x_obs; theta, s), excluded from ABC.
+- observed_target: independent empirical response observations used for ABC/RACH acceptance.
+- hypothesis_prediction: theoretical or posterior-predictive expectations, excluded by default.
+- diagnostic_only: circular/internal checks such as syndrome definitions, excluded by default.
 
-``observed_patterns.csv``   —  **response_target** rows
-    Empirical or conceptual patterns that the simulation must *reproduce*:
-    trait gradients (nectar guide, selfing rate, herkogamy, Fis).  Only rows
-    with ``role == "response_target"`` count toward ABC acceptance.
-    Rows with ``role == "input_context"`` are predictor variables and are
-    excluded from the match calculation automatically.
-
-Loaders
--------
-load_ecological_context()
-    Canonical loader.  Returns ``{population_name: dict}`` from
-    ``ecological_context.csv``.
-
-load_population_env()
-    Backward-compatible alias for ``load_ecological_context()``.
-
-load_observed_pattern_table()
-    Full ``observed_patterns.csv`` as list of dicts (all roles).
-
-response_target_patterns()
-    ``observed_patterns.csv`` rows with ``role == "response_target"`` only.
-    Use this as the canonical input to ``evaluate_patterns()``.
-
-observed_gradient_only_patterns()
-    ``response_target`` rows of type ``gradient_slope`` or ``rank_order``.
-    The primary ABC acceptance criterion in Switch Posterior Inference.
-
-observed_pairwise_relations()
-    ``response_target`` pairwise rows as ``{variable: relation_string}``.
-
-observed_gradient_patterns()
-    Processed gradient rows (weight cast to float, populations split to list).
-
-load_observed_patterns()
-    Legacy: pairwise patterns as ``{variable: relation_string}``.
-
-load_pattern_weights()
-    ``{variable: weight}`` for pairwise response_target rows.
-
-ordered_populations()
-    Population names in CSV row order (mainland → most isolated).
-
-Default data files
-------------------
-``examples/campanula_izu/data/ecological_context.csv``
-``examples/campanula_izu/data/observed_patterns.csv``
-
-ecological_context.csv column specification
--------------------------------------------
-population                       str
-distance_from_mainland           float  km
-island_area_km2                  float
-primary_pollinator_frequency     float  [0,1]  trait-responsive, high-efficiency guild
-background_pollinator_frequency  float  [0,1]  trait-non-responsive guild
-effective_population_size_proxy  float  [0,1]
-isolation                        float  [0,1]
-community_pollinator_abundance   float  [0,1]  overall pollinator activity scalar
-migration_rate                   float  [0,1]
-
-observed_patterns.csv column specification
-------------------------------------------
-pattern             str   unique pattern identifier
-type                str   pairwise_relation | gradient_slope | rank_order
-variable            str   trait variable name (matches simulation output keys)
-left_population     str   reference population (pairwise only)
-right_population    str   comparison population (pairwise only)
-populations         str   semicolon-separated ordered list (gradient/rank only)
-predictor           str   gradient axis variable name (gradient_slope only)
-expected_direction  str   positive | negative (gradient_slope only)
-relation            str   ordinal relation string e.g. "Oshima > Hachijo" (pairwise only)
-weight              float importance weight for weighted ABC distance [0, 1+]
-source              str   data source / literature citation shorthand
-notes               str   free-text annotation
-role                str   response_target | input_context
-                          Only response_target rows count toward ABC acceptance.
-                          input_context rows are predictor variables (e.g.
-                          primary_pollinator_frequency) that are injected from
-                          ecological_context.csv, not simulated — including them
-                          in ABC would be circular.
+`response_target` is accepted only as a backward-compatible alias for old data files.
 """
 
 from __future__ import annotations
@@ -95,45 +15,21 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-_DEFAULT_PATTERNS_CSV  = Path(__file__).parent / "data" / "observed_patterns.csv"
-_DEFAULT_CONTEXT_CSV   = Path(__file__).parent / "data" / "ecological_context.csv"
-
-# Backward-compat alias (old name still works as a path constant)
+_DEFAULT_PATTERNS_CSV = Path(__file__).parent / "data" / "observed_patterns.csv"
+_DEFAULT_CONTEXT_CSV = Path(__file__).parent / "data" / "ecological_context.csv"
+_DEFAULT_INDEPENDENT_OBS_CSV = Path(__file__).parent / "data" / "independent_observations.csv"
 _DEFAULT_ENV_CSV = _DEFAULT_CONTEXT_CSV
 
-# Hard-coded fallback pairwise patterns (used only if CSV is missing)
+ABC_TARGET_ROLES = {"observed_target", "response_target"}  # response_target is legacy
+EXCLUDED_ROLES = {"input_context", "hypothesis_prediction", "diagnostic_only"}
+
 _FALLBACK_PAIRWISE: list[dict] = [
-    {"pattern": "nectar_guide_pairwise",    "type": "pairwise_relation", "variable": "nectar_guide",
-     "left_population": "Oshima", "right_population": "Hachijo",
-     "populations": "", "predictor": "", "expected_direction": "",
-     "relation": "Oshima > Hachijo", "weight": "1.0",
-     "source": "field/Inoue1986", "notes": "fallback", "role": "response_target"},
-    {"pattern": "selfing_rate_pairwise",    "type": "pairwise_relation", "variable": "selfing_rate",
-     "left_population": "Oshima", "right_population": "Hachijo",
-     "populations": "", "predictor": "", "expected_direction": "",
-     "relation": "Oshima < Hachijo", "weight": "1.0",
-     "source": "field/Inoue1986", "notes": "fallback", "role": "response_target"},
-    {"pattern": "herkogamy_pairwise",       "type": "pairwise_relation", "variable": "herkogamy",
-     "left_population": "Oshima", "right_population": "Hachijo",
-     "populations": "", "predictor": "", "expected_direction": "",
-     "relation": "Oshima > Hachijo", "weight": "0.8",
-     "source": "field", "notes": "fallback", "role": "response_target"},
-    {"pattern": "flower_size_pairwise",     "type": "pairwise_relation", "variable": "flower_size",
-     "left_population": "Oshima", "right_population": "Hachijo",
-     "populations": "", "predictor": "", "expected_direction": "",
-     "relation": "Oshima > Hachijo", "weight": "0.8",
-     "source": "field/Inoue1986", "notes": "fallback", "role": "response_target"},
-    {"pattern": "Fis_pairwise",             "type": "pairwise_relation", "variable": "Fis",
-     "left_population": "Oshima", "right_population": "Hachijo",
-     "populations": "", "predictor": "", "expected_direction": "",
-     "relation": "Oshima < Hachijo", "weight": "1.0",
-     "source": "genetic", "notes": "fallback", "role": "response_target"},
-    {"pattern": "Bombus_frequency_pairwise", "type": "pairwise_relation",
-     "variable": "primary_pollinator_frequency",
-     "left_population": "Oshima", "right_population": "Hachijo",
-     "populations": "", "predictor": "", "expected_direction": "",
-     "relation": "Oshima > Hachijo", "weight": "1.0",
-     "source": "field/literature", "notes": "fallback", "role": "input_context"},
+    {"pattern": "nectar_guide_pairwise", "type": "pairwise_relation", "variable": "nectar_guide", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "field/Inoue1986", "notes": "fallback", "role": "observed_target"},
+    {"pattern": "selfing_rate_pairwise", "type": "pairwise_relation", "variable": "selfing_rate", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "1.0", "source": "field/Inoue1986", "notes": "fallback", "role": "observed_target"},
+    {"pattern": "herkogamy_pairwise", "type": "pairwise_relation", "variable": "herkogamy", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "field", "notes": "fallback", "role": "observed_target"},
+    {"pattern": "flower_size_pairwise", "type": "pairwise_relation", "variable": "flower_size", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "field/Inoue1986", "notes": "fallback", "role": "observed_target"},
+    {"pattern": "Fis_pairwise", "type": "pairwise_relation", "variable": "Fis", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "1.0", "source": "genetic", "notes": "fallback", "role": "observed_target"},
+    {"pattern": "Bombus_frequency_pairwise", "type": "pairwise_relation", "variable": "primary_pollinator_frequency", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "field/literature", "notes": "fallback; excluded input context", "role": "input_context"},
 ]
 
 _CONTEXT_NUMERIC_COLS = (
@@ -146,166 +42,127 @@ _CONTEXT_NUMERIC_COLS = (
     "community_pollinator_abundance",
     "migration_rate",
 )
-
-# Backward-compat alias
 _ENV_NUMERIC_COLS = _CONTEXT_NUMERIC_COLS
 
 
-# ---------------------------------------------------------------------------
-# Ecological context loader (input_context)
-# ---------------------------------------------------------------------------
+def _read_csv_rows(path: Path) -> list[dict]:
+    with path.open(encoding="utf-8", newline="") as f:
+        return list(csv.DictReader(f))
+
 
 def load_ecological_context(path: str | Path | None = None) -> dict[str, dict]:
-    """Load ecological context data (environmental predictors) from CSV.
+    """Load fixed empirical context x_obs from ecological_context.csv.
 
-    This is the canonical loader for ``ecological_context.csv``.  The returned
-    dict drives simulation inputs — it is NOT an ABC acceptance criterion.
-    Use ``response_target_patterns()`` / ``observed_gradient_only_patterns()``
-    for the acceptance criterion.
-
-    Parameters
-    ----------
-    path:
-        Path to ecological_context.csv.  Defaults to
-        ``examples/campanula_izu/data/ecological_context.csv``.
-
-    Returns
-    -------
-    dict
-        ``{population_name: {column: value}}`` where numeric columns are
-        cast to float.  Order reflects CSV row order (mainland → most isolated).
+    These values drive simulations and are excluded from ABC target distance.
     """
     p = Path(path) if path else _DEFAULT_CONTEXT_CSV
     result: dict[str, dict] = {}
     try:
-        with p.open(encoding="utf-8") as f:
-            for row in csv.DictReader(f):
-                name = row["population"]
-                entry: dict = {}
-                for col, val in row.items():
-                    if col == "population":
-                        entry[col] = val
-                    elif col in _CONTEXT_NUMERIC_COLS:
-                        try:
-                            entry[col] = float(val)
-                        except (ValueError, TypeError):
-                            entry[col] = val
-                    else:
-                        entry[col] = val
-                result[name] = entry
+        rows = _read_csv_rows(p)
     except FileNotFoundError:
-        # Minimal fallback for two-population use
-        result = {
-            "Oshima": {
-                "population": "Oshima",
-                "distance_from_mainland": 120.0,
-                "island_area_km2": 91.0,
-                "primary_pollinator_frequency": 0.45,
-                "background_pollinator_frequency": 0.50,
-                "effective_population_size_proxy": 0.75,
-                "isolation": 0.35,
-                "community_pollinator_abundance": 0.62,
-                "migration_rate": 0.05,
-            },
-            "Hachijo": {
-                "population": "Hachijo",
-                "distance_from_mainland": 290.0,
-                "island_area_km2": 69.0,
-                "primary_pollinator_frequency": 0.00,
-                "background_pollinator_frequency": 0.60,
-                "effective_population_size_proxy": 0.35,
-                "isolation": 0.85,
-                "community_pollinator_abundance": 0.34,
-                "migration_rate": 0.01,
-            },
-        }
+        rows = [
+            {"population": "Oshima", "distance_from_mainland": "120", "island_area_km2": "91", "primary_pollinator_frequency": "0.45", "background_pollinator_frequency": "0.50", "effective_population_size_proxy": "0.75", "isolation": "0.35", "community_pollinator_abundance": "0.62", "migration_rate": "0.05"},
+            {"population": "Hachijo", "distance_from_mainland": "290", "island_area_km2": "69", "primary_pollinator_frequency": "0.00", "background_pollinator_frequency": "0.60", "effective_population_size_proxy": "0.35", "isolation": "0.85", "community_pollinator_abundance": "0.34", "migration_rate": "0.01"},
+        ]
+    for row in rows:
+        name = row["population"]
+        entry: dict = {}
+        for col, val in row.items():
+            if col == "population":
+                entry[col] = val
+            elif col in _CONTEXT_NUMERIC_COLS:
+                try:
+                    entry[col] = float(val)
+                except (ValueError, TypeError):
+                    entry[col] = val
+            else:
+                entry[col] = val
+        result[name] = entry
     return result
 
 
 def load_population_env(path: str | Path | None = None) -> dict[str, dict]:
-    """Backward-compatible alias for ``load_ecological_context()``.
-
-    New code should call ``load_ecological_context()`` directly.
-    This alias will remain available for compatibility with existing callers.
-    """
+    """Backward-compatible alias for load_ecological_context()."""
     return load_ecological_context(path)
 
 
 def ordered_populations(path: str | Path | None = None) -> list[str]:
-    """Return population names in CSV row order (mainland to most isolated)."""
+    """Return population names in CSV order."""
     return list(load_ecological_context(path).keys())
 
 
-# ---------------------------------------------------------------------------
-# Pattern loaders (response_target / input_context)
-# ---------------------------------------------------------------------------
-
 def load_observed_pattern_table(path: str | Path | None = None) -> list[dict]:
-    """Load the full observed pattern table from CSV (all roles).
-
-    Returns all rows regardless of ``role`` column.  Use
-    ``response_target_patterns()`` to get only ABC-relevant rows.
-
-    Returns
-    -------
-    list of dict
-        One dict per pattern row.  All values are strings; callers that need
-        floats for weight etc. should cast explicitly.
-    """
+    """Load all observed_patterns.csv rows, including excluded roles."""
     p = Path(path) if path else _DEFAULT_PATTERNS_CSV
     try:
-        with p.open(encoding="utf-8") as f:
-            return list(csv.DictReader(f))
+        return _read_csv_rows(p)
     except FileNotFoundError:
         return list(_FALLBACK_PAIRWISE)
 
 
-def response_target_patterns(path: str | Path | None = None) -> list[dict]:
-    """Return only ``role == "response_target"`` rows from observed_patterns.csv.
+def observed_target_patterns(path: str | Path | None = None) -> list[dict]:
+    """Return independent ABC/RACH target rows only.
 
-    These are the rows that count toward ABC acceptance.  Rows with
-    ``role == "input_context"`` (predictor variables such as
-    ``primary_pollinator_frequency``) are excluded to prevent circular logic:
-    predictor variables are injected from ecological_context, not simulated,
-    so they would always match regardless of switch state.
-
-    This is the canonical pattern list to pass to ``evaluate_patterns()``.
+    Default strict RACH acceptance uses only role == observed_target.
+    The legacy role response_target is also accepted for backward compatibility.
     """
     return [
         row for row in load_observed_pattern_table(path)
-        if row.get("role", "response_target") == "response_target"
+        if row.get("role", "observed_target") in ABC_TARGET_ROLES
+    ]
+
+
+def response_target_patterns(path: str | Path | None = None) -> list[dict]:
+    """Backward-compatible alias for observed_target_patterns()."""
+    return observed_target_patterns(path)
+
+
+def excluded_patterns(path: str | Path | None = None) -> list[dict]:
+    """Return input_context, hypothesis_prediction, and diagnostic_only rows."""
+    return [
+        row for row in load_observed_pattern_table(path)
+        if row.get("role", "observed_target") in EXCLUDED_ROLES
+    ]
+
+
+def hypothesis_prediction_patterns(path: str | Path | None = None) -> list[dict]:
+    """Return hypothesis-derived predictions for posterior checks only."""
+    return [
+        row for row in load_observed_pattern_table(path)
+        if row.get("role") == "hypothesis_prediction"
+    ]
+
+
+def diagnostic_only_patterns(path: str | Path | None = None) -> list[dict]:
+    """Return circular/internal diagnostic patterns excluded from ABC."""
+    return [
+        row for row in load_observed_pattern_table(path)
+        if row.get("role") == "diagnostic_only"
     ]
 
 
 def observed_gradient_only_patterns(path: str | Path | None = None) -> list[dict]:
-    """Return ``response_target`` rows usable with the isolation gradient simulation.
+    """Return observed_target rows usable as pattern targets.
 
-    Includes: gradient_slope, rank_order, and trait_correlation patterns.
-    Excludes: pairwise_relation (requires named populations Oshima/Hachijo).
-
-    These are the directional patterns that work with any population set —
-    they describe the *shape* of the gradient, not comparisons between named
-    islands.  This is the primary acceptance criterion in Switch Posterior
-    Inference (used by ``switch_inference.py`` and ``test_ecological_invariants.py``).
-
-    Returns raw CSV dicts (suitable for ``evaluate_patterns()``).
+    Historical name retained. Under strict RACH this may return pairwise endpoint
+    targets if no independent observed gradient targets exist. Hypothesis-derived
+    conceptual gradients are excluded.
     """
     return [
-        row for row in response_target_patterns(path)
-        if row.get("type", "") in ("gradient_slope", "rank_order", "trait_correlation")
+        row for row in observed_target_patterns(path)
+        if row.get("type", "") in ("pairwise_relation", "gradient_slope", "rank_order", "trait_correlation")
     ]
 
 
 def observed_gradient_patterns(path: str | Path | None = None) -> list[dict]:
-    """Return gradient_slope and rank_order response_target rows, processed.
-
-    Same as ``observed_gradient_only_patterns()`` but with ``weight`` cast to
-    float and ``populations`` split to a list.
-    """
+    """Processed observed_target pattern rows with numeric weights."""
     rows = []
     for row in observed_gradient_only_patterns(path):
         out = dict(row)
-        out["weight"] = float(row.get("weight", 1.0))
+        try:
+            out["weight"] = float(row.get("weight", 1.0))
+        except (ValueError, TypeError):
+            out["weight"] = 1.0
         raw_pops = row.get("populations", "")
         out["populations"] = [p.strip() for p in raw_pops.split(";") if p.strip()]
         rows.append(out)
@@ -313,39 +170,51 @@ def observed_gradient_patterns(path: str | Path | None = None) -> list[dict]:
 
 
 def observed_pairwise_relations(path: str | Path | None = None) -> dict[str, str]:
-    """Return ``response_target`` pairwise patterns as ``{variable: relation_string}``.
-
-    Returns
-    -------
-    dict
-        ``{variable_name: relation_string}`` e.g.
-        ``{"nectar_guide": "Oshima > Hachijo", ...}``
-        ``input_context`` rows (e.g. Bombus_frequency_pairwise) are excluded.
-    """
+    """Return observed_target pairwise patterns as {variable: relation}."""
     return {
         row["variable"]: row["relation"]
-        for row in response_target_patterns(path)
+        for row in observed_target_patterns(path)
         if row.get("type", "pairwise_relation") == "pairwise_relation"
     }
 
 
 def load_observed_patterns(path: str | Path | None = None) -> dict[str, str]:
-    """Legacy: return ``response_target`` pairwise patterns as ``{variable: relation}``.
-
-    Equivalent to ``observed_pairwise_relations()``.
-    New code should use ``observed_pairwise_relations()`` directly.
-    """
+    """Legacy alias for observed_pairwise_relations()."""
     return observed_pairwise_relations(path)
 
 
 def load_pattern_weights(path: str | Path | None = None) -> dict[str, float]:
-    """Return ``{variable_name: weight}`` for ``response_target`` pairwise rows.
+    """Return {variable: weight} for observed_target pairwise rows."""
+    out: dict[str, float] = {}
+    for row in observed_target_patterns(path):
+        if row.get("type", "pairwise_relation") == "pairwise_relation":
+            try:
+                out[row["variable"]] = float(row.get("weight", 1.0))
+            except (ValueError, TypeError):
+                out[row["variable"]] = 1.0
+    return out
 
-    Keyed by ``variable`` (e.g. 'nectar_guide') to match simulation output keys.
-    Only ``response_target`` pairwise_relation rows are included.
+
+def load_independent_observations(path: str | Path | None = None) -> list[dict]:
+    """Load independent_observations.csv.
+
+    Rows with role=observed_target are future numeric y_obs targets; rows with
+    role=input_context are fixed x_obs context and excluded from target distance.
+    Empty numeric fields are preserved as None.
     """
-    return {
-        row["variable"]: float(row.get("weight", 1.0))
-        for row in response_target_patterns(path)
-        if row.get("type", "pairwise_relation") == "pairwise_relation"
-    }
+    p = Path(path) if path else _DEFAULT_INDEPENDENT_OBS_CSV
+    try:
+        rows = _read_csv_rows(p)
+    except FileNotFoundError:
+        return []
+    for row in rows:
+        for col in ("observed_value", "se"):
+            val = str(row.get(col, "")).strip()
+            if not val:
+                row[col] = None
+            else:
+                try:
+                    row[col] = float(val)
+                except ValueError:
+                    row[col] = None
+    return rows
