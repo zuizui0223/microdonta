@@ -240,23 +240,36 @@ def predict_traits_phenomenological(
         # The magnitude is modulated by (1 - ob): plants with high outcrossing
         # benefit resist RA-selfing more strongly.
         #
-        # DESIGN CHANGE — S3 drives selfing ONLY, NOT herkogamy/flower:
-        # Morphological selfing syndrome (reduced herkogamy, smaller flowers)
-        # requires SUSTAINED selection on floral architecture — that is the
-        # role of S2 (selfing_mediation).  S3 represents the environmental
-        # FORCING (isolation → pollinator scarcity → RA selfing) but does NOT
-        # by itself produce coordinated floral evolution.  Without S2, plants
-        # may self more frequently but retain ancestral floral form.
+        # S3 drives selfing strongly, and produces partial herkogamy / flower
+        # reduction (~30 % of S2's coordinated syndrome magnitude).
         #
-        # Identifiability consequence: S3+S4 can no longer mimic S2.
-        # S2 is the only pathway that simultaneously drives selfing, herkogamy,
-        # flower-size, and the correlated syndrome POM.  S3 only explains the
-        # selfing gradient (selfing_distance, selfing_rank, selfing_Fis_corr).
+        # Biological rationale: sustained island isolation creates ongoing
+        # reproductive-assurance selection pressure that — over many generations —
+        # can gradually reduce herkogamy and flower investment even without the
+        # full co-evolutionary selfing-syndrome feedback (S2).  The effect is
+        # weaker and less coordinated than S2, but non-negligible at the two-
+        # endpoint Oshima/Hachijo comparison level.
         #
-        # guide: S3 has zero direct effect on nectar guide (needs S1 or S4)
+        # Identifiability consequence: S1+S3 (without S2) CAN produce pairwise
+        # pattern matches for herkogamy and flower_size, making S2 vs S3
+        # genuinely ambiguous from two-endpoint data alone.  Full S2 identification
+        # requires a gradient (intermediate islands) or a bagging experiment.
+        # This is the biologically honest design: CA(selfing_syndrome) < 1.0
+        # reflects real data-level confounding, not a modelling shortcut.
+        #
+        # guide: S3 has a negligible direct effect on nectar guide expression.
+        # Island isolation reduces total pollinator service but not the
+        # Bombus-specific reinforcement that maintains guide expression.
+        # Coefficient 0.015 yields a maximum guide contribution of ~0.010 —
+        # well below RELATION_TOLERANCE (0.05), so S3 alone never produces
+        # a detectable guide divergence.  guide_attracts_bombus (S1) remains
+        # the only pathway that exceeds the pairwise-relation tolerance.
         selfing_drive = isolation * clamp01(0.55 + (1.0 - ob) * 0.45)
         selfing   += w * 0.55 * selfing_drive
-        # herkogamy and flower: NOT driven by S3 — requires S2 (selfing syndrome)
+        # Partial morphological effects (~30 % of S2): see rationale above.
+        herkogamy -= w * 0.16 * selfing_drive
+        flower    -= w * 0.13 * selfing_drive
+        guide     -= w * 0.015 * selfing_drive   # negligible; < RELATION_TOLERANCE
 
     # ------------------------------------------------------------------
     # (S4 removed — drift is always-on via Ne, not a binary switch)
