@@ -472,6 +472,8 @@ def run_switch_posterior_inference(
     pattern_weights: dict[str, float],  # kept for API compat
     switches: Sequence[BiologicalSwitch] = CAMPANULA_SWITCHES,
     progress_callback=None,  # callable(done, total, status_text) or None
+    extra_pattern_rows: list[dict] | None = None,  # additional y_obs rows for NOV sim
+    threshold: float | None = None,  # override acceptance threshold (default from acceptance_rule)
 ) -> SwitchPosteriorResult:
     """Run switch posterior inference via ABC rejection — 4-population gradient POM.
 
@@ -525,11 +527,14 @@ def run_switch_posterior_inference(
 
     rng = random.Random(seed)
     preset = predefined_tradeoff_presets()[preset_name]
-    threshold = _acceptance_threshold(acceptance_rule)
+    if threshold is None:
+        threshold = _acceptance_threshold(acceptance_rule)
 
     # y_obs = response_target patterns only (5 field_derived pairwise, Inoue 1986).
     # hypothesis_prediction gradient patterns excluded to prevent circular inference.
-    all_patterns = response_target_patterns()
+    all_patterns = list(response_target_patterns())
+    if extra_pattern_rows:
+        all_patterns = all_patterns + list(extra_pattern_rows)
 
     constraint_passed, constraint_rejected = sample_all_sets_with_rejection_log(
         preset, n_attempts, seed=seed

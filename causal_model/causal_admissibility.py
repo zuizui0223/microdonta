@@ -220,10 +220,39 @@ class ObservationContribution:
 
 
 @dataclass
+class CandidateOutcome:
+    """One possible empirical result of collecting candidate observation q.
+
+    Used in next_observation_value_simulation() to integrate over outcomes.
+
+    Attributes
+    ----------
+    name:
+        Short identifier, e.g. "monotone_gradient" or "no_effect".
+    description:
+        What this outcome means biologically.
+    prior_probability:
+        Prior probability of this outcome.  Must sum to 1.0 across all
+        outcomes for a given CandidateObservation.
+    extra_pattern_rows:
+        New pattern rows (CSV-style dicts) to add to y_obs if this outcome
+        is observed.  Each row must be evaluable by evaluate_patterns() —
+        i.e. role must be in ABC_TARGET_ROLES and type must be one of
+        pairwise_relation / gradient_slope / rank_order / trait_correlation.
+    """
+
+    name: str
+    description: str
+    prior_probability: float
+    extra_pattern_rows: list[dict]
+
+
+@dataclass
 class CandidateObservation:
     """A proposed additional empirical observation.
 
-    Used as input to next_observation_value().
+    Used as input to next_observation_value() and
+    next_observation_value_simulation().
 
     Attributes
     ----------
@@ -237,6 +266,10 @@ class CandidateObservation:
         Why this observation is expected to improve causal resolution.
     pattern_type:
         RACH pattern role if collected: 'pairwise_relation', 'gradient_slope', etc.
+    outcomes:
+        Possible empirical outcomes with prior probabilities and the
+        corresponding new pattern rows.  Used by
+        next_observation_value_simulation().  Empty list = heuristic only.
     """
 
     name: str
@@ -244,6 +277,11 @@ class CandidateObservation:
     target_switches: list[str]
     rationale: str
     pattern_type: str = "pairwise_relation"
+    outcomes: list[CandidateOutcome] = None   # type: ignore[assignment]
+
+    def __post_init__(self):
+        if self.outcomes is None:
+            self.outcomes = []
 
 
 @dataclass
@@ -275,6 +313,50 @@ class NextObservationValueResult:
 # Default candidate observations for Campanula / Izu worked example
 # ---------------------------------------------------------------------------
 
+def _pw(name, variable, left, right, relation, weight=1.0, source="candidate_nov"):
+    """Build a pairwise_relation pattern row (helper for outcomes)."""
+    return {
+        "pattern": name, "type": "pairwise_relation",
+        "variable": variable,
+        "left_population": left, "right_population": right,
+        "populations": "", "predictor": "", "expected_direction": "",
+        "relation": relation, "weight": str(weight),
+        "source": source, "notes": "NOV candidate outcome",
+        "role": "observed_target", "epistemic_status": "candidate",
+        "weight_rationale": "NOV simulation outcome",
+    }
+
+
+def _slope(name, variable, direction, weight=1.0, source="candidate_nov"):
+    """Build a gradient_slope pattern row (helper for outcomes)."""
+    return {
+        "pattern": name, "type": "gradient_slope",
+        "variable": variable,
+        "left_population": "", "right_population": "",
+        "populations": "", "predictor": "distance_from_mainland",
+        "expected_direction": direction,
+        "relation": "", "weight": str(weight),
+        "source": source, "notes": "NOV candidate outcome",
+        "role": "observed_target", "epistemic_status": "candidate",
+        "weight_rationale": "NOV simulation outcome",
+    }
+
+
+def _rank(name, variable, direction, weight=1.0, source="candidate_nov"):
+    """Build a rank_order pattern row (helper for outcomes)."""
+    return {
+        "pattern": name, "type": "rank_order",
+        "variable": variable,
+        "left_population": "", "right_population": "",
+        "populations": "", "predictor": "",
+        "expected_direction": direction,
+        "relation": "", "weight": str(weight),
+        "source": source, "notes": "NOV candidate outcome",
+        "role": "observed_target", "epistemic_status": "candidate",
+        "weight_rationale": "NOV simulation outcome",
+    }
+
+
 CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
     CandidateObservation(
         name="guide_removal_experiment",
@@ -289,6 +371,49 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
             "evidence for or against the guide-attraction pathway."
         ),
         pattern_type="experimental_manipulation",
+        outcomes=[
+            CandidateOutcome(
+                name="guide_effect_confirmed",
+                description="Bombus visitation drops significantly after guide removal (S1 confirmed).",
+                prior_probability=0.55,
+                extra_pattern_rows=[
+                    # guide positively correlates with outcrossing opportunity
+                    {
+                        "pattern": "guide_outcross_corr_obs",
+                        "type": "trait_correlation",
+                        "variable": "outcrossing_opportunity",
+                        "left_population": "", "right_population": "",
+                        "populations": "",
+                        "predictor": "nectar_guide",
+                        "expected_direction": "positive",
+                        "relation": "", "weight": "1.2",
+                        "source": "candidate_nov", "notes": "guide removal confirmed S1",
+                        "role": "observed_target", "epistemic_status": "candidate",
+                        "weight_rationale": "experimental manipulation; high weight",
+                    },
+                ],
+            ),
+            CandidateOutcome(
+                name="guide_effect_absent",
+                description="Bombus visitation unchanged after guide removal (S1 refuted).",
+                prior_probability=0.45,
+                extra_pattern_rows=[
+                    {
+                        "pattern": "guide_outcross_corr_obs",
+                        "type": "trait_correlation",
+                        "variable": "outcrossing_opportunity",
+                        "left_population": "", "right_population": "",
+                        "populations": "",
+                        "predictor": "nectar_guide",
+                        "expected_direction": "negative",
+                        "relation": "", "weight": "1.2",
+                        "source": "candidate_nov", "notes": "guide removal refuted S1",
+                        "role": "observed_target", "epistemic_status": "candidate",
+                        "weight_rationale": "experimental manipulation; high weight",
+                    },
+                ],
+            ),
+        ],
     ),
     CandidateObservation(
         name="bagging_seed_set",
@@ -303,6 +428,26 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
             "isolation gradient, separating S2 from S5 (small pollinators compensate)."
         ),
         pattern_type="pairwise_relation",
+        outcomes=[
+            CandidateOutcome(
+                name="high_ra_on_hachijo",
+                description="Bagged/open seed-set ratio higher on Hachijo: pollination limitation confirmed.",
+                prior_probability=0.6,
+                extra_pattern_rows=[
+                    _pw("bagging_pairwise_RA", "selfing_benefit",
+                        "Oshima", "Hachijo", "Oshima < Hachijo", weight=1.0),
+                ],
+            ),
+            CandidateOutcome(
+                name="equal_ra_both_islands",
+                description="Bagged/open ratio similar on both islands: halictids compensate (S4 favoured).",
+                prior_probability=0.4,
+                extra_pattern_rows=[
+                    _pw("bagging_pairwise_RA", "selfing_benefit",
+                        "Oshima", "Hachijo", "Oshima > Hachijo", weight=1.0),
+                ],
+            ),
+        ],
     ),
     CandidateObservation(
         name="pollinator_visitation_rate",
@@ -317,6 +462,26 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
             "Visitation data can distinguish which guild provides most pollen transfer."
         ),
         pattern_type="gradient_slope",
+        outcomes=[
+            CandidateOutcome(
+                name="outcrossing_declines_with_isolation",
+                description="Total outcrossing opportunity decreases with isolation (supports S1 or S3).",
+                prior_probability=0.55,
+                extra_pattern_rows=[
+                    _slope("outcrossing_gradient_obs", "outcrossing_opportunity",
+                           "negative", weight=1.0),
+                ],
+            ),
+            CandidateOutcome(
+                name="outcrossing_flat_gradient",
+                description="Outcrossing opportunity flat across islands (halictids compensate — S4).",
+                prior_probability=0.45,
+                extra_pattern_rows=[
+                    _pw("outcrossing_pairwise_obs", "outcrossing_opportunity",
+                        "Oshima", "Hachijo", "Oshima < Hachijo", weight=0.8),
+                ],
+            ),
+        ],
     ),
     CandidateObservation(
         name="He_neutral_diversity_gradient",
@@ -332,6 +497,25 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
             "is not circular with the existing Fis proxy."
         ),
         pattern_type="gradient_slope",
+        outcomes=[
+            CandidateOutcome(
+                name="diversity_declines_monotone",
+                description="He declines monotonically with isolation (S3 confirmed).",
+                prior_probability=0.65,
+                extra_pattern_rows=[
+                    _slope("He_gradient_obs", "neutral_diversity", "negative", weight=1.0),
+                    _rank("He_rank_obs", "neutral_diversity", "decreasing", weight=0.8),
+                ],
+            ),
+            CandidateOutcome(
+                name="diversity_no_gradient",
+                description="He does not decline with isolation (S3 weakened).",
+                prior_probability=0.35,
+                extra_pattern_rows=[
+                    _slope("He_gradient_obs", "neutral_diversity", "positive", weight=1.0),
+                ],
+            ),
+        ],
     ),
     CandidateObservation(
         name="Fis_gradient_intermediate_islands",
@@ -347,6 +531,33 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
             "causal resolution."
         ),
         pattern_type="gradient_slope",
+        outcomes=[
+            CandidateOutcome(
+                name="monotone_Fis_gradient",
+                description="Kozushima Fis is between Oshima and Hachijo — monotone gradient confirmed.",
+                prior_probability=0.6,
+                extra_pattern_rows=[
+                    # Oshima < Kozushima < Hachijo in Fis
+                    _pw("Fis_Oshima_Kozushima", "Fis",
+                        "Oshima", "Kozushima", "Oshima < Kozushima", weight=0.9),
+                    _pw("Fis_Kozushima_Hachijo", "Fis",
+                        "Kozushima", "Hachijo", "Kozushima < Hachijo", weight=0.9),
+                    _rank("Fis_rank_obs", "Fis", "increasing", weight=0.8),
+                ],
+            ),
+            CandidateOutcome(
+                name="stepped_Fis_gradient",
+                description="Kozushima Fis similar to Oshima — step change only at Hachijo.",
+                prior_probability=0.4,
+                extra_pattern_rows=[
+                    # Oshima ≈ Kozushima < Hachijo: only Kozushima < Hachijo holds
+                    _pw("Fis_Kozushima_Hachijo", "Fis",
+                        "Kozushima", "Hachijo", "Kozushima < Hachijo", weight=0.9),
+                    _pw("Fis_Oshima_Kozushima", "Fis",
+                        "Oshima", "Kozushima", "Oshima > Kozushima", weight=0.5),
+                ],
+            ),
+        ],
     ),
     CandidateObservation(
         name="herkogamy_gradient_intermediate",
@@ -361,6 +572,29 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
             "syndrome (monotone S2) from incidental herkogamy change (non-monotone)."
         ),
         pattern_type="gradient_slope",
+        outcomes=[
+            CandidateOutcome(
+                name="monotone_herkogamy_decline",
+                description="Herkogamy declines monotonically: Oshima > Kozushima > Hachijo.",
+                prior_probability=0.55,
+                extra_pattern_rows=[
+                    _pw("herkogamy_Oshima_Kozushima", "herkogamy",
+                        "Oshima", "Kozushima", "Oshima > Kozushima", weight=0.8),
+                    _rank("herkogamy_rank_obs", "herkogamy", "decreasing", weight=0.8),
+                ],
+            ),
+            CandidateOutcome(
+                name="herkogamy_step_at_hachijo",
+                description="Herkogamy similar on Oshima and Kozushima; abrupt drop at Hachijo.",
+                prior_probability=0.45,
+                extra_pattern_rows=[
+                    _pw("herkogamy_Oshima_Kozushima", "herkogamy",
+                        "Oshima", "Kozushima", "Oshima < Kozushima", weight=0.5),
+                    _pw("herkogamy_Kozushima_Hachijo", "herkogamy",
+                        "Kozushima", "Hachijo", "Kozushima > Hachijo", weight=0.8),
+                ],
+            ),
+        ],
     ),
     CandidateObservation(
         name="natural_seed_set_gradient",
@@ -376,6 +610,26 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
             "the two mechanisms."
         ),
         pattern_type="pairwise_relation",
+        outcomes=[
+            CandidateOutcome(
+                name="seed_set_lower_on_hachijo",
+                description="Natural seed set lower on Hachijo — pollination limitation present.",
+                prior_probability=0.5,
+                extra_pattern_rows=[
+                    _pw("seed_set_pairwise_obs", "outcrossing_opportunity",
+                        "Oshima", "Hachijo", "Oshima > Hachijo", weight=0.9),
+                ],
+            ),
+            CandidateOutcome(
+                name="seed_set_equal",
+                description="Seed set similar across islands — halictids compensate (S4).",
+                prior_probability=0.5,
+                extra_pattern_rows=[
+                    _pw("seed_set_pairwise_obs", "outcrossing_opportunity",
+                        "Oshima", "Hachijo", "Oshima < Hachijo", weight=0.9),
+                ],
+            ),
+        ],
     ),
     CandidateObservation(
         name="guide_area_spectrophotometry",
@@ -390,6 +644,29 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
             "for both S1 (guide attracts Bombus) and S2 (guide loss part of syndrome)."
         ),
         pattern_type="pairwise_relation",
+        outcomes=[
+            CandidateOutcome(
+                name="guide_gradient_confirmed_precise",
+                description="Precise UV measurements confirm nectar guide gradient with high confidence.",
+                prior_probability=0.7,
+                extra_pattern_rows=[
+                    # Same pairwise direction but with higher weight (measurement quality upgrade)
+                    _pw("nectar_guide_precise_pairwise", "nectar_guide",
+                        "Oshima", "Hachijo", "Oshima > Hachijo", weight=1.5),
+                    _rank("nectar_guide_rank_precise", "nectar_guide",
+                          "decreasing", weight=1.0),
+                ],
+            ),
+            CandidateOutcome(
+                name="guide_difference_smaller_than_expected",
+                description="UV measurement shows weaker guide gradient than visual scoring suggested.",
+                prior_probability=0.3,
+                extra_pattern_rows=[
+                    _pw("nectar_guide_precise_pairwise", "nectar_guide",
+                        "Oshima", "Hachijo", "Oshima > Hachijo", weight=0.5),
+                ],
+            ),
+        ],
     ),
 ]
 
@@ -690,6 +967,153 @@ def next_observation_value(
         ))
 
     # Sort by expected gain descending
+    results.sort(key=lambda x: x.expected_resolvability_gain, reverse=True)
+    return results
+
+
+def next_observation_value_simulation(
+    observed_rels: list[dict],
+    pattern_weights: dict,
+    switches,        # Sequence[BiologicalSwitch]
+    candidates: list[CandidateObservation] | None = None,
+    n_attempts: int = 100,
+    preset_name: str = "literature_grounded",
+    acceptance_rule: str = "weighted_lax",
+    seed: int | None = None,
+    threshold: float = 0.8,
+    progress_callback=None,
+) -> list[NextObservationValueResult]:
+    """Simulation-based NOV(q) by integrating over candidate outcomes.
+
+    NOV(q) = Σ_v  p(v) · R(O ∪ {q=v})  −  R(O)
+
+    For each candidate observation q and each of its possible empirical
+    outcomes v (defined in CandidateObservation.outcomes), this function:
+
+    1. Augments observed_rels with the outcome's extra_pattern_rows.
+    2. Re-runs ABC inference with n_attempts draws.
+    3. Computes R from the resulting accepted sample.
+    4. Weights by prior_probability of the outcome.
+
+    Unlike the heuristic next_observation_value(), this provides an
+    empirically grounded expected R gain rather than an approximation
+    based only on current CA_j.  Candidates without defined outcomes fall
+    back to the heuristic estimate.
+
+    Parameters
+    ----------
+    observed_rels:
+        Current y_obs pattern rows (list[dict] from observed_patterns.csv).
+    pattern_weights:
+        Pattern weight dict keyed by pattern name.
+    switches:
+        Sequence of BiologicalSwitch definitions.
+    candidates:
+        Candidate observations with outcomes.  Defaults to
+        CAMPANULA_CANDIDATE_OBSERVATIONS.
+    n_attempts:
+        ABC draws per outcome run.  100 is sufficient for R estimation;
+        use 200+ for stable results.
+    preset_name:
+        Parameter preset for ABC sampling.
+    acceptance_rule:
+        ABC acceptance rule (e.g. "weighted_lax").
+    seed:
+        Random seed for reproducibility.  Each outcome uses seed+i to
+        ensure diversity across runs while remaining reproducible.
+    threshold:
+        Weighted match rate threshold for acceptance.
+    progress_callback:
+        Optional callable(candidate_name: str, outcome_name: str,
+        total_done: int, total: int) — called after each ABC run.
+
+    Returns
+    -------
+    list[NextObservationValueResult]
+        One entry per candidate, sorted by NOV (descending).
+        expected_resolvability_gain = NOV(q) = E[R_new] - R_current.
+    """
+    from causal_model.switch_inference import run_switch_posterior_inference  # lazy import
+
+    if candidates is None:
+        candidates = CAMPANULA_CANDIDATE_OBSERVATIONS
+
+    # --- Step 1: baseline R from current y_obs ---
+    _baseline = run_switch_posterior_inference(
+        preset_name=preset_name,
+        n_attempts=n_attempts,
+        acceptance_rule=acceptance_rule,
+        seed=seed,
+        observed_rels=observed_rels,
+        pattern_weights=pattern_weights,
+        threshold=threshold,
+    )
+    R_current = causal_resolvability(_baseline.accepted_rows, switches)
+
+    # --- Step 2: for each candidate, integrate over outcomes ---
+    total_runs = sum(len(c.outcomes) for c in candidates if c.outcomes)
+    done = 0
+    results: list[NextObservationValueResult] = []
+
+    for cand in candidates:
+        if not cand.outcomes:
+            # No outcomes defined — fall back to heuristic
+            heuristic = next_observation_value(_baseline.accepted_rows, switches, [cand])
+            if heuristic:
+                results.append(heuristic[0])
+            continue
+
+        R_expected = 0.0
+        outcome_details: list[dict] = []
+
+        for i, outcome in enumerate(cand.outcomes):
+            _run_seed = (seed + done + 1) if seed is not None else None
+            sp = run_switch_posterior_inference(
+                preset_name=preset_name,
+                n_attempts=n_attempts,
+                acceptance_rule=acceptance_rule,
+                seed=_run_seed,
+                observed_rels=observed_rels,
+                pattern_weights=pattern_weights,
+                threshold=threshold,
+                extra_pattern_rows=outcome.extra_pattern_rows,
+            )
+            R_outcome = causal_resolvability(sp.accepted_rows, switches)
+            R_expected += outcome.prior_probability * R_outcome
+            outcome_details.append({
+                "outcome": outcome.name,
+                "p": outcome.prior_probability,
+                "R": round(R_outcome, 4),
+                "n_accepted": len(sp.accepted_rows),
+            })
+            done += 1
+            if progress_callback is not None:
+                progress_callback(cand.name, outcome.name, done, total_runs)
+
+        NOV_q = R_expected - R_current
+
+        if NOV_q > 0.15:
+            priority = "high"
+        elif NOV_q > 0.05:
+            priority = "medium"
+        else:
+            priority = "low"
+
+        rationale_ext = (
+            cand.rationale + "  [Simulation NOV: " +
+            "; ".join(f"{d['outcome']} p={d['p']:.2f} R={d['R']:.3f}" for d in outcome_details) +
+            f"; NOV={NOV_q:.4f}]"
+        )
+        results.append(NextObservationValueResult(
+            candidate=cand.name,
+            description=cand.description,
+            target_switches=cand.target_switches,
+            expected_resolvability_gain=round(NOV_q, 4),
+            current_R=R_current,
+            rationale=rationale_ext,
+            priority=priority,
+        ))
+
     results.sort(key=lambda x: x.expected_resolvability_gain, reverse=True)
     return results
 

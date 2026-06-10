@@ -1463,38 +1463,138 @@ if "sp_result" in st.session_state:
         # ---- sp_tab4: NOV — next-observation value -------------------------
         with sp_tab4:
             st.markdown("### NOV(q) ≈ E[ R(O ∪ q) − R(O) ]")
-            st.caption(
-                "**Next-observation value**: expected increase in causal resolvability "
-                "if candidate observation q is added to y_obs.  \n"
-                "Ranked by estimated ΔR. Computed from current CA_j via heuristic approximation "
-                "(most ambiguous switches → most gain).  \n"
-                "⚠ Heuristic, not the true expectation over q's outcome distribution. "
-                "Use as a priority guide for future data collection."
+
+            _nov_mode = st.radio(
+                "NOV estimation method",
+                ["Heuristic (instant)", "Simulation (accurate)"],
+                horizontal=True,
+                help=(
+                    "**Heuristic**: estimates ΔR from current CA_j ambiguity — instant but approximate.  \n"
+                    "**Simulation**: re-runs ABC for each candidate's possible outcomes and "
+                    "integrates over outcome probabilities — accurate but takes several minutes."
+                ),
             )
-            if _rach_modules_ok:
-                _nov_results = _nov_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
-                if _nov_results:
-                    df_nov = pd.DataFrame([
+
+            if _nov_mode == "Heuristic (instant)":
+                st.caption(
+                    "**Next-observation value**: expected increase in causal resolvability "
+                    "if candidate observation q is added to y_obs.  \n"
+                    "Ranked by estimated ΔR. Computed from current CA_j via heuristic approximation "
+                    "(most ambiguous switches → most gain).  \n"
+                    "⚠ Heuristic, not the true expectation over q's outcome distribution. "
+                    "Use as a priority guide for future data collection."
+                )
+                if _rach_modules_ok:
+                    _nov_results = _nov_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
+                    if _nov_results:
+                        df_nov = pd.DataFrame([
+                            {
+                                "priority":        r.priority,
+                                "candidate":       r.candidate,
+                                "ΔR (approx)":     round(r.expected_resolvability_gain, 4),
+                                "target switches": ", ".join(r.target_switches),
+                                "rationale":       r.rationale[:120],
+                            }
+                            for r in _nov_results
+                        ])
+                        st.bar_chart(df_nov.set_index("candidate")[["ΔR (approx)"]], width="stretch")
+                        st.caption(
+                            f"Current R = {_rs.causal_resolvability:.3f}.  "
+                            "Top-ranked candidate is expected to increase R most. "
+                            "Collecting all candidates would approach R → 1."
+                        )
+                        stretch_df(df_nov, hide_index=True)
+                    else:
+                        st.info("No candidate observations configured.")
+                else:
+                    st.error(f"Could not load RACH modules: {_rach_err}")
+
+            else:  # Simulation NOV
+                st.caption(
+                    "**Simulation NOV**: for each candidate observation q, enumerates its possible "
+                    "empirical outcomes (e.g. 'monotone gradient' vs 'stepped gradient'), re-runs "
+                    "ABC with each augmented y_obs, and integrates R over outcomes weighted by "
+                    "prior probability.  \n"
+                    "NOV(q) = Σ_v  p(v) · R(O ∪ {q=v})  −  R(O)  \n"
+                    "Each candidate requires 2–3 ABC runs. Total ≈ "
+                    f"{8 * 2} runs × n_attempts draws."
+                )
+                _nov_n = st.slider(
+                    "Draws per outcome (n_attempts)",
+                    min_value=50, max_value=300, value=100, step=50,
+                    help="More draws = more stable R estimate per outcome. 100 is usually sufficient.",
+                )
+                _nov_seed_inp = st.number_input("Seed", value=42, step=1)
+
+                if st.button("▶ Run Simulation NOV", type="primary"):
+                    if not _rach_modules_ok:
+                        st.error(f"Could not load RACH modules: {_rach_err}")
+                    else:
+                        from causal_model.causal_admissibility import next_observation_value_simulation
+                        from examples.campanula_izu.observed_data import (
+                            load_observed_patterns as _load_obs,
+                            load_pattern_weights as _load_pw,
+                        )
+                        _obs_rels = _load_obs()
+                        _pw_weights = _load_pw()
+
+                        _nov_progress = st.progress(0.0, text="Starting NOV simulation…")
+                        _nov_status = st.empty()
+                        _nov_done_count = [0]
+                        _nov_total = sum(
+                            len(c.outcomes)
+                            for c in __import__(
+                                "causal_model.causal_admissibility",
+                                fromlist=["CAMPANULA_CANDIDATE_OBSERVATIONS"]
+                            ).CAMPANULA_CANDIDATE_OBSERVATIONS
+                            if c.outcomes
+                        )
+
+                        def _nov_cb(cand_name, outcome_name, done, total):
+                            _nov_done_count[0] = done
+                            pct = done / max(total, 1)
+                            _nov_progress.progress(pct, text=f"{cand_name} / {outcome_name} ({done}/{total})")
+                            _nov_status.caption(f"Running: {cand_name} → {outcome_name}")
+
+                        with st.spinner("Running simulation NOV…"):
+                            _nov_sim_results = next_observation_value_simulation(
+                                observed_rels=_obs_rels,
+                                pattern_weights=_pw_weights,
+                                switches=CAMPANULA_SWITCHES,
+                                n_attempts=_nov_n,
+                                preset_name=st.session_state.get("preset_name", "literature_grounded"),
+                                acceptance_rule=st.session_state.get("acceptance_rule", "weighted_lax"),
+                                seed=int(_nov_seed_inp),
+                                threshold=_thresh_display,
+                                progress_callback=_nov_cb,
+                            )
+
+                        _nov_progress.progress(1.0, text="Done")
+                        _nov_status.empty()
+                        st.session_state["_nov_sim_results"] = _nov_sim_results
+
+                if "_nov_sim_results" in st.session_state:
+                    _sim_res = st.session_state["_nov_sim_results"]
+                    df_nov_sim = pd.DataFrame([
                         {
                             "priority":        r.priority,
                             "candidate":       r.candidate,
-                            "ΔR (approx)":     round(r.expected_resolvability_gain, 4),
+                            "NOV (ΔR)":        round(r.expected_resolvability_gain, 4),
+                            "R_current":       round(r.current_R, 4),
+                            "R_expected":      round(r.current_R + r.expected_resolvability_gain, 4),
                             "target switches": ", ".join(r.target_switches),
-                            "rationale":       r.rationale[:120],
                         }
-                        for r in _nov_results
+                        for r in _sim_res
                     ])
-                    st.bar_chart(df_nov.set_index("candidate")[["ΔR (approx)"]], width="stretch")
+                    st.bar_chart(df_nov_sim.set_index("candidate")[["NOV (ΔR)"]], width="stretch")
                     st.caption(
-                        f"Current R = {_rs.causal_resolvability:.3f}.  "
-                        "Top-ranked candidate is expected to increase R most. "
-                        "Collecting all candidates would approach R → 1."
+                        f"Baseline R = {_sim_res[0].current_R:.3f} (same A_ε).  "
+                        "NOV > 0 = collecting this observation expected to improve causal resolution."
                     )
-                    stretch_df(df_nov, hide_index=True)
-                else:
-                    st.info("No candidate observations configured.")
-            else:
-                st.error(f"Could not load RACH modules: {_rach_err}")
+                    stretch_df(df_nov_sim, hide_index=True)
+                    with st.expander("Outcome details (rationale)"):
+                        for r in _sim_res:
+                            st.markdown(f"**{r.candidate}** (priority={r.priority}): {r.rationale[:300]}")
 
         # ---- sp_tab5: Parameter space A_ε ----------------------------------
         with sp_tab5:
