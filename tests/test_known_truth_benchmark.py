@@ -208,6 +208,7 @@ class TestSaveOutputs:
             "known_truth_summary.csv",
             "recovery_by_noise.csv",
             "recovery_by_n_attempts.csv",
+            "recovery_by_backend_pair.csv",
         }
         assert set(written.keys()) == expected
         for name, path in written.items():
