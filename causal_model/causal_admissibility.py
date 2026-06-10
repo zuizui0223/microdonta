@@ -773,12 +773,14 @@ def causal_resolvability(
     accepted_rows: list[dict],
     switches,   # Sequence[BiologicalSwitch]
 ) -> float:
-    """Compute causal resolvability R = 1 - H(S | A_ε) / H(S).
+    """Compute causal resolvability R_RACH = 1 - H(S | A_ε) / K.
 
-    R ∈ [0, 1] measures the fraction of causal uncertainty resolved by
-    the current observation set and biological constraints.
+    K = log₂|S| = number of switches (maximum possible joint entropy in bits).
+    This equals H(S_prior) when all switch priors are Bernoulli(0.5), which
+    is the standard Campanula setting.  Using K (a fixed constant) rather than
+    H(S_prior) ensures R_RACH is bounded in [0, 1] regardless of prior choice.
 
-    R = 0: no resolution — observations provide zero causal information.
+    R = 0: no resolution — observations do not constrain mechanism combinations.
     R = 1: complete resolution — unique mechanism combination identified.
 
     Parameters
