@@ -1567,6 +1567,7 @@ if "sp_result" in st.session_state:
                                 seed=int(_nov_seed_inp),
                                 threshold=_thresh_display,
                                 progress_callback=_nov_cb,
+                                current_accepted_rows=sp.accepted_rows,
                             )
 
                         _nov_progress.progress(1.0, text="Done")

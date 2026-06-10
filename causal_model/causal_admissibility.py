@@ -982,6 +982,7 @@ def next_observation_value_simulation(
     seed: int | None = None,
     threshold: float = 0.8,
     progress_callback=None,
+    current_accepted_rows: list[dict] | None = None,
 ) -> list[NextObservationValueResult]:
     """Simulation-based NOV(q) by integrating over candidate outcomes.
 
@@ -1033,32 +1034,47 @@ def next_observation_value_simulation(
         One entry per candidate, sorted by NOV (descending).
         expected_resolvability_gain = NOV(q) = E[R_new] - R_current.
     """
-    from causal_model.switch_inference import run_switch_posterior_inference  # lazy import
+    from causal_model.switch_inference import (   # lazy import
+        run_switch_posterior_inference_abm as _run_abm,
+        run_switch_posterior_inference as _run_proxy,
+    )
 
     if candidates is None:
         candidates = CAMPANULA_CANDIDATE_OBSERVATIONS
 
-    # --- Step 1: baseline R from current y_obs ---
-    _baseline = run_switch_posterior_inference(
-        preset_name=preset_name,
-        n_attempts=n_attempts,
-        acceptance_rule=acceptance_rule,
-        seed=seed,
-        observed_rels=observed_rels,
-        pattern_weights=pattern_weights,
-        threshold=threshold,
-    )
-    R_current = causal_resolvability(_baseline.accepted_rows, switches)
+    # --- Step 1: baseline R from current accepted sample (no re-run needed) ---
+    # If current_accepted_rows is provided, use it directly to avoid a redundant
+    # ABC run and to ensure the baseline R matches the caller's posterior.
+    if current_accepted_rows is not None:
+        R_current = causal_resolvability(current_accepted_rows, switches)
+        _baseline_rows = current_accepted_rows
+    else:
+        _bl = _run_abm(
+            preset_name=preset_name,
+            n_attempts=n_attempts,
+            acceptance_rule=acceptance_rule,
+            seed=seed,
+            observed_rels=observed_rels,
+            pattern_weights=pattern_weights,
+            threshold=threshold,
+        )
+        R_current = causal_resolvability(_bl.accepted_rows, switches)
+        _baseline_rows = _bl.accepted_rows
 
     # --- Step 2: for each candidate, integrate over outcomes ---
     total_runs = sum(len(c.outcomes) for c in candidates if c.outcomes)
     done = 0
     results: list[NextObservationValueResult] = []
 
+    # Relative priority thresholds: fraction of maximum possible gain (1 - R_current)
+    _max_possible_gain = max(1.0 - R_current, 0.01)
+    _high_thresh   = 0.20 * _max_possible_gain   # top 20% of headroom
+    _medium_thresh = 0.05 * _max_possible_gain   # top 5% of headroom
+
     for cand in candidates:
         if not cand.outcomes:
             # No outcomes defined — fall back to heuristic
-            heuristic = next_observation_value(_baseline.accepted_rows, switches, [cand])
+            heuristic = next_observation_value(_baseline_rows, switches, [cand])
             if heuristic:
                 results.append(heuristic[0])
             continue
@@ -1068,7 +1084,7 @@ def next_observation_value_simulation(
 
         for i, outcome in enumerate(cand.outcomes):
             _run_seed = (seed + done + 1) if seed is not None else None
-            sp = run_switch_posterior_inference(
+            sp = _run_abm(
                 preset_name=preset_name,
                 n_attempts=n_attempts,
                 acceptance_rule=acceptance_rule,
@@ -1092,9 +1108,9 @@ def next_observation_value_simulation(
 
         NOV_q = R_expected - R_current
 
-        if NOV_q > 0.15:
+        if NOV_q > _high_thresh:
             priority = "high"
-        elif NOV_q > 0.05:
+        elif NOV_q > _medium_thresh:
             priority = "medium"
         else:
             priority = "low"
