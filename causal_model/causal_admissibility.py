@@ -2,11 +2,11 @@
 
 This module implements the five core RACH quantities:
 
-    CA_j   Causal admissibility    P(s_j = 1 | A_ε)
-    D      Causal degeneracy       H(S | A_ε)
-    R      Causal resolvability    1 - H(S | A_ε) / H(S)
-    OC_k   Observation contribution  R(O) - R(O \\ {k})
-    NOV(q) Next-observation value  E[ R(O ∪ q) - R(O) ]
+    CA_j    Causal admissibility    P(s_j = 1 | A_ε)
+    D_RACH  Causal degeneracy       H(S | A_ε)
+    R_RACH  Causal resolvability    1 - H(S | A_ε) / log2|S| = 1 - H(S|A_ε)/K
+    OC_k    Observation contribution  R_RACH(O) - R_RACH(O \\ {k})
+    NOV(q)  Next-observation value  E[ R_RACH(O ∪ q) - R_RACH(O) ]
 
 RACH is NOT a model-comparison or ABC framework.
 Its primary inferential objects are causal admissibility and causal degeneracy.
@@ -51,7 +51,7 @@ Public API
     causal_resolvability(accepted_rows, switches)
         → float  R ∈ [0, 1]
 
-    observation_contribution(accepted_rows, switches, threshold)
+    observation_contribution(evaluated_rows, switches, threshold)
         → list[ObservationContribution]  one per (pattern, switch)
 
     next_observation_value(accepted_rows, switches, candidates)

@@ -1329,9 +1329,15 @@ if "sp_result" in st.session_state:
             from causal_model.identifiability import compute_rach_theory_metrics as _rach_metrics_fn
             _rs = _rach_summary_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
             _rach_metrics = _rach_metrics_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
+            # Pre-compute OC_k and heuristic NOV once (used in tabs AND downloads)
+            _oc_source = getattr(sp, "evaluated_rows", None) or sp.accepted_rows
+            _oc_results = _oc_fn(_oc_source, CAMPANULA_SWITCHES, threshold=_thresh_display)
+            _nov_results = _nov_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
             _rach_modules_ok = True
         except Exception as _rach_err:
             _rach_modules_ok = False
+            _oc_results = []
+            _nov_results = []
 
         # ---- sp_tab2: D · R — causal degeneracy & resolvability -----------
         with sp_tab2:
@@ -1427,11 +1433,6 @@ if "sp_result" in st.session_state:
                 "**OC_k < 0** → rare; pattern may confound inference."
             )
             if _rach_modules_ok:
-                # Use evaluated_rows (all draws) for unbiased LOO OC_k.
-                # Passing accepted_rows only underestimates OC_k because
-                # previously-rejected rows that would pass without pattern k are missed.
-                _oc_source = getattr(sp, "evaluated_rows", None) or sp.accepted_rows
-                _oc_results = _oc_fn(_oc_source, CAMPANULA_SWITCHES, threshold=_thresh_display)
                 if _oc_results:
                     df_oc = pd.DataFrame([
                         {"pattern": r.pattern, "switch": r.switch,
@@ -1485,7 +1486,6 @@ if "sp_result" in st.session_state:
                     "Use as a priority guide for future data collection."
                 )
                 if _rach_modules_ok:
-                    _nov_results = _nov_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
                     if _nov_results:
                         df_nov = pd.DataFrame([
                             {
@@ -1647,34 +1647,136 @@ if "sp_result" in st.session_state:
 
         # ---- sp_tab6: Downloads --------------------------------------------
         with sp_tab6:
+            import json as _json
+
             _sp_settings = st.session_state.get("sp_settings", {})
             _sp_tag = _run_tag(_sp_settings)
-            _df_sp_accepted  = pd.DataFrame(sp.accepted_rows)
+
+            # --- helpers to serialize special columns -----------------------
+            def _serialize_per_pattern(rows: list[dict]) -> list[dict]:
+                """Copy rows, serialising per_pattern_matched dicts to JSON strings."""
+                out = []
+                for r in rows:
+                    row = dict(r)
+                    ppm = row.get("per_pattern_matched")
+                    if isinstance(ppm, dict):
+                        # tuples (matched, weight) → JSON arrays for CSV portability
+                        row["per_pattern_matched"] = _json.dumps(
+                            {k: [bool(v[0]), float(v[1])] for k, v in ppm.items()}
+                        )
+                    out.append(row)
+                return out
+
+            _df_sp_accepted  = pd.DataFrame(_serialize_per_pattern(sp.accepted_rows))
             _df_sp_posterior = pd.DataFrame(sp.posterior_table)
+
+            _evaluated_rows = getattr(sp, "evaluated_rows", None) or sp.accepted_rows
+            _df_sp_evaluated = pd.DataFrame(_serialize_per_pattern(_evaluated_rows))
+
+            # OC_k table (pattern-level; switch column is repeated for each switch)
+            if _rach_modules_ok and _oc_results:
+                _df_oc = pd.DataFrame([
+                    {"pattern": r.pattern, "switch": r.switch,
+                     "OC_k": round(r.OC_k, 4),
+                     "R_full": round(r.R_full, 4), "R_loo": round(r.R_loo, 4),
+                     "n_full": r.n_full, "n_loo": r.n_loo}
+                    for r in _oc_results
+                ])
+            else:
+                _df_oc = pd.DataFrame()
+
+            # Heuristic NOV table
+            if _rach_modules_ok and _nov_results:
+                _df_nov = pd.DataFrame([
+                    {"priority": r.priority, "candidate": r.candidate,
+                     "NOV_delta_R": round(r.expected_resolvability_gain, 4),
+                     "R_current": round(r.current_R, 4),
+                     "target_switches": ", ".join(r.target_switches),
+                     "rationale": r.rationale[:300]}
+                    for r in _nov_results
+                ])
+            else:
+                _df_nov = pd.DataFrame()
+
+            # RACH summary
+            if _rach_modules_ok:
+                _df_rach_summary = pd.DataFrame([{
+                    "n_switches": _rs.n_switches,
+                    "n_accepted": _rs.n_accepted,
+                    "D_RACH": round(_rs.causal_degeneracy, 4),
+                    "K_max": round(_rs.max_degeneracy, 4),
+                    "R_RACH": round(_rs.causal_resolvability, 4),
+                    "total_Ij": round(_rach_metrics.total_identifiability, 4),
+                    "threshold": _thresh_display,
+                    "acceptance_rule": _sp_settings.get("acceptance_rule", ""),
+                    "preset": _sp_settings.get("preset_name", ""),
+                    "n_attempts": _sp_settings.get("n_attempts", ""),
+                    "seed": _sp_settings.get("seed", ""),
+                }])
+            else:
+                _df_rach_summary = pd.DataFrame()
+
+            _zip_contents = {
+                f"{_sp_tag}_accepted_rows":           _df_sp_accepted,
+                f"{_sp_tag}_evaluated_rows":          _df_sp_evaluated,
+                f"{_sp_tag}_posterior_table":         _df_sp_posterior,
+                f"{_sp_tag}_observation_contribution": _df_oc,
+                f"{_sp_tag}_nov_table":               _df_nov,
+                f"{_sp_tag}_rach_summary":            _df_rach_summary,
+            }
 
             st.download_button(
                 "⬇ Download ALL RACH inference tables as ZIP",
-                _build_zip({
-                    f"{_sp_tag}_accepted_rows":    _df_sp_accepted,
-                    f"{_sp_tag}_posterior_table":  _df_sp_posterior,
-                }),
+                _build_zip(_zip_contents),
                 f"{_sp_tag}_rach_inference.zip",
                 "application/zip",
                 use_container_width=True,
                 type="primary",
             )
+            st.caption(
+                "ZIP contains: accepted_rows · evaluated_rows · posterior_table · "
+                "observation_contribution · nov_table · rach_summary  \n"
+                "`evaluated_rows.csv` is required to reproduce OC_k (LOO re-acceptance "
+                "can recover previously-rejected draws that become accepted when a pattern is removed)."
+            )
             st.divider()
-            col_dl1, col_dl2 = st.columns(2)
+
+            col_dl1, col_dl2, col_dl3 = st.columns(3)
             with col_dl1:
                 st.download_button(
                     "accepted_rows.csv  (A_ε sample)",
                     _df_sp_accepted.to_csv(index=False).encode("utf-8"),
-                    f"{_sp_tag}_accepted.csv", "text/csv",
+                    f"{_sp_tag}_accepted_rows.csv", "text/csv",
+                )
+                st.download_button(
+                    "evaluated_rows.csv  (all draws)",
+                    _df_sp_evaluated.to_csv(index=False).encode("utf-8"),
+                    f"{_sp_tag}_evaluated_rows.csv", "text/csv",
+                    help="Required for unbiased OC_k reproduction.",
                 )
             with col_dl2:
                 st.download_button(
                     "posterior_table.csv  (CA_j, BF)",
                     _df_sp_posterior.to_csv(index=False).encode("utf-8"),
-                    f"{_sp_tag}_posterior.csv", "text/csv",
+                    f"{_sp_tag}_posterior_table.csv", "text/csv",
                 )
+                if not _df_oc.empty:
+                    st.download_button(
+                        "observation_contribution.csv  (OC_k)",
+                        _df_oc.to_csv(index=False).encode("utf-8"),
+                        f"{_sp_tag}_observation_contribution.csv", "text/csv",
+                    )
+            with col_dl3:
+                if not _df_nov.empty:
+                    st.download_button(
+                        "nov_table.csv  (heuristic NOV)",
+                        _df_nov.to_csv(index=False).encode("utf-8"),
+                        f"{_sp_tag}_nov_table.csv", "text/csv",
+                    )
+                if not _df_rach_summary.empty:
+                    st.download_button(
+                        "rach_summary.csv",
+                        _df_rach_summary.to_csv(index=False).encode("utf-8"),
+                        f"{_sp_tag}_rach_summary.csv", "text/csv",
+                    )
 
