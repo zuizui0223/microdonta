@@ -442,7 +442,7 @@ def _count_response_target_patterns() -> int:
         with open(_csv_path, newline="", encoding="utf-8") as f:
             return sum(
                 1 for row in _csv.DictReader(f)
-                if row.get("role", "response_target") == "response_target"
+                if row.get("role", "observed_target") in ("observed_target", "response_target")
             )
     except Exception:
         return 6  # fallback to original count
