@@ -203,6 +203,47 @@ _LIT_DRIFT = LiteratureSource(
           "Exact Ne values are uncertain; range is conservative.",
 )
 
+_LIT_NE_SLOPE = LiteratureSource(
+    citation="Izu Island population census / allozyme survey; "
+             "island biogeography (MacArthur & Wilson 1967)",
+    parameter="Ne_isolation_slope",
+    empirical_range="Fitted R²=0.93 at slope=0.765 for Izu Islands. "
+                    "Direction (negative) is a universal principle; "
+                    "magnitude is system-specific.",
+    modelled_range=(0.30, 1.50),
+    notes="DIRECTION fixed by principle: Ne decreases with isolation. "
+          "SLOPE is a latent parameter θ. Prior centre 0.765 (Izu fit). "
+          "Range (0.30, 1.50) covers plausible island biogeography slopes "
+          "while keeping Ne_proxy in (0.05, 1.0) for all island distances. "
+          "Lower bound > 0 enforces the direction principle.",
+)
+
+_LIT_MIGRATION_DECAY = LiteratureSource(
+    citation="Inoue & Amano 1986 (migration estimates); "
+             "island biogeography exponential distance decay",
+    parameter="migration_decay_rate",
+    empirical_range="Exponential decay: migration_rate = 0.15 × exp(−k × iso). "
+                    "Fitted k=3.19 for Izu Islands (R²=0.99).",
+    modelled_range=(1.50, 6.00),
+    notes="DIRECTION fixed: migration decays with isolation (universal). "
+          "RATE k is a latent parameter θ. Prior centre 3.19 (Izu fit). "
+          "Range (1.50, 6.00) spans slow to rapid decay across island systems.",
+)
+
+_LIT_POLLINATOR_LOSS = LiteratureSource(
+    citation="Inoue & Amano 1986 (Bombus ardens distribution); "
+             "Izu Island pollinator surveys",
+    parameter="pollinator_loss_slope",
+    empirical_range="Bombus frequency = max(0, 0.80 − k × iso). "
+                    "Fitted k=0.94 for Izu Islands (R²=0.99). "
+                    "Bombus absent on Hachijo (iso≈0.90), present on Oshima (iso≈0.35).",
+    modelled_range=(0.50, 1.50),
+    notes="DIRECTION fixed: Bombus frequency declines with isolation (observed). "
+          "SLOPE k is a latent parameter θ. Prior centre 0.94 (Izu fit). "
+          "Range (0.50, 1.50) allows variation while keeping Bombus near-zero "
+          "on Hachijo for most slope values.",
+)
+
 _LIT_WAITING_COST = LiteratureSource(
     citation="Harder & Barrett 1996 (pollinator limitation); "
              "reproductive assurance theory (Lloyd 1979)",
@@ -225,6 +266,9 @@ LITERATURE_SOURCES: tuple[LiteratureSource, ...] = (
     _LIT_DIRECT_GUIDE_BENEFIT,
     _LIT_DRIFT,
     _LIT_WAITING_COST,
+    _LIT_NE_SLOPE,
+    _LIT_MIGRATION_DECAY,
+    _LIT_POLLINATOR_LOSS,
 )
 
 
@@ -268,6 +312,11 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
             "drift_strength":                  _LIT_DRIFT.modelled_range,
             "direct_pollinator_guide_benefit": _LIT_DIRECT_GUIDE_BENEFIT.modelled_range,
             "cost_of_waiting_for_pollinators": _LIT_WAITING_COST.modelled_range,
+            # Environmental slope parameters (θ) — direction fixed by principle,
+            # magnitude inferred via ABC.
+            "Ne_isolation_slope":             _LIT_NE_SLOPE.modelled_range,
+            "migration_decay_rate":           _LIT_MIGRATION_DECAY.modelled_range,
+            "pollinator_loss_slope":          _LIT_POLLINATOR_LOSS.modelled_range,
         },
         literature_sources=LITERATURE_SOURCES,
     )
@@ -290,6 +339,11 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
             "drift_strength":                  (0.00, 0.30),
             "direct_pollinator_guide_benefit": (0.00, 1.00),
             "cost_of_waiting_for_pollinators": (0.00, 1.00),
+            # Environmental slopes — broad prior keeps direction constraint
+            # (lower bound > 0) but allows wide magnitude range.
+            "Ne_isolation_slope":             (0.10, 2.00),
+            "migration_decay_rate":           (0.50, 8.00),
+            "pollinator_loss_slope":          (0.20, 2.00),
         },
         literature_sources=(),
     )
@@ -406,6 +460,22 @@ def check_ecological_parameter_constraints(
             f"(primary_pollinator_efficiency default) — functional distinction "
             f"between guilds collapses; biologically implausible for halictids"
         )
+
+    # C5 — environmental slope parameters must be positive (direction principle).
+    # The DIRECTION of each relationship is a universal/directional principle:
+    #   Ne decreases with isolation, migration decreases with isolation,
+    #   Bombus frequency decreases with isolation.
+    # A zero or negative slope would reverse these principles, which is
+    # biologically incoherent regardless of system-specific magnitude.
+    for slope_key in ("Ne_isolation_slope", "migration_decay_rate", "pollinator_loss_slope"):
+        slope_val = params.get(slope_key)
+        if slope_val is not None and slope_val <= 0.0:
+            failed.append(f"C5_{slope_key}_direction_violated")
+            notes_parts.append(
+                f"C5: {slope_key}({slope_val:.4f}) <= 0 — violates directional "
+                f"principle (isolation must reduce Ne / migration / Bombus). "
+                f"The sign is fixed by universal ecological principle."
+            )
 
     valid = len(failed) == 0
     return ConstraintResult(

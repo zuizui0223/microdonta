@@ -80,6 +80,11 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
                 "drift_strength":                  (0.02, 0.15),
                 "direct_pollinator_guide_benefit": (0.25, 0.80),
                 "cost_of_waiting_for_pollinators": (0.10, 0.55),
+                # Environmental slope parameters (θ) — direction fixed by
+                # principle, magnitude inferred. Centred on Izu fitted values.
+                "Ne_isolation_slope":             (0.30, 1.50),
+                "migration_decay_rate":           (1.50, 6.00),
+                "pollinator_loss_slope":          (0.50, 1.50),
             },
         ),
         "broad_prior": TradeoffPreset(
@@ -100,6 +105,11 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
                 "drift_strength":                  (0.00, 0.25),
                 "direct_pollinator_guide_benefit": (0.00, 1.00),
                 "cost_of_waiting_for_pollinators": (0.00, 1.00),
+                # Environmental slope parameters — direction fixed (>0),
+                # magnitude wide for sensitivity analysis.
+                "Ne_isolation_slope":             (0.10, 2.00),
+                "migration_decay_rate":           (0.50, 8.00),
+                "pollinator_loss_slope":          (0.20, 2.00),
             },
         ),
     }
@@ -320,3 +330,29 @@ def param_set_to_model_parameters(param_set: dict[str, float]):
         base_drift_strength=float(param_set.get("drift_strength", 0.05)),
         primary_pollinator_guide_response=float(param_set.get("direct_pollinator_guide_benefit", 0.6)),
     )
+
+
+def env_slopes_from_param_set(param_set: dict[str, float]) -> dict[str, float]:
+    """Extract environmental slope parameters from a sampled θ dict.
+
+    These parameters govern how the environment (Ne, migration, Bombus frequency)
+    changes with island isolation.  They are latent parameters θ, NOT fixed
+    constants — the direction of each relationship is fixed by a universal
+    ecological principle, but the magnitude is inferred via ABC.
+
+    Returns
+    -------
+    dict with keys:
+        ne_isolation_slope      : slope of Ne decline with isolation
+        migration_decay_rate    : exponential decay rate of migration
+        pollinator_loss_slope   : slope of Bombus frequency decline with isolation
+
+    Defaults are the Izu Island fitted values (prior centres), used when the
+    param_set does not contain these keys (backward compatibility with
+    parameter sets sampled before these parameters were added to θ).
+    """
+    return {
+        "ne_isolation_slope":   float(param_set.get("Ne_isolation_slope",   0.765)),
+        "migration_decay_rate": float(param_set.get("migration_decay_rate", 3.19)),
+        "pollinator_loss_slope":float(param_set.get("pollinator_loss_slope",0.94)),
+    }

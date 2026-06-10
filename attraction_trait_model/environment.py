@@ -55,6 +55,7 @@ class Environment:
     migration_rate: float
     island_distance: float = 0.0
     effective_population_size: float = -1.0  # -1 = derive from island_distance
+    ne_isolation_slope: float = 0.765        # θ: inferred slope; default=0.765 (Izu fit)
 
     def __post_init__(self) -> None:
         """Derive effective_population_size from island_distance if not explicitly set.
@@ -65,21 +66,24 @@ class Environment:
             Ne decreases with isolation.  Applies to all island populations:
             more isolated islands are smaller and receive less gene flow.
             This is a general biogeographic principle, not system-specific.
+            The sign of the relationship is fixed (always negative).
 
-        COEFFICIENT 0.765 (観測データ — system-specific empirical input):
-            The linear coefficient is fitted to Izu Island data (R²=0.93).
-            It is specific to this archipelago and MUST be treated as an
-            empirical input, NOT as a universal constant.
-            Source: independent population census / allozyme survey data.
-            If this coefficient were derived from the same neutral-diversity
-            data used in observed_patterns.csv, it would create circularity
-            in the neutral_diversity_isolation pattern evaluation.
+        COEFFICIENT ne_isolation_slope (推論対象 θ — latent parameter):
+            The linear slope is a LATENT PARAMETER inferred via ABC.
+            The default value 0.765 is fitted to Izu Island data (R²=0.93)
+            and serves as the centre of the prior, but is NOT treated as a
+            known constant.  Pass an explicit slope when constructing the
+            Environment during simulation to propagate θ correctly.
 
-        Mathematical consequence:
-            Ne is a CONSEQUENCE of isolation, not an independent variable.
-            It is fixed as an environmental input (like Bombus frequency),
-            not sampled as a latent parameter θ.  This is valid ONLY if the
-            0.765 coefficient comes from data independent of y_obs.
+        Formula:
+            Ne_proxy = max(0.05, 1.0 − ne_isolation_slope × island_distance)
+
+        Mathematical note:
+            ne_isolation_slope must be positive (direction principle) and
+            bounded above so Ne_proxy stays in (0, 1].  Prior range is
+            enforced in parameter_constraints.py (C5_ne_slope_direction).
         """
         if self.effective_population_size < 0:
-            self.effective_population_size = max(0.05, 1.0 - 0.765 * self.island_distance)
+            self.effective_population_size = max(
+                0.05, 1.0 - self.ne_isolation_slope * self.island_distance
+            )

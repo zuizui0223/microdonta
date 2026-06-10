@@ -273,35 +273,61 @@ def simulate_campanula_gradient(
 # Continuous isolation gradient — no named populations
 # ---------------------------------------------------------------------------
 
-def env_from_isolation(isolation: float) -> Environment:
+def env_from_isolation(
+    isolation: float,
+    ne_isolation_slope: float = 0.765,
+    migration_decay_rate: float = 3.19,
+    pollinator_loss_slope: float = 0.94,
+) -> Environment:
     """Derive an Environment purely from isolation distance in [0, 1].
 
     All other environmental variables are estimated from the four Izu Island
     populations (mainland, Oshima, Kozushima, Hachijo) via linear regression
     on isolation, except migration_rate (exponential decay).
 
-    Fitted from population_env.csv:
-        Bombus_frequency      = max(0, 0.80 - 0.94  * iso)   R²≈0.99
-        community_pollinator_abundance = 0.88 - 0.635 * iso           R²≈0.97
-        effective_population_size = 1.00 - 0.765 * iso        R²≈0.93
-        background_pollinator_frequency = 0.50 + 0.118 * iso       R²≈0.88
-        migration_rate        = 0.15 * exp(-3.19 * iso)       R²≈0.99
+    Fitted from population_env.csv (defaults = Izu Island fitted values):
+        Bombus_frequency      = max(0, 0.80 − pollinator_loss_slope * iso)  R²≈0.99
+        community_pollinator_abundance = 0.88 − 0.635 * iso                 R²≈0.97
+        background_pollinator_frequency = 0.50 + 0.118 * iso                R²≈0.88
+        migration_rate        = 0.15 * exp(−migration_decay_rate * iso)      R²≈0.99
+        effective_population_size = 1.00 − ne_isolation_slope * iso          R²≈0.93
+
+    Epistemic taxonomy of coefficients
+    -----------------------------------
+    DIRECTION (普遍的原理): all directional signs are fixed (Bombus decreases,
+        Ne decreases, migration decreases, background pollinators increase with
+        isolation). Only the magnitudes are uncertain.
+
+    SLOPES (推論対象 θ): ne_isolation_slope, migration_decay_rate,
+        pollinator_loss_slope are latent parameters sampled from prior
+        distributions and inferred via ABC. The defaults are Izu-fitted values
+        and serve as prior centres, not known constants.
 
     Parameters
     ----------
     isolation:
         Normalised isolation distance from mainland in [0, 1].
         0 = mainland, 1 = maximally isolated island.
+    ne_isolation_slope:
+        θ: slope of Ne decline with isolation. Default 0.765 (Izu fit R²=0.93).
+    migration_decay_rate:
+        θ: exponential decay rate of migration with isolation.
+        Default 3.19 (Izu fit R²=0.99).
+    pollinator_loss_slope:
+        θ: slope of Bombus frequency decline with isolation.
+        Default 0.94 (Izu fit R²=0.99).
     """
     iso = float(max(0.0, min(1.0, isolation)))
     return Environment(
         name=f"iso_{iso:.3f}",
-        primary_pollinator_frequency=max(0.0, 0.80 - 0.94 * iso),
+        primary_pollinator_frequency=max(0.0, 0.80 - pollinator_loss_slope * iso),
         background_pollinator_frequency=min(1.0, 0.50 + 0.118 * iso),
         community_pollinator_abundance=max(0.0, 0.88 - 0.635 * iso),
-        migration_rate=0.15 * math.exp(-3.19 * iso),
+        migration_rate=0.15 * math.exp(-migration_decay_rate * iso),
         island_distance=iso,
-        # effective_population_size derived from island_distance by Environment.__post_init__
+        ne_isolation_slope=ne_isolation_slope,
+        # effective_population_size derived from island_distance and
+        # ne_isolation_slope by Environment.__post_init__
     )
 
 
@@ -310,6 +336,9 @@ def simulate_campanula_isolation_gradient(
     params: ModelParameters | None = None,
     n_points: int = 8,
     isolation_range: tuple[float, float] = (0.0, 1.0),
+    ne_isolation_slope: float = 0.765,
+    migration_decay_rate: float = 3.19,
+    pollinator_loss_slope: float = 0.94,
 ) -> tuple[dict[str, PhenomenologicalOutput], dict[str, dict]]:
     """Simulate a continuous isolation gradient without named populations.
 
@@ -322,11 +351,18 @@ def simulate_campanula_isolation_gradient(
     switches:
         PathwaySwitches specifying which pathways are active.
     params:
-        Latent ecological parameters. Defaults to ModelParameters defaults.
+        Latent ecological parameters (benefit/cost parameters θ).
+        Defaults to ModelParameters defaults.
     n_points:
         Number of evenly-spaced isolation points. Default 8.
     isolation_range:
         (min_iso, max_iso) spanning the gradient. Default (0.0, 1.0).
+    ne_isolation_slope:
+        θ: slope of Ne decline with isolation. Passed to env_from_isolation.
+    migration_decay_rate:
+        θ: exponential decay rate of migration with isolation.
+    pollinator_loss_slope:
+        θ: slope of Bombus frequency decline with isolation.
 
     Returns
     -------
@@ -361,7 +397,12 @@ def simulate_campanula_isolation_gradient(
     synth_pop_env: dict[str, dict] = {}
 
     for iso in iso_values:
-        env = env_from_isolation(iso)
+        env = env_from_isolation(
+            iso,
+            ne_isolation_slope=ne_isolation_slope,
+            migration_decay_rate=migration_decay_rate,
+            pollinator_loss_slope=pollinator_loss_slope,
+        )
         output = predict_traits_phenomenological(_placeholder, env, params, switches=switches)
         outputs_dict[env.name] = output
         synth_pop_env[env.name] = {
