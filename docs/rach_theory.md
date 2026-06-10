@@ -116,8 +116,8 @@ A_ε is the **core inferential object**.
 - A_ε is a subset of parameter-mechanism space, not a probability distribution.
 - ABC approximates A_ε by sampling (θ, s) from the prior and keeping draws with d ≤ ε.
 - The approximation quality depends on sample size and prior coverage.
-- y_obs must contain only **independent observations** (role = response_target).
-  Hypothesis predictions and syndrome definitions are excluded to prevent circular inference.
+- y_obs must contain only **independent observations** (`role = observed_target`; legacy `response_target` is accepted for backward compatibility).
+- Hypothesis predictions and syndrome definitions are excluded to prevent circular inference.
 
 ---
 
@@ -190,7 +190,9 @@ OC_k = R_RACH(O) - R_RACH(O \ {k})
 ```
 
 OC_k measures how much observation pattern k contributes to causal resolvability.
-Estimated via leave-one-out (LOO) from the accepted sample.
+It is estimated by leave-one-out **re-acceptance over all evaluated rows**, not from
+accepted rows alone. This distinction matters because removing pattern k can allow
+previously rejected simulations to enter A_ε.
 
 | OC_k | Interpretation |
 |------|----------------|
@@ -232,7 +234,7 @@ A central RACH requirement is strict separation between:
 | Axiom | Dynamics fixed in f | never | hardcoded in `simulation.py`, `inheritance.py` |
 | Universal principle | Direction fixed in f / G; coefficient in θ | never | G constraint + θ prior |
 | Fixed context | x_obs input to f | never | `input_context` |
-| Independent observation | y_obs in d(·,·) | yes | `response_target` |
+| Independent observation | y_obs in d(·,·) | yes | `observed_target` |
 | Hypothesis prediction | Posterior predictive check only | NO | `hypothesis_prediction` |
 | Diagnostic definition | Internal consistency only | NO | `diagnostic_only` |
 
@@ -247,7 +249,7 @@ Example:
 > This is a **prediction** of S2/S3, not an independent field measurement.
 > Including it in y_obs inflates P(S2=1 | A_ε) regardless of true mechanism.
 
-**Current y_obs** (Campanula worked example, Inoue 1986):
+**Current y_obs** (Campanula worked example, Inoue 1986 / genetic endpoint patterns):
 
 ```
 nectar_guide_pairwise    Oshima > Hachijo   weight=1.0  field_derived
@@ -259,101 +261,22 @@ Fis_pairwise             Oshima < Hachijo   weight=1.0  genetic_derived
 
 ---
 
-## 4. RACH vs existing methods
+## 4. Validation strategy
 
-| Method | Target | RACH difference |
-|--------|--------|----------------|
-| AIC/BIC model comparison | Rank pre-enumerated models | RACH does not require model enumeration; posterior is over latent mechanisms |
-| Standard ABC | Posterior over θ or models | RACH adds causal switch space S; primary output is CA_j, D, R, not θ posterior |
-| Pattern-Oriented Modelling | Parameter sets reproducing patterns | RACH additionally quantifies causal degeneracy and observation value |
-| SEM / DAG | Fit coefficients of pre-defined graph | RACH uses binary switches; no likelihood needed; mechanisms are latent binary variables |
-| Causal discovery (PC, FCI) | Recover DAG from conditional independence | RACH is generative; uses simulation to test compatibility; works with small N |
-| Bayesian model comparison | Bayes factors over specified models | RACH BFs are over binary switch states, not pre-specified full models |
+RACH requires at least three validation layers:
 
-**RACH is not a replacement for these methods.** It addresses a specific question:
-*which mechanisms remain admissible given constraints and observations, and how degenerate is the causal explanation?*
+1. **Known-truth recovery**: generate synthetic y_obs from a known switch state, then test whether CA_j is high for the true ON switches.
+2. **Sensitivity analysis**: vary priors, ε, and pattern weights; robust conclusions should not flip under small perturbations.
+3. **Observation contribution and NOV**: if D_RACH remains high, identify which new observations would most improve R_RACH.
 
 ---
 
-## 5. Implementation correspondence
-
-| RACH object | Python file | Function / class |
-|-------------|-------------|-----------------|
-| A_ε (admissible region) | `causal_model/switch_inference.py` | `run_switch_posterior_inference()` |
-| G(θ) = 1 constraint | `causal_model/parameter_constraints.py` | `check_ecological_parameter_constraints()` |
-| f(x_obs; θ, s) proxy | `examples/campanula_izu/campanula_phenomenological.py` | `simulate_campanula_isolation_gradient()` |
-| f(x_obs; θ, s) ABM | `attraction_trait_model/simulation.py` | `simulate_population()` |
-| P_sim / P_obs / d | `examples/campanula_izu/pattern_evaluator.py` | `evaluate_patterns()` |
-| y_obs (response_target) | `examples/campanula_izu/data/observed_patterns.csv` | role=response_target rows |
-| x_obs (input_context) | `examples/campanula_izu/data/observed_patterns.csv` | role=input_context rows |
-| CA_j causal admissibility | `causal_model/causal_admissibility.py` | `causal_admissibility()` |
-| D causal degeneracy | `causal_model/causal_admissibility.py` | `causal_degeneracy()` |
-| R causal resolvability | `causal_model/causal_admissibility.py` | `causal_resolvability()` |
-| OC_k observation contribution | `causal_model/causal_admissibility.py` | `observation_contribution()` |
-| NOV(q) next-observation value | `causal_model/causal_admissibility.py` | `next_observation_value()` |
-| θ prior (presets) | `causal_model/parameter_constraints.py` | `predefined_tradeoff_presets()` |
-| θ sampling | `causal_model/parameter_sampling.py` | `sample_valid_parameter_sets()` |
-| env slope θ extraction | `causal_model/parameter_sampling.py` | `env_slopes_from_param_set()` |
-| Streamlit RACH UI | `streamlit_app.py` | "Causal Admissibility" tab |
-
----
-
-## 6. General RACH vs Campanula worked example
-
-**General RACH theory** (applies to any ecological system):
-
-```
-Admissible causal region A_ε(y_obs, x_obs)
-Causal admissibility CA_j
-Causal degeneracy D
-Causal resolvability R
-Observation contribution OC_k
-Next-observation value NOV(q)
-```
-
-**Campanula Izu worked example** (system-specific):
-
-```
-Switches: S1 guide→Bombus, S2 selfing syndrome, S3 island common cause, S5 small pollinator
-y_obs: Inoue 1986 Oshima/Hachijo pairwise comparisons
-x_obs: island distance, Bombus frequency, island area
-θ: guide_cost, selfing_benefit, Ne_isolation_slope, migration_decay_rate, ...
-f: phenomenological model + stochastic ABM
-```
-
-RACH as a general method does not require Campanula-specific choices.
-Any ecological system with:
-1. A generative simulation model f
-2. A biological constraint grammar G
-3. Independent field observations y_obs
-4. A fixed ecological context x_obs
-
-can be analysed with RACH.
-
----
-
-## 7. Suggested manuscript claim
+## 5. Manuscript framing
 
 English:
 
-> We introduce RACH, a causal admissibility and degeneracy framework for ecological systems. Rather than selecting a single best model, RACH estimates the admissible causal region: the subset of latent parameter–mechanism space that satisfies biological constraints and reproduces independent observations under fixed ecological context. RACH quantifies causal admissibility (CA_j), causal degeneracy (D), causal resolvability (R), observation contribution (OC_k), and the expected value of additional observations (NOV). This framework distinguishes supported mechanisms from cases where the available observations lack sufficient causal resolution.
+> We introduce RACH, a causal admissibility and degeneracy framework for ecological systems. Rather than selecting a single best model, RACH estimates the admissible causal region: the subset of latent parameter–mechanism space that satisfies biological constraints and reproduces independent observations. It then quantifies causal admissibility, causal degeneracy, causal resolvability, and the expected value of additional observations.
 
 Japanese:
 
-> 本研究では、生態学的因果メカニズムの許容性と縮退性を定量化するRACHを提案する。RACHは単一の最良モデルを選択するのではなく、生物学的制約を満たし、独立観測データを再現可能な潜在パラメータ・メカニズム空間の部分集合を許容因果領域として推定する。さらに、各因果メカニズムの許容性（CA_j）、因果縮退性（D）、因果識別可能性（R）、観測の寄与（OC_k）、および追加観測の価値（NOV）を定量化する。このフレームワークにより、支持されるメカニズムと、現在の観測集合では識別不能なメカニズム群を区別することができる。
-
----
-
-## 8. Limitations
-
-1. **ABC approximation**: A_ε is approximated by finite sampling. Posterior estimates stabilise with more draws (≥ 500 recommended for stable CA_j; ≥ 2000 for D).
-
-2. **Switch independence prior**: S_j ~ Bernoulli(0.5) independently. If biological pathways are correlated in the prior, marginalise over the correlated prior instead.
-
-3. **NOV approximation**: `next_observation_value()` uses a heuristic ambiguity-reduction approximation, not the true expectation over q's outcome distribution. Use as a priority guide, not a precise forecast.
-
-4. **Proxy vs ABM**: The deterministic phenomenological model gives reproducible but deterministic A_ε estimates. The stochastic ABM is preferred for publication-quality inference because acceptance probability P(accept | θ, s) is continuous rather than binary.
-
-5. **Causal identification vs admissibility**: High CA_j means mechanism j is present in many observation-compatible parameter regions. It does not guarantee causal identification in the interventionist sense (do-calculus). Confounding pathways can inflate CA_j; experimental manipulations are needed for stronger causal claims.
-
-6. **y_obs completeness**: Causal degeneracy D is always relative to the current y_obs set. Adding more independent observations can only reduce D (or leave it unchanged); it cannot increase D.
+> 本研究では、生態学的因果メカニズムの許容性と縮退性を定量化するRACHを提案する。RACHは単一の最良モデルを選択するのではなく、生物学的制約を満たし、独立観測データを再現可能な潜在パラメータ・メカニズム空間の部分集合を許容因果領域として推定する。さらに、各因果メカニズムの許容性、因果縮退性、因果識別可能性、および追加観測の価値を定量化する。
