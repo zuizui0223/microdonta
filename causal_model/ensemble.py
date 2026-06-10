@@ -38,6 +38,31 @@ class EnsembleResult:
     K: int                   # number of switches
 
 
+# Default robustness thresholds (see docs/streamlit_ensemble_first_flow.md, Step 2).
+SENSITIVITY_THRESHOLD = 0.20   # sensitivity_range >= this => prior/epsilon sensitive
+CA_ON_THRESHOLD       = 2 / 3  # mean CA_j >= this => switch called ON
+CA_OFF_THRESHOLD      = 1 / 3  # mean CA_j <= this => switch called OFF
+
+
+@dataclass
+class SwitchRobustness:
+    """Robust/sensitive verdict for one switch across the ensemble.
+
+    A switch is *robust* when its CA_j barely moves as the prior preset and ABC
+    ε threshold are varied across the ensemble; it is *sensitive* (prior/epsilon
+    dependent) when CA_j swings by at least ``SENSITIVITY_THRESHOLD``.  Only
+    robust switches should be treated as reliable inference targets; sensitive
+    switches are flagged as needing additional observations (and become the NOV
+    targets — see ``next_observation_value(..., sensitive_switches=...)``).
+    """
+    switch: str
+    mean_ca_j: float          # n_accepted-weighted mean CA_j across configs
+    sensitivity_range: float  # max(CA_j) - min(CA_j) across configs
+    is_robust: bool           # sensitivity_range < SENSITIVITY_THRESHOLD
+    call: str                 # "ON" / "OFF" / "indeterminate"
+    verdict: str              # human-readable label combining call + robustness
+
+
 def run_ensemble(
     presets: list[str],
     acceptance_rules: list[str],
@@ -206,3 +231,105 @@ def sensitivity_range(
         vals = [r.ca_j[name] for r in results if not math.isnan(r.ca_j.get(name, float("nan")))]
         out[name] = round(max(vals) - min(vals), 4) if len(vals) >= 2 else float("nan")
     return out
+
+
+def classify_switch_robustness(
+    results: list[EnsembleResult],
+    sensitivity_threshold: float = SENSITIVITY_THRESHOLD,
+    ca_on_threshold: float = CA_ON_THRESHOLD,
+    ca_off_threshold: float = CA_OFF_THRESHOLD,
+    min_accepted: int = 1,
+) -> list[SwitchRobustness]:
+    """Classify every switch as robust or sensitive across the ensemble.
+
+    For each switch this combines two ensemble summaries:
+
+    * ``mean_ca_j``         — n_accepted-weighted mean CA_j (``ensemble_ca_j``)
+    * ``sensitivity_range`` — max(CA_j) − min(CA_j) (``sensitivity_range``)
+
+    Robustness:
+        robust    if sensitivity_range <  sensitivity_threshold
+        sensitive if sensitivity_range >= sensitivity_threshold
+
+    Directional call (only meaningful for robust switches):
+        ON            if mean_ca_j >= ca_on_threshold
+        OFF           if mean_ca_j <= ca_off_threshold
+        indeterminate otherwise
+
+    Parameters
+    ----------
+    results:
+        Ensemble results from ``run_ensemble``.
+    sensitivity_threshold:
+        CA_j swing at/above which a switch is declared prior/ε sensitive.
+    ca_on_threshold, ca_off_threshold:
+        Mean-CA_j cutoffs for the ON / OFF directional call.
+    min_accepted:
+        Configs with fewer accepted draws are excluded from the weighted mean.
+
+    Returns
+    -------
+    list[SwitchRobustness]
+        One per switch, ordered most-sensitive first (so the highest-priority
+        NOV targets sort to the top).
+    """
+    import math
+    if not results:
+        return []
+
+    sw_names = list(results[0].ca_j.keys())
+    mean_ca  = ensemble_ca_j(results, min_accepted=min_accepted)
+    sens     = sensitivity_range(results)
+
+    out: list[SwitchRobustness] = []
+    for name in sw_names:
+        ca_v = mean_ca.get(name, float("nan"))
+        s_v  = sens.get(name, float("nan"))
+        # Missing sensitivity (single config) is treated as not-robust: we cannot
+        # demonstrate robustness from one configuration.
+        is_robust = (not math.isnan(s_v)) and s_v < sensitivity_threshold
+
+        if math.isnan(ca_v):
+            call = "indeterminate"
+        elif ca_v >= ca_on_threshold:
+            call = "ON"
+        elif ca_v <= ca_off_threshold:
+            call = "OFF"
+        else:
+            call = "indeterminate"
+
+        if is_robust:
+            verdict = f"{call} (robust)" if call != "indeterminate" else "indeterminate (robust)"
+        else:
+            verdict = f"{call} (prior/ε sensitive)" if call != "indeterminate" \
+                else "indeterminate (prior/ε sensitive)"
+
+        out.append(SwitchRobustness(
+            switch=name,
+            mean_ca_j=round(ca_v, 4) if not math.isnan(ca_v) else float("nan"),
+            sensitivity_range=round(s_v, 4) if not math.isnan(s_v) else float("nan"),
+            is_robust=is_robust,
+            call=call,
+            verdict=verdict,
+        ))
+
+    # Most-sensitive first (NaN sensitivity sorts last).
+    out.sort(key=lambda r: (-1.0 if math.isnan(r.sensitivity_range) else r.sensitivity_range),
+             reverse=True)
+    return out
+
+
+def sensitive_switches(
+    results: list[EnsembleResult],
+    sensitivity_threshold: float = SENSITIVITY_THRESHOLD,
+) -> list[str]:
+    """Return the names of switches that are prior/ε sensitive (NOV targets)."""
+    return [
+        r.switch for r in classify_switch_robustness(
+            results, sensitivity_threshold=sensitivity_threshold)
+        if not r.is_robust
+    ]
+
+
+# Alias matching the name used in docs/streamlit_ensemble_first_flow.md.
+select_best_ensemble_setting = best_config

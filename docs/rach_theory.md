@@ -194,6 +194,14 @@ It is estimated by leave-one-out **re-acceptance over all evaluated rows**, not 
 accepted rows alone. This distinction matters because removing pattern k can allow
 previously rejected simulations to enter A_ε.
 
+**OC_k is pattern-level, not switch-specific.** R_RACH is the *joint* resolvability
+of the whole switch vector s ∈ {0,1}^K (derived from the joint entropy H(S | A_ε), a
+single scalar over all K switches). OC_k therefore quantifies how pattern k changes
+the resolvability of the *entire* mechanism combination; there is exactly one OC_k per
+pattern and it does not decompose into a per-switch quantity. `observation_contribution()`
+returns one `ObservationContribution` per pattern, with `level="pattern"` and `n_switches=K`
+recorded for provenance.
+
 | OC_k | Interpretation |
 |------|----------------|
 | OC_k > 0 | Pattern k increases causal resolution |

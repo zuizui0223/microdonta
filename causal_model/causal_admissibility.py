@@ -52,7 +52,7 @@ Public API
         → float  R ∈ [0, 1]
 
     observation_contribution(evaluated_rows, switches, threshold)
-        → list[ObservationContribution]  one per (pattern, switch)
+        → list[ObservationContribution]  one per pattern (OC_k is pattern-level)
 
     next_observation_value(accepted_rows, switches, candidates)
         → list[NextObservationValueResult]  one per candidate
@@ -201,22 +201,33 @@ class RACHSummary:
 
 @dataclass
 class ObservationContribution:
-    """Contribution of one pattern to causal resolvability.
+    """Contribution of one observation pattern to causal resolvability.
 
     OC_k = R_RACH(O) - R_RACH(O \\ {k})
 
-    Positive OC_k → pattern k increases resolvability.
+    LEVEL — OC_k is **pattern-level, not switch-specific.**
+        R_RACH is the *joint* resolvability of the whole switch vector
+        s ∈ {0,1}^K; it is derived from the joint entropy H(S | A_ε), a single
+        scalar over all K switches (see ``causal_resolvability``).  OC_k
+        therefore measures how observation pattern k changes the resolvability
+        of the *entire* mechanism combination, not of any individual switch.
+        There is exactly **one OC_k per pattern**; it does not decompose into a
+        per-switch quantity.  ``n_switches`` records K — the size of the joint
+        switch vector OC_k was computed over — for provenance.
+
+    Positive OC_k → pattern k increases joint resolvability.
     Negative OC_k → removing k would improve resolvability (k confounds inference).
     OC_k ≈ 0    → pattern k does not affect causal resolution.
     """
 
     pattern: str
-    switch: str
     OC_k: float           # resolvability contribution (positive = helpful)
     R_full: float         # R with all patterns
     R_loo: float          # R without this pattern (LOO)
     n_loo: int
     n_full: int
+    level: str = "pattern"   # OC_k is pattern-level (joint over all switches)
+    n_switches: int = 0      # K = number of switches the joint R was computed over
 
 
 @dataclass
@@ -307,6 +318,11 @@ class NextObservationValueResult:
     current_R: float                     # R before adding q
     rationale: str
     priority: str   # "high" / "medium" / "low"
+    # Which of this candidate's target switches are prior/ε sensitive (from the
+    # ensemble robustness check).  NOV exists to resolve sensitive switches, so a
+    # candidate that targets one is the actionable next observation.
+    sensitive_targets: list[str] = field(default_factory=list)
+    targets_sensitive_switch: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -831,7 +847,8 @@ def observation_contribution(
     Returns
     -------
     list[ObservationContribution]
-        One per (pattern, switch) pair.
+        One entry **per pattern** (OC_k is pattern-level — it is the change in
+        the joint resolvability R_RACH and does not decompose per switch).
     """
     # Rows that have per_pattern_matched data (simulation succeeded)
     rows_with_data = [
@@ -846,6 +863,7 @@ def observation_contribution(
     if not full_accepted:
         return []
     R_full = causal_resolvability(full_accepted, switches)
+    K = len(list(switches))
 
     all_pattern_names: set[str] = set()
     for r in rows_with_data:
@@ -876,16 +894,18 @@ def observation_contribution(
 
         R_loo = causal_resolvability(loo_accepted, switches) if loo_accepted else 0.0
 
-        for sw in switches:
-            results.append(ObservationContribution(
-                pattern=pattern_k,
-                switch=sw.name,
-                OC_k=round(R_full - R_loo, 4),
-                R_full=R_full,
-                R_loo=R_loo,
-                n_loo=len(loo_accepted),
-                n_full=len(full_accepted),
-            ))
+        # OC_k is pattern-level: a single value per pattern, computed from the
+        # joint resolvability over all switches.  It is NOT replicated per switch.
+        results.append(ObservationContribution(
+            pattern=pattern_k,
+            OC_k=round(R_full - R_loo, 4),
+            R_full=R_full,
+            R_loo=R_loo,
+            n_loo=len(loo_accepted),
+            n_full=len(full_accepted),
+            level="pattern",
+            n_switches=K,
+        ))
 
     return results
 
@@ -894,6 +914,7 @@ def next_observation_value(
     accepted_rows: list[dict],
     switches,        # Sequence[BiologicalSwitch]
     candidates: list[CandidateObservation] | None = None,
+    sensitive_switches: list[str] | None = None,
 ) -> list[NextObservationValueResult]:
     """Approximate NOV(q) for each candidate observation.
 
@@ -922,14 +943,24 @@ def next_observation_value(
         Sequence of BiologicalSwitch definitions.
     candidates:
         List of CandidateObservation. Defaults to CAMPANULA_CANDIDATE_OBSERVATIONS.
+    sensitive_switches:
+        Names of switches the ensemble robustness check flagged as prior/ε
+        sensitive (see ``causal_model.ensemble.sensitive_switches``).  NOV exists
+        to resolve these switches, so candidates that target a sensitive switch
+        are marked (``targets_sensitive_switch``) and sorted ahead of equal-gain
+        candidates that only target already-robust switches.  ``None`` or empty
+        leaves the original behaviour (gain-only ranking) unchanged.
 
     Returns
     -------
     list[NextObservationValueResult]
-        One entry per candidate, sorted by expected resolvability gain (descending).
+        One entry per candidate.  Sorted by (targets a sensitive switch, then
+        expected resolvability gain), both descending.
     """
     if candidates is None:
         candidates = CAMPANULA_CANDIDATE_OBSERVATIONS
+
+    sensitive_set = set(sensitive_switches or [])
 
     R_current = causal_resolvability(accepted_rows, switches)
     ca_results = causal_admissibility(accepted_rows, switches)
@@ -959,6 +990,10 @@ def next_observation_value(
                 gains.append(gain_per_switch)
             gain = sum(gains) if gains else 0.0
 
+        # Sensitive-switch linkage: which target switches are prior/ε sensitive?
+        sens_targets = [s for s in target_sw_names if s in sensitive_set]
+        targets_sensitive = bool(sens_targets)
+
         # Heuristic priority
         if gain > 0.15 / K:
             priority = "high"
@@ -966,6 +1001,17 @@ def next_observation_value(
             priority = "medium"
         else:
             priority = "low"
+        # A candidate that resolves a sensitive switch is actionable even when its
+        # raw gain is modest: promote it at least to "medium".
+        if targets_sensitive and priority == "low":
+            priority = "medium"
+
+        rationale = cand.rationale
+        if targets_sensitive:
+            rationale = (
+                f"[targets prior/ε-sensitive switch(es): {', '.join(sens_targets)}] "
+                + rationale
+            )
 
         results.append(NextObservationValueResult(
             candidate=cand.name,
@@ -973,12 +1019,15 @@ def next_observation_value(
             target_switches=cand.target_switches,
             expected_resolvability_gain=round(gain, 4),
             current_R=R_current,
-            rationale=cand.rationale,
+            rationale=rationale,
             priority=priority,
+            sensitive_targets=sens_targets,
+            targets_sensitive_switch=targets_sensitive,
         ))
 
-    # Sort by expected gain descending
-    results.sort(key=lambda x: x.expected_resolvability_gain, reverse=True)
+    # Sort sensitive-switch targets first, then by expected gain (both descending).
+    results.sort(key=lambda x: (x.targets_sensitive_switch, x.expected_resolvability_gain),
+                 reverse=True)
     return results
 
 
