@@ -985,13 +985,14 @@ def next_observation_value_simulation(
     pattern_weights: dict,
     switches,        # Sequence[BiologicalSwitch]
     candidates: list[CandidateObservation] | None = None,
-    n_attempts: int = 100,
+    n_attempts: int = 200,
     preset_name: str = "literature_grounded",
     acceptance_rule: str = "weighted_lax",
     seed: int | None = None,
     threshold: float = 0.8,
     progress_callback=None,
     current_accepted_rows: list[dict] | None = None,
+    nov_backend: str = "proxy",
 ) -> list[NextObservationValueResult]:
     """Simulation-based NOV(q) by integrating over candidate outcomes.
 
@@ -1022,8 +1023,9 @@ def next_observation_value_simulation(
         Candidate observations with outcomes.  Defaults to
         CAMPANULA_CANDIDATE_OBSERVATIONS.
     n_attempts:
-        ABC draws per outcome run.  100 is sufficient for R estimation;
-        use 200+ for stable results.
+        ABC draws per outcome run.  200 proxy draws ≈ 2-5 s per candidate;
+        use 500+ for stable R estimates.  With nov_backend="abm" each draw
+        runs 6 ABM replicates so prefer 100 or lower.
     preset_name:
         Parameter preset for ABC sampling.
     acceptance_rule:
@@ -1036,6 +1038,10 @@ def next_observation_value_simulation(
     progress_callback:
         Optional callable(candidate_name: str, outcome_name: str,
         total_done: int, total: int) — called after each ABC run.
+    nov_backend:
+        Backend used for per-outcome ABC runs.  "proxy" (default) is ~50x
+        faster than "abm" and sufficient for NOV priority ranking.  Use
+        "abm" only when you need high-fidelity R estimates per outcome.
 
     Returns
     -------
@@ -1047,6 +1053,8 @@ def next_observation_value_simulation(
         run_switch_posterior_inference_abm as _run_abm,
         run_switch_posterior_inference as _run_proxy,
     )
+
+    _run_outcome = _run_proxy if nov_backend == "proxy" else _run_abm
 
     if candidates is None:
         candidates = CAMPANULA_CANDIDATE_OBSERVATIONS
@@ -1093,7 +1101,7 @@ def next_observation_value_simulation(
 
         for i, outcome in enumerate(cand.outcomes):
             _run_seed = (seed + done + 1) if seed is not None else None
-            sp = _run_abm(
+            sp = _run_outcome(
                 preset_name=preset_name,
                 n_attempts=n_attempts,
                 acceptance_rule=acceptance_rule,

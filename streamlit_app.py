@@ -1519,10 +1519,22 @@ if "sp_result" in st.session_state:
                     "Each candidate requires 2–3 ABC runs. Total ≈ "
                     f"{8 * 2} runs × n_attempts draws."
                 )
+                _nov_backend = st.radio(
+                    "Outcome backend",
+                    options=["proxy (fast)", "abm (slow, high-fidelity)"],
+                    index=0,
+                    horizontal=True,
+                    help=(
+                        "proxy: ~50x faster, sufficient for ranking. "
+                        "abm: each draw runs 6 ABM replicates — 16 outcomes × 100 draws ≈ 10–60 min."
+                    ),
+                )
+                _nov_backend_key = "proxy" if _nov_backend.startswith("proxy") else "abm"
+                _default_n = 200 if _nov_backend_key == "proxy" else 50
                 _nov_n = st.slider(
                     "Draws per outcome (n_attempts)",
-                    min_value=50, max_value=300, value=100, step=50,
-                    help="More draws = more stable R estimate per outcome. 100 is usually sufficient.",
+                    min_value=50, max_value=500, value=_default_n, step=50,
+                    help="proxy: 200 draws ≈ 2–5 s per candidate. abm: keep ≤ 100.",
                 )
                 _nov_seed_inp = st.number_input("Seed", value=42, step=1)
 
@@ -1568,6 +1580,7 @@ if "sp_result" in st.session_state:
                                 threshold=_thresh_display,
                                 progress_callback=_nov_cb,
                                 current_accepted_rows=sp.accepted_rows,
+                                nov_backend=_nov_backend_key,
                             )
 
                         _nov_progress.progress(1.0, text="Done")
