@@ -2,34 +2,19 @@
 
 **RACH** stands for **Restricted Admissible Causal Hypotheses**.
 
-RACH is a **causal admissibility and degeneracy framework** for ecological systems.
-It estimates which latent causal mechanisms remain admissible under biological
-constraints and independent observations, and quantifies whether the available
-observations are sufficient to resolve competing mechanisms.
+RACH is a **causal admissibility and degeneracy framework** for ecological systems. It estimates which latent causal mechanisms remain admissible under biological constraints and independent observations, and quantifies whether the available observations are sufficient to resolve competing mechanisms.
 
 English:
 
-> RACH defines the admissible causal region and quantifies causal admissibility,
-> causal degeneracy, and causal resolvability under biological constraints.
-> It does not select the best model. It estimates which mechanisms remain
-> admissible and how degenerate the causal explanation is.
+> RACH defines the admissible causal region and quantifies causal admissibility, causal degeneracy, and causal resolvability under biological constraints. It does not select the best model. It estimates which mechanisms remain admissible and how degenerate the causal explanation is.
 
 Japanese:
 
-> RACHは、生物学的制約と独立観測データのもとで、どの潜在因果メカニズムが許容されるか、
-> また現在の観測集合がどの程度それらを識別できるかを定量化する、
-> 生態学的因果許容性・因果縮退性解析フレームワークである。
-> RACHは単一モデルを選ぶのではなく、許容因果領域を推定し因果縮退性を定量化する。
+> RACHは、生物学的制約と独立観測データのもとで、どの潜在因果メカニズムが許容されるか、また現在の観測集合がどの程度それらを識別できるかを定量化する、生態学的因果許容性・因果縮退性解析フレームワークである。RACHは単一モデルを選ぶのではなく、許容因果領域を推定し因果縮退性を定量化する。
 
-**RACH is not a combination of ABM, ABC, and POM.**
-ABM, ABC, and POM are computational components used to approximate the admissible
-causal region A_ε. The framework is defined by its inferential objects:
-causal admissibility (CA_j), causal degeneracy (D), causal resolvability (R),
-observation contribution (OC_k), and next-observation value (NOV).
+**RACH is not a combination of ABM, ABC, and POM.** ABM, ABC, and POM are computational components used to approximate the admissible causal region A_ε. The framework is defined by its inferential objects: causal admissibility (CA_j), causal degeneracy (D_RACH), causal resolvability (R_RACH), observation contribution (OC_k), and next-observation value (NOV).
 
-This repository implements a worked example using the Izu Islands population system
-of *Campanula punctata* / シマホタルブクロ. The Campanula model is an example,
-not the definition of RACH.
+This repository implements a worked example using the Izu Islands population system of *Campanula punctata* / シマホタルブクロ. The Campanula model is an example, not the definition of RACH.
 
 ---
 
@@ -49,42 +34,18 @@ where:
 
 ```text
 x_obs  = fixed empirical context used as simulator input
-         e.g. island distance, island area, observed pollinator presence/frequency
-
 θ      = latent ecological parameters to infer or marginalise over
-         benefit/cost: guide_cost, selfing_benefit, inbreeding_depression,
-                       background_pollinator_efficiency, drift_effect_scale,
-                       guide_selection_strength, cost_of_waiting_for_pollinators
-         env slopes (direction fixed by principle; magnitude inferred):
-                       Ne_isolation_slope, migration_decay_rate, pollinator_loss_slope
-
 s      = causal switch state, s ∈ {0,1}^K
-         e.g. guide-mediated attraction, selfing-syndrome evolution,
-              isolation common cause, small-pollinator substitution
-
 G(θ)   = ecological constraint grammar
-         e.g. biological feasibility constraints on θ
-
 f      = generative ecological dynamics
-         e.g. Wright-Fisher drift, selection, reproduction, inheritance,
-              pollination and mating rules
-
 P_sim  = pattern extractor for simulated output
 P_obs  = pattern extractor for empirical observations
-
 y_obs  = independent empirical observations used for ABC/RACH acceptance
-
 d      = distance between simulated and observed pattern spaces
 ε      = tolerance threshold
 ```
 
-The main inferential quantity is the switch posterior within the admissible region:
-
-```text
-π_j = P(s_j = 1 | (θ, s) ∈ A_ε)
-```
-
-This is an ABC-approximated posterior support for each latent mechanism.
+The key inference is not a best-model label, but the admissible region and its information structure.
 
 ---
 
@@ -92,20 +53,13 @@ This is an ABC-approximated posterior support for each latent mechanism.
 
 ```text
 1. Define biological axioms and ecological constraint grammar
-       ↓
 2. Define fixed empirical context x_obs
-       ↓
 3. Sample latent parameters θ within biologically admissible ranges
-       ↓
 4. Sample causal switch states s ∈ {0,1}^K
-       ↓
 5. Run generative simulation f(x_obs; θ, s)
-       ↓
 6. Extract comparable patterns P_sim and P_obs
-       ↓
 7. Accept samples whose distance to independent y_obs is ≤ ε
-       ↓
-8. Estimate switch posterior, identifiability, and causal degeneracy
+8. Estimate CA_j, D_RACH, R_RACH, OC_k, and NOV(q)
 ```
 
 RACH is **not** manual parameter tuning. The goal is to identify the subset of latent parameter–mechanism space that is both biologically coherent and compatible with independent observations.
@@ -123,7 +77,7 @@ A central RACH requirement is that biological assumptions, fixed inputs, latent 
 | **Latent parameter** | Unknown quantity to sample or infer | yes | yes | no | guide cost, inbreeding depression, Ne-isolation slope, migration-decay rate |
 | **Fixed empirical context** | Observed input context `x_obs` | yes | no | no | island distance, island area, observed Bombus presence/frequency |
 | **Empirical observation** | Independent response data `y_obs` | no | no | yes | measured guide value, selfing rate, herkogamy, flower size, seed set, genetic Fis/He if measured |
-| **Hypothesis prediction** | Model prediction or future test | no | no | no | “selfing increases with isolation”, “guide decreases along isolation” if not independently measured |
+| **Hypothesis prediction** | Model prediction or future test | no | no | no | selfing increases with isolation, guide decreases along isolation if not independently measured |
 | **Diagnostic-only pattern** | Internal consistency / syndrome definition | no | no | no by default | selfing-herkogamy correlation as a definition of selfing syndrome |
 
 Japanese summary:
@@ -154,12 +108,6 @@ pollination-to-reproduction rules
 
 `f` may use fixed empirical context `x_obs`, but it should not hard-code uncertain empirical slopes as if they were laws.
 
-Good:
-
-```text
-Drift increases as Ne decreases.
-```
-
 Risky if fixed inside `f`:
 
 ```text
@@ -168,7 +116,7 @@ primary_pollinator_frequency = 0.80 - 0.94 × isolation
 community_pollinator_abundance = 0.88 - 0.635 × isolation
 ```
 
-Those coefficients should be latent parameters unless independently fixed by data and uncertainty is ignored deliberately.
+Those coefficients should be latent parameters unless independently fixed by data and uncertainty is deliberately ignored.
 
 ---
 
@@ -222,15 +170,7 @@ visitation response if experimentally measured
 Fis / He / neutral diversity if measured genetically
 ```
 
-Important: pollinator presence/frequency can be empirical, but if it is used as fixed input context, it should be classified as `input_context`, not an ABC target.
-
-Example:
-
-```text
-Bombus presence on Oshima vs absence on Hachijo
-→ fixed empirical context x_obs / input_context
-→ excluded from ABC acceptance
-```
+Pollinator presence/frequency can be empirical, but if it is used as fixed input context, it should be classified as `input_context`, not an ABC target.
 
 ---
 
@@ -246,7 +186,7 @@ nectar guide decreases along isolation
 neutral diversity decreases along isolation, if not yet measured
 ```
 
-These are useful, but they are not independent data. They should be classified as:
+These should be classified as:
 
 ```text
 hypothesis_prediction
@@ -256,13 +196,11 @@ future_observation_target
 
 and excluded from default ABC/RACH acceptance.
 
-Otherwise the model risks reproducing predictions generated by its own hypotheses.
-
 ---
 
 ## Data-role labels
 
-RACH data files should use explicit roles. Recommended roles are:
+RACH data files should use explicit roles:
 
 ```text
 input_context
@@ -271,45 +209,31 @@ hypothesis_prediction
 diagnostic_only
 ```
 
-Current backward-compatible labels may include `response_target`; in strict RACH theory, this should be interpreted carefully:
-
-```text
-observed_target:
-  independent empirical observation used in ABC/RACH acceptance
-
-hypothesis_prediction:
-  theoretical expectation or posterior predictive check; excluded from ABC by default
-
-input_context:
-  fixed observed predictor/context used by f(x_obs; θ, s); excluded from ABC
-
-diagnostic_only:
-  syndrome definition or internal consistency check; excluded from ABC by default
-```
-
 The safest default for ABC is:
 
 ```text
 use only role == observed_target
 ```
 
-During exploratory model development, `hypothesis_prediction` patterns can be displayed and used for sanity checks, but they should not be treated as independent evidence.
+Current backward-compatible labels may include `response_target`, but strict RACH inference should use `observed_target` for independent empirical y_obs.
 
 ---
 
-## Switch Posterior Inference
+## Causal admissibility and switch support
 
-RACH does not primarily select among pre-defined models M1–M5. Instead, it samples a binary causal switch vector:
+RACH samples a binary causal switch vector:
 
 ```text
 s ∈ {0,1}^K
 ```
 
-and estimates:
+and estimates support within the admissible region:
 
 ```text
-P(s_j = 1 | accepted)
+CA_j = P(s_j = 1 | (θ, s) ∈ A_ε)
 ```
+
+`CA_j` is **causal admissibility**: the probability that mechanism j remains admissible under the current biological constraints and independent observations.
 
 For the Campanula worked example, current switches are:
 
@@ -320,19 +244,143 @@ For the Campanula worked example, current switches are:
 | `island_isolation_common_cause` | isolation acts as a common cause affecting multiple traits |
 | `small_pollinator_substitution` | smaller pollinators compensate for Bombus absence |
 
-Drift requires special care. Drift itself is not a switch: finite-population drift is part of the generative axiom. A drift-related switch should mean something more specific, for example:
+Drift itself is not a switch: finite-population drift is part of the generative axiom. A drift-related switch should mean something more specific, such as `guide_loss_drift_dominant` or `guide_selection_near_neutral`.
+
+---
+
+## RACH-specific computation algorithm
+
+The RACH-specific calculations use sampled prior rows, evaluated rows, and the accepted subset A_ε.
 
 ```text
-guide_loss_drift_dominant
+prior rows:      all sampled (θ_i, s_i), before ABC acceptance
+evaluated rows:  all rows for which f(x_obs; θ_i, s_i) was evaluated and pattern matches were recorded
+accepted rows:   A_ε = rows passing d(P_sim(f(x_obs;θ,s)), P_obs(y_obs)) ≤ ε
 ```
 
-or
+The key implementation rule is:
 
 ```text
-guide_selection_near_neutral
+Observation contribution and leave-one-out metrics require all_evaluated_rows,
+not accepted_rows alone.
 ```
 
-That is, the hypothesis is not “drift exists”, but whether guide loss is dominated by near-neutral drift rather than selection.
+Reason: when one pattern is removed, some samples that were previously rejected may become accepted. Using only `accepted_rows` would underestimate the contribution of patterns and distort causal resolvability.
+
+### 1. Causal admissibility
+
+```text
+CA_j = P(s_j = 1 | A_ε)
+```
+
+Algorithm:
+
+```python
+CA_j = mean(row[switch_j] for row in accepted_rows)
+```
+
+### 2. Causal degeneracy
+
+```text
+D_RACH = H(S | A_ε)
+```
+
+Algorithm:
+
+```python
+state_counts = count tuples (s1, s2, ..., sK) in accepted_rows
+p_state = state_counts / n_accepted
+D_RACH = -sum(p_state * log2(p_state))
+```
+
+### 3. Causal resolvability
+
+```text
+R_RACH = 1 - H(S | A_ε) / H(S)
+```
+
+If the switch prior is independent Bernoulli(0.5), then:
+
+```text
+H(S) = K bits
+R_RACH = 1 - D_RACH / K
+```
+
+### 4. Mechanism identifiability
+
+```text
+I_j = H(S_j prior) - H(S_j | A_ε)
+```
+
+For Bernoulli(0.5) prior:
+
+```text
+H(S_j prior) = 1 bit
+H(S_j | A_ε) = -p_j log2(p_j) - (1-p_j)log2(1-p_j)
+I_j = 1 - H(S_j | A_ε)
+```
+
+### 5. Observation contribution
+
+```text
+OC_k = R_RACH(O) - R_RACH(O \ {O_k})
+```
+
+Algorithm:
+
+```python
+R_all = causal_resolvability(accepted_all)
+
+for each pattern k:
+    accepted_without_k = recompute_acceptance(
+        all_evaluated_rows,
+        drop_pattern=k,
+        threshold=ε
+    )
+    R_without_k = causal_resolvability(accepted_without_k)
+    OC_k = R_all - R_without_k
+```
+
+Implementation requirement:
+
+```text
+Each evaluated row must store per_pattern_matched:
+  {pattern_id: (matched: bool, weight: float)}
+```
+
+Acceptance without pattern k is recomputed from the remaining pattern weights:
+
+```python
+weighted_match_rate_without_k = matched_weight_without_k / total_weight_without_k
+accepted_without_k = weighted_match_rate_without_k >= threshold
+```
+
+### 6. Next-observation value
+
+The strict theoretical definition is:
+
+```text
+NOV(q) = E[ R_RACH(O ∪ q) - R_RACH(O) ]
+```
+
+where q is a candidate future observation.
+
+A practical first implementation can use a heuristic approximation:
+
+```python
+uncertainty_j = H(S_j | A_ε)
+NOV(q) = feasibility(q) * sum(uncertainty_j for j in target_switches(q))
+```
+
+Candidate observation table:
+
+```text
+candidate_observation,target_switches,feasibility,rationale
+guide_outcrossing_response,guide_attracts_bombus,0.7,Tests whether guide expression increases outcrossing
+bagging_seed_set,selfing_syndrome_active,0.9,Tests autonomous selfing and reproductive assurance
+neutral_diversity,island_isolation_common_cause,0.6,Separates demographic drift from adaptive floral change
+background_pollinator_visitation,small_pollinator_substitution,0.8,Tests whether small pollinators compensate for Bombus absence
+```
 
 ---
 
@@ -341,32 +389,15 @@ That is, the hypothesis is not “drift exists”, but whether guide loss is dom
 RACH quantifies not only which mechanisms are supported, but also whether the observation set can identify mechanisms at all.
 
 ```text
-H(S | A_ε)
-```
-
-is the causal degeneracy: the remaining entropy of switch states after ABC/RACH filtering.
-
-```text
-K - H(S | A_ε)
-```
-
-is degeneracy reduction.
-
-```text
+CA_j = P(s_j = 1 | A_ε)
+D_RACH = H(S | A_ε)
+R_RACH = 1 - H(S | A_ε) / H(S)
 I_j = H(S_j prior) - H(S_j | A_ε)
+OC_k = R_RACH(O) - R_RACH(O \ {O_k})
+NOV(q) = E[ R_RACH(O ∪ q) - R_RACH(O) ]
 ```
-
-is mechanism identifiability for switch j.
 
 High causal degeneracy means that many different switch combinations remain admissible. This is not a failure; it indicates that the current observation set is insufficient to distinguish mechanisms.
-
-Pattern contribution can be estimated by leave-one-out:
-
-```text
-C_k(j) = I_j(all patterns) - I_j(without pattern k)
-```
-
-This helps decide which additional empirical observations would most improve causal resolution.
 
 ---
 
@@ -422,16 +453,22 @@ known-truth validation prototype
 Implementation status:
 
 ```text
-✓ response_target (5 field_derived pairwise) used as y_obs in ABC acceptance
+✓ observed_target / hypothesis_prediction / diagnostic_only / input_context role taxonomy
 ✓ hypothesis_prediction gradient patterns excluded from ABC (circular inference prevented)
+✓ independent_observations.csv created as future numeric y_obs table
 ✓ Ne_isolation_slope / migration_decay_rate / pollinator_loss_slope promoted to θ
 ✓ env_slopes_from_param_set() extracts slope θ from each sampled parameter set
-✓ Both proxy and ABM inference backends rebuild environments per-draw using sampled θ slopes
 ✓ C5 constraint enforces direction principle: all slopes must be > 0
 ```
 
-Remaining step: create an `independent_observations.csv` with measurement uncertainty
-to allow weighted ABC distance based on empirical confidence intervals.
+Remaining implementation steps:
+
+```text
+1. Store all_evaluated_rows in SwitchPosteriorResult, not only accepted_rows.
+2. Recompute leave-one-out acceptance from all_evaluated_rows for OC_k.
+3. Implement causal_admissibility.py with CA, D_RACH, R_RACH, OC, and NOV.
+4. Add numeric ABC distance using independent_observations.csv once values and uncertainty are filled.
+```
 
 ---
 
@@ -453,8 +490,8 @@ RACH connects to POM, ABC, ABM/IBM, simulation-based inference, and causal model
 
 English:
 
-> We introduce RACH, a constraint-first generative framework that defines the admissible causal region: the subset of latent parameter–mechanism space that satisfies biological constraints and reproduces independent empirical observations under fixed ecological context. RACH estimates posterior support for causal mechanism switches and quantifies causal degeneracy, thereby distinguishing supported mechanisms from cases where the available observations lack sufficient causal resolution.
+> We introduce RACH, a causal admissibility and degeneracy framework for ecological systems. Rather than selecting a single best model, RACH estimates the admissible causal region: the subset of latent parameter–mechanism space that satisfies biological constraints and reproduces independent observations. It then quantifies causal admissibility, causal degeneracy, causal resolvability, and the expected value of additional observations.
 
 Japanese:
 
-> 本研究では、生物学的制約を満たし、固定された生態学的文脈のもとで独立観測データを再現できる潜在パラメータ・メカニズム空間の部分集合を「許容因果領域」として定義するRACHを提案する。RACHは、この許容領域内で因果メカニズムスイッチの事後支持を推定し、因果縮退性を定量化することで、支持されるメカニズムと、観測データだけでは識別不能なメカニズム群を区別する。
+> 本研究では、生態学的因果メカニズムの許容性と縮退性を定量化するRACHを提案する。RACHは単一の最良モデルを選択するのではなく、生物学的制約を満たし、独立観測データを再現可能な潜在パラメータ・メカニズム空間の部分集合を許容因果領域として推定する。さらに、各因果メカニズムの許容性、因果縮退性、因果識別可能性、および追加観測の価値を定量化する。
