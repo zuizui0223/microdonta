@@ -2,291 +2,432 @@
 
 **RACH** stands for **Restricted Admissible Causal Hypotheses**.
 
-RACH は、**生態学的制約を先に定義**し、その制約内で複数の因果仮説をシミュレーションし、**観察された生態勾配パターンと照合する**ことで「観察パターンを生成できる因果仮説の制約集合」を推定する生成推論フレームワークです。
+RACH is a general framework for simulation-based ecological causal inference. It asks:
 
-特定の島嶼系・生物分類群に依存しない汎用フレームワークです。このリポジトリは、シマホタルブクロ *Campanula punctata* 伊豆諸島集団を **worked example** として実装したプロトタイプです。
+> **Which latent causal mechanisms are admissible, given fixed ecological context, biological axioms, latent parameters, and independent observations?**
+
+Japanese:
+
+> **RACHは、固定された生態学的文脈・生物学的公理・潜在パラメータ・独立観測データのもとで、どの潜在因果メカニズムが許容されるかを推定する汎用フレームワークである。**
+
+This repository implements a worked example using the Izu Islands population system of *Campanula punctata* / シマホタルブクロ. The Campanula model is an example, not the definition of RACH.
 
 ---
 
-## One-sentence definition
+## Formal definition
 
-> **RACH identifies the restricted set of admissible causal hypotheses that can generate observed ecological gradient patterns under biologically motivated constraints.**
+The core RACH object is the **admissible causal region**:
 
-> **RACHは、生態学的制約のもとで観察された生態勾配パターンを生成可能な因果仮説だけを抽出する汎用フレームワークである。**
+```text
+A_ε(y_obs, x_obs)
+=
+{(θ, s) ∈ Θ × S :
+  G(θ)=1,
+  d(P_sim(f(x_obs; θ, s)), P_obs(y_obs)) ≤ ε }
+```
+
+where:
+
+```text
+x_obs  = fixed empirical context used as simulator input
+         e.g. island distance, island area, observed pollinator presence/frequency
+
+θ      = latent ecological parameters to infer or marginalise over
+         e.g. costs, benefits, inbreeding depression, drift scale,
+              pollinator-loss slope, Ne-isolation slope, migration-decay rate
+
+s      = causal switch state, s ∈ {0,1}^K
+         e.g. guide-mediated attraction, selfing-syndrome evolution,
+              isolation common cause, small-pollinator substitution
+
+G(θ)   = ecological constraint grammar
+         e.g. biological feasibility constraints on θ
+
+f      = generative ecological dynamics
+         e.g. Wright-Fisher drift, selection, reproduction, inheritance,
+              pollination and mating rules
+
+P_sim  = pattern extractor for simulated output
+P_obs  = pattern extractor for empirical observations
+
+y_obs  = independent empirical observations used for ABC/RACH acceptance
+
+d      = distance between simulated and observed pattern spaces
+ε      = tolerance threshold
+```
+
+The main inferential quantity is the switch posterior within the admissible region:
+
+```text
+π_j = P(s_j = 1 | (θ, s) ∈ A_ε)
+```
+
+This is an ABC-approximated posterior support for each latent mechanism.
 
 ---
 
 ## Core workflow
 
-```
-1. 生態学的原理に基づく制約文法を定義  (ecological constraint grammar)
+```text
+1. Define biological axioms and ecological constraint grammar
        ↓
-2. 制約内で潜在パラメータをランダムサンプリング  (constrained prior sampling)
+2. Define fixed empirical context x_obs
        ↓
-3. 因果スイッチ状態をサンプリング  (binary switch state sampling)
+3. Sample latent parameters θ within biologically admissible ranges
        ↓
-4. シミュレーション  (proxy / stochastic ABM)
+4. Sample causal switch states s ∈ {0,1}^K
        ↓
-5. 勾配パターンターゲットとの照合  (ABC gradient-pattern acceptance)
+5. Run generative simulation f(x_obs; θ, s)
        ↓
-6. 受理サンプルからスイッチ事後確率を推定  (Switch Posterior Inference)
+6. Extract comparable patterns P_sim and P_obs
+       ↓
+7. Accept samples whose distance to independent y_obs is ≤ ε
+       ↓
+8. Estimate switch posterior, identifiability, and causal degeneracy
 ```
 
-**重要**: パラメータを手動で調整して観察データに合わせるのではなく、  
-**先に生態学的に許容されるパラメータ空間を定義し、その制約内でどの因果経路が観察パターンを生成できるかを推論する。**
+RACH is **not** manual parameter tuning. The goal is to identify the subset of latent parameter–mechanism space that is both biologically coherent and compatible with independent observations.
 
 ---
 
-## Switch Posterior Inference — the core original contribution
+## Required separation of roles
 
-RACHの最も重要な推論モジュールです。
+A central RACH requirement is that biological assumptions, fixed inputs, latent parameters, independent observations, hypothesis-derived predictions, and diagnostic definitions are not mixed.
 
-### 従来手法との違い
+| Class | Role in RACH | Used in `f`? | Part of `θ`? | Used as `y_obs` in ABC? | Example |
+|---|---|---:|---:|---:|---|
+| **Axiom** | Fixed model dynamics | yes | no | no | Wright-Fisher sampling, stochastic inheritance, fitness-proportional selection |
+| **Universal / directional principle** | Directional biological constraint; coefficients remain uncertain | yes / G | partly | no | low Ne increases drift; drift ∝ 1/√Ne; reproductive assurance can favour selfing |
+| **Latent parameter** | Unknown quantity to sample or infer | yes | yes | no | guide cost, inbreeding depression, Ne-isolation slope, migration-decay rate |
+| **Fixed empirical context** | Observed input context `x_obs` | yes | no | no | island distance, island area, observed Bombus presence/frequency |
+| **Empirical observation** | Independent response data `y_obs` | no | no | yes | measured guide value, selfing rate, herkogamy, flower size, seed set, genetic Fis/He if measured |
+| **Hypothesis prediction** | Model prediction or future test | no | no | no | “selfing increases with isolation”, “guide decreases along isolation” if not independently measured |
+| **Diagnostic-only pattern** | Internal consistency / syndrome definition | no | no | no by default | selfing-herkogamy correlation as a definition of selfing syndrome |
 
-従来のABCや因果推論では、候補モデル M1, M2, … Mk を事前に定義し、どのモデルがデータに最もフィットするかを比較します（モデル選択）。
+Japanese summary:
 
-RACHのSwitch Posterior Inferenceは**モデルを事前に固定しません**。代わりに、各生物学的メカニズムを独立な潜在二値変数（スイッチ）として扱い、その**同時事後分布**を推定します。
-
+```text
+公理: f の力学に固定
+普遍的原理: 方向だけ f/G に固定し、係数は θ
+観測文脈: x_obs として f に渡すがABCから除外
+独立観測: y_obs としてABCに使用
+仮説予測: ABCから除外し、posterior predictive check / future prediction に使う
+診断定義: ABCから除外し、diagnostic_only として扱う
 ```
-P(スイッチ ON | 観察パターンが一致) を各経路について推定する
-```
-
-これにより：
-- M1〜M5のどれにも収まらない経路の組み合わせも自動的に発見できる
-- 複数経路が同時に活性化している場合（共活性化）を同定できる
-- どの経路が支配的か（高Bayes因子）を直接評価できる
-
-### 5つの生物学的スイッチ
-
-| スイッチ | 経路 | 生物学的問い |
-|---|---|---|
-| **S1** `guide_attracts_bombus` | 誘引形質 → Bombus誘引 → 他殖 | ネクターガイドがBombus訪花を因果的に増加させるか？ |
-| **S2** `selfing_syndrome_active` | 送粉者不足 → 繁殖保証 → 自殖症候群共進化 | 送粉者減少が、自殖・花柱離隔・花サイズの共進化を引き起こすか？ |
-| **S3** `island_isolation_common_cause` | 孤立 → 複数形質への共通上流原因 | 孤立が（Bombusの有無を経由せず）直接複数形質を同時に変化させるか？ |
-| **S4** `drift_drives_guide_loss` | 小集団 → 遺伝的浮動 → ガイド消失 | ガイド消失は自然選択ではなく遺伝的浮動が主因か？ |
-| **S5** `small_pollinator_substitution` | ハナバチ類 → Bombus代替 → 繁殖保証圧の緩和 | 小型送粉者がBombusを代替し自殖圧を抑制するか？ |
-
-### アルゴリズム
-
-```python
-for each draw:
-    θ ~ constrained_ecological_prior()          # 生態学的制約内でパラメータサンプリング
-    s ~ Bernoulli(0.5) for each switch          # 各スイッチを独立にサンプリング（無情報事前分布）
-    y = simulate(θ, s)                          # プロキシまたはABMでシミュレーション
-    if gradient_pattern_match(y, targets) >= ε: # 勾配パターンターゲットと照合
-        accept(θ, s)
-
-P(switch ON | accepted) = accepted_ON / n_accepted  # スイッチ事後確率
-BF = posterior_odds / prior_odds                    # Bayes因子
-```
-
-**Bayes因子の解釈**:
-- BF > 3: そのスイッチがONであることが観察パターンを支持
-- BF < 1/3: そのスイッチがONであることが観察パターンに反する
-- 1/3 < BF < 3: 証拠不十分
 
 ---
 
-## Gradient-based pattern targets
+## What belongs in `f`?
 
-RACHのABC採否基準は、**集団名に依存しない勾配方向パターンターゲット**です。
+`f` should contain biological or stochastic dynamics that define the generative process:
 
-### なぜペアワイズ比較でなく勾配か
-
-「八丈島の方が大島より自殖率が高い」という文献記述は有用ですが、これは特定の2集団の比較です。RACHが検証したい仮説は、**生態勾配（孤立度・攪乱強度・資源可用性など）に沿った形質変化の方向性そのもの**です。
-
-勾配パターンターゲット（Campanula/Izu worked example）:
-```
-孤立度が増加するにつれて…
-  nectar_guide  が単調減少する  (gradient_slope: negative)
-  selfing_rate  が単調増加する  (gradient_slope: positive)
-  herkogamy     が単調減少する  (gradient_slope: negative)
-  Fis           が単調増加する  (gradient_slope: positive)
-  nectar_guide  のランク順が降順 (rank_order: decreasing)
-  selfing_rate  のランク順が昇順 (rank_order: increasing)
+```text
+Wright-Fisher / finite-population sampling
+Mendelian or parent-offspring trait inheritance
+mutation or perturbation processes
+fitness-proportional selection
+selfing / outcrossing probability rules
+pollination-to-reproduction rules
 ```
 
-この6パターンが現在のABC受理基準です。パターンは集団名ではなく勾配の方向性で定義されるため、他のシステムへの適用が容易です。
+`f` may use fixed empirical context `x_obs`, but it should not hard-code uncertain empirical slopes as if they were laws.
 
-### 汎用的な勾配シミュレーション（worked example）
+Good:
 
-シミュレーションは「mainland / Oshima / Kozushima / Hachijo」という固定集団名を使いません。`isolation ∈ [0, 1]` を唯一の入力として、N点の環境を生成します（理論的勾配予測 / generic mechanism exploration）。
-
-```python
-# isolation から全環境変数を導出（理論予測式）
-primary_pollinator_frequency    = max(0, 0.80 - 0.94 * isolation)
-community_pollinator_abundance  = 0.88 - 0.635 * isolation
-effective_population_size       = 1.00 - 0.765 * isolation
-# ...
+```text
+Drift increases as Ne decreases.
 ```
 
-この合成勾配は実データの再構築ではなく、**どのメカニズムが勾配パターンを生成できるかを理論探索するため**のものです。実データとの照合は、`observed_patterns.csv` の `response_target` 行で行われます。
+Risky if fixed inside `f`:
+
+```text
+effective_population_size = 1.00 - 0.765 × isolation
+primary_pollinator_frequency = 0.80 - 0.94 × isolation
+community_pollinator_abundance = 0.88 - 0.635 × isolation
+```
+
+Those coefficients should be latent parameters unless independently fixed by data and uncertainty is ignored deliberately.
 
 ---
 
-## データ設計 — simulation layer と observation layer の分離
+## What belongs in θ?
 
-RACHは2つのレイヤーを明確に区別します。
+θ contains unknown or partially known ecological quantities:
 
-### Simulation layer（入力文脈）
-
+```text
+guide_cost
+outcrossing_benefit
+selfing_benefit
+inbreeding_depression
+background_pollinator_efficiency
+drift_effect_scale
+guide_selection_strength
+primary_pollinator_guide_response
+cost_of_waiting_for_pollinators
+pollinator_loss_slope
+Ne_isolation_slope
+community_abundance_isolation_slope
+background_pollinator_slope
+migration_decay_rate
 ```
-ecological_context.csv  ←  input_context
+
+For general RACH applications, environmental-gradient coefficients should normally be sampled as θ, not hard-coded into the simulator.
+
+Example:
+
+```text
+Ne(isolation) = Ne0 × exp(-α_Ne × isolation)
+α_Ne ∈ θ, α_Ne ≥ 0
 ```
 
-環境変数（孤立度・送粉者頻度・有効集団サイズ等）はシミュレーションへの**入力**です。これらをABCの採否基準にするのは循環論法（値を投入して同じ値を予測する）です。
-
-### Observation layer（検証ターゲット）
-
-```
-observed_patterns.csv  ←  role = response_target
-```
-
-形質の勾配パターン（ネクターガイド・自殖率・Fis等の方向性）は、シミュレーションが**再現すべき**検証ターゲットです。ABCの採否基準はこの層のみです。
-
-### `role` 列による機械的分離
-
-`observed_patterns.csv` の各行には `role` 列があります：
-
-| role | 意味 | ABCに使うか |
-|---|---|---|
-| `response_target` | 形質の勾配パターン（nectar_guide, selfing_rate, herkogamy, Fis など） | **使う** |
-| `input_context` | 予測変数（primary_pollinator_frequency 等、ecological_contextから注入） | **使わない** |
-
-`evaluate_patterns()` は `role=input_context` 行を**自動的にスキップ**します。`response_target_patterns()` を呼べば、ABCに渡すべき行だけを取得できます。
-
-### 循環論法の防止（具体例）
-
-`primary_pollinator_frequency`（Bombus頻度）は `ecological_context.csv` からシミュレーションに**注入**される値です。これを同時にABCの採否基準にすると、スイッチの状態に関係なく常にマッチしてしまいます（Bombus頻度はシミュレーションで生成されるのではなく与えられるため）。
-
-`role=input_context` のラベルはこの構造的欠陥を**機械的に**防ぎます。
+The directional principle “isolation tends to reduce migration / Ne” can be part of the constraint grammar, while the magnitude remains latent.
 
 ---
 
-## 送粉者変数の設計（3機能的役割）
+## What belongs in y_obs?
 
-Environment は送粉者を**機能的役割**で分類します（種名に依存しない汎用設計）。
+`y_obs` should contain **independent empirical observations** only.
 
-| 変数 | 機能的役割 | 伊豆系での対応 |
-|---|---|---|
-| `primary_pollinator_frequency` | **誘引形質応答型・高効率** — ネクターガイドを強く使い、一訪花あたりの花粉移送効率が高い | Bombus (マルハナバチ) |
-| `background_pollinator_frequency` | **形質非応答・背景送粉者** — ガイドへの応答は低いが他殖に貢献する | Halictidae (コハナバチ) |
-| `community_pollinator_abundance` | **群集全体のアバンダンス** — 両チャネルを乗算するスケーラー | 全体的な送粉者豊富度 |
+For the Campanula worked example, valid `y_obs` candidates include field- or literature-derived response measurements such as:
 
-他殖確率の式:
-
-```
-P_outcross = base_rate
-  + community_pollinator_abundance × [
-      primary_freq × primary_eff × (1 + guide_response × G)       ← S1が機能する経路
-      + background_freq × bg_eff × access(F) × (1 + bg_guide_response × G)
-    ]
+```text
+nectar-guide expression or area
+selfing rate or autonomous selfing proxy
+herkogamy
+flower size
+seed set under bagging / natural pollination
+visitation response if experimentally measured
+Fis / He / neutral diversity if measured genetically
 ```
 
-**S1の識別可能性**: ネクターガイド `G` が他殖に影響するのは主に primary チャンネル（`guide_response = 0.7`）を通じてであり、background チャンネルへの影響は微小（`bg_guide_response = 0.1`）。よってガイドの低下が他殖を大きく下げるかどうかはS1（primary pollinator の存在）に依存し、S1が識別可能になる。
+Important: pollinator presence/frequency can be empirical, but if it is used as fixed input context, it should be classified as `input_context`, not an ABC target.
+
+Example:
+
+```text
+Bombus presence on Oshima vs absence on Hachijo
+→ fixed empirical context x_obs / input_context
+→ excluded from ABC acceptance
+```
 
 ---
 
-## 生態学的制約文法（パラメータ制約）
+## What must not be used as y_obs?
 
-シミュレーション前に、生態学的に許容されないパラメータ組み合わせを除外します。
+Hypothesis-derived expectations must not be used as independent observations.
 
-| 制約 | 内容 | 根拠 |
-|---|---|---|
-| **C1** | `selfing_benefit - inbreeding_depression >= -0.30` | 自殖が極端に不利な場合、自殖症候群の進化は起きない（Lloyd 1979） |
-| **C2** | `NOT (bg_eff > 0.55 AND selfing_benefit > 0.55)` | 背景送粉者が十分な代替機能を持つなら繁殖保証圧は低く、高い自殖利益との同時成立は矛盾 |
-| **C3** | `NOT (guide_cost > 0.20 AND outcrossing_benefit < 0.05 AND guide_benefit > 0.80)` | コスト高・他殖利益ゼロでガイドが著しく送粉者を引きつけるという組み合わせは内部矛盾 |
-| **C4** | `background_pollinator_efficiency < 0.80` | 背景送粉者の効率が主要送粉者以上になれば機能的区別が崩壊（Larsson 2005） |
+Examples:
 
-各制約には文献引用が付いており、「手で合わせた」のではなく生態学的原理から導出されています。
+```text
+selfing increases along isolation
+nectar guide decreases along isolation
+neutral diversity decreases along isolation, if not yet measured
+```
+
+These are useful, but they are not independent data. They should be classified as:
+
+```text
+hypothesis_prediction
+posterior_predictive_check
+future_observation_target
+```
+
+and excluded from default ABC/RACH acceptance.
+
+Otherwise the model risks reproducing predictions generated by its own hypotheses.
 
 ---
 
-## M1-M5 候補因果構造（参照用）
+## Data-role labels
 
-Switch Posterior Inferenceがスイッチの同時事後分布を推定するのに対し、M1-M5は特定のスイッチ組み合わせに名前を付けたもので、事後推論の結果を解釈する際の参照ラベルとして使います。
+RACH data files should use explicit roles. Recommended roles are:
 
+```text
+input_context
+observed_target
+hypothesis_prediction
+diagnostic_only
 ```
-M1  direct_pollinator_to_guide=1  (S1のみ)
-M2  selfing_mediation=1           (S2のみ)
-M3  S1=1, S2=1                    (S1+S2)
-M4  island_common_cause=1         (S3のみ ― 孤立が単一上流原因)
-M5  drift_null=1                  (S4のみ ― 浮動ヌル)
+
+Current backward-compatible labels may include `response_target`; in strict RACH theory, this should be interpreted carefully:
+
+```text
+observed_target:
+  independent empirical observation used in ABC/RACH acceptance
+
+hypothesis_prediction:
+  theoretical expectation or posterior predictive check; excluded from ABC by default
+
+input_context:
+  fixed observed predictor/context used by f(x_obs; θ, s); excluded from ABC
+
+diagnostic_only:
+  syndrome definition or internal consistency check; excluded from ABC by default
 ```
 
-Switch Posterior Inference は M1-M5 に収まらない組み合わせも自動的に扱います。
+The safest default for ABC is:
+
+```text
+use only role == observed_target
+```
+
+During exploratory model development, `hypothesis_prediction` patterns can be displayed and used for sanity checks, but they should not be treated as independent evidence.
 
 ---
 
-## Streamlit app
+## Switch Posterior Inference
 
-```powershell
-python -m pip install -r requirements.txt
-streamlit run streamlit_app.py
+RACH does not primarily select among pre-defined models M1–M5. Instead, it samples a binary causal switch vector:
+
+```text
+s ∈ {0,1}^K
 ```
 
-アプリの主要タブ:
+and estimates:
 
-| タブ | 内容 |
+```text
+P(s_j = 1 | accepted)
+```
+
+For the Campanula worked example, current switches are:
+
+| Switch | Interpretation |
 |---|---|
-| **Switch Posterior Inference** | 5スイッチの事後確率とBayes因子をABC拒絶法で推定 (proxy / stochastic ABM) |
-| **Causal Structure Comparison** | M1-M5固定構造のシミュレーション比較 |
-| **Parameter Space** | 受理サンプルの潜在パラメータ分布の可視化 |
+| `guide_attracts_bombus` | nectar guide causally increases Bombus-mediated outcrossing |
+| `selfing_syndrome_active` | reproductive assurance activates selfing-syndrome evolution |
+| `island_isolation_common_cause` | isolation acts as a common cause affecting multiple traits |
+| `small_pollinator_substitution` | smaller pollinators compensate for Bombus absence |
 
-手動パラメータスライダーは意図的に除外しています。
+Drift requires special care. Drift itself is not a switch: finite-population drift is part of the generative axiom. A drift-related switch should mean something more specific, for example:
 
----
-
-## Repository structure
-
-```
-attraction_trait_model/     個体ベース生物モデル（送粉・適応度・遺伝）
-causal_model/               因果構造・スイッチ・パラメータ制約・ABC推論
-  simulation.py             決定論的プロキシシミュレーション（S1-S5スイッチロジック）
-  switch_inference.py       Switch Posterior Inference（ABCリジェクション）
-  parameter_constraints.py  生態学的制約文法（C1-C4、文献引用付き）
-  switches.py               PathwaySwitches定義
-examples/campanula_izu/     伊豆諸島 worked example (Campanula punctata)
-  data/observed_patterns.csv  勾配パターンターゲット定義（role列: response_target / input_context）
-  data/ecological_context.csv 集団の生態的文脈データ（input_context; ABC採否には使わない）
-  proxy_simulation.py         連続孤立勾配シミュレーション（env_from_isolation）
-  pattern_evaluator.py        勾配パターン評価（gradient_slope, rank_order; role filterつき）
-  observed_data.py            データローダー（response_target_patterns / load_ecological_context）
-  test_ecological_invariants.py  生態不変量テスト（5項目、input_context除外を含む）
-streamlit_app.py            メインアプリ
+```text
+guide_loss_drift_dominant
 ```
 
----
+or
 
-## RACH and existing methods
+```text
+guide_selection_near_neutral
+```
 
-| Existing method | Role inside RACH |
-|---|---|
-| ABM | candidate causal hypotheses を生成するシミュレーター |
-| Gradient pattern targets | 複数観察パターンでモデルを制約する評価原理（旧来のPOM概念を一般化） |
-| ABC-rejection | 距離関数と受理閾値に基づく潜在パラメータ領域の近似 |
-| Ecological constraint grammar | シミュレーション前に許容パラメータ空間を定義する制約規則 |
-
-RACHの独自性は、これらを**因果仮説の事後確率推定**という目的のもとで統合し、かつ「モデルを先に固定しない」Switch Posterior Inference を核に据えた点にあります。
+That is, the hypothesis is not “drift exists”, but whether guide loss is dominated by near-neutral drift rather than selection.
 
 ---
 
-## Manuscript framing
+## Theory metrics
 
-> We propose RACH, a Restricted Admissible Causal Hypotheses framework for ecological gradient inference. RACH first defines an admissible latent trade-off space using ecological constraint grammar, then simulates candidate causal hypotheses within that space using a switch-based generative model, and finally infers the posterior probability of each biological pathway being active via ABC rejection against observed gradient pattern targets — without pre-specifying causal structures.
+RACH quantifies not only which mechanisms are supported, but also whether the observation set can identify mechanisms at all.
 
-日本語:
+```text
+H(S | A_ε)
+```
 
-> 本研究では、RACH（Restricted Admissible Causal Hypotheses）を提案する。RACHは、生態学的制約文法によって許容潜在トレードオフ空間を先に定義し、スイッチベースの生成モデルでその空間内を探索し、観察された勾配パターンターゲットに対するABCリジェクション法によって各生物学的経路の事後確率を推定する。因果構造を事前に固定する必要がない点が、従来の構造比較アプローチとの本質的な違いである。
+is the causal degeneracy: the remaining entropy of switch states after ABC/RACH filtering.
+
+```text
+K - H(S | A_ε)
+```
+
+is degeneracy reduction.
+
+```text
+I_j = H(S_j prior) - H(S_j | A_ε)
+```
+
+is mechanism identifiability for switch j.
+
+High causal degeneracy means that many different switch combinations remain admissible. This is not a failure; it indicates that the current observation set is insufficient to distinguish mechanisms.
+
+Pattern contribution can be estimated by leave-one-out:
+
+```text
+C_k(j) = I_j(all patterns) - I_j(without pattern k)
+```
+
+This helps decide which additional empirical observations would most improve causal resolution.
 
 ---
 
-See also:
+## Campanula / Izu Islands worked example
 
-- [Constraint-first CAPOM workflow](docs/constraint_first_capom.md)
-- [Latent causal generative model](docs/latent_causal_generative_model.md)
-- [Generative model vs path model](docs/generative_model_vs_path_model.md)
-- [ABM design policy](docs/abm_design_policy.md)
-- [Methods workflow](paper/methods_workflow.md)
-- [ODD protocol draft](paper/odd_protocol_draft.md)
-- [Campanula Izu worked example](examples/campanula_izu/README.md)
+This repository currently uses *Campanula punctata* / シマホタルブクロ as a worked example involving:
+
+```text
+pollinator loss
+nectar-guide maintenance or loss
+selfing syndrome
+inbreeding proxy
+finite-population drift
+small-pollinator substitution
+```
+
+However, the worked example should not be confused with the general RACH theory.
+
+For manuscript-level use, empirical targets should be split into at least:
+
+```text
+field_derived observed_target:
+  guide expression, selfing proxy, herkogamy, flower size, seed set if measured
+
+genetic_derived observed_target:
+  Fis, He, neutral diversity, Fst if measured genetically
+
+input_context:
+  island distance, island area, Bombus presence/frequency, background pollinator context
+
+hypothesis_prediction:
+  isolation-gradient expectations not independently measured
+
+diagnostic_only:
+  syndrome-definition correlations such as selfing-herkogamy correlation
+```
+
+---
+
+## Current implementation status
+
+The current implementation already includes:
+
+```text
+causal switch posterior inference
+ecological constraint grammar
+proxy and stochastic ABM backends
+role-based exclusion of input_context rows
+RACH theory metrics: identifiability and causal degeneracy
+known-truth validation prototype
+```
+
+Important caution:
+
+```text
+Some current gradient patterns are conceptual or hypothesis-derived.
+They are useful for exploratory model diagnostics, but strict RACH inference should use only independent empirical observed_target rows for ABC acceptance.
+```
+
+A future implementation step is to move fixed isolation-gradient coefficients into θ and to create an `independent_observations.csv` table for observed response values and uncertainty.
+
+---
+
+## Relation to existing methodology
+
+RACH connects to POM, ABC, ABM/IBM, simulation-based inference, and causal modelling, but differs in its inferential target.
+
+| Method | Typical target | RACH difference |
+|---|---|---|
+| Pattern-Oriented Modeling | model outputs that reproduce patterns | RACH estimates admissible causal switch regions |
+| ABC | approximate posterior over parameters or models | RACH targets switch posterior under ecological constraints |
+| ABM/IBM | emergent dynamics from individual rules | RACH uses ABM as a generator inside admissible-region inference |
+| SEM / DAG | coefficients or graph structure | RACH tests latent mechanisms by generative compatibility with observations |
+| Model selection | best pre-defined model | RACH estimates which mechanism switches remain admissible |
+
+---
+
+## Suggested manuscript claim
+
+English:
+
+> We introduce RACH, a constraint-first generative framework that defines the admissible causal region: the subset of latent parameter–mechanism space that satisfies biological constraints and reproduces independent empirical observations under fixed ecological context. RACH estimates posterior support for causal mechanism switches and quantifies causal degeneracy, thereby distinguishing supported mechanisms from cases where the available observations lack sufficient causal resolution.
+
+Japanese:
+
+> 本研究では、生物学的制約を満たし、固定された生態学的文脈のもとで独立観測データを再現できる潜在パラメータ・メカニズム空間の部分集合を「許容因果領域」として定義するRACHを提案する。RACHは、この許容領域内で因果メカニズムスイッチの事後支持を推定し、因果縮退性を定量化することで、支持されるメカニズムと、観測データだけでは識別不能なメカニズム群を区別する。
