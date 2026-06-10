@@ -821,6 +821,13 @@ with st.sidebar:
         "and accepts draws with d ≤ ε to approximate A_ε. "
         "Computes CA_j, D, R, OC_k, NOV from the accepted sample."
     )
+    st.markdown(
+        "**推奨フロー:**  \n"
+        "① **Ensemble** タブでグリッド走査 → ベスト設定・ロバスト結論を確認  \n"
+        "② ベスト設定で **Run RACH inference** → CA_j / D / R を報告  \n"
+        "③ 感度が大きいスイッチに対して **NOV** → 次の観測を計画",
+        help="Ensemble は複数の (θ-prior, ε) を同時に試し、先験依存しない結論だけを抽出します。"
+    )
     sp_backend = "stochastic_abm"
     st.caption(BACKEND_DESCRIPTIONS[sp_backend])
     sp_n_attempts = st.slider(
@@ -1241,15 +1248,79 @@ if "sp_result" in st.session_state:
             "Try a more relaxed acceptance rule (e.g. relaxed_5_of_6) or more draws."
         )
     else:
-        sp_tab1, sp_tab2, sp_tab3, sp_tab4, sp_tab5, sp_tab6, sp_tab7 = st.tabs([
-            "CA_j — causal admissibility",
-            "D · R — degeneracy & resolvability",
-            "OC_k — observation contribution",
-            "NOV — next-observation value",
+        # ------------------------------------------------------------------
+        # Robust Conclusions panel (shown before tabs, always visible)
+        # ------------------------------------------------------------------
+        try:
+            from causal_model.causal_admissibility import causal_degeneracy as _cd_pre, causal_resolvability as _cr_pre
+            _D_pre = _cd_pre(sp.accepted_rows, CAMPANULA_SWITCHES)
+            _R_pre = _cr_pre(sp.accepted_rows, CAMPANULA_SWITCHES)
+            _n_accepted_pre = len(sp.accepted_rows)
+            _ca_pre = {
+                sw.name: round(sum(1 for r in sp.accepted_rows if r.get(sw.name)) / _n_accepted_pre, 3)
+                for sw in CAMPANULA_SWITCHES
+            }
+            # Classify switches: robust if sensitivity < 0.20, sensitive otherwise
+            _ens_sens = st.session_state.get("_ens_sens", {})
+            with st.expander("**Robust Conclusions** (A_ε のサマリー)", expanded=True):
+                _rc_cols = st.columns(len(CAMPANULA_SWITCHES))
+                for _i, sw in enumerate(CAMPANULA_SWITCHES):
+                    _ca_val = _ca_pre.get(sw.name, 0.5)
+                    _sens_val = _ens_sens.get(sw.name)
+                    _bf = _ca_val / (1 - _ca_val + 1e-9)
+                    if _ca_val > 2/3:
+                        _verdict = "✅ ON"
+                    elif _ca_val < 1/3:
+                        _verdict = "❌ OFF"
+                    else:
+                        _verdict = "〜 不定"
+                    if _sens_val is not None:
+                        _robust_label = "🔒 Robust" if _sens_val < 0.20 else f"⚠ 感度={_sens_val:.2f}"
+                    else:
+                        _robust_label = "（Ensemble未実行）"
+                    _rc_cols[_i].metric(
+                        label=sw.name[:18],
+                        value=f"CA={_ca_val:.2f}",
+                        delta=f"{_verdict}  {_robust_label}",
+                        delta_color="normal",
+                    )
+                if _ens_sens:
+                    _sensitive_switches = [k for k, v in _ens_sens.items() if v >= 0.20]
+                    _robust_switches    = [k for k, v in _ens_sens.items() if v < 0.20]
+                    if _robust_switches:
+                        st.success(f"**ロバスト結論** (感度 < 0.20): {', '.join(_robust_switches)}")
+                    if _sensitive_switches:
+                        st.warning(
+                            f"**先験依存** (感度 ≥ 0.20): {', '.join(_sensitive_switches)}  \n"
+                            "→ NOV タブで追加観測の優先度を確認してください。"
+                        )
+                else:
+                    st.info("① Ensemble タブを先に実行すると、ロバスト性の判定が自動表示されます。")
+        except Exception:
+            pass
+
+        # ------------------------------------------------------------------
+        # Tab order follows logical analysis flow:
+        # ① Ensemble (robustness check) → ② CA_j → ③ D/R → ④ OC_k →
+        # ⑤ NOV (for sensitive switches) → Parameter space → Downloads
+        # ------------------------------------------------------------------
+        _tabs_ordered = st.tabs([
+            "① Ensemble — robustness",
+            "② CA_j — causal admissibility",
+            "③ D · R — degeneracy & resolvability",
+            "④ OC_k — observation contribution",
+            "⑤ NOV — next-observation value",
             "Parameter space A_ε",
             "Downloads",
-            "Ensemble — sensitivity",
         ])
+        # Map original variable names to display positions
+        sp_tab7 = _tabs_ordered[0]   # Ensemble content → first tab
+        sp_tab1 = _tabs_ordered[1]   # CA_j
+        sp_tab2 = _tabs_ordered[2]   # D / R
+        sp_tab3 = _tabs_ordered[3]   # OC_k
+        sp_tab4 = _tabs_ordered[4]   # NOV
+        sp_tab5 = _tabs_ordered[5]   # Parameter space
+        sp_tab6 = _tabs_ordered[6]   # Downloads
 
         with sp_tab1:
             st.markdown("### CA_j = P(s_j = 1 | A_ε)")
@@ -1465,6 +1536,31 @@ if "sp_result" in st.session_state:
         # ---- sp_tab4: NOV — next-observation value -------------------------
         with sp_tab4:
             st.markdown("### NOV(q) ≈ E[ R(O ∪ q) − R(O) ]")
+
+            # Context from sensitivity analysis
+            _ens_sens_nov = st.session_state.get("_ens_sens", {})
+            if _ens_sens_nov:
+                _sensitive_nov = {k: v for k, v in _ens_sens_nov.items() if v >= 0.20}
+                if _sensitive_nov:
+                    st.info(
+                        "**感度分析からの推奨観測ターゲット**  \n"
+                        "以下のスイッチは先験依存が大きく (感度 ≥ 0.20)、"
+                        "NOV が最も役立ちます:  \n" +
+                        "  \n".join(
+                            f"- **{k}** (感度={v:.2f})"
+                            for k, v in sorted(_sensitive_nov.items(), key=lambda x: -x[1])
+                        )
+                    )
+                else:
+                    st.success(
+                        "全スイッチが感度 < 0.20 でロバストです。"
+                        "NOV は追加的な精度向上には有用ですが、結論は既に先験に依存しません。"
+                    )
+            else:
+                st.caption(
+                    "Ensemble タブを先に実行すると、"
+                    "どのスイッチの NOV を優先すべきか自動推奨されます。"
+                )
 
             _nov_mode = st.radio(
                 "NOV estimation method",
@@ -1908,6 +2004,47 @@ if "sp_result" in st.session_state:
                 if "_ens_results" in st.session_state:
                     _ens_res = st.session_state["_ens_results"]
                     _sw_names = [sw.name for sw in CAMPANULA_SWITCHES]
+
+                    # Cache sensitivity range in session state for other tabs
+                    try:
+                        _sens_cache = _sensitivity_range(_ens_res)
+                        st.session_state["_ens_sens"] = _sens_cache
+                    except Exception:
+                        pass
+
+                    # --- Robust summary at top of Ensemble tab ---
+                    st.markdown("#### ロバスト結論サマリー")
+                    _ens_ca_avg_top = _ensemble_ca_j(_ens_res, min_accepted=1)
+                    _ens_sens_top   = st.session_state.get("_ens_sens", {})
+                    if _ens_ca_avg_top and _ens_sens_top:
+                        _rob_rows = []
+                        for _sw in _sw_names:
+                            _ca_v  = _ens_ca_avg_top.get(_sw, float("nan"))
+                            _s_v   = _ens_sens_top.get(_sw, float("nan"))
+                            _verdict = (
+                                "✅ ON  🔒 Robust"    if _ca_v > 2/3 and _s_v < 0.20 else
+                                "❌ OFF  🔒 Robust"   if _ca_v < 1/3 and _s_v < 0.20 else
+                                "✅ ON  ⚠ 感度大"    if _ca_v > 2/3 else
+                                "❌ OFF  ⚠ 感度大"   if _ca_v < 1/3 else
+                                "〜 不定  ⚠ 要追加観測"
+                            )
+                            _rob_rows.append({
+                                "switch":           _sw,
+                                "ensemble CA_j":    round(_ca_v, 3),
+                                "sensitivity range": round(_s_v, 3),
+                                "verdict":          _verdict,
+                            })
+                        stretch_df(pd.DataFrame(_rob_rows), hide_index=True)
+                        _best_for_inf = _best_config(_ens_res, min_accepted=int(_ens_min_n))
+                        if _best_for_inf:
+                            st.success(
+                                f"**② 推論に使うべき設定**:  "
+                                f"`{_best_for_inf.preset_name}` + `{_best_for_inf.acceptance_rule}`  "
+                                f"(R_RACH={_best_for_inf.R_RACH:.3f},  n={_best_for_inf.n_accepted})  \n"
+                                "サイドバーの θ-prior preset と ε を上記に合わせて "
+                                "**Run RACH inference** を実行してください。"
+                            )
+                    st.divider()
 
                     # --- Comparison table ---
                     st.markdown("#### Configuration comparison")
