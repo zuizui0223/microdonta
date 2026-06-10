@@ -37,7 +37,10 @@ from causal_model.parameter_constraints import (
     predefined_tradeoff_presets,
     sample_all_sets_with_rejection_log,
 )
-from causal_model.parameter_sampling import param_set_to_model_parameters
+from causal_model.parameter_sampling import (
+    param_set_to_model_parameters,
+    env_slopes_from_param_set,
+)
 from causal_model.range_summary import summarize_parameter_ranges
 from causal_model.switch_inference import (
     CAMPANULA_SWITCHES,
@@ -55,6 +58,7 @@ from examples.campanula_izu.observed_data import (
     observed_gradient_patterns,
     observed_pairwise_relations,
     ordered_populations,
+    response_target_patterns,
 )
 from examples.campanula_izu.pattern_evaluator import (
     ABMPopulationProxy,
@@ -63,6 +67,9 @@ from examples.campanula_izu.pattern_evaluator import (
     weighted_pattern_distance,
 )
 from examples.campanula_izu.campanula_phenomenological import (
+    default_campanula_gradient_environments,
+    env_from_isolation,
+    simulate_campanula_gradient,
     simulate_campanula_isolation_gradient,
 )
 
@@ -261,14 +268,62 @@ def _gradient_columns(outputs_by_pop: dict[str, Any], abm: bool = False) -> dict
 # Simulation backends
 # ---------------------------------------------------------------------------
 
-def simulate_structure_proxy(structure, model_params) -> tuple[dict, dict[str, Any]]:
-    """Run proxy simulation on a continuous isolation gradient (no named populations)."""
+def simulate_structure_proxy(
+    structure, model_params, env_slopes: dict | None = None
+) -> tuple[dict, dict[str, Any]]:
+    """Run proxy simulation on the four named gradient populations.
+
+    Uses simulate_campanula_gradient() so outputs are keyed by
+    "mainland" / "Oshima" / "Kozushima" / "Hachijo" — matching
+    the pairwise pattern population names used by evaluate_patterns().
+
+    env_slopes (optional dict with keys ne_isolation_slope,
+    migration_decay_rate, pollinator_loss_slope) is used to rebuild
+    environments with the sampled θ slope values instead of defaults.
+    """
+    import math as _math
+    from attraction_trait_model.environment import Environment
     from causal_model.switches import switches_for_structure as _sfs
+
     _sw = _sfs(structure.name)
-    outputs_dict, synth_env = simulate_campanula_isolation_gradient(
-        _sw, params=model_params, n_points=8,
-    )
+    env_slopes = env_slopes or {}
+    _ne_slope  = float(env_slopes.get("ne_isolation_slope",   0.765))
+    _mig_rate  = float(env_slopes.get("migration_decay_rate", 3.19))
+    _pol_slope = float(env_slopes.get("pollinator_loss_slope", 0.94))
+
+    # Rebuild named environments with sampled θ slopes.
+    # Canonical pollinator frequencies are kept from the literature-derived
+    # defaults; only Ne (via ne_isolation_slope) and migration_rate
+    # (via migration_decay_rate) are updated per draw.
+    _base = default_campanula_gradient_environments()
+    named_envs: dict[str, Environment] = {}
+    for pop_name, base_env in _base.items():
+        iso = base_env.island_distance
+        mig = base_env.migration_rate if iso == 0.0 else (
+            0.15 * _math.exp(-_mig_rate * iso)
+        )
+        named_envs[pop_name] = Environment(
+            name=pop_name,
+            primary_pollinator_frequency=base_env.primary_pollinator_frequency,
+            background_pollinator_frequency=base_env.background_pollinator_frequency,
+            community_pollinator_abundance=base_env.community_pollinator_abundance,
+            migration_rate=mig,
+            island_distance=iso,
+            ne_isolation_slope=_ne_slope,
+        )
+
+    outputs_dict = simulate_campanula_gradient(_sw, params=model_params, environments=named_envs)
     outputs_list = list(outputs_dict.values())
+
+    # Synthetic env table used by gradient_slope pattern evaluator
+    synth_pop_env = {
+        pop_name: {
+            "isolation": env.island_distance,
+            "distance_from_mainland": round(env.island_distance * 290.0, 1),
+            "primary_pollinator_frequency": env.primary_pollinator_frequency,
+        }
+        for pop_name, env in named_envs.items()
+    }
 
     output_rows = [
         {
@@ -288,21 +343,47 @@ def simulate_structure_proxy(structure, model_params) -> tuple[dict, dict[str, A
         "generation_rows": [],
         "outputs_list": outputs_list,
         "outputs_by_pop": outputs_dict,
-        "synth_pop_env": synth_env,
+        "synth_pop_env": synth_pop_env,
     }
 
 
 def simulate_structure_stochastic_abm(
     structure, model_params,
     generations: int, population_size: int, replicates: int, seed: int,
+    env_slopes: dict | None = None,
 ) -> tuple[dict[str, str], dict[str, Any]]:
-    """Run ABM on a continuous isolation gradient (4 points)."""
-    from examples.campanula_izu.campanula_phenomenological import env_from_isolation
-    _n_abm = 4
-    _grad_envs = {
-        f"iso_{i / (_n_abm - 1):.3f}": env_from_isolation(i / (_n_abm - 1))
-        for i in range(_n_abm)
-    }
+    """Run ABM on the four named gradient populations.
+
+    Population names match pairwise pattern targets (mainland, Oshima,
+    Kozushima, Hachijo) so evaluate_patterns() can find them.
+
+    env_slopes is forwarded from run_research_mode so the sampled θ
+    slopes are used when rebuilding environments per draw.
+    """
+    import math as _math
+    from attraction_trait_model.environment import Environment
+
+    env_slopes = env_slopes or {}
+    _ne_slope  = float(env_slopes.get("ne_isolation_slope",   0.765))
+    _mig_rate  = float(env_slopes.get("migration_decay_rate", 3.19))
+
+    # Rebuild named environments with sampled θ slopes
+    _base = default_campanula_gradient_environments()
+    _grad_envs: dict[str, Environment] = {}
+    for pop_name, base_env in _base.items():
+        iso = base_env.island_distance
+        mig = base_env.migration_rate if iso == 0.0 else (
+            0.15 * _math.exp(-_mig_rate * iso)
+        )
+        _grad_envs[pop_name] = Environment(
+            name=pop_name,
+            primary_pollinator_frequency=base_env.primary_pollinator_frequency,
+            background_pollinator_frequency=base_env.background_pollinator_frequency,
+            community_pollinator_abundance=base_env.community_pollinator_abundance,
+            migration_rate=mig,
+            island_distance=iso,
+            ne_isolation_slope=_ne_slope,
+        )
     switches = switches_for_structure(structure.name)
     final_by_population: dict[str, dict[str, float]] = {}
     generation_rows: list[dict[str, Any]] = []
@@ -379,6 +460,7 @@ def run_research_mode(
 
     for param_index, param_set in enumerate(constraint_passed):
         model_params = param_set_to_model_parameters(param_set)
+        _env_slopes = env_slopes_from_param_set(param_set)
         for structure_index, structure in enumerate(structures):
             run_seed = seed + param_index * 10_000 + structure_index * 100
             try:
@@ -387,9 +469,12 @@ def run_research_mode(
                         structure, model_params,
                         generations=generations, population_size=population_size,
                         replicates=replicates, seed=run_seed,
+                        env_slopes=_env_slopes,
                     )
                 else:
-                    rels, payload = simulate_structure_proxy(structure, model_params)
+                    rels, payload = simulate_structure_proxy(
+                        structure, model_params, env_slopes=_env_slopes
+                    )
             except Exception:
                 rels = {}
                 payload = {"final_values": [], "generation_rows": []}
@@ -400,7 +485,10 @@ def run_research_mode(
             # input_context rows (predictor variables) are excluded automatically.
             _outputs_list = payload.get("outputs_list", [])
             _is_abm = payload.get("abm", False)
-            _grad_pats = observed_gradient_only_patterns()
+            # Use observed_target (response_target) patterns as y_obs.
+            # observed_gradient_only_patterns() returns hypothesis_prediction rows
+            # which are skipped by evaluate_patterns() → pattern_total=0 → 0 accepted.
+            _grad_pats = response_target_patterns()
             _synth_env  = payload.get("synth_pop_env", _POP_ENV)
             if _outputs_list and _grad_pats:
                 try:
