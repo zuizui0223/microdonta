@@ -1241,13 +1241,14 @@ if "sp_result" in st.session_state:
             "Try a more relaxed acceptance rule (e.g. relaxed_5_of_6) or more draws."
         )
     else:
-        sp_tab1, sp_tab2, sp_tab3, sp_tab4, sp_tab5, sp_tab6 = st.tabs([
+        sp_tab1, sp_tab2, sp_tab3, sp_tab4, sp_tab5, sp_tab6, sp_tab7 = st.tabs([
             "CA_j — causal admissibility",
             "D · R — degeneracy & resolvability",
             "OC_k — observation contribution",
             "NOV — next-observation value",
             "Parameter space A_ε",
             "Downloads",
+            "Ensemble — sensitivity",
         ])
 
         with sp_tab1:
@@ -1791,5 +1792,209 @@ if "sp_result" in st.session_state:
                         "rach_summary.csv",
                         _df_rach_summary.to_csv(index=False).encode("utf-8"),
                         f"{_sp_tag}_rach_summary.csv", "text/csv",
+                    )
+
+        # ---- sp_tab7: Ensemble — sensitivity analysis -----------------------
+        with sp_tab7:
+            st.markdown("### Ensemble sensitivity analysis")
+            st.caption(
+                "Run ABC inference across multiple (θ-prior preset, ε acceptance rule) "
+                "combinations.  Quantifies how robust CA_j and R_RACH are to the choice "
+                "of prior and ε.  "
+                "**Ensemble CA_j** = n_accepted-weighted average across all configurations.  "
+                "**Sensitivity range** = max − min CA_j per switch (near-zero → robust)."
+            )
+
+            try:
+                from causal_model.ensemble import (
+                    run_ensemble as _run_ensemble,
+                    best_config as _best_config,
+                    ensemble_ca_j as _ensemble_ca_j,
+                    sensitivity_range as _sensitivity_range,
+                )
+                from causal_model.switch_inference import GRADIENT_THRESH_MAP as _THRESH_MAP
+                from causal_model.parameter_sampling import predefined_tradeoff_presets as _presets_fn
+                _ensemble_ok = True
+                _ensemble_err = ""
+            except Exception as _e:
+                _ensemble_ok = False
+                _ensemble_err = str(_e)
+
+            if not _ensemble_ok:
+                st.error(f"Ensemble module load failed: {_ensemble_err}")
+            else:
+                _all_presets = list(_presets_fn().keys())
+                _all_rules   = list(_THRESH_MAP.keys())
+
+                _ens_col1, _ens_col2 = st.columns(2)
+                with _ens_col1:
+                    _ens_presets = st.multiselect(
+                        "θ-prior presets",
+                        options=_all_presets,
+                        default=_all_presets,
+                        help="literature_grounded = Izu-calibrated prior. broad_prior = wide sensitivity prior.",
+                    )
+                with _ens_col2:
+                    _ens_rules = st.multiselect(
+                        "ABC acceptance rules (ε)",
+                        options=_all_rules,
+                        default=["weighted_lax", "relaxed_0.83", "relaxed_0.67"],
+                        help="Each rule maps to a weighted_match_rate threshold.",
+                    )
+
+                _ens_col3, _ens_col4, _ens_col5 = st.columns(3)
+                with _ens_col3:
+                    _ens_backend = st.radio(
+                        "Backend",
+                        ["proxy (fast)", "abm (slow)"],
+                        index=0,
+                        horizontal=True,
+                        help="proxy ≈ 1–3 s per config. abm ≈ 30–120 s per config.",
+                    )
+                    _ens_backend_key = "proxy" if _ens_backend.startswith("proxy") else "abm"
+                with _ens_col4:
+                    _ens_n = st.slider(
+                        "Draws per config",
+                        min_value=50, max_value=500,
+                        value=200 if _ens_backend_key == "proxy" else 100,
+                        step=50,
+                    )
+                with _ens_col5:
+                    _ens_min_n = st.number_input(
+                        "Min accepted (for best-config selection)",
+                        min_value=5, max_value=100, value=20, step=5,
+                    )
+
+                _ens_seed = st.number_input("Seed", value=42, step=1, key="ens_seed")
+
+                if st.button("▶ Run Ensemble", type="primary"):
+                    if not _ens_presets or not _ens_rules:
+                        st.warning("Select at least one preset and one acceptance rule.")
+                    else:
+                        _n_configs = len(_ens_presets) * len(_ens_rules)
+                        _ens_progress = st.progress(0.0, text="Starting ensemble…")
+                        _ens_status   = st.empty()
+
+                        def _ens_cb(done, total, preset, rule):
+                            _ens_progress.progress(
+                                done / max(total, 1),
+                                text=f"{preset} / {rule}  ({done}/{total})",
+                            )
+                            _ens_status.caption(f"Running: {preset} + {rule}")
+
+                        from examples.campanula_izu.observed_data import (
+                            load_observed_patterns as _load_obs2,
+                            load_pattern_weights   as _load_pw2,
+                        )
+                        _obs2 = _load_obs2()
+                        _pw2  = _load_pw2()
+
+                        with st.spinner(f"Running {_n_configs} configurations…"):
+                            _ens_results = _run_ensemble(
+                                presets=_ens_presets,
+                                acceptance_rules=_ens_rules,
+                                switches=CAMPANULA_SWITCHES,
+                                n_attempts=_ens_n,
+                                seed=int(_ens_seed),
+                                backend=_ens_backend_key,
+                                observed_rels=_obs2,
+                                pattern_weights=_pw2,
+                                progress_callback=_ens_cb,
+                            )
+                        _ens_progress.progress(1.0, text="Done")
+                        _ens_status.empty()
+                        st.session_state["_ens_results"] = _ens_results
+
+                if "_ens_results" in st.session_state:
+                    _ens_res = st.session_state["_ens_results"]
+                    _sw_names = [sw.name for sw in CAMPANULA_SWITCHES]
+
+                    # --- Comparison table ---
+                    st.markdown("#### Configuration comparison")
+                    _best = _best_config(_ens_res, min_accepted=int(_ens_min_n))
+                    _ens_rows = []
+                    for r in _ens_res:
+                        row = {
+                            "preset":          r.preset_name,
+                            "rule":            r.acceptance_rule,
+                            "ε":               r.threshold,
+                            "n_accepted":      r.n_accepted,
+                            "n_evaluated":     r.n_evaluated,
+                            "D_RACH":          r.D_RACH,
+                            "R_RACH":          r.R_RACH,
+                        }
+                        for sw in _sw_names:
+                            row[f"CA_{sw[:12]}"] = r.ca_j.get(sw, float("nan"))
+                        row["_is_best"] = (r is _best)
+                        _ens_rows.append(row)
+
+                    _df_ens = pd.DataFrame(_ens_rows)
+
+                    def _highlight_best(row):
+                        if row.get("_is_best"):
+                            return ["background-color: #d4edda"] * len(row)
+                        return [""] * len(row)
+
+                    _df_display = _df_ens.drop(columns=["_is_best"])
+                    st.dataframe(
+                        _df_display.style.apply(
+                            lambda row: ["background-color: #d4edda" if _ens_rows[row.name]["_is_best"] else "" for _ in row],
+                            axis=1,
+                        ),
+                        use_container_width=True,
+                    )
+                    if _best:
+                        st.success(
+                            f"**Best config** (highest R_RACH with n_accepted ≥ {int(_ens_min_n)}):  "
+                            f"`{_best.preset_name}` + `{_best.acceptance_rule}`  →  "
+                            f"R_RACH = {_best.R_RACH:.3f},  n_accepted = {_best.n_accepted}"
+                        )
+
+                    st.divider()
+
+                    # --- Ensemble CA_j bar chart ---
+                    st.markdown("#### Ensemble CA_j  (n_accepted-weighted average)")
+                    _ca_avg = _ensemble_ca_j(_ens_res, min_accepted=1)
+                    if _ca_avg:
+                        _df_ca_avg = pd.DataFrame(
+                            [{"switch": k, "ensemble CA_j": v} for k, v in _ca_avg.items()]
+                        )
+                        st.bar_chart(_df_ca_avg.set_index("switch"), width="stretch")
+                        st.caption(
+                            "Grey line at 0.5 = prior (no information). "
+                            "Values > 0.5 = switch likely ON. Values < 0.5 = switch likely OFF."
+                        )
+
+                    st.divider()
+
+                    # --- Sensitivity range ---
+                    st.markdown("#### Sensitivity range  (max − min CA_j across configs)")
+                    _sens = _sensitivity_range(_ens_res)
+                    if _sens:
+                        _df_sens = pd.DataFrame(
+                            [{"switch": k, "sensitivity_range": v} for k, v in _sens.items()]
+                        )
+                        st.bar_chart(_df_sens.set_index("switch"), width="stretch")
+                        st.caption(
+                            "Near-zero → result is robust to prior/ε choice.  "
+                            "Large range → result is prior/ε sensitive; interpret with caution."
+                        )
+
+                    # --- CA_j per switch across configs (line chart) ---
+                    st.markdown("#### CA_j per config per switch")
+                    _df_ca_lines = pd.DataFrame([
+                        {"config": f"{r.preset_name}/{r.acceptance_rule}", **r.ca_j}
+                        for r in _ens_res
+                    ]).set_index("config")
+                    st.line_chart(_df_ca_lines, width="stretch")
+
+                    # --- Download ---
+                    st.divider()
+                    _df_ens_dl = _df_display.copy()
+                    st.download_button(
+                        "⬇ Download ensemble_comparison.csv",
+                        _df_ens_dl.to_csv(index=False).encode("utf-8"),
+                        "ensemble_comparison.csv",
+                        "text/csv",
                     )
 
