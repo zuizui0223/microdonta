@@ -4,7 +4,7 @@ This directory will contain the first worked example for the constraint-aware pa
 
 ## Biological question
 
-Under what conditions does the nectar guide decline or disappear in island populations of *Campanula microdonta* / シマホタルブクロ? Older literature may refer to the broader *C. punctata* complex.
+Under what conditions does the nectar guide decline or disappear in island populations of *Campanula microdonta* / シマホタルブクロ? This is the Izu Islands *Campanula microdonta* system; older literature may refer to the broader *C. punctata* complex.
 
 ## Study gradient
 
@@ -66,6 +66,21 @@ H3: Pollinator loss + inbreeding depression
 H4: Pollinator loss + Ne decline / drift
 H5: Pollinator loss + small-pollinator adaptation + selfing syndrome
 ```
+
+## RACH observation roles
+
+The RACH analysis separates fixed context from independent response targets:
+
+```text
+x_obs: island distance, island area, pollinator assemblage / Bombus availability
+y_obs: Inoue-series gradient targets only
+       - flower_size decreases with isolation (Amano & Inoue 1986)
+       - selfing_rate increases / outcrossing declines with isolation (Inoue 1990)
+```
+
+Herkogamy is not an Inoue-series measured target here. It is retained as a
+theoretical delayed-selfing / dichogamy mechanism prediction and excluded from
+ABC acceptance until direct field validation exists.
 
 ## First validation target
 

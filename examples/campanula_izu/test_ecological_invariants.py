@@ -2,11 +2,11 @@
 
 IMPORTANT — two distinct pattern sets are used here:
 
-  response_target   : 5 field_derived pairwise patterns (Oshima vs Hachijo,
-                      Inoue 1986).  These are the ONLY valid y_obs for RACH
-                      inference.  Used in ABC acceptance.
+  observed_target   : field_derived Inoue-series gradient patterns.  These are
+                      the ONLY valid y_obs for RACH inference.  Used in ABC
+                      acceptance.
 
-  hypothesis_prediction: 6 gradient/rank patterns expected from hypotheses
+  hypothesis_prediction: gradient/rank patterns expected from hypotheses
                       but NOT directly measured.  Excluded from ABC to prevent
                       circular inference (using hypothesis predictions to test
                       hypotheses).  USED IN THESE TESTS for model mechanics
@@ -74,16 +74,16 @@ from examples.campanula_izu.campanula_phenomenological import simulate_campanula
 def _gradient_patterns_for_mechanics():
     """Return gradient/rank patterns for MODEL MECHANICS tests.
 
-    These are hypothesis_prediction patterns (excluded from ABC to prevent
-    circular inference), re-labelled as response_target so evaluate_patterns()
-    will process them.  This is valid here because we are testing MODEL
-    BEHAVIOR (can the simulation produce the expected gradients?) not ABC
-    inference validity.  The role override is local to this test module.
+    These are observed_target gradients plus hypothesis_prediction patterns,
+    re-labelled as response_target so evaluate_patterns() will process them.
+    This is valid here because we are testing MODEL BEHAVIOR (can the
+    simulation produce the expected gradients?) not ABC inference validity.
+    The role override is local to this test module.
     """
     all_rows = load_observed_pattern_table()
     rows = [
         row for row in all_rows
-        if row.get("role") == "hypothesis_prediction"
+        if row.get("role") in {"hypothesis_prediction", "observed_target"}
         and row.get("type") in ("gradient_slope", "rank_order")
     ]
     # Override role so evaluate_patterns() processes them (role guard skips
@@ -236,9 +236,9 @@ def test_input_context_excluded_from_abc():
     - diagnostic_only: syndrome/mechanism definition (circular)
     - hypothesis_prediction: gradient expected from hypothesis, not field data
 
-    Only observed_target rows enter ABC. The field-derived endpoints are
-    flower_size (Amano & Inoue 1986) and selfing_rate (Inoue 1990), plus a
-    down-weighted genetic Fis row. nectar_guide is planned_observation (own
+    Only observed_target rows enter ABC. The field-derived y_obs rows are
+    Inoue-series gradients: flower_size (Amano & Inoue 1986) and
+    selfing_rate/outcrossing (Inoue 1990). nectar_guide is planned own
     field data, not yet collected) and herkogamy is diagnostic_only (latent
     dichogamy in this protandrous species) — both excluded from ABC.
 
@@ -262,12 +262,11 @@ def test_input_context_excluded_from_abc():
     )
 
     # b) evaluate_patterns() must skip all excluded-role rows via the role guard.
-    #    Use hypothesis_prediction gradient rows as base (they now exist instead
-    #    of gradient response_target rows) plus a synthetic input_context row.
+    #    Use gradient mechanics rows plus a synthetic input_context row.
     sw = PathwaySwitches()
     outputs, synth_env = simulate_campanula_isolation_gradient(sw, n_points=8)
 
-    gradient_hp = _gradient_patterns_for_mechanics()  # hypothesis_prediction rows
+    gradient_hp = _gradient_patterns_for_mechanics()
     # Synthetic input_context row with enormous weight — must NOT change rate
     synthetic_input_ctx = {
         "pattern": "synthetic_predictor",
@@ -324,7 +323,16 @@ def test_observed_targets_are_independent_provenance():
     }
     assert set(target_vars) == {"selfing_rate", "flower_size"}, (
         "Current empirical y_obs should be restricted to Inoue-series "
-        f"independent endpoints selfing_rate and flower_size, got {sorted(target_vars)}"
+        f"independent gradients selfing_rate and flower_size, got {sorted(target_vars)}"
+    )
+    target_patterns = {
+        r.get("pattern")
+        for r in rows
+        if r.get("role") in ABC_TARGET_ROLES
+    }
+    assert target_patterns == {"selfing_distance", "flower_size_distance"}, (
+        "Current empirical y_obs should be encoded as Inoue-series gradient "
+        f"targets, got {sorted(target_patterns)}"
     )
 
     forbidden = {

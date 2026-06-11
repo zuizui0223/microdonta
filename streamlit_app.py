@@ -5,7 +5,7 @@ Workflow
 1. Constrain  -- ecological constraint grammar rejects implausible latent parameter combos
 2. Sample     -- random draws from ecology-principled trade-off priors
 3. Simulate   -- stochastic ABM: the canonical RACH f(θ,s) for this system
-4. Filter     -- ABC rejection against observable gradient pattern targets (response_target only)
+4. Filter     -- ABC rejection against independent Inoue-series gradient targets
 5. Retain     -- restricted admissible causal hypotheses + compatible parameter ranges
 6. Infer switches -- PathwaySwitch posterior: which biological mechanisms are active?
 
@@ -127,7 +127,7 @@ WORKFLOW_STEPS = [
     {"Step": "1. Constrain",   "RACH object": "G(θ)",      "Meaning": "Ecological constraint grammar — biological feasibility constraints on θ. Implausible parameter combinations are rejected before simulation."},
     {"Step": "2. Sample",      "RACH object": "θ ~ prior",  "Meaning": "Draw latent parameters θ (benefit/cost trade-offs, env slopes) from ecology-principled priors. Also sample causal switch states s ∈ {0,1}^K."},
     {"Step": "3. Simulate",    "RACH object": "f(x_obs;θ,s)", "Meaning": "Run generative dynamics with fixed empirical context x_obs (island distance, Bombus presence) and sampled (θ,s). Stochastic ABM is the canonical f for this example."},
-    {"Step": "4. Accept",      "RACH object": "d ≤ ε",      "Meaning": "Accept if simulated patterns P_sim match independent observations y_obs (5 field-derived pairwise patterns, Inoue 1986) within tolerance ε. hypothesis_prediction and input_context rows excluded."},
+    {"Step": "4. Accept",      "RACH object": "d ≤ ε",      "Meaning": "Accept if simulated patterns P_sim match independent y_obs gradients from the Inoue series within tolerance ε. hypothesis_prediction and input_context rows excluded."},
     {"Step": "5. A_ε",         "RACH object": "A_ε(y_obs,x_obs)", "Meaning": "The admissible causal region: all (θ,s) that satisfy G(θ)=1 and d≤ε. This is the core RACH inferential object."},
     {"Step": "6. Quantify",    "RACH object": "CA_j, D, R, OC_k, NOV", "Meaning": "Compute the 5 core RACH quantities from A_ε: causal admissibility, degeneracy, resolvability, observation contribution, next-observation value."},
 ]
@@ -470,12 +470,12 @@ def run_research_mode(
                 payload = {"final_values": [], "generation_rows": []}
 
             # --- Primary gradient pattern targets ---
-            # Acceptance is driven by response_target gradient patterns
+            # Acceptance is driven by observed_target gradient patterns
             # (gradient_slope + rank_order across the isolation axis).
             # input_context rows (predictor variables) are excluded automatically.
             _outputs_list = payload.get("outputs_list", [])
             _is_abm = payload.get("abm", False)
-            # Use observed_target (response_target) patterns as y_obs.
+            # Use observed_target patterns as y_obs.
             # observed_gradient_only_patterns() returns hypothesis_prediction rows
             # which are skipped by evaluate_patterns() → pattern_total=0 → 0 accepted.
             _grad_pats = response_target_patterns()
@@ -736,7 +736,7 @@ A_ε(y_obs, x_obs) = { (θ, s) ∈ Θ × S :  G(θ)=1,  d(P_sim(f(x_obs; θ, s))
 | s | Causal switch state {0,1}^K | S1 guide→Bombus, S2 selfing syndrome, S3 common cause, S5 small pollinator |
 | G(θ) | Constraint grammar | biological feasibility constraints C1–C5 |
 | f | Generative dynamics | Wright-Fisher drift + selection + stochastic ABM |
-| y_obs | Independent observations | flower_size (Inoue 1986) + selfing_rate/outcrossing rate (Inoue 1990). Fis is excluded until independently source-confirmed; nectar_guide is planned own-field data; herkogamy is latent dichogamy. |
+| y_obs | Independent observations | Inoue-series gradients: flower_size decreases with isolation (Amano & Inoue 1986) + selfing/outcrossing shifts with isolation (Inoue 1990). Fis is excluded until independently source-confirmed; nectar_guide is planned own-field data; herkogamy is latent dichogamy. |
 
 **Five core RACH quantities:**
 

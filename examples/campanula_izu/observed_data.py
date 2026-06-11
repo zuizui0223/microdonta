@@ -33,11 +33,13 @@ EXCLUDED_ROLES = {
 
 _FALLBACK_PAIRWISE: list[dict] = [
     {"pattern": "nectar_guide_pairwise", "type": "pairwise_relation", "variable": "nectar_guide", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "future_field_validation", "notes": "fallback; planned own field data, not an Inoue measurement; NOV candidate for S1", "role": "excluded_from_ABC"},
-    {"pattern": "selfing_rate_pairwise", "type": "pairwise_relation", "variable": "selfing_rate", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "1.0", "source": "field/Inoue1990", "notes": "fallback", "role": "observed_target"},
+    {"pattern": "selfing_rate_pairwise", "type": "pairwise_relation", "variable": "selfing_rate", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "1.0", "source": "field/Inoue1990", "notes": "fallback; legacy diagnostic projection of the Inoue-series gradient", "role": "diagnostic_only", "epistemic_status": "field_derived"},
     {"pattern": "herkogamy_pairwise", "type": "pairwise_relation", "variable": "herkogamy", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "theoretical", "notes": "fallback; latent dichogamy/delayed-selfing, not an Inoue field measurement", "role": "excluded_from_ABC"},
-    {"pattern": "flower_size_pairwise", "type": "pairwise_relation", "variable": "flower_size", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "field/Inoue1986", "notes": "fallback", "role": "observed_target"},
+    {"pattern": "flower_size_pairwise", "type": "pairwise_relation", "variable": "flower_size", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "field/Inoue1986", "notes": "fallback; legacy diagnostic projection of the Inoue-series gradient", "role": "diagnostic_only", "epistemic_status": "field_derived"},
     {"pattern": "Fis_pairwise", "type": "pairwise_relation", "variable": "Fis", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "0.5", "source": "genetic_survey", "notes": "fallback; exclude until independent genetic estimate is source-confirmed because Fis_proxy is partly generated from selfing_rate", "role": "excluded_from_ABC", "epistemic_status": "pending_independent_genetic_validation"},
     {"pattern": "Bombus_frequency_pairwise", "type": "pairwise_relation", "variable": "primary_pollinator_frequency", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "Inoue1986", "notes": "fallback; pollinator assemblage is excluded input context", "role": "input_context"},
+    {"pattern": "selfing_distance", "type": "gradient_slope", "variable": "selfing_rate", "left_population": "", "right_population": "", "populations": "", "predictor": "distance_from_mainland", "expected_direction": "positive", "relation": "", "weight": "1.0", "source": "field/Inoue1990", "notes": "fallback; Inoue-series breeding-system gradient target", "role": "observed_target", "epistemic_status": "field_derived"},
+    {"pattern": "flower_size_distance", "type": "gradient_slope", "variable": "flower_size", "left_population": "", "right_population": "", "populations": "", "predictor": "distance_from_mainland", "expected_direction": "negative", "relation": "", "weight": "0.8", "source": "field/Inoue1986", "notes": "fallback; Amano & Inoue morphology gradient target", "role": "observed_target", "epistemic_status": "field_derived"},
 ]
 
 _CONTEXT_NUMERIC_COLS = (
@@ -194,7 +196,12 @@ def observed_gradient_patterns(path: str | Path | None = None) -> list[dict]:
 
 
 def observed_pairwise_relations(path: str | Path | None = None) -> dict[str, str]:
-    """Return observed_target pairwise patterns as {variable: relation}."""
+    """Return observed_target pairwise patterns as {variable: relation}.
+
+    The current Campanula y_obs is gradient-based, so this legacy helper may
+    return an empty mapping. Inference paths evaluate response_target_patterns()
+    directly and are not limited to pairwise rows.
+    """
     return {
         row["variable"]: row["relation"]
         for row in observed_target_patterns(path)
@@ -208,7 +215,11 @@ def load_observed_patterns(path: str | Path | None = None) -> dict[str, str]:
 
 
 def load_pattern_weights(path: str | Path | None = None) -> dict[str, float]:
-    """Return {variable: weight} for observed_target pairwise rows."""
+    """Return {variable: weight} for observed_target pairwise rows.
+
+    Legacy helper retained for call signatures; gradient-target inference reads
+    weights from response_target_patterns().
+    """
     out: dict[str, float] = {}
     for row in observed_target_patterns(path):
         if row.get("type", "pairwise_relation") == "pairwise_relation":

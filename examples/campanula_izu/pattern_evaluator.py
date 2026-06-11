@@ -30,7 +30,8 @@ Role filtering (Issue #7)
 ``role == "input_context"``.  Predictor variables (e.g.
 ``primary_pollinator_frequency``) are injected from ecological_context, not
 simulated, so including them in the acceptance criterion would be circular.
-Only ``role == "response_target"`` rows count toward ``weighted_match_rate``.
+Only ``role == "observed_target"`` rows count toward ``weighted_match_rate``;
+``response_target`` is accepted as a legacy alias.
 
 Pass ``response_target_patterns()`` from ``observed_data`` to ensure only
 the correct rows reach this function; the role guard here is a defensive
@@ -39,7 +40,7 @@ second check.
 Entry points
 ------------
 evaluate_patterns(simulated_outputs, observed_rows, env_table)
-    Evaluate all response_target pattern rows. Returns EvaluationResult.
+    Evaluate all observed_target pattern rows. Returns EvaluationResult.
 
 weighted_pattern_distance(eval_result)
     Compute ABC distance in [0, 1] from EvaluationResult.
