@@ -1409,8 +1409,9 @@ elif _step_idx == 3:
         _rs           = _rach_summary_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
         _rach_metrics = _rach_metrics_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
         _dr_ok = True
-    except Exception as _dr_err:
+    except Exception as _e:
         _dr_ok = False
+        _dr_err = str(_e)
 
     st.markdown("### D = H(S | A_ε) · R = 1 − D/K")
     st.info(
@@ -1479,8 +1480,9 @@ elif _step_idx == 4:
             st.session_state.get("sp_settings", {}).get("acceptance_rule", acceptance_rule), 1.0)
         _oc_results = _oc_fn(_oc_source, CAMPANULA_SWITCHES, threshold=_thresh_sp2)
         _oc_ok = True
-    except Exception as _oc_err:
+    except Exception as _e:
         _oc_ok = False
+        _oc_err = str(_e)
 
     st.markdown("### OC_k = R(O) − R(O \\ {k})")
     st.caption("LOO: パターン k を除いたときの R_RACH の低下量。OC_k > 0 → k は resolvability に貢献。")
@@ -1549,8 +1551,9 @@ elif _step_idx == 5:
         _nov_results = _nov_fn(sp.accepted_rows, CAMPANULA_SWITCHES,
                                sensitive_switches=_sensitive_sw_names)
         _nov_ok = True
-    except Exception as _nov_err:
+    except Exception as _e:
         _nov_ok = False
+        _nov_err = str(_e)
 
     _nov_mode = st.radio(
         "NOV estimation method", ["Heuristic (instant)", "Simulation (accurate)"],
