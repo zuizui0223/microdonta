@@ -185,17 +185,12 @@ def test_switch_posterior_result_has_evaluated_rows():
 def test_evaluated_rows_superset_of_accepted():
     """A short proxy inference run: evaluated_rows must contain accepted_rows."""
     from causal_model.switch_inference import run_switch_posterior_inference
-    from examples.campanula_izu.observed_data import load_observed_patterns, load_pattern_weights
 
-    obs = load_observed_patterns()
-    pw  = load_pattern_weights()
     result = run_switch_posterior_inference(
         preset_name="literature_grounded",
         n_attempts=20,
         acceptance_rule="weighted_lax",
         seed=99,
-        observed_rels=obs,
-        pattern_weights=pw,
     )
     assert len(result.evaluated_rows) >= len(result.accepted_rows), (
         f"evaluated_rows ({len(result.evaluated_rows)}) must be >= "

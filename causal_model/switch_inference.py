@@ -470,8 +470,6 @@ def run_switch_posterior_inference(
     n_attempts: int,
     acceptance_rule: str,
     seed: int,
-    observed_rels: dict[str, str],   # kept for API compat; not used for gradient eval
-    pattern_weights: dict[str, float],  # kept for API compat
     switches: Sequence[BiologicalSwitch] = CAMPANULA_SWITCHES,
     progress_callback=None,  # callable(done, total, status_text) or None
     extra_pattern_rows: list[dict] | None = None,  # additional y_obs rows for NOV sim
@@ -506,9 +504,6 @@ def run_switch_posterior_inference(
         ABC acceptance rule name; mapped to a weighted_match_rate threshold.
     seed:
         RNG seed for reproducibility.
-    observed_rels / pattern_weights:
-        Kept for backward-compatible call signature; gradient evaluation uses
-        observed_gradient_only_patterns() and load_ecological_context() directly.
     switches:
         Switch definitions.  Defaults to CAMPANULA_SWITCHES.
     """
@@ -730,8 +725,6 @@ def run_switch_posterior_inference_abm(
     n_attempts: int,
     acceptance_rule: str,
     seed: int,
-    observed_rels: dict[str, str],
-    pattern_weights: dict[str, float],
     generations: int = 40,
     population_size: int = 150,
     replicates: int = 3,
@@ -773,10 +766,6 @@ def run_switch_posterior_inference_abm(
         ABC acceptance rule; passed to compute_run_distances.
     seed:
         RNG seed for reproducibility.
-    observed_rels:
-        {variable_name: relation_string} from empirical data.
-    pattern_weights:
-        {variable_name: weight} for weighted ABC distance.
     generations:
         Number of evolutionary generations per ABM run. 30-50 is typical.
     population_size:

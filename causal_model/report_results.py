@@ -356,8 +356,9 @@ def ensemble_summary_md(ens: dict) -> str:
             f"{'yes' if r.is_robust else 'no'} | {r.call} |"
         )
     lines += ["",
-              f"- Robust switches: {', '.join(ens['robust_switches']) or '(none)'}",
-              f"- Sensitive (prior/ε) switches: "
+              f"- Robust conclusions (stable AND resolved): "
+              f"{', '.join(ens['robust_switches']) or '(none)'}",
+              f"- Needs more data (unresolved or prior/ε-sensitive): "
               f"{', '.join(ens['sensitive_switches']) or '(none)'}",
               ""]
     return "\n".join(lines) + "\n"

@@ -50,9 +50,6 @@ from causal_model.switch_inference import (
 from causal_model.switches import switches_for_structure
 from examples.campanula_izu.causal_structures import campanula_causal_structures
 from examples.campanula_izu.observed_data import (
-    load_observed_pattern_table,
-    load_observed_patterns,
-    load_pattern_weights,
     load_population_env,
     observed_gradient_only_patterns,
     observed_gradient_patterns,
@@ -82,21 +79,10 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 # Observed patterns
 # ---------------------------------------------------------------------------
-try:
-    _OBS_TABLE = load_observed_pattern_table()
-    OBSERVED_RELS = load_observed_patterns()
-    PATTERN_WEIGHTS = load_pattern_weights()
-except Exception:
-    OBSERVED_RELS = {
-        "selfing_rate": "Oshima < Hachijo",
-        "flower_size": "Oshima > Hachijo",
-    }
-    PATTERN_WEIGHTS = {k: 1.0 for k in OBSERVED_RELS}
-    _OBS_TABLE = [
-        {"pattern": k, "relation": v, "weight": "1.0",
-         "source": "hard-coded fallback", "notes": ""}
-        for k, v in OBSERVED_RELS.items()
-    ]
+# y_obs is the role-filtered observed_target set, loaded internally by the
+# inference functions (response_target_patterns()). The app no longer threads a
+# separate observed_rels/pattern_weights dict into inference — those arguments
+# were ignored and have been removed.
 
 # ---------------------------------------------------------------------------
 # Gradient / multi-population data
@@ -1048,17 +1034,12 @@ if _step_idx == 0:
                                        text=f"{preset} / {rule}  ({done}/{total})")
                     _ens_status.caption(f"Running: {preset} + {rule}")
 
-                from examples.campanula_izu.observed_data import (
-                    load_observed_patterns as _lop,
-                    load_pattern_weights   as _lpw,
-                )
                 with st.spinner(f"{_n_configs} configs 実行中…"):
                     _ens_results = _run_ensemble(
                         presets=_ens_presets, acceptance_rules=_ens_rules,
                         switches=CAMPANULA_SWITCHES,
                         n_attempts=_ens_n, seed=int(_ens_seed),
                         backend=_ens_backend_key,
-                        observed_rels=_lop(), pattern_weights=_lpw(),
                         progress_callback=_ens_cb,
                     )
                 _ens_prog.progress(1.0, text="Done ✓")
@@ -1082,15 +1063,27 @@ if _step_idx == 0:
             _rob_verdicts = _classify_robustness(_ens_res)
             st.session_state["_ens_robustness"] = _rob_verdicts
             if _rob_verdicts:
-                _icon = {"ON": "✅ ON", "OFF": "❌ OFF", "indeterminate": "〜 不定"}
+                def _badge(rv):
+                    if rv.is_robust:
+                        return "🔒 robust 結論"
+                    if not rv.is_resolved:
+                        return "❓ 未解決（要追加観測）"
+                    return "⚠ 先験/ε 感度大"
                 _rob_rows = [{
                     "switch": _rv.switch,
                     "ensemble CA_j": _rv.mean_ca_j,
                     "sensitivity": _rv.sensitivity_range,
-                    "verdict": f"{_icon.get(_rv.call, _rv.call)}  "
-                               + ("🔒 Robust" if _rv.is_robust else "⚠ 先験/ε 感度大"),
+                    "call": _rv.call,
+                    "verdict": _badge(_rv),
                 } for _rv in _rob_verdicts]
                 stretch_df(pd.DataFrame(_rob_rows), hide_index=True)
+                _n_robust = sum(1 for _rv in _rob_verdicts if _rv.is_robust)
+                if _n_robust == 0:
+                    st.warning(
+                        "robust な結論ゼロ。全 switch が未解決 or 先験依存 = "
+                        "現状の観測では因果が分離できていません（R_RACH も低いはず）。"
+                        "⑥ NOV で次に測るべき観測を確認してください。"
+                    )
 
             _sel_crit = st.session_state.get("_ens_sel_criteria", {})
             _sel = _select_best(
@@ -1210,8 +1203,6 @@ elif _step_idx == 1:
             n_attempts=int(st.session_state.get("sp_n_abm", 200)),
             acceptance_rule=acceptance_rule,
             seed=int(seed) + 1,
-            observed_rels=OBSERVED_RELS,
-            pattern_weights=PATTERN_WEIGHTS,
             generations=st.session_state.get("sp_gen", 30),
             population_size=st.session_state.get("sp_pop", 100),
             replicates=st.session_state.get("sp_rep", 3),
@@ -1553,7 +1544,6 @@ elif _step_idx == 5:
 
             with st.spinner("NOV simulation 実行中…"):
                 _nov_sim = next_observation_value_simulation(
-                    observed_rels=OBSERVED_RELS, pattern_weights=PATTERN_WEIGHTS,
                     switches=CAMPANULA_SWITCHES, n_attempts=_nov_n2,
                     preset_name=preset_name, acceptance_rule=acceptance_rule,
                     seed=int(_nov_seed2), threshold=_thresh_sp3,

@@ -1219,8 +1219,6 @@ def next_observation_value(
 
 
 def next_observation_value_simulation(
-    observed_rels: list[dict],
-    pattern_weights: dict,
     switches,        # Sequence[BiologicalSwitch]
     candidates: list[CandidateObservation] | None = None,
     n_attempts: int = 200,
@@ -1239,7 +1237,7 @@ def next_observation_value_simulation(
     For each candidate observation q and each of its possible empirical
     outcomes v (defined in CandidateObservation.outcomes), this function:
 
-    1. Augments observed_rels with the outcome's extra_pattern_rows.
+    1. Augments the observed_target y_obs with the outcome's extra_pattern_rows.
     2. Re-runs ABC inference with n_attempts draws.
     3. Computes R from the resulting accepted sample.
     4. Weights by prior_probability of the outcome.
@@ -1251,10 +1249,6 @@ def next_observation_value_simulation(
 
     Parameters
     ----------
-    observed_rels:
-        Current y_obs pattern rows (list[dict] from observed_patterns.csv).
-    pattern_weights:
-        Pattern weight dict keyed by pattern name.
     switches:
         Sequence of BiologicalSwitch definitions.
     candidates:
@@ -1309,8 +1303,6 @@ def next_observation_value_simulation(
             n_attempts=n_attempts,
             acceptance_rule=acceptance_rule,
             seed=seed,
-            observed_rels=observed_rels,
-            pattern_weights=pattern_weights,
             threshold=threshold,
         )
         R_current = causal_resolvability(_bl.accepted_rows, switches)
@@ -1344,8 +1336,6 @@ def next_observation_value_simulation(
                 n_attempts=n_attempts,
                 acceptance_rule=acceptance_rule,
                 seed=_run_seed,
-                observed_rels=observed_rels,
-                pattern_weights=pattern_weights,
                 threshold=threshold,
                 extra_pattern_rows=outcome.extra_pattern_rows,
             )

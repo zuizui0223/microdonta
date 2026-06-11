@@ -51,21 +51,30 @@ CA_OFF_THRESHOLD      = 1 / 3  # mean CA_j <= this => switch called OFF
 
 @dataclass
 class SwitchRobustness:
-    """Robust/sensitive verdict for one switch across the ensemble.
+    """Robustness verdict for one switch across the ensemble.
 
-    A switch is *robust* when its CA_j barely moves as the prior preset and ABC
-    ε threshold are varied across the ensemble; it is *sensitive* (prior/epsilon
-    dependent) when CA_j swings by at least ``SENSITIVITY_THRESHOLD``.  Only
-    robust switches should be treated as reliable inference targets; sensitive
-    switches are flagged as needing additional observations (and become the NOV
-    targets — see ``next_observation_value(..., sensitive_switches=...)``).
+    Two independent axes:
+
+    * ``is_stable``   — CA_j barely moves as the prior preset and ABC ε threshold
+      are varied (``sensitivity_range < SENSITIVITY_THRESHOLD``).
+    * ``is_resolved`` — the switch has a definite ON/OFF call (CA_j away from 0.5).
+
+    A **robust conclusion** (``is_robust``) requires BOTH: stable *and* resolved.
+    A switch that is stable but sits at CA_j ≈ 0.5 is *stably uninformative*, NOT
+    a robust conclusion — low sensitivity_range there reflects weak identification
+    (the data barely constrain the switch), not a trustworthy answer. Only
+    ``is_robust`` switches are reliable inference targets; every other switch
+    (unresolved or prior/ε-sensitive) needs additional observations and becomes a
+    NOV target — see ``next_observation_value(..., sensitive_switches=...)``.
     """
     switch: str
     mean_ca_j: float          # n_accepted-weighted mean CA_j across configs
     sensitivity_range: float  # max(CA_j) - min(CA_j) across configs
-    is_robust: bool           # sensitivity_range < SENSITIVITY_THRESHOLD
+    is_robust: bool           # ROBUST CONCLUSION: stable AND resolved
     call: str                 # "ON" / "OFF" / "indeterminate"
-    verdict: str              # human-readable label combining call + robustness
+    verdict: str              # human-readable label combining call + stability
+    is_stable: bool = True     # sensitivity_range < SENSITIVITY_THRESHOLD
+    is_resolved: bool = False  # call is ON or OFF (CA_j away from 0.5)
 
 
 def run_ensemble(
@@ -75,8 +84,6 @@ def run_ensemble(
     n_attempts: int = 200,
     seed: int = 42,
     backend: str = "abm",
-    observed_rels=None,
-    pattern_weights=None,
     progress_callback=None,   # callable(done, total, preset_name, rule)
 ) -> list[EnsembleResult]:
     """Run ABC inference over every (preset, acceptance_rule) combination.
@@ -95,12 +102,11 @@ def run_ensemble(
         Base random seed; each config uses seed + config_index for reproducibility.
     backend:
         "abm" (default, high-fidelity) or "proxy" (fast).
-    observed_rels:
-        y_obs pattern rows.  If None, loaded from default Campanula data.
-    pattern_weights:
-        Pattern weight dict.  If None, loaded from default Campanula data.
     progress_callback:
         Optional callable(done: int, total: int, preset: str, rule: str).
+
+    y_obs is the role-filtered ``observed_target`` pattern set loaded internally
+    by the inference functions; it is not a parameter here.
 
     Returns
     -------
@@ -117,14 +123,6 @@ def run_ensemble(
         causal_resolvability,
     )
 
-    if observed_rels is None or pattern_weights is None:
-        from examples.campanula_izu.observed_data import (
-            load_observed_patterns,
-            load_pattern_weights,
-        )
-        observed_rels  = load_observed_patterns()
-        pattern_weights = load_pattern_weights()
-
     _run = _run_abm if backend == "abm" else _run_proxy
 
     configs = [(p, r) for p in presets for r in acceptance_rules]
@@ -140,8 +138,6 @@ def run_ensemble(
             n_attempts=n_attempts,
             acceptance_rule=acceptance_rule,
             seed=_seed,
-            observed_rels=observed_rels,
-            pattern_weights=pattern_weights,
             threshold=thresh,
         )
 
@@ -429,9 +425,9 @@ def classify_switch_robustness(
     for name in sw_names:
         ca_v = mean_ca.get(name, float("nan"))
         s_v  = sens.get(name, float("nan"))
-        # Missing sensitivity (single config) is treated as not-robust: we cannot
-        # demonstrate robustness from one configuration.
-        is_robust = (not math.isnan(s_v)) and s_v < sensitivity_threshold
+        # Stability: CA_j barely moves across prior/ε configs. Missing sensitivity
+        # (single config) cannot demonstrate stability.
+        is_stable = (not math.isnan(s_v)) and s_v < sensitivity_threshold
 
         if math.isnan(ca_v):
             call = "indeterminate"
@@ -442,11 +438,23 @@ def classify_switch_robustness(
         else:
             call = "indeterminate"
 
-        if is_robust:
-            verdict = f"{call} (robust)" if call != "indeterminate" else "indeterminate (robust)"
+        # Resolution: the switch has a definite direction (CA_j away from 0.5).
+        is_resolved = call in ("ON", "OFF")
+
+        # A ROBUST CONCLUSION requires BOTH stability and resolution. A switch
+        # sitting at CA_j ≈ 0.5 with a small sensitivity_range is *stably
+        # uninformative*, NOT a robust conclusion — it must still be flagged for
+        # additional observations (it becomes a NOV target).
+        is_robust = is_stable and is_resolved
+
+        if is_resolved:
+            verdict = f"{call} ({'robust' if is_stable else 'prior/ε sensitive'})"
         else:
-            verdict = f"{call} (prior/ε sensitive)" if call != "indeterminate" \
-                else "indeterminate (prior/ε sensitive)"
+            verdict = (
+                "unresolved (stable across configs — needs more data)"
+                if is_stable else
+                "unresolved (prior/ε sensitive — needs more data)"
+            )
 
         out.append(SwitchRobustness(
             switch=name,
@@ -455,6 +463,8 @@ def classify_switch_robustness(
             is_robust=is_robust,
             call=call,
             verdict=verdict,
+            is_stable=is_stable,
+            is_resolved=is_resolved,
         ))
 
     # Most-sensitive first (NaN sensitivity sorts last).
@@ -467,7 +477,13 @@ def sensitive_switches(
     results: list[EnsembleResult],
     sensitivity_threshold: float = SENSITIVITY_THRESHOLD,
 ) -> list[str]:
-    """Return the names of switches that are prior/ε sensitive (NOV targets)."""
+    """Return switches that are NOT a robust conclusion — the NOV targets.
+
+    This is every switch that is either prior/ε-sensitive (high
+    ``sensitivity_range``) OR unresolved (CA_j ≈ 0.5). Both require additional
+    observations, so both are valid next-observation-value targets. Ordered
+    most-sensitive first.
+    """
     return [
         r.switch for r in classify_switch_robustness(
             results, sensitivity_threshold=sensitivity_threshold)
