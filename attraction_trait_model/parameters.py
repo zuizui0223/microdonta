@@ -1,7 +1,5 @@
 """Latent and provisional parameters for the attraction-trait model."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 

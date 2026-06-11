@@ -1,7 +1,5 @@
 """Environment definitions for attraction-trait simulations."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 
