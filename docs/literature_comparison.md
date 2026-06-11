@@ -149,7 +149,7 @@ The following claims are defensible:
 
 - **Prior sensitivity.** CA_j, D_RACH, and R_RACH depend on the prior ranges for θ and on the prior probabilities over switch states. Prior sensitivity analysis is required before manuscript-level claims.
 - **ε sensitivity.** Results depend on the acceptance threshold ε (or the ABC acceptance rule and pattern weights). The Streamlit app provides an ε-sensitivity panel; this should be reported in any publication.
-- **Pattern quality.** Current y_obs consists mostly of ordinal pairwise patterns from a two-endpoint (Oshima vs Hachijo) comparison. Numeric observations with measurement uncertainty would yield stronger, more discriminating inference.
+- **Pattern quality.** Current y_obs consists of two source-confirmed directional gradients from the Inoue series: selfing/outcrossing shifts with isolation and flower size declines in the island/small-pollinator context. Numeric observations with measurement uncertainty would yield stronger, more discriminating inference, but unmeasured guide, herkogamy, Fis/He, seed-set, and visitation rows are deliberately kept out of observed_target.
 - **Heuristic NOV.** The current heuristic NOV prioritises candidates by current CA_j ambiguity. The simulation-based NOV integrates over discrete outcomes but is not a full EVSI. Neither should be interpreted as exact expected information gain without further validation.
 - **Known-truth recovery.** Before manuscript-level causal claims, RACH should demonstrate recovery of known switch states when data are generated from a known (θ, s). The `test_known_truth.py` tests provide a starting point.
 

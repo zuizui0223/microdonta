@@ -40,7 +40,7 @@ RACH = (X, Y, Θ, S, G, f, P_sim, P_obs, d, ε, A_ε, CA, D, R, OC, NOV)
 | Symbol | Name | Description | Example (Campanula) |
 |--------|------|-------------|---------------------|
 | X | Fixed ecological context | x_obs fed into f; not part of ABC target | island distance, island area, observed Bombus presence |
-| Y | Independent observation space | y_obs used for ABC acceptance | flower size, selfing/outcrossing rate, genetic endpoints when independently measured |
+| Y | Independent observation space | y_obs used for ABC acceptance | current: flower-size and selfing/outcrossing directional gradients; genetic endpoints only when independently measured |
 | Θ | Latent parameter space | Unknown ecological quantities inferred via ABC | guide_cost, selfing_benefit, Ne_isolation_slope, ... |
 | S | Causal switch space | {0,1}^K — which mechanisms are active | S1: guide attracts Bombus; S2: selfing syndrome; S3: common cause; S5: small pollinator |
 
@@ -257,19 +257,23 @@ Example:
 > This is a **prediction** of S2/S3, not an independent field measurement.
 > Including it in y_obs inflates P(S2=1 | A_ε) regardless of true mechanism.
 
-**Current y_obs** (Campanula microdonta worked example; Inoue-series endpoint patterns):
+**Current y_obs** (Campanula microdonta worked example; Inoue-series directional gradients):
 
 ```
-selfing_rate_pairwise    Oshima < Hachijo   weight=1.0  field_derived / Inoue1990
-flower_size_pairwise     Oshima > Hachijo   weight=0.8  field_derived / Inoue1986
+selfing_distance       selfing increases / outcrossing declines with isolation
+                       weight=1.0  field_derived / Inoue1990a
+flower_size_distance   flower size declines along the island/small-pollinator context
+                       weight=0.8  field_derived / InoueAmano1986
 ```
 
-Nectar-guide intensity is planned own-field data, not an Inoue-series per-population
-measurement. Herkogamy is treated as a theoretical/diagnostic selfing-syndrome trait
-or pending field-validation target, not as an Inoue1986 observed_target. Fis remains
-excluded until an independent genetic estimate is source-confirmed; the current
-simulator's Fis proxy is partly generated from selfing rate, so using it as y_obs
-would double-count selfing evidence.
+Legacy Oshima-vs-Hachijo pairwise rows are diagnostic displays of the same
+evidence and are excluded from ABC to avoid double-counting. Nectar-guide
+intensity is planned own-field data, not an Inoue-series per-population
+measurement. Herkogamy is treated as a theoretical/diagnostic dichogamy or
+delayed-selfing geometry target, not as an Inoue-series observed_target. Fis
+remains excluded until an independent genetic estimate is source-confirmed; the
+current simulator's Fis proxy is partly generated from selfing rate, so using it
+as y_obs would double-count selfing evidence.
 
 ---
 

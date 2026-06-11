@@ -1,18 +1,18 @@
-# Constraint-first CAPOM workflow
+# Constraint-First RACH Workflow
 
-This project is no longer framed as a manual-slider ABM. The main model is a **constraint-first causal generative workflow**.
+This project is no longer framed as manual-slider CAPOM or fixed M1-M5 model
+choice. The main workflow is **constraint-first RACH**: define biologically
+plausible latent parameter space, simulate causal switch combinations, and
+quantify which switch states remain admissible under independent observations.
 
-## One-sentence definition
+## One-Sentence Definition
 
-**Constraint-first CAPOM first defines an ecologically plausible latent parameter space, then tests which causal structures can generate the observed patterns within that constrained space.**
+RACH samples causal switch combinations `s in {0,1}^K` and latent parameters
+`theta`, filters them through biological constraints and observation distance,
+then reports causal admissibility, degeneracy, resolvability, observation
+contribution, and next-observation value.
 
-Japanese:
-
-> 生態学的制約先行型CAPOMは、まず生態学的に妥当な潜在パラメータ空間を定義し、その制約内でどの因果構造が観察パターンを生成できるかを検証する方法である。
-
----
-
-## Why the order matters
+## Why The Order Matters
 
 The model should not work like this:
 
@@ -22,200 +22,131 @@ manual parameter sliders
 -> adjust until the desired pattern appears
 ```
 
-That workflow is useful for intuition, but weak as research because it can look like hand-tuning.
-
 Instead, the research workflow is:
 
 ```text
-1. Define ecological trade-off presets
-2. Apply parameter-to-parameter constraints
-3. Randomly sample latent benefit/cost parameters inside the constrained space
-4. Convert valid samples into model parameters
-5. Run candidate causal structures M1-M5
-6. Compare simulated patterns with observed patterns
-7. Retain accepted scenario-parameter combinations
-8. Report scenario ranking and accepted parameter ranges
+1. Define ecological context x_obs.
+2. Define biological feasibility constraints G(theta).
+3. Sample latent parameters theta and causal switch states s.
+4. Simulate f(x_obs; theta, s).
+5. Compare simulated summaries with current independent y_obs.
+6. Retain the admissible region A_epsilon.
+7. Report CA_j, D_RACH, R_RACH, OC_k, and NOV.
 ```
 
-In short:
+## Epistemic Roles
+
+The Campanula worked example separates roles explicitly:
 
 ```text
-constrained parameter exploration
--> causal simulation
--> CAPOM pattern matching
--> accepted causal structures and latent parameter ranges
+x_obs:
+  island distance
+  island area
+  population size proxy
+  primary pollinator frequency / Bombus availability
+  ecological context
+
+current y_obs:
+  selfing_distance
+  flower_size_distance
+
+future_observation / NOV candidate:
+  guide area spectrophotometry
+  herkogamy / delayed-selfing geometry
+  Fis / He / Fst
+  bagging seed set
+  natural seed set
+  pollinator visitation rate
+  guide removal experiment
+  Qst-Fst comparison
+  guide-to-visitation selection gradient
+  molecular outcrossing rate t_m
+
+diagnostic_only / hypothesis_prediction:
+  selfing_herkogamy_corr
+  selfing_flower_size_corr
+  selfing_Fis_corr
+  guide_outcross_corr
+  theoretical nectar-guide gradients
+  theoretical herkogamy gradients
 ```
 
----
+Unmeasured guide, herkogamy, Fis/He, seed-set, and visitation rows must not be
+promoted to `observed_target`.
 
-## Model target
+## Current Acceptance Target
 
-The goal is not to predict one exact parameter value. The goal is to infer which combinations of hidden benefits, costs, and causal pathways are **compatible** with multiple observed patterns.
-
-The inferential output is therefore:
-
-- accepted causal structures
-- rejected causal structures
-- accepted latent parameter ranges
-- trade-off classes of accepted parameter sets
-- pattern mismatches that show what each causal scenario fails to explain
-
-The output is not:
-
-- one manually tuned parameter set
-- one best-looking simulation run
-- a slider-generated demonstration result
-
----
-
-## Observable patterns
-
-The Campanula / Izu Islands worked example currently uses ordinal observed patterns such as:
+The current canonical y_obs has only two source-confirmed directional gradients:
 
 ```text
-nectar_guide:      Oshima > Hachijo
-selfing_rate:      Oshima < Hachijo
-herkogamy:         Oshima > Hachijo
-flower_size:       Oshima > Hachijo
-Fis:               Oshima < Hachijo
-Bombus_frequency:  Oshima > Hachijo
+selfing_distance
+flower_size_distance
 ```
 
-These are not treated as input values to force the model. They are treated as **targets for CAPOM matching**.
+Therefore A_epsilon is expected to be broad and causal resolution is expected to
+be low. This is a preliminary worked example, not an empirical resolution of the
+*Campanula microdonta* causal history.
 
----
+## Acceptance Rules
 
-## Latent benefit/cost parameters
+Acceptance rules are pattern-count-independent. `strict_all` means all current
+`observed_target` rows must pass. It no longer means a hard-coded "6 of 6".
 
-The constrained parameter search focuses on latent or hard-to-measure quantities:
+Optional distance tools are available for later measured data:
 
 ```text
-guide_cost
-outcrossing_benefit
-selfing_benefit
-inbreeding_depression
-small_pollinator_efficiency
-drift_strength
-direct_pollinator_guide_benefit
-cost_of_waiting_for_pollinators
+distance_mode:
+  match_rate
+  standardized
+  hybrid
+
+epsilon_mode:
+  fixed
+  adaptive_percentile
+
+structure_prior_lambda:
+  lambda = 0.0 gives the unweighted switch prior
+  lambda > 0 applies P(s) proportional to exp(-lambda * |s|)
 ```
 
-These parameters are sampled from predefined ecological trade-off presets, not chosen manually.
+The structure prior is optional sensitivity analysis. It must not be presented
+as evidence against biologically plausible multi-switch pathways.
 
----
+## M1-M5 Role
 
-## Ecological trade-off presets
+M1-M5 named structures are retained only as a supplementary interpretation
+layer. They are not the primary inferential object.
 
-The app currently supports five presets:
+The primary RACH output is:
 
 ```text
-broad_prior
-reproductive_assurance
-outcrossing_benefit
-high_guide_cost
-drift_dominated
+switch vector s
+CA_j
+coactivation
+D_RACH
+R_RACH
+OC_k
+NOV
 ```
 
-Each preset defines a biologically motivated region of latent parameter space.
+`nearest_structure` can be displayed as a diagnostic summary, but it should not
+be treated as the main conclusion.
 
-Examples:
+## Manuscript Framing
 
-- `reproductive_assurance`: selfing is potentially favored because pollinator service is unreliable.
-- `outcrossing_benefit`: outcrossing and pollinator-mediated attraction remain valuable.
-- `high_guide_cost`: nectar-guide maintenance is costly.
-- `drift_dominated`: drift can affect guide state and acts as a null-like scenario.
+Recommended wording:
 
----
+> We do not select among fixed M1-M5 causal structures. Instead, RACH samples
+> causal switch combinations and latent parameters, retains the admissible region
+> under biological constraints and source-confirmed observations, and quantifies
+> how much the current observations resolve mechanism uncertainty.
 
-## Parameter-to-parameter constraints
-
-Parameters are not sampled independently without logic. The sampler rejects biologically inconsistent combinations.
-
-Examples:
+Avoid:
 
 ```text
-selfing_benefit - inbreeding_depression >= -0.30
+RACH resolves the Campanula causal history.
+Six observed patterns are used.
+Herkogamy is field-derived y_obs.
+Fis is observed_target.
+Primary pollinator frequency is y_obs.
 ```
-
-This avoids cases where selfing has a severe net cost but is still treated as strongly favorable.
-
-```text
-if small_pollinator_efficiency > 0.55 and selfing_benefit > 0.75: reject
-```
-
-This avoids assigning extreme selfing benefit when alternative small-pollinator outcrossing is already efficient.
-
-```text
-if guide_cost > 0.25 and outcrossing_benefit < 0.05 and direct_pollinator_guide_benefit > 0.80: reject
-```
-
-This avoids internally inconsistent cases where guide maintenance is extremely costly, outcrossing benefit is almost absent, but direct guide benefit is extreme.
-
----
-
-## Candidate causal structures
-
-The constrained parameter sets are used to evaluate alternative causal structures:
-
-```text
-M1_direct_pollinator_to_guide
-M2_selfing_mediated
-M3_direct_plus_mediated
-M4_common_island_cause
-M5_drift_null
-```
-
-These structures correspond to different explanations for the observed overlap among Bombus loss, selfing increase, and nectar-guide reduction.
-
----
-
-## CAPOM acceptance rules
-
-The Streamlit app currently supports two acceptance rules:
-
-```text
-strict_6_of_6:   all 6 observed relations must match
-relaxed_5_of_6: at least 5 of 6 observed relations must match
-```
-
-The strict rule is useful for conservative filtering. The relaxed rule is useful for early-stage model exploration and debugging.
-
----
-
-## App implementation
-
-The main Streamlit entry point is now research-mode only:
-
-```bash
-streamlit run streamlit_app.py
-```
-
-This imports the Research Mode app from:
-
-```text
-streamlit_research_mode.py
-```
-
-The app performs:
-
-```text
-trade-off preset selection
--> constrained random sampling
--> M1-M5 causal simulation
--> observed pattern matching
--> scenario ranking
--> accepted parameter ranges
--> CSV download
-```
-
-Manual parameter sliders are intentionally removed from the main app.
-
----
-
-## Manuscript framing
-
-> We did not manually tune latent parameters to reproduce the observed island pattern. Instead, we first defined biologically motivated trade-off ranges and parameter-to-parameter constraints, sampled latent benefit/cost parameters from this constrained space, and then evaluated which causal structures could generate the observed ecological, reproductive, and genetic patterns.
-
-Japanese:
-
-> 本研究では、観察パターンに合うように潜在パラメータを手動調整するのではなく、まず生態学的に動機づけられたトレードオフ範囲とパラメータ間制約を定義し、その制約付き空間から利益・コストパラメータをサンプリングした。そのうえで、どの因果構造が観察された生態・繁殖・遺伝パターンを生成できるかを評価した。

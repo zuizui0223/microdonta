@@ -33,9 +33,15 @@ Larsson 2005  Oikos 109:400-408; Raine & Chittka 2007
     Halictid (small) bee pollination efficiency relative to Bombus:
     typically 20-55% of Bombus pollen transfer per visit.
 
-Inoue & Amano 1986  Plant Species Biol 1:207-217
-    Field measurements: Bombus frequency = 0 on Hachijo, ~0.35 on Oshima.
-    Selfing rate proxies (Fis): Oshima ~0.08, Hachijo ~0.35.
+Inoue & Amano 1986  Plant Species Biol 1(1):89-97
+    Field observations: Honshu Bombus diversus, Oshima Bombus ardens plus
+    halictid bees, and halictid-dominated Niijima/Kozushima/Hachijo; island
+    flowers smaller than mainland; breeding-system shifts across the Izu system.
+
+Inoue 1988 Plant Species Biol 3(2):125-128; Inoue 1990 Plant Species Biol
+5(1):57-64; Inoue 1990 Plant Species Biol 5(2):197-203
+    Breeding-system, mating-system, and dichogamy/sex-allocation summaries.
+    Static herkogamy and Fis are not treated as direct Inoue-series y_obs.
 
 Ushimaru et al. 2003 / Takahashi et al.
     Campanula microdonta mating system variation along the Izu isolation gradient
@@ -131,20 +137,25 @@ _LIT_INBREEDING = LiteratureSource(
 
 _LIT_SELFING = LiteratureSource(
     citation="Lloyd 1979 NZ J Bot; Husband & Schemske 1996; "
-             "Inoue & Amano 1986 (Fis data)",
+             "Inoue 1990 Plant Species Biology 5(1):57-64",
     parameter="selfing_benefit",
-    empirical_range="Fis: Oshima 0.08, Hachijo 0.35. "
+    empirical_range="Honshu/Oshima: SI and obligately outcrossing; "
+                    "Toshima/Niijima: SC and largely outcrossing; "
+                    "Miyake/Hachijo: SC and predominantly inbreeding. "
                     "Theoretical 3/2 advantage minus delta.",
     modelled_range=(0.05, 0.55),
     notes="Upper bound: net selfing advantage = 0.5 * (1 - 2*delta) for "
           "delta~0.25 gives ~0.25; we allow up to 0.55 to cover populations "
           "with lower inbreeding depression. Lower bound 0.05 (not zero) "
-          "because Hachijo populations empirically show substantial selfing.",
+          "because southern Izu populations empirically show substantial "
+          "selfing/inbreeding. Numeric t values require primary-PDF "
+          "transcription before use as absolute y_obs.",
 )
 
 _LIT_OUTCROSSING = LiteratureSource(
     citation="Knight et al. 2005 Am J Bot (outcrossing benefit meta-analysis); "
-             "Inoue & Amano 1986",
+             "Inoue & Amano 1986 Plant Species Biology 1(1):89-97; "
+             "Inoue 1990 Plant Species Biology 5(1):57-64",
     parameter="outcrossing_benefit",
     empirical_range="Seed set improvement from cross-pollination: 10-70% in "
                     "mixed-mating plants.",
@@ -194,16 +205,16 @@ _LIT_DIRECT_GUIDE_BENEFIT = LiteratureSource(
 )
 
 _LIT_DRIFT = LiteratureSource(
-    citation="Inoue & Amano 1986 (population size estimates); "
-             "island biogeography; Hachijo FST data",
+    citation="Inoue & Kawahara 1990 American Journal of Botany 77:1440-1448; "
+             "island biogeography",
     parameter="drift_strength",
-    empirical_range="Hachijo effective population size ~22% of Oshima "
-                    "based on FST / population census data.",
+    empirical_range="Independent genetic structure is expected to vary with "
+                    "isolation, but exact per-island Fis/Ne values are pending "
+                    "source confirmation.",
     modelled_range=(0.00, 0.25),
-    notes="Drift strength is a proxy for 1/(2Ne) relative effects. "
-          "Hachijo has small Ne and high isolation; mainland populations "
-          "have low drift. Range 0.00-0.25 covers this gradient. "
-          "Exact Ne values are uncertain; range is conservative.",
+    notes="Drift strength is a proxy for 1/(2Ne) relative effects. The range is "
+          "a conservative structure prior rather than an Inoue 1986 observation. "
+          "Do not use simulator Fis_proxy as independent evidence.",
 )
 
 _LIT_NE_SLOPE = LiteratureSource(
@@ -222,29 +233,35 @@ _LIT_NE_SLOPE = LiteratureSource(
 )
 
 _LIT_MIGRATION_DECAY = LiteratureSource(
-    citation="Inoue & Amano 1986 (migration estimates); "
-             "island biogeography exponential distance decay",
+    citation="Izu geography / island biogeography exponential distance decay; "
+             "empirical migration estimates pending source confirmation",
     parameter="migration_decay_rate",
-    empirical_range="Exponential decay: migration_rate = 0.15 × exp(−k × iso). "
-                    "Fitted k=3.19 for Izu Islands (R²=0.99).",
+    empirical_range="Exponential distance-decay prior over island isolation; "
+                    "not a direct Inoue & Amano 1986 migration estimate.",
     modelled_range=(1.50, 6.00),
-    notes="DIRECTION fixed: migration decays with isolation (universal). "
-          "RATE k is a latent parameter θ. Prior centre 3.19 (Izu fit). "
-          "Range (1.50, 6.00) spans slow to rapid decay across island systems.",
+    # The empirical_range text above is a legacy distance-decay scaffold, not a
+    # direct migration estimate from Inoue & Amano 1986.
+    notes="LEGACY STRUCTURE PRIOR, not direct Inoue data. "
+          "DIRECTION fixed: migration decays with isolation (universal). "
+          "RATE k is a latent parameter. Range (1.50, 6.00) spans slow to rapid "
+          "decay across island systems.",
 )
 
 _LIT_POLLINATOR_LOSS = LiteratureSource(
-    citation="Inoue & Amano 1986 (Bombus ardens distribution); "
-             "Izu Island pollinator surveys",
+    citation="Inoue & Amano 1986 Plant Species Biology 1(1):89-97; "
+             "Inoue 1988 Plant Species Biology 3(2):125-128",
     parameter="pollinator_loss_slope",
-    empirical_range="Bombus frequency = max(0, 0.80 − k × iso). "
-                    "Fitted k=0.94 for Izu Islands (R²=0.99). "
-                    "Bombus absent on Hachijo (iso≈0.90), present on Oshima (iso≈0.35).",
+    empirical_range="Honshu: Bombus diversus; Oshima: Bombus ardens plus "
+                    "halictids; Niijima/Kozushima/Hachijo: halictids. "
+                    "Bumblebees absent from Izu except Oshima.",
     modelled_range=(0.50, 1.50),
-    notes="DIRECTION fixed: Bombus frequency declines with isolation (observed). "
-          "SLOPE k is a latent parameter θ. Prior centre 0.94 (Izu fit). "
-          "Range (0.50, 1.50) allows variation while keeping Bombus near-zero "
-          "on Hachijo for most slope values.",
+    # The source-confirmed fact is the assemblage contrast, not a numeric
+    # Bombus-frequency regression. Keep the slope as optional structure prior.
+    notes="Source-confirmed assemblage contrast supports the direction; the "
+          "numeric slope is an optional structure prior, not y_obs. "
+          "DIRECTION fixed: Bombus frequency declines with isolation (observed). "
+          "SLOPE k is a latent parameter. Range (0.50, 1.50) allows variation "
+          "around the source-confirmed assemblage gradient.",
 )
 
 _LIT_WAITING_COST = LiteratureSource(

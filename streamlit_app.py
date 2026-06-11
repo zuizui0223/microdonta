@@ -722,7 +722,7 @@ A_ε(y_obs, x_obs) = { (θ, s) ∈ Θ × S :  G(θ)=1,  d(P_sim(f(x_obs; θ, s))
 | s | Causal switch state {0,1}^K | S1 guide→Bombus, S2 selfing syndrome, S3 common cause, S5 small pollinator |
 | G(θ) | Constraint grammar | biological feasibility constraints C1–C5 |
 | f | Generative dynamics | Wright-Fisher drift + selection + stochastic ABM |
-| y_obs | Independent observations | Inoue-series gradients: flower_size decreases with isolation (Amano & Inoue 1986) + selfing/outcrossing shifts with isolation (Inoue 1990). Fis is excluded until independently source-confirmed; nectar_guide is planned own-field data; herkogamy is latent dichogamy. |
+| y_obs | Independent observations | Inoue-series gradients: flower_size decreases with isolation (Inoue & Amano 1986) + selfing/outcrossing shifts with isolation (Inoue 1990). Fis is excluded until independently source-confirmed; nectar_guide is planned own-field data; herkogamy is latent dichogamy. |
 
 **Five core RACH quantities:**
 
@@ -805,7 +805,7 @@ with st.sidebar:
         _rules,
         index=_rules.index("weighted_lax") if "weighted_lax" in _rules else 0,
         format_func=lambda r: {
-            "strict_all":      "strict — all 5 must match",
+            "strict_all":      "strict - all current y_obs patterns must match",
             "weighted_strict": "weighted strict — match = 1.0",
             "weighted_lax":    "weighted lax — match ≥ 0.80  ← recommended",
             "relaxed_0.83":    "relaxed — ≥4/5",
@@ -815,6 +815,11 @@ with st.sidebar:
     from causal_model.switch_inference import GRADIENT_N_PATTERNS as _N_PAT
     _thresh_display = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
     st.caption(f"y_obs: {_N_PAT} patterns · threshold ≥ {_thresh_display:.3f}")
+    st.caption(
+        "Current empirical y_obs contains only two source-confirmed directional "
+        "gradients: selfing_distance and flower_size_distance. Causal resolution "
+        "is expected to be low until future observations are measured."
+    )
     seed = st.number_input("Random seed", 0, 999999, 42, 1)
 
     with st.expander("Advanced RACH options (optional)", expanded=False):
@@ -1212,7 +1217,7 @@ elif _step_idx == 1:
         f"{st.session_state.get('sp_rep', 3)} rep"
     )
 
-    if st.button("▶ Run RACH Inference", type="primary", width="stretch"):
+    if st.button("▶ Run Recommended RACH", type="primary", width="stretch"):
         _sp_bar  = st.progress(0.0, text="Switch Posterior: starting…")
         _sp_stat = st.empty()
 

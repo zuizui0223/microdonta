@@ -579,9 +579,10 @@ def run_switch_posterior_inference(
     if threshold is None:
         threshold = _acceptance_threshold(acceptance_rule)
 
-    # y_obs = observed_target patterns only (flower_size: Inoue 1986; selfing_rate:
-    # Inoue 1990; Fis: genetic, down-weighted). nectar_guide (planned own-field) and
-    # herkogamy (latent dichogamy, protandrous species) are excluded, as are
+    # y_obs = observed_target patterns only (flower_size_distance: Inoue & Amano
+    # 1986; selfing_distance: Inoue 1990a). nectar_guide (planned own-field),
+    # Fis (pending independent genetics), and herkogamy (latent dichogamy,
+    # protandrous species) are excluded, as are
     # hypothesis_prediction gradients — preventing circular inference.
     all_patterns = list(response_target_patterns())
     if extra_pattern_rows:
@@ -889,9 +890,10 @@ def run_switch_posterior_inference_abm(
     if threshold is None:
         threshold = _acceptance_threshold(acceptance_rule)
 
-    # y_obs = observed_target patterns only (flower_size: Inoue 1986; selfing_rate:
-    # Inoue 1990; Fis: genetic, down-weighted). nectar_guide (planned own-field) and
-    # herkogamy (latent dichogamy, protandrous species) are excluded, as are
+    # y_obs = observed_target patterns only (flower_size_distance: Inoue & Amano
+    # 1986; selfing_distance: Inoue 1990a). nectar_guide (planned own-field),
+    # Fis (pending independent genetics), and herkogamy (latent dichogamy,
+    # protandrous species) are excluded, as are
     # hypothesis_prediction gradients — preventing circular inference.
     all_patterns = list(response_target_patterns())
     if extra_pattern_rows:

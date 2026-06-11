@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+import csv
 from types import SimpleNamespace
 
 _repo = Path(__file__).resolve().parent.parent
@@ -24,6 +25,26 @@ def test_herkogamy_nectar_guide_and_fis_are_not_abc_targets():
     forbidden = {"herkogamy", "nectar_guide", "Fis"}
     bad = [row for row in rows if row.get("variable") in forbidden and row.get("role") == "observed_target"]
     assert not bad
+
+
+def test_independent_observations_do_not_promote_blank_values_to_targets():
+    path = _repo / "examples" / "campanula_izu" / "data" / "independent_observations.csv"
+    with path.open(encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+
+    assert {row["population"] for row in rows} >= {
+        "Honshu",
+        "Oshima",
+        "Toshima",
+        "Niijima",
+        "Kozushima",
+        "Miyake",
+        "Hachijo",
+    }
+    assert not [
+        row for row in rows
+        if row["role"] == "observed_target" and not row["observed_value"].strip()
+    ]
 
 
 def test_future_observations_are_loaded_and_excluded_from_abc():

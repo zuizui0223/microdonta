@@ -74,7 +74,7 @@ The RACH analysis separates fixed context from independent response targets:
 ```text
 x_obs: island distance, island area, pollinator assemblage / Bombus availability
 y_obs: Inoue-series gradient targets only
-       - flower_size decreases with isolation (Amano & Inoue 1986)
+       - flower_size decreases with isolation (Inoue & Amano 1986)
        - selfing_rate increases / outcrossing declines with isolation (Inoue 1990)
 ```
 

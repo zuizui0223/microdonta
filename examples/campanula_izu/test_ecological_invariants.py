@@ -237,7 +237,7 @@ def test_input_context_excluded_from_abc():
     - hypothesis_prediction: gradient expected from hypothesis, not field data
 
     Only observed_target rows enter ABC. The field-derived y_obs rows are
-    Inoue-series gradients: flower_size (Amano & Inoue 1986) and
+    Inoue-series gradients: flower_size (Inoue & Amano 1986) and
     selfing_rate/outcrossing (Inoue 1990). nectar_guide is planned own
     field data, not yet collected) and herkogamy is diagnostic_only (latent
     dichogamy in this protandrous species) — both excluded from ABC.

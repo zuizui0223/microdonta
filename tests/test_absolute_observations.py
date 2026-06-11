@@ -15,6 +15,8 @@ def test_absolute_observations_load_and_keep_pending_out_of_targets():
     assert rows
     assert {"observed_value", "se", "scale", "weight"}.issubset(rows[0])
     assert observed_absolute_targets() == []
+    populations = {row["population"] for row in rows}
+    assert {"Honshu", "Oshima", "Toshima", "Niijima", "Kozushima", "Miyake", "Hachijo"} <= populations
 
     future = future_absolute_observations()
     names = {row["observation"] for row in future}
