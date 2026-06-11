@@ -1,7 +1,5 @@
 """Individual plant agents for the attraction-trait evolution model."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 

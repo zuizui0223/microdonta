@@ -889,7 +889,7 @@ with st.sidebar:
         _m5_gen     = st.slider("ABM generations", 10, 100, 40, 10, key="m5_gen")
         _m5_pop     = st.slider("ABM population size", 50, 500, 150, 50, key="m5_pop")
         _m5_rep     = st.slider("ABM replicates / island", 1, 5, 1, 1, key="m5_rep")
-        run_button  = st.button("Run structure comparison", use_container_width=True)
+        run_button  = st.button("Run structure comparison", width="stretch")
 
 # ---------------------------------------------------------------------------
 # M1-M5 supplementary run (sidebar button)
@@ -944,7 +944,7 @@ st.caption(_STEP_SUBTITLES.get(_current_step, ""))
 
 
 def _next_btn(label: str, next_step: str) -> None:
-    if st.button(label, type="primary", use_container_width=True):
+    if st.button(label, type="primary", width="stretch"):
         st.session_state["nav_step"] = next_step
         st.rerun()
 
@@ -1035,7 +1035,7 @@ if _step_idx == 0:
             "mode": _ens_mode_key,
         }
 
-        if st.button("▶ Run Ensemble", type="primary", use_container_width=True):
+        if st.button("▶ Run Ensemble", type="primary", width="stretch"):
             if not _ens_presets or not _ens_rules:
                 st.warning("プリセットとルールを1つ以上選択してください。")
             else:
@@ -1134,7 +1134,7 @@ if _step_idx == 0:
                         "background-color: #d4edda" if _ens_rows[row.name]["_is_best"] else ""
                         for _ in row
                     ], axis=1,
-                ), use_container_width=True,
+                ), width="stretch",
             )
 
             _c1, _c2 = st.columns(2)
@@ -1196,7 +1196,7 @@ elif _step_idx == 1:
         f"{st.session_state.get('sp_rep', 3)} rep"
     )
 
-    if st.button("▶ Run RACH Inference", type="primary", use_container_width=True):
+    if st.button("▶ Run RACH Inference", type="primary", width="stretch"):
         _sp_bar  = st.progress(0.0, text="Switch Posterior: starting…")
         _sp_stat = st.empty()
 
@@ -1777,7 +1777,7 @@ elif _step_idx == 7:
         _build_zip(_zip_contents),
         f"{_sp_tag}_rach_inference.zip",
         "application/zip",
-        use_container_width=True, type="primary",
+        width="stretch", type="primary",
     )
     st.caption(
         "ZIP: ensemble_results · robustness_table · best_setting_summary · "
