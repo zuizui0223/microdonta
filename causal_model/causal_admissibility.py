@@ -155,9 +155,11 @@ class CausalAdmissibilityResult:
             return "admissible (BF>3)"
         if bf > 1.0:
             return "weakly admissible"
-        if bf > 0.33:
+        if bf >= 0.33:
+            return "neutral / weak evidence"
+        if bf > 0.0:
             return "weakly inadmissible"
-        return "inadmissible (BF<1/3)"
+        return "inadmissible (BF=0)"
 
 
 @dataclass

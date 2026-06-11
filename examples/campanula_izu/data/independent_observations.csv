@@ -7,7 +7,7 @@ Oshima,herkogamy,, ,theoretical,excluded_from_ABC,theoretical_design,NOT an Inou
 Hachijo,herkogamy,, ,theoretical,excluded_from_ABC,theoretical_design,NOT an Inoue measurement; dichogamy/protandry and breeding-system timing are documented instead. Treat as latent delayed-selfing geometry pending direct field validation; excluded from ABC
 Oshima,flower_size,, ,Inoue1986,observed_target,field_derived,fill corolla-size value from Amano & Inoue 1986; transcribe from primary PDF
 Hachijo,flower_size,, ,Inoue1986,observed_target,field_derived,fill corolla-size value from Amano & Inoue 1986; transcribe from primary PDF
-Oshima,Fis,, ,genetic_survey,observed_target,genetic_derived,fill only when independent genetic estimate is available; not Inoue field measurement unless source confirms
-Hachijo,Fis,, ,genetic_survey,observed_target,genetic_derived,fill only when independent genetic estimate is available; not Inoue field measurement unless source confirms
+Oshima,Fis,, ,genetic_survey,excluded_from_ABC,pending_independent_genetic_validation,fill only when independent genetic estimate is available; current simulator Fis_proxy is partly generated from selfing_rate, so do not use as y_obs until source-confirmed
+Hachijo,Fis,, ,genetic_survey,excluded_from_ABC,pending_independent_genetic_validation,fill only when independent genetic estimate is available; current simulator Fis_proxy is partly generated from selfing_rate, so do not use as y_obs until source-confirmed
 Oshima,primary_pollinator_frequency,0.35,,Inoue1986,input_context,field_derived,fixed empirical context x_obs; excluded from ABC target distance
 Hachijo,primary_pollinator_frequency,0.00,,Inoue1986,input_context,field_derived,fixed empirical context x_obs; excluded from ABC target distance

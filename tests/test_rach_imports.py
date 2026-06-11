@@ -90,6 +90,22 @@ def test_candidate_outcomes_probabilities():
     print("[PASS] test_candidate_outcomes_probabilities")
 
 
+def test_bayes_factor_one_is_neutral():
+    from causal_model.causal_admissibility import CausalAdmissibilityResult
+    from causal_model.switch_inference import BiologicalSwitch, compute_switch_posterior_table
+
+    res = CausalAdmissibilityResult("S", "q", 0.5, 0.5, 1.0, 1, 2)
+    assert res.interpretation == "neutral / weak evidence"
+
+    rows = compute_switch_posterior_table(
+        [{"S": True}, {"S": False}],
+        [BiologicalSwitch("S", "S", "q", "d")],
+    )
+    assert rows[0]["Bayes_factor"] == 1.0
+    assert rows[0]["interpretation"] == "neutral / weak evidence"
+    print("[PASS] test_bayes_factor_one_is_neutral")
+
+
 if __name__ == "__main__":
     failures = []
     tests = [
@@ -98,6 +114,7 @@ if __name__ == "__main__":
         test_switch_inference_imports,
         test_docstring_mentions_rach_notation,
         test_candidate_outcomes_probabilities,
+        test_bayes_factor_one_is_neutral,
     ]
     for t in tests:
         try:

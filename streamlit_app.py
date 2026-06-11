@@ -88,12 +88,8 @@ try:
     PATTERN_WEIGHTS = load_pattern_weights()
 except Exception:
     OBSERVED_RELS = {
-        "nectar_guide": "Oshima > Hachijo",
         "selfing_rate": "Oshima < Hachijo",
-        "herkogamy": "Oshima > Hachijo",
         "flower_size": "Oshima > Hachijo",
-        "Fis": "Oshima < Hachijo",
-        "primary_pollinator_frequency": "Oshima > Hachijo",
     }
     PATTERN_WEIGHTS = {k: 1.0 for k in OBSERVED_RELS}
     _OBS_TABLE = [
@@ -740,7 +736,7 @@ A_ε(y_obs, x_obs) = { (θ, s) ∈ Θ × S :  G(θ)=1,  d(P_sim(f(x_obs; θ, s))
 | s | Causal switch state {0,1}^K | S1 guide→Bombus, S2 selfing syndrome, S3 common cause, S5 small pollinator |
 | G(θ) | Constraint grammar | biological feasibility constraints C1–C5 |
 | f | Generative dynamics | Wright-Fisher drift + selection + stochastic ABM |
-| y_obs | Independent observations | flower_size (Inoue 1986) + selfing_rate (Inoue 1990) + Fis (genetic); nectar_guide is planned own-field data, herkogamy is latent dichogamy — both excluded |
+| y_obs | Independent observations | flower_size (Inoue 1986) + selfing_rate/outcrossing rate (Inoue 1990). Fis is excluded until independently source-confirmed; nectar_guide is planned own-field data; herkogamy is latent dichogamy. |
 
 **Five core RACH quantities:**
 
