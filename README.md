@@ -4,13 +4,9 @@
 
 RACH is a **causal admissibility and degeneracy framework** for ecological systems. It estimates which latent causal mechanisms remain admissible under biological constraints and independent observations, and quantifies whether the available observations are sufficient to resolve competing mechanisms.
 
-English:
 
 > RACH defines the admissible causal region and quantifies causal admissibility, causal degeneracy, and causal resolvability under biological constraints. It does not select the best model. It estimates which mechanisms remain admissible and how degenerate the causal explanation is.
 
-Japanese:
-
-> RACHは、生物学的制約と独立観測データのもとで、どの潜在因果メカニズムが許容されるか、また現在の観測集合がどの程度それらを識別できるかを定量化する、生態学的因果許容性・因果縮退性解析フレームワークである。RACHは単一モデルを選ぶのではなく、許容因果領域を推定し因果縮退性を定量化する。
 
 **RACH is not a combination of ABM, ABC, and POM.** ABM, ABC, and POM are computational components used to approximate the admissible causal region A_ε. The framework is defined by its inferential objects: causal admissibility (CA_j), causal degeneracy (D_RACH), causal resolvability (R_RACH), observation contribution (OC_k), and next-observation value (NOV).
 

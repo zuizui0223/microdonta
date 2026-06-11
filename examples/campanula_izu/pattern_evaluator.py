@@ -1,58 +1,35 @@
 """Pattern evaluator for ecological gradient pattern targets.
 
-Supports four pattern types defined in observed_patterns.csv:
-
+Supported pattern types
+-----------------------
 pairwise_relation
-    Ordinal comparison between two populations, e.g. "Oshima > Hachijo".
-    Match: simulated relation string == observed relation string.
+    Ordinal comparison between two populations, e.g. ``Oshima > Hachijo``.
 
 gradient_slope
-    The sign of the linear regression slope of a simulated variable
-    across a population gradient (e.g. distance_from_mainland).
-    Match: sign(simulated_slope) == expected_direction.
+    Sign of a simulated variable along an environmental predictor.
+
+numeric_gradient
+    Numeric gradient target for PDF-transcribed or measured values.  It uses the
+    same slope-sign logic as ``gradient_slope`` but can additionally check
+    optional CSV columns such as ``min_slope`` / ``max_slope`` when present.
 
 rank_order
-    The rank order of simulated variable values across populations
-    matches an expected ordering (increasing or decreasing).
-    Match: Kendall's tau > 0 (correct monotone order).
+    Monotone rank order across populations.
+
+categorical_transition
+    Ordered categorical sequence across populations, e.g.
+    ``SI_outcrossing -> SC_mixed -> SC_selfing``.  This is intended for
+    breeding-system transitions once category provenance is source-confirmed.
 
 trait_correlation
-    Pearson correlation (slope sign) between two variables across all
-    simulated populations.  The ``variable`` column is the response (y)
-    and the ``predictor`` column is the explanatory variable (x).
-    Predictors can be either a field on PhenomenologicalOutput OR a
-    column in the env_table (env_table lookup is used as fallback).
-    Match: sign(Pearson r) == expected_direction (positive / negative).
+    Sign of association between two simulated or contextual variables.
 
-Role filtering (Issue #7)
---------------------------
-``evaluate_patterns()`` automatically skips rows with
-``role == "input_context"``.  Predictor variables (e.g.
-``primary_pollinator_frequency``) are injected from ecological_context, not
-simulated, so including them in the acceptance criterion would be circular.
-Only ``role == "observed_target"`` rows count toward ``weighted_match_rate``;
-``response_target`` is accepted as a legacy alias.
-
-Pass ``response_target_patterns()`` from ``observed_data`` to ensure only
-the correct rows reach this function; the role guard here is a defensive
-second check.
-
-Entry points
-------------
-evaluate_patterns(simulated_outputs, observed_rows, env_table)
-    Evaluate all observed_target pattern rows. Returns EvaluationResult.
-
-weighted_pattern_distance(eval_result)
-    Compute ABC distance in [0, 1] from EvaluationResult.
-
-match_pairwise(simulated_relations, pattern_row)
-    Evaluate a single pairwise_relation row.
-
-match_gradient_slope(simulated_outputs, env_table, pattern_row)
-    Evaluate a single gradient_slope row.
-
-match_rank_order(simulated_outputs, pattern_row)
-    Evaluate a single rank_order row.
+Role filtering
+--------------
+Only ``observed_target`` (and legacy ``response_target``) rows enter ABC/RACH
+acceptance.  ``input_context`` is x_obs and is injected into the simulator;
+``hypothesis_prediction``, ``diagnostic_only``, and ``excluded_from_ABC`` are
+not used as acceptance targets.
 """
 
 from __future__ import annotations
@@ -69,7 +46,7 @@ class PatternMatch:
     variable: str
     weight: float
     matched: bool
-    detail: str  # human-readable explanation
+    detail: str
 
 
 @dataclass
@@ -96,17 +73,11 @@ class EvaluationResult:
 
     @property
     def simple_match_rate(self) -> float:
-        """Fraction of patterns matched (unweighted)."""
-        if self.n_total == 0:
-            return 0.0
-        return self.n_matched / self.n_total
+        return self.n_matched / self.n_total if self.n_total else 0.0
 
     @property
     def weighted_match_rate(self) -> float:
-        """Fraction of weight matched."""
-        if self.total_weight == 0.0:
-            return 0.0
-        return self.matched_weight / self.total_weight
+        return self.matched_weight / self.total_weight if self.total_weight else 0.0
 
     def summary_dict(self) -> dict:
         return {
@@ -124,41 +95,20 @@ class EvaluationResult:
 # ---------------------------------------------------------------------------
 
 def evaluate_patterns(
-    simulated_outputs: list,            # list[PhenomenologicalOutput]
-    observed_rows: list[dict],          # from response_target_patterns() or load_observed_pattern_table()
-    env_table: dict[str, dict],         # from load_ecological_context()
+    simulated_outputs: list,
+    observed_rows: list[dict],
+    env_table: dict[str, dict],
     pairwise_left: str = "Oshima",
     pairwise_right: str = "Hachijo",
 ) -> EvaluationResult:
-    """Evaluate response_target pattern rows against simulated outputs.
+    """Evaluate observed_target rows against simulated outputs.
 
-    Rows with ``role == "input_context"`` are silently skipped — predictor
-    variables are injected from ecological_context, not simulated, so they
-    must not count toward ABC acceptance (circular logic prevention).
-
-    Parameters
-    ----------
-    simulated_outputs:
-        List of PhenomenologicalOutput objects (one per population).
-    observed_rows:
-        Pattern rows.  Prefer passing ``response_target_patterns()`` from
-        ``observed_data``; this function also guards against input_context rows
-        appearing in the list.
-    env_table:
-        Ecological context dict from ``load_ecological_context()``.
-    pairwise_left / pairwise_right:
-        Default populations for pairwise comparison when the pattern row
-        itself does not specify left/right_population.
-
-    Returns
-    -------
-    EvaluationResult
+    Rows with roles other than ``observed_target`` / legacy ``response_target``
+    are skipped so that x_obs, hypothesis predictions, diagnostics, and future
+    observations do not enter ABC acceptance.
     """
-    # Build lookup by population name
     by_pop = {o.population: o for o in simulated_outputs}
-
-    # Pre-compute simulated pairwise relations (lazy, for pairwise_relation rows)
-    _sim_pairwise_cache: dict[tuple, dict] = {}
+    _sim_pairwise_cache: dict[tuple[str, str], dict[str, str]] = {}
 
     def _get_pairwise_relations(left: str, right: str) -> dict[str, str]:
         key = (left, right)
@@ -171,82 +121,44 @@ def evaluate_patterns(
 
     result = EvaluationResult()
     for row in observed_rows:
-        # Role taxonomy — only 'response_target' rows enter ABC.
-        #
-        # input_context:
-        #   Predictor variables (e.g. Bombus_frequency) injected from
-        #   ecological_context, not simulated.  Always matches by construction
-        #   → circular if counted toward acceptance.
-        #
-        # diagnostic_only:
-        #   Patterns whose structure encodes a switch assumption (syndrome
-        #   definition, S1/S2 mechanism description).  Using them in ABC
-        #   means P(S|A_ε) reflects researcher assumptions, not data.
-        #
-        # hypothesis_prediction:
-        #   Gradient/rank patterns that are PREDICTIONS from the causal
-        #   hypotheses, not independent field measurements.  E.g.
-        #   "selfing increases with isolation" is what we expect IF S2 is
-        #   active — treating it as y_obs makes the inference circular.
-        #   Only the field_derived endpoints (flower_size: Inoue 1986;
-        #   selfing_rate: Inoue 1990; plus genetic Fis) are independent
-        #   observations. nectar_guide is planned own-field data and herkogamy is
-        #   latent dichogamy — both excluded from ABC.
-        #
-        # Taxonomy:
-        #   公理  (axiom)              → encoded in f(θ,s) mechanics
-        #   普遍  (universal principle) → encoded in f(θ,s) mechanics
-        #   観測  (field observation)  → response_target (used in ABC)
-        #   仮説予測 (hypothesis pred) → hypothesis_prediction (excluded)
-        #   循環  (circular design)    → diagnostic_only (excluded)
-        #   入力  (env input)          → input_context (excluded)
-        # observed_target (canonical) / response_target (legacy alias) → included.
-        # All other roles excluded from ABC acceptance, including
-        # excluded_from_ABC and planned/pending field-validation rows.
         role = row.get("role", "observed_target")
         if role not in ("observed_target", "response_target"):
             continue
+
         ptype = row.get("type", "pairwise_relation")
-        weight = float(row.get("weight", 1.0))
+        weight = _to_float(row.get("weight", 1.0), 1.0)
         variable = row.get("variable", row.get("pattern", ""))
         pattern_id = row.get("pattern", variable)
 
         if ptype == "pairwise_relation":
-            left  = row.get("left_population", pairwise_left) or pairwise_left
+            left = row.get("left_population", pairwise_left) or pairwise_left
             right = row.get("right_population", pairwise_right) or pairwise_right
-            sim_relations = _get_pairwise_relations(left, right)
-            match = match_pairwise(sim_relations, row)
-
+            match = match_pairwise(_get_pairwise_relations(left, right), row)
         elif ptype == "gradient_slope":
             match = match_gradient_slope(by_pop, env_table, row)
-
+        elif ptype == "numeric_gradient":
+            match = match_numeric_gradient(by_pop, env_table, row)
         elif ptype == "rank_order":
             match = match_rank_order(by_pop, row)
-
+        elif ptype == "categorical_transition":
+            match = match_categorical_transition(by_pop, env_table, row)
         elif ptype == "trait_correlation":
             match = match_trait_correlation(by_pop, env_table, row)
-
         else:
-            # Unknown type: skip with a non-match so it counts against acceptance
             match = PatternMatch(
                 pattern=pattern_id,
                 pattern_type=ptype,
                 variable=variable,
                 weight=weight,
                 matched=False,
-                detail=f"Unknown pattern type '{ptype}'",
+                detail=f"Unknown pattern type {ptype!r}",
             )
-
         result.matches.append(match)
-
     return result
 
 
 def weighted_pattern_distance(eval_result: EvaluationResult) -> float:
-    """Compute ABC distance = 1 - weighted_match_rate.
-
-    Returns a value in [0, 1] where 0 = perfect match, 1 = no match.
-    """
+    """Compute ABC distance = 1 - weighted_match_rate."""
     return 1.0 - eval_result.weighted_match_rate
 
 
@@ -254,31 +166,112 @@ def weighted_pattern_distance(eval_result: EvaluationResult) -> float:
 # Per-type evaluators
 # ---------------------------------------------------------------------------
 
-def match_pairwise(
-    simulated_relations: dict[str, str],
-    pattern_row: dict,
-) -> PatternMatch:
-    """Evaluate a pairwise_relation pattern row.
-
-    Parameters
-    ----------
-    simulated_relations:
-        Output of relations_from_outputs(), keyed by variable name.
-    pattern_row:
-        One row from observed_patterns.csv with type == 'pairwise_relation'.
-    """
-    variable   = pattern_row.get("variable", pattern_row.get("pattern", ""))
+def match_pairwise(simulated_relations: dict[str, str], pattern_row: dict) -> PatternMatch:
+    """Evaluate a pairwise_relation pattern row."""
+    variable = pattern_row.get("variable", pattern_row.get("pattern", ""))
     pattern_id = pattern_row.get("pattern", variable)
-    weight     = float(pattern_row.get("weight", 1.0))
-    expected   = pattern_row.get("relation", "")
-
+    weight = _to_float(pattern_row.get("weight", 1.0), 1.0)
+    expected = pattern_row.get("relation", "")
     simulated = simulated_relations.get(variable, "")
-    matched = simulated == expected and bool(expected)
-
-    detail = f"sim={simulated!r} expected={expected!r}"
     return PatternMatch(
         pattern=pattern_id,
         pattern_type="pairwise_relation",
+        variable=variable,
+        weight=weight,
+        matched=bool(expected) and simulated == expected,
+        detail=f"sim={simulated!r} expected={expected!r}",
+    )
+
+
+def match_gradient_slope(by_pop: dict, env_table: dict, pattern_row: dict) -> PatternMatch:
+    """Evaluate a gradient_slope pattern row by slope sign."""
+    variable = pattern_row.get("variable", "")
+    pattern_id = pattern_row.get("pattern", variable)
+    weight = _to_float(pattern_row.get("weight", 1.0), 1.0)
+    predictor = pattern_row.get("predictor", "distance_from_mainland") or "distance_from_mainland"
+    expected_dir = pattern_row.get("expected_direction", "").strip().lower()
+
+    points, missing = _collect_xy(by_pop, env_table, variable, predictor, pattern_row)
+    if len(points) < 2:
+        return PatternMatch(
+            pattern=pattern_id,
+            pattern_type="gradient_slope",
+            variable=variable,
+            weight=weight,
+            matched=False,
+            detail=f"insufficient data (n={len(points)}, missing={missing})",
+        )
+    xs = [p[1] for p in points]
+    ys = [p[2] for p in points]
+    slope = _ols_slope(xs, ys)
+    matched = _direction_matches(slope, expected_dir)
+    return PatternMatch(
+        pattern=pattern_id,
+        pattern_type="gradient_slope",
+        variable=variable,
+        weight=weight,
+        matched=matched,
+        detail=f"slope={slope:.4f} expected={expected_dir} n={len(points)} pops={[p[0] for p in points]}",
+    )
+
+
+def match_numeric_gradient(by_pop: dict, env_table: dict, pattern_row: dict) -> PatternMatch:
+    """Evaluate a numeric_gradient row.
+
+    The default check is the same as ``gradient_slope``.  If optional numeric
+    bounds are present in the row, they are also enforced:
+
+    - ``min_slope``: simulated slope must be >= this value
+    - ``max_slope``: simulated slope must be <= this value
+    - ``min_abs_slope``: abs(simulated slope) must be >= this value
+
+    This lets future PDF-transcribed or field-measured gradients replace purely
+    directional targets without changing the evaluator interface.
+    """
+    variable = pattern_row.get("variable", "")
+    pattern_id = pattern_row.get("pattern", variable)
+    weight = _to_float(pattern_row.get("weight", 1.0), 1.0)
+    predictor = pattern_row.get("predictor", "distance_from_mainland") or "distance_from_mainland"
+    expected_dir = pattern_row.get("expected_direction", "").strip().lower()
+
+    points, missing = _collect_xy(by_pop, env_table, variable, predictor, pattern_row)
+    if len(points) < 2:
+        return PatternMatch(
+            pattern=pattern_id,
+            pattern_type="numeric_gradient",
+            variable=variable,
+            weight=weight,
+            matched=False,
+            detail=f"insufficient data (n={len(points)}, missing={missing})",
+        )
+    xs = [p[1] for p in points]
+    ys = [p[2] for p in points]
+    slope = _ols_slope(xs, ys)
+
+    checks: list[bool] = []
+    if expected_dir:
+        checks.append(_direction_matches(slope, expected_dir))
+    min_slope = _optional_float(pattern_row.get("min_slope"))
+    max_slope = _optional_float(pattern_row.get("max_slope"))
+    min_abs = _optional_float(pattern_row.get("min_abs_slope"))
+    if min_slope is not None:
+        checks.append(slope >= min_slope)
+    if max_slope is not None:
+        checks.append(slope <= max_slope)
+    if min_abs is not None:
+        checks.append(abs(slope) >= min_abs)
+    if not checks:
+        checks.append(True)
+
+    matched = all(checks)
+    detail = (
+        f"numeric_slope={slope:.4f} expected={expected_dir or 'none'} "
+        f"min_slope={min_slope} max_slope={max_slope} min_abs_slope={min_abs} "
+        f"n={len(points)} pops={[p[0] for p in points]}"
+    )
+    return PatternMatch(
+        pattern=pattern_id,
+        pattern_type="numeric_gradient",
         variable=variable,
         weight=weight,
         matched=matched,
@@ -286,135 +279,72 @@ def match_pairwise(
     )
 
 
-def match_gradient_slope(
-    by_pop: dict,         # {pop_name: PhenomenologicalOutput}
-    env_table: dict,      # {pop_name: {col: val}}
-    pattern_row: dict,
-) -> PatternMatch:
-    """Evaluate a gradient_slope pattern row.
+def match_categorical_transition(by_pop: dict, env_table: dict, pattern_row: dict) -> PatternMatch:
+    """Evaluate an ordered categorical transition across populations.
 
-    Fits a simple linear regression (OLS, no intercept needed) of
-    ``variable ~ predictor`` across the specified populations and checks
-    whether the slope sign matches expected_direction.
+    The expected sequence is read from ``relation`` as ``A -> B -> C``.  If
+    ``populations`` is empty, populations are sorted by ``predictor`` (default:
+    distance_from_mainland).  Observed categories are obtained in this order:
 
-    Parameters
-    ----------
-    by_pop:
-        Dict mapping population name to PhenomenologicalOutput.
-    env_table:
-        Dict mapping population name to environment row (numeric floats).
-    pattern_row:
-        One CSV row with type == 'gradient_slope'.
+    1. an output attribute matching ``variable`` if it is already a string;
+    2. a context value in ``env_table``;
+    3. derived categories for known continuous variables such as selfing_rate.
+
+    This is mainly for source-confirmed transitions such as
+    SI_outcrossing -> SC_mixed -> SC_selfing.
     """
-    variable   = pattern_row.get("variable", "")
+    variable = pattern_row.get("variable", "")
     pattern_id = pattern_row.get("pattern", variable)
-    weight     = float(pattern_row.get("weight", 1.0))
-    predictor  = pattern_row.get("predictor", "distance_from_mainland")
-    expected_dir = pattern_row.get("expected_direction", "").strip().lower()
+    weight = _to_float(pattern_row.get("weight", 1.0), 1.0)
+    expected = _parse_transition(pattern_row.get("relation", ""))
+    predictor = pattern_row.get("predictor", "distance_from_mainland") or "distance_from_mainland"
+    pop_list = _population_list(by_pop, env_table, predictor, pattern_row)
 
-    raw_pops = pattern_row.get("populations", "")
-    pop_list = [p.strip() for p in raw_pops.split(";") if p.strip()]
-    # Empty populations field → use ALL simulated populations,
-    # sorted by predictor value so the gradient direction is meaningful.
-    if not pop_list:
-        pop_list = sorted(
-            by_pop.keys(),
-            key=lambda p: float((env_table.get(p) or {}).get(predictor) or 0),
-        )
-
-    if len(pop_list) < 2:
-        return PatternMatch(
-            pattern=pattern_id, pattern_type="gradient_slope",
-            variable=variable, weight=weight, matched=False,
-            detail="fewer than 2 populations available",
-        )
-
-    xs, ys = [], []
-    missing = []
+    observed: list[str] = []
+    missing: list[str] = []
     for pop in pop_list:
-        env_row = env_table.get(pop)
-        out     = by_pop.get(pop)
-        if env_row is None or out is None:
+        out = by_pop.get(pop)
+        env_row = env_table.get(pop, {})
+        cat = _category_for(pop, out, env_row, variable)
+        if cat is None:
             missing.append(pop)
-            continue
-        x_val = env_row.get(predictor)
-        y_val = getattr(out, variable, None)
-        if x_val is None or y_val is None:
-            missing.append(pop)
-            continue
-        xs.append(float(x_val))
-        ys.append(float(y_val))
+        else:
+            observed.append(cat)
 
-    if len(xs) < 2:
-        return PatternMatch(
-            pattern=pattern_id, pattern_type="gradient_slope",
-            variable=variable, weight=weight, matched=False,
-            detail=f"insufficient data (missing populations: {missing})",
-        )
-
-    slope = _ols_slope(xs, ys)
-    if expected_dir == "negative":
-        matched = slope < 0.0
-    elif expected_dir == "positive":
-        matched = slope > 0.0
-    else:
-        matched = False
-
-    detail = (
-        f"slope={slope:.4f} expected={expected_dir} "
-        f"n={len(xs)} pops={pop_list}"
-    )
+    matched = bool(expected) and observed == expected
+    detail = f"observed={' -> '.join(observed)} expected={' -> '.join(expected)} missing={missing} pops={pop_list}"
     return PatternMatch(
-        pattern=pattern_id, pattern_type="gradient_slope",
-        variable=variable, weight=weight, matched=matched, detail=detail,
+        pattern=pattern_id,
+        pattern_type="categorical_transition",
+        variable=variable,
+        weight=weight,
+        matched=matched,
+        detail=detail,
     )
 
 
-def match_trait_correlation(
-    by_pop: dict,       # {pop_name: PhenomenologicalOutput}
-    env_table: dict,    # {pop_name: {col: val}}
-    pattern_row: dict,
-) -> PatternMatch:
-    """Evaluate a trait_correlation pattern row.
-
-    Computes the Pearson correlation (via OLS slope sign) between response
-    variable y and predictor x across all simulated populations.
-
-    Predictor lookup order:
-    1. ``getattr(output, predictor)`` — field on PhenomenologicalOutput
-    2. ``env_table[pop].get(predictor)`` — environmental column (fallback)
-
-    Parameters
-    ----------
-    by_pop:
-        Dict mapping population name to PhenomenologicalOutput.
-    env_table:
-        Dict mapping population name to environment row.
-    pattern_row:
-        One CSV row with type == 'trait_correlation'.
-        Required fields: variable (y), predictor (x), expected_direction.
-    """
-    variable     = pattern_row.get("variable", "")
-    predictor    = pattern_row.get("predictor", "")
-    pattern_id   = pattern_row.get("pattern", variable)
-    weight       = float(pattern_row.get("weight", 1.0))
+def match_trait_correlation(by_pop: dict, env_table: dict, pattern_row: dict) -> PatternMatch:
+    """Evaluate a trait_correlation pattern row by OLS slope sign."""
+    variable = pattern_row.get("variable", "")
+    predictor = pattern_row.get("predictor", "")
+    pattern_id = pattern_row.get("pattern", variable)
+    weight = _to_float(pattern_row.get("weight", 1.0), 1.0)
     expected_dir = pattern_row.get("expected_direction", "").strip().lower()
 
     if not variable or not predictor:
         return PatternMatch(
-            pattern=pattern_id, pattern_type="trait_correlation",
-            variable=variable, weight=weight, matched=False,
+            pattern=pattern_id,
+            pattern_type="trait_correlation",
+            variable=variable,
+            weight=weight,
+            matched=False,
             detail="missing variable or predictor field",
         )
 
     xs, ys, missing = [], [], []
     for pop, out in by_pop.items():
-        y_val = getattr(out, variable, None)
-        # Predictor: try output attribute first, then env_table
-        x_val = getattr(out, predictor, None)
-        if x_val is None:
-            env_row = env_table.get(pop, {})
-            x_val = env_row.get(predictor)
+        y_val = _value_from_output_or_env(pop, out, env_table, variable)
+        x_val = _value_from_output_or_env(pop, out, env_table, predictor)
         if x_val is None or y_val is None:
             missing.append(pop)
             continue
@@ -423,72 +353,40 @@ def match_trait_correlation(
 
     if len(xs) < 3:
         return PatternMatch(
-            pattern=pattern_id, pattern_type="trait_correlation",
-            variable=variable, weight=weight, matched=False,
+            pattern=pattern_id,
+            pattern_type="trait_correlation",
+            variable=variable,
+            weight=weight,
+            matched=False,
             detail=f"insufficient data (n={len(xs)}, missing={missing})",
         )
 
     slope = _ols_slope(xs, ys)
-    # Pearson r has the same sign as OLS slope for the same data
-    if expected_dir == "positive":
-        matched = slope > 0.0
-    elif expected_dir == "negative":
-        matched = slope < 0.0
-    else:
-        matched = False
-
-    detail = (
-        f"corr_slope={slope:.4f} expected={expected_dir} "
-        f"n={len(xs)} y={variable} x={predictor}"
-    )
+    matched = _direction_matches(slope, expected_dir)
     return PatternMatch(
-        pattern=pattern_id, pattern_type="trait_correlation",
-        variable=variable, weight=weight, matched=matched, detail=detail,
+        pattern=pattern_id,
+        pattern_type="trait_correlation",
+        variable=variable,
+        weight=weight,
+        matched=matched,
+        detail=f"corr_slope={slope:.4f} expected={expected_dir} n={len(xs)} y={variable} x={predictor}",
     )
 
 
-def match_rank_order(
-    by_pop: dict,  # {pop_name: PhenomenologicalOutput}
-    pattern_row: dict,
-) -> PatternMatch:
-    """Evaluate a rank_order pattern row.
-
-    Checks whether the simulated variable values follow the expected
-    monotone order (increasing or decreasing) across populations.
-    Uses Kendall's tau sign: tau > 0 = correct direction.
-
-    Parameters
-    ----------
-    by_pop:
-        Dict mapping population name to PhenomenologicalOutput.
-    pattern_row:
-        One CSV row with type == 'rank_order'.
-    """
-    variable   = pattern_row.get("variable", "")
+def match_rank_order(by_pop: dict, pattern_row: dict) -> PatternMatch:
+    """Evaluate a rank_order pattern row."""
+    variable = pattern_row.get("variable", "")
     pattern_id = pattern_row.get("pattern", variable)
-    weight     = float(pattern_row.get("weight", 1.0))
+    weight = _to_float(pattern_row.get("weight", 1.0), 1.0)
     expected_dir = pattern_row.get("expected_direction", "").strip().lower()
 
     raw_pops = pattern_row.get("populations", "")
-    pop_list = [p.strip() for p in raw_pops.split(";") if p.strip()]
-    # Empty populations field → use ALL simulated populations in dict order
-    # (caller should ensure by_pop is ordered by isolation distance).
-    if not pop_list:
-        pop_list = list(by_pop.keys())
-
-    if len(pop_list) < 2:
-        return PatternMatch(
-            pattern=pattern_id, pattern_type="rank_order",
-            variable=variable, weight=weight, matched=False,
-            detail="fewer than 2 populations specified",
-        )
+    pop_list = [p.strip() for p in raw_pops.split(";") if p.strip()] or list(by_pop.keys())
 
     values, available = [], []
     for pop in pop_list:
         out = by_pop.get(pop)
-        if out is None:
-            continue
-        val = getattr(out, variable, None)
+        val = getattr(out, variable, None) if out is not None else None
         if val is None:
             continue
         values.append(float(val))
@@ -496,8 +394,11 @@ def match_rank_order(
 
     if len(values) < 2:
         return PatternMatch(
-            pattern=pattern_id, pattern_type="rank_order",
-            variable=variable, weight=weight, matched=False,
+            pattern=pattern_id,
+            pattern_type="rank_order",
+            variable=variable,
+            weight=weight,
+            matched=False,
             detail=f"insufficient data for populations {pop_list}",
         )
 
@@ -508,20 +409,115 @@ def match_rank_order(
         matched = tau < 0.0
     else:
         matched = False
-
-    detail = (
-        f"tau={tau:.4f} expected={expected_dir} "
-        f"values={[round(v, 3) for v in values]} pops={available}"
-    )
     return PatternMatch(
-        pattern=pattern_id, pattern_type="rank_order",
-        variable=variable, weight=weight, matched=matched, detail=detail,
+        pattern=pattern_id,
+        pattern_type="rank_order",
+        variable=variable,
+        weight=weight,
+        matched=matched,
+        detail=f"tau={tau:.4f} expected={expected_dir} values={[round(v, 3) for v in values]} pops={available}",
     )
+
+
+# ---------------------------------------------------------------------------
+# Data extraction helpers
+# ---------------------------------------------------------------------------
+
+def _collect_xy(by_pop: dict, env_table: dict, variable: str, predictor: str, pattern_row: dict) -> tuple[list[tuple[str, float, float]], list[str]]:
+    pop_list = _population_list(by_pop, env_table, predictor, pattern_row)
+    points: list[tuple[str, float, float]] = []
+    missing: list[str] = []
+    for pop in pop_list:
+        out = by_pop.get(pop)
+        x_val = (env_table.get(pop) or {}).get(predictor)
+        y_val = getattr(out, variable, None) if out is not None else None
+        if x_val is None or y_val is None:
+            missing.append(pop)
+            continue
+        points.append((pop, float(x_val), float(y_val)))
+    return points, missing
+
+
+def _population_list(by_pop: dict, env_table: dict, predictor: str, pattern_row: dict) -> list[str]:
+    raw_pops = pattern_row.get("populations", "")
+    pop_list = [p.strip() for p in raw_pops.split(";") if p.strip()]
+    if pop_list:
+        return pop_list
+    return sorted(
+        by_pop.keys(),
+        key=lambda p: float((env_table.get(p) or {}).get(predictor) or 0.0),
+    )
+
+
+def _value_from_output_or_env(pop: str, out, env_table: dict, key: str):
+    val = getattr(out, key, None) if out is not None else None
+    if val is not None:
+        return val
+    return (env_table.get(pop) or {}).get(key)
+
+
+def _category_for(pop: str, out, env_row: dict, variable: str) -> str | None:
+    val = getattr(out, variable, None) if out is not None else None
+    if isinstance(val, str):
+        return val
+    if val is None:
+        val = env_row.get(variable)
+    if isinstance(val, str):
+        return val
+
+    # Derived categories for common continuous variables in the Campanula example.
+    if variable in {"selfing_rate", "breeding_system", "breeding_system_category"}:
+        numeric = getattr(out, "selfing_rate", None) if out is not None else None
+        if numeric is None:
+            numeric = env_row.get("selfing_rate")
+        if numeric is None:
+            return None
+        x = float(numeric)
+        if x < 0.25:
+            return "SI_outcrossing"
+        if x < 0.65:
+            return "SC_mixed"
+        return "SC_selfing"
+    return None
+
+
+def _parse_transition(text: str) -> list[str]:
+    if not text:
+        return []
+    return [part.strip() for part in text.split("->") if part.strip()]
+
+
+def _direction_matches(value: float, expected_dir: str) -> bool:
+    if expected_dir == "negative":
+        return value < 0.0
+    if expected_dir == "positive":
+        return value > 0.0
+    if expected_dir == "zero":
+        return value == 0.0
+    return False
 
 
 # ---------------------------------------------------------------------------
 # Numeric helpers
 # ---------------------------------------------------------------------------
+
+def _to_float(v, default: float = 0.0) -> float:
+    try:
+        if v is None or v == "":
+            return default
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _optional_float(v) -> float | None:
+    try:
+        if v is None or v == "":
+            return None
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
 
 def _ols_slope(xs: list[float], ys: list[float]) -> float:
     """Compute OLS slope of y ~ x without external dependencies."""
@@ -532,55 +528,11 @@ def _ols_slope(xs: list[float], ys: list[float]) -> float:
     y_mean = sum(ys) / n
     num = sum((x - x_mean) * (y - y_mean) for x, y in zip(xs, ys))
     den = sum((x - x_mean) ** 2 for x in xs)
-    if den == 0.0:
-        return 0.0
-    return num / den
-
-
-class ABMPopulationProxy:
-    """Thin wrapper around ABM final-generation averages for pattern evaluation.
-
-    Mimics the attribute interface of PhenomenologicalOutput so that
-    evaluate_patterns() can be called with ABM outputs.
-    primary_pollinator_frequency is injected from ecological_context, not from ABM.
-    """
-
-    # ABM key → PhenomenologicalOutput attribute
-    _KEY_MAP = {
-        "nectar_guide":  "mean_nectar_guide",
-        "selfing_rate":  "selfing_rate",
-        "herkogamy":     "mean_herkogamy",
-        "flower_size":   "mean_flower_size",
-        "Fis":           "Fis_proxy",
-    }
-
-    def __init__(
-        self,
-        population: str,
-        final_dict: dict,
-        env_row: dict | None = None,
-    ) -> None:
-        self.population = population
-        self.nectar_guide  = float(final_dict.get("mean_nectar_guide", 0.5))
-        self.selfing_rate  = float(final_dict.get("selfing_rate",      0.5))
-        self.herkogamy     = float(final_dict.get("mean_herkogamy",    0.5))
-        self.flower_size   = float(final_dict.get("mean_flower_size",  0.5))
-        self.Fis           = float(final_dict.get("Fis_proxy",         0.5))
-        self.primary_pollinator_frequency = (
-            float(env_row.get("primary_pollinator_frequency", 0.0)) if env_row else 0.0
-        )
-        self.outcrossing_opportunity = max(0.0, 1.0 - self.selfing_rate)
-        # ABM tracks mean_neutral_diversity when available; fall back to 0.5
-        self.neutral_diversity = float(final_dict.get("mean_neutral_diversity", 0.5))
+    return 0.0 if den == 0.0 else num / den
 
 
 def _kendall_tau(values: list[float]) -> float:
-    """Compute Kendall's tau for a sequence vs its natural index order.
-
-    Positive tau = values increase along the sequence.
-    Negative tau = values decrease along the sequence.
-    Uses simple concordant/discordant pair counting (O(n^2)).
-    """
+    """Compute Kendall's tau for a sequence vs its natural index order."""
     n = len(values)
     if n < 2:
         return 0.0
@@ -593,6 +545,29 @@ def _kendall_tau(values: list[float]) -> float:
             elif diff < 0:
                 discordant += 1
     total = concordant + discordant
-    if total == 0:
-        return 0.0
-    return (concordant - discordant) / total
+    return 0.0 if total == 0 else (concordant - discordant) / total
+
+
+class ABMPopulationProxy:
+    """Thin wrapper around ABM final-generation averages for pattern evaluation."""
+
+    _KEY_MAP = {
+        "nectar_guide": "mean_nectar_guide",
+        "selfing_rate": "selfing_rate",
+        "herkogamy": "mean_herkogamy",
+        "flower_size": "mean_flower_size",
+        "Fis": "Fis_proxy",
+    }
+
+    def __init__(self, population: str, final_dict: dict, env_row: dict | None = None) -> None:
+        self.population = population
+        self.nectar_guide = float(final_dict.get("mean_nectar_guide", 0.5))
+        self.selfing_rate = float(final_dict.get("selfing_rate", 0.5))
+        self.herkogamy = float(final_dict.get("mean_herkogamy", 0.5))
+        self.flower_size = float(final_dict.get("mean_flower_size", 0.5))
+        self.Fis = float(final_dict.get("Fis_proxy", 0.5))
+        self.primary_pollinator_frequency = (
+            float(env_row.get("primary_pollinator_frequency", 0.0)) if env_row else 0.0
+        )
+        self.outcrossing_opportunity = max(0.0, 1.0 - self.selfing_rate)
+        self.neutral_diversity = float(final_dict.get("mean_neutral_diversity", 0.5))

@@ -1,15 +1,15 @@
 """Loaders for Campanula / Izu RACH data roles.
 
-RACH separates several epistemic roles:
+RACH separates epistemic roles by inference function, not by data type:
 
-- input_context: fixed empirical context x_obs used by f(x_obs; theta, s), excluded from ABC.
-- observed_target: independent empirical response observations used for ABC/RACH acceptance.
-- hypothesis_prediction: theoretical or posterior-predictive expectations, excluded by default.
-- diagnostic_only: circular/internal checks such as syndrome definitions, excluded by default.
-- excluded_from_ABC: rows with provenance gaps or pending field validation; excluded from
-  ABC until promoted to observed_target. Some are tracked meanwhile as NOV candidates.
+- input_context: fixed empirical context x_obs used by f(x_obs; theta, s).
+- observed_target: independent empirical y_obs used for ABC/RACH acceptance.
+- hypothesis_prediction: theory-derived or posterior-predictive expectations.
+- diagnostic_only: circular/internal checks excluded from acceptance.
+- excluded_from_ABC: rows with provenance gaps or pending field validation.
+- future_observation: planned measurements tracked as NOV/design candidates.
 
-`response_target` is accepted only as a backward-compatible alias for old data files.
+`response_target` and `planned_observation` are accepted as legacy aliases.
 """
 
 from __future__ import annotations
@@ -20,26 +20,26 @@ from pathlib import Path
 _DEFAULT_PATTERNS_CSV = Path(__file__).parent / "data" / "observed_patterns.csv"
 _DEFAULT_CONTEXT_CSV = Path(__file__).parent / "data" / "ecological_context.csv"
 _DEFAULT_INDEPENDENT_OBS_CSV = Path(__file__).parent / "data" / "independent_observations.csv"
+_DEFAULT_FUTURE_OBS_CSV = Path(__file__).parent / "data" / "future_observations.csv"
 _DEFAULT_ENV_CSV = _DEFAULT_CONTEXT_CSV
 
-ABC_TARGET_ROLES = {"observed_target", "response_target"}  # response_target is legacy
+ABC_TARGET_ROLES = {"observed_target", "response_target"}
 EXCLUDED_ROLES = {
     "input_context",
     "hypothesis_prediction",
     "excluded_from_ABC",
     "diagnostic_only",
-    "planned_observation",  # legacy alias
+    "planned_observation",
+    "future_observation",
 }
+FUTURE_ROLES = {"future_observation", "planned_observation"}
 
 _FALLBACK_PAIRWISE: list[dict] = [
-    {"pattern": "nectar_guide_pairwise", "type": "pairwise_relation", "variable": "nectar_guide", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "future_field_validation", "notes": "fallback; planned own field data, not an Inoue measurement; NOV candidate for S1", "role": "excluded_from_ABC"},
-    {"pattern": "selfing_rate_pairwise", "type": "pairwise_relation", "variable": "selfing_rate", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "1.0", "source": "field/Inoue1990", "notes": "fallback; legacy diagnostic projection of the Inoue-series gradient", "role": "diagnostic_only", "epistemic_status": "field_derived"},
-    {"pattern": "herkogamy_pairwise", "type": "pairwise_relation", "variable": "herkogamy", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "theoretical", "notes": "fallback; latent dichogamy/delayed-selfing, not an Inoue field measurement", "role": "excluded_from_ABC"},
-    {"pattern": "flower_size_pairwise", "type": "pairwise_relation", "variable": "flower_size", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "field/Inoue1986", "notes": "fallback; legacy diagnostic projection of the Inoue-series gradient", "role": "diagnostic_only", "epistemic_status": "field_derived"},
-    {"pattern": "Fis_pairwise", "type": "pairwise_relation", "variable": "Fis", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "0.5", "source": "genetic_survey", "notes": "fallback; exclude until independent genetic estimate is source-confirmed because Fis_proxy is partly generated from selfing_rate", "role": "excluded_from_ABC", "epistemic_status": "pending_independent_genetic_validation"},
-    {"pattern": "Bombus_frequency_pairwise", "type": "pairwise_relation", "variable": "primary_pollinator_frequency", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "Inoue1986", "notes": "fallback; pollinator assemblage is excluded input context", "role": "input_context"},
-    {"pattern": "selfing_distance", "type": "gradient_slope", "variable": "selfing_rate", "left_population": "", "right_population": "", "populations": "", "predictor": "distance_from_mainland", "expected_direction": "positive", "relation": "", "weight": "1.0", "source": "field/Inoue1990", "notes": "fallback; Inoue-series breeding-system gradient target", "role": "observed_target", "epistemic_status": "field_derived"},
-    {"pattern": "flower_size_distance", "type": "gradient_slope", "variable": "flower_size", "left_population": "", "right_population": "", "populations": "", "predictor": "distance_from_mainland", "expected_direction": "negative", "relation": "", "weight": "0.8", "source": "field/Inoue1986", "notes": "fallback; Amano & Inoue morphology gradient target", "role": "observed_target", "epistemic_status": "field_derived"},
+    {"pattern": "nectar_guide_pairwise", "type": "pairwise_relation", "variable": "nectar_guide", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "future_field_validation", "notes": "fallback; planned own field data, not an Inoue measurement; NOV candidate for S1", "role": "excluded_from_ABC", "epistemic_status": "pending_field_validation"},
+    {"pattern": "selfing_distance", "type": "gradient_slope", "variable": "selfing_rate", "left_population": "", "right_population": "", "populations": "", "predictor": "distance_from_mainland", "expected_direction": "positive", "relation": "", "weight": "1.0", "source": "field/Inoue1990", "notes": "fallback canonical y_obs", "role": "observed_target", "epistemic_status": "field_derived"},
+    {"pattern": "flower_size_distance", "type": "gradient_slope", "variable": "flower_size", "left_population": "", "right_population": "", "populations": "", "predictor": "distance_from_mainland", "expected_direction": "negative", "relation": "", "weight": "0.8", "source": "field/Inoue1986", "notes": "fallback canonical y_obs", "role": "observed_target", "epistemic_status": "field_derived"},
+    {"pattern": "herkogamy_pairwise", "type": "pairwise_relation", "variable": "herkogamy", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "theoretical", "notes": "fallback; latent dichogamy/delayed-selfing, not an Inoue field measurement", "role": "excluded_from_ABC", "epistemic_status": "theoretical_design"},
+    {"pattern": "Bombus_frequency_pairwise", "type": "pairwise_relation", "variable": "primary_pollinator_frequency", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "Inoue1986", "notes": "fallback; pollinator assemblage is excluded input context", "role": "input_context", "epistemic_status": "field_derived"},
 ]
 
 _CONTEXT_NUMERIC_COLS = (
@@ -60,11 +60,18 @@ def _read_csv_rows(path: Path) -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def load_ecological_context(path: str | Path | None = None) -> dict[str, dict]:
-    """Load fixed empirical context x_obs from ecological_context.csv.
+def _to_optional_float(value):
+    val = str(value or "").strip()
+    if not val:
+        return None
+    try:
+        return float(val)
+    except ValueError:
+        return None
 
-    These values drive simulations and are excluded from ABC target distance.
-    """
+
+def load_ecological_context(path: str | Path | None = None) -> dict[str, dict]:
+    """Load fixed empirical context x_obs from ecological_context.csv."""
     p = Path(path) if path else _DEFAULT_CONTEXT_CSV
     result: dict[str, dict] = {}
     try:
@@ -81,10 +88,8 @@ def load_ecological_context(path: str | Path | None = None) -> dict[str, dict]:
             if col == "population":
                 entry[col] = val
             elif col in _CONTEXT_NUMERIC_COLS:
-                try:
-                    entry[col] = float(val)
-                except (ValueError, TypeError):
-                    entry[col] = val
+                parsed = _to_optional_float(val)
+                entry[col] = parsed if parsed is not None else val
             else:
                 entry[col] = val
         result[name] = entry
@@ -111,11 +116,7 @@ def load_observed_pattern_table(path: str | Path | None = None) -> list[dict]:
 
 
 def observed_target_patterns(path: str | Path | None = None) -> list[dict]:
-    """Return independent ABC/RACH target rows only.
-
-    Default strict RACH acceptance uses only role == observed_target.
-    The legacy role response_target is also accepted for backward compatibility.
-    """
+    """Return independent ABC/RACH y_obs target rows only."""
     return [
         row for row in load_observed_pattern_table(path)
         if row.get("role", "observed_target") in ABC_TARGET_ROLES
@@ -128,7 +129,7 @@ def response_target_patterns(path: str | Path | None = None) -> list[dict]:
 
 
 def excluded_patterns(path: str | Path | None = None) -> list[dict]:
-    """Return input_context, hypothesis_prediction, and diagnostic_only rows."""
+    """Return input_context, hypothesis_prediction, diagnostics, and excluded rows."""
     return [
         row for row in load_observed_pattern_table(path)
         if row.get("role", "observed_target") in EXCLUDED_ROLES
@@ -137,29 +138,19 @@ def excluded_patterns(path: str | Path | None = None) -> list[dict]:
 
 def hypothesis_prediction_patterns(path: str | Path | None = None) -> list[dict]:
     """Return hypothesis-derived predictions for posterior checks only."""
-    return [
-        row for row in load_observed_pattern_table(path)
-        if row.get("role") == "hypothesis_prediction"
-    ]
+    return [row for row in load_observed_pattern_table(path) if row.get("role") == "hypothesis_prediction"]
 
 
 def diagnostic_only_patterns(path: str | Path | None = None) -> list[dict]:
     """Return circular/internal diagnostic patterns excluded from ABC."""
-    return [
-        row for row in load_observed_pattern_table(path)
-        if row.get("role") == "diagnostic_only"
-    ]
+    return [row for row in load_observed_pattern_table(path) if row.get("role") == "diagnostic_only"]
 
 
 def planned_observation_patterns(path: str | Path | None = None) -> list[dict]:
-    """Return not-yet-collected patterns (excluded from ABC until measured).
-
-    These are tracked as NOV candidates; promote to ``observed_target`` after the
-    field data are collected.
-    """
+    """Return not-yet-collected observed_patterns rows tracked as NOV candidates."""
     return [
         row for row in load_observed_pattern_table(path)
-        if row.get("role") == "planned_observation"
+        if row.get("role") in FUTURE_ROLES
         or (
             row.get("role") == "excluded_from_ABC"
             and row.get("epistemic_status") in {"planned", "pending_field_validation"}
@@ -168,16 +159,16 @@ def planned_observation_patterns(path: str | Path | None = None) -> list[dict]:
 
 
 def observed_gradient_only_patterns(path: str | Path | None = None) -> list[dict]:
-    """Return observed_target rows usable as pattern targets.
-
-    Historical name retained. Under strict RACH this may return pairwise endpoint
-    targets if no independent observed gradient targets exist. Hypothesis-derived
-    conceptual gradients are excluded.
-    """
-    return [
-        row for row in observed_target_patterns(path)
-        if row.get("type", "") in ("pairwise_relation", "gradient_slope", "rank_order", "trait_correlation")
-    ]
+    """Return observed_target rows usable as pattern targets."""
+    accepted_types = {
+        "pairwise_relation",
+        "gradient_slope",
+        "numeric_gradient",
+        "rank_order",
+        "categorical_transition",
+        "trait_correlation",
+    }
+    return [row for row in observed_target_patterns(path) if row.get("type", "") in accepted_types]
 
 
 def observed_gradient_patterns(path: str | Path | None = None) -> list[dict]:
@@ -185,10 +176,8 @@ def observed_gradient_patterns(path: str | Path | None = None) -> list[dict]:
     rows = []
     for row in observed_gradient_only_patterns(path):
         out = dict(row)
-        try:
-            out["weight"] = float(row.get("weight", 1.0))
-        except (ValueError, TypeError):
-            out["weight"] = 1.0
+        parsed_weight = _to_optional_float(row.get("weight", 1.0))
+        out["weight"] = parsed_weight if parsed_weight is not None else 1.0
         raw_pops = row.get("populations", "")
         out["populations"] = [p.strip() for p in raw_pops.split(";") if p.strip()]
         rows.append(out)
@@ -196,12 +185,7 @@ def observed_gradient_patterns(path: str | Path | None = None) -> list[dict]:
 
 
 def observed_pairwise_relations(path: str | Path | None = None) -> dict[str, str]:
-    """Return observed_target pairwise patterns as {variable: relation}.
-
-    The current Campanula y_obs is gradient-based, so this legacy helper may
-    return an empty mapping. Inference paths evaluate response_target_patterns()
-    directly and are not limited to pairwise rows.
-    """
+    """Return observed_target pairwise patterns as {variable: relation}."""
     return {
         row["variable"]: row["relation"]
         for row in observed_target_patterns(path)
@@ -215,28 +199,17 @@ def load_observed_patterns(path: str | Path | None = None) -> dict[str, str]:
 
 
 def load_pattern_weights(path: str | Path | None = None) -> dict[str, float]:
-    """Return {variable: weight} for observed_target pairwise rows.
-
-    Legacy helper retained for call signatures; gradient-target inference reads
-    weights from response_target_patterns().
-    """
+    """Return {variable: weight} for observed_target pairwise rows."""
     out: dict[str, float] = {}
     for row in observed_target_patterns(path):
         if row.get("type", "pairwise_relation") == "pairwise_relation":
-            try:
-                out[row["variable"]] = float(row.get("weight", 1.0))
-            except (ValueError, TypeError):
-                out[row["variable"]] = 1.0
+            parsed_weight = _to_optional_float(row.get("weight", 1.0))
+            out[row["variable"]] = parsed_weight if parsed_weight is not None else 1.0
     return out
 
 
 def load_independent_observations(path: str | Path | None = None) -> list[dict]:
-    """Load independent_observations.csv.
-
-    Rows with role=observed_target are future numeric y_obs targets; rows with
-    role=input_context are fixed x_obs context and excluded from target distance.
-    Empty numeric fields are preserved as None.
-    """
+    """Load independent_observations.csv and parse numeric fields."""
     p = Path(path) if path else _DEFAULT_INDEPENDENT_OBS_CSV
     try:
         rows = _read_csv_rows(p)
@@ -244,12 +217,32 @@ def load_independent_observations(path: str | Path | None = None) -> list[dict]:
         return []
     for row in rows:
         for col in ("observed_value", "se"):
-            val = str(row.get(col, "")).strip()
-            if not val:
-                row[col] = None
-            else:
-                try:
-                    row[col] = float(val)
-                except ValueError:
-                    row[col] = None
+            row[col] = _to_optional_float(row.get(col))
     return rows
+
+
+def load_future_observations(path: str | Path | None = None) -> list[dict]:
+    """Load planned future observations for NOV / study-design prioritisation.
+
+    These rows are not ABC targets until measured and promoted to observed_target
+    in observed_patterns.csv or independent_observations.csv.
+    """
+    p = Path(path) if path else _DEFAULT_FUTURE_OBS_CSV
+    try:
+        rows = _read_csv_rows(p)
+    except FileNotFoundError:
+        return []
+    for row in rows:
+        for col in ("expected_weight", "cost", "feasibility", "priority"):
+            row[col] = _to_optional_float(row.get(col))
+    return rows
+
+
+def future_observation_patterns(path: str | Path | None = None) -> list[dict]:
+    """Return planned future observations tracked as NOV/design candidates."""
+    return load_future_observations(path)
+
+
+def nov_candidate_observations(path: str | Path | None = None) -> list[dict]:
+    """Alias for future_observation_patterns()."""
+    return future_observation_patterns(path)
