@@ -308,6 +308,39 @@ def test_input_context_excluded_from_abc():
     )
 
 
+def test_observed_targets_are_independent_provenance():
+    """Guard RACH well-posedness against circular or pseudo-independent y_obs.
+
+    A_epsilon should condition only on observations whose epistemic role is
+    independent of the simulator's internal definitions. Rows that are planned,
+    theoretical, derived from selfing in the simulator, or fixed x_obs context
+    must not enter observed_target.
+    """
+    rows = load_observed_pattern_table()
+    target_vars = {
+        r.get("variable"): r
+        for r in rows
+        if r.get("role") in ABC_TARGET_ROLES
+    }
+    assert set(target_vars) == {"selfing_rate", "flower_size"}, (
+        "Current empirical y_obs should be restricted to Inoue-series "
+        f"independent endpoints selfing_rate and flower_size, got {sorted(target_vars)}"
+    )
+
+    forbidden = {
+        "nectar_guide": "planned own-field observation, not yet measured",
+        "herkogamy": "theoretical/latent dichogamy mechanism, not measured endpoint",
+        "Fis": "pending independent genetic validation; current proxy double-counts selfing",
+        "primary_pollinator_frequency": "fixed x_obs context, not response evidence",
+    }
+    leaks = [
+        (r.get("pattern"), r.get("variable"), forbidden.get(r.get("variable")))
+        for r in rows
+        if r.get("role") in ABC_TARGET_ROLES and r.get("variable") in forbidden
+    ]
+    assert not leaks, f"Unsupported or circular rows leaked into y_obs: {leaks}"
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -320,6 +353,7 @@ if __name__ == "__main__":
         test_null_produces_neutral_diversity_gradient,
         test_constraint_modules_consistent,
         test_input_context_excluded_from_abc,
+        test_observed_targets_are_independent_provenance,
     ]
     for t in tests:
         try:

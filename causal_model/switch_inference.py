@@ -350,10 +350,12 @@ def compute_switch_posterior_table(
                 interp = "supported (BF>3)"
             elif bf > 1.0:
                 interp = "weakly supported"
-            elif bf > 0.33:
+            elif bf >= 0.33:
+                interp = "neutral / weak evidence"
+            elif bf > 0.0:
                 interp = "weakly opposed"
             else:
-                interp = "opposed (BF<1/3)"
+                interp = "opposed (BF=0)"
         else:
             interp = "indeterminate"
 

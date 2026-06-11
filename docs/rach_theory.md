@@ -262,14 +262,23 @@ Example:
 ```
 selfing_rate_pairwise    Oshima < Hachijo   weight=1.0  field_derived / Inoue1990
 flower_size_pairwise     Oshima > Hachijo   weight=0.8  field_derived / Inoue1986
-Fis_pairwise             Oshima < Hachijo   weight=0.5  genetic_derived, if independently measured
 ```
 
 Nectar-guide intensity is planned own-field data, not an Inoue-series per-population
 measurement. Herkogamy is treated as a theoretical/diagnostic selfing-syndrome trait
-or pending field-validation target, not as an Inoue1986 observed_target.
+or pending field-validation target, not as an Inoue1986 observed_target. Fis remains
+excluded until an independent genetic estimate is source-confirmed; the current
+simulator's Fis proxy is partly generated from selfing rate, so using it as y_obs
+would double-count selfing evidence.
 
 ---
+
+**Falsification candidates for NOV.** Future observations should be designed to
+falsify individual switches, not merely support them. The Campanula worked example
+therefore defines one explicit falsification candidate for each switch: S1
+guide-masked Bombus choice / pollen deposition, S2 autonomous-selfing and bagging
+tests, S3 independent neutral-marker isolation structure, and S5 halictid
+substitution / exclusion tests.
 
 ## 4. Validation strategy
 
