@@ -273,6 +273,13 @@ would double-count selfing evidence.
 
 ---
 
+**Falsification candidates for NOV.** Future observations should be designed to
+falsify individual switches, not merely support them. The Campanula worked example
+therefore defines one explicit falsification candidate for each switch: S1
+guide-masked Bombus choice / pollen deposition, S2 autonomous-selfing and bagging
+tests, S3 independent neutral-marker isolation structure, and S5 halictid
+substitution / exclusion tests.
+
 ## 4. Validation strategy
 
 RACH requires at least three validation layers:

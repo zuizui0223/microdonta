@@ -452,6 +452,63 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
         outcomes=[],   # heuristic NOV only until outcome model is specified
     ),
     CandidateObservation(
+        name="S1_bombus_choice_falsification",
+        description=(
+            "Controlled Bombus choice / pollen-deposition assay with guide-present "
+            "and guide-masked flowers, holding flower size and reward context fixed."
+        ),
+        target_switches=["guide_attracts_bombus"],
+        rationale=(
+            "Falsifies S1 if Bombus visitation or pollen deposition is independent "
+            "of nectar-guide expression after controlling for flower size. This is "
+            "a sharper test than observing a natural guide gradient, because it "
+            "breaks the circular path guide expression -> assumed Bombus response."
+        ),
+        pattern_type="trait_correlation",
+        outcomes=[
+            CandidateOutcome(
+                name="guide_controls_bombus_service",
+                description="Outcrossing service increases with guide expression (S1 survives).",
+                prior_probability=0.5,
+                extra_pattern_rows=[
+                    {
+                        "pattern": "S1_guide_service_corr",
+                        "type": "trait_correlation",
+                        "variable": "outcrossing_opportunity",
+                        "left_population": "", "right_population": "",
+                        "populations": "", "predictor": "nectar_guide",
+                        "expected_direction": "positive",
+                        "relation": "", "weight": "1.2",
+                        "source": "candidate_falsification",
+                        "notes": "S1 survives: guide expression predicts outcrossing service",
+                        "role": "observed_target", "epistemic_status": "candidate",
+                        "weight_rationale": "controlled manipulation; high falsification value",
+                    },
+                ],
+            ),
+            CandidateOutcome(
+                name="guide_independent_bombus_service",
+                description="Outcrossing service does not increase with guide expression (S1 falsified).",
+                prior_probability=0.5,
+                extra_pattern_rows=[
+                    {
+                        "pattern": "S1_guide_service_corr",
+                        "type": "trait_correlation",
+                        "variable": "outcrossing_opportunity",
+                        "left_population": "", "right_population": "",
+                        "populations": "", "predictor": "nectar_guide",
+                        "expected_direction": "negative",
+                        "relation": "", "weight": "1.2",
+                        "source": "candidate_falsification",
+                        "notes": "S1 falsified: guide expression fails to predict outcrossing service",
+                        "role": "observed_target", "epistemic_status": "candidate",
+                        "weight_rationale": "controlled manipulation; high falsification value",
+                    },
+                ],
+            ),
+        ],
+    ),
+    CandidateObservation(
         name="bagging_seed_set",
         description=(
             "Bagged (autonomous selfing) vs open-pollinated seed set across "
@@ -495,6 +552,43 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
         ],
     ),
     CandidateObservation(
+        name="S2_autonomous_selfing_falsification",
+        description=(
+            "Bagged-fruit and sex-phase timing assay across Oshima and Hachijo, "
+            "testing whether autonomous selfing itself is elevated on the far island."
+        ),
+        target_switches=["selfing_syndrome_active"],
+        rationale=(
+            "Falsifies S2 if Hachijo does not show higher autonomous selfing or "
+            "delayed-selfing capacity than Oshima. That outcome would leave the "
+            "flower-size shift explainable by other mechanisms without invoking a "
+            "coherent selfing syndrome."
+        ),
+        pattern_type="pairwise_relation",
+        outcomes=[
+            CandidateOutcome(
+                name="autonomous_selfing_elevated_hachijo",
+                description="Selfing/autonomous seed set is higher on Hachijo (S2 survives).",
+                prior_probability=0.55,
+                extra_pattern_rows=[
+                    _pw("S2_autonomous_selfing_pairwise", "selfing_rate",
+                        "Oshima", "Hachijo", "Oshima < Hachijo", weight=1.2,
+                        source="candidate_falsification"),
+                ],
+            ),
+            CandidateOutcome(
+                name="autonomous_selfing_not_elevated",
+                description="Selfing/autonomous seed set is similar on Oshima and Hachijo (S2 falsified).",
+                prior_probability=0.45,
+                extra_pattern_rows=[
+                    _pw("S2_autonomous_selfing_pairwise", "selfing_rate",
+                        "Oshima", "Hachijo", "Oshima ~= Hachijo", weight=1.2,
+                        source="candidate_falsification"),
+                ],
+            ),
+        ],
+    ),
+    CandidateObservation(
         name="pollinator_visitation_rate",
         description=(
             "Visitation rate and pollen load per visit for Bombus vs halictids "
@@ -529,6 +623,42 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
         ],
     ),
     CandidateObservation(
+        name="S5_halictid_substitution_falsification",
+        description=(
+            "Halictid exclusion / pollen-load assay on Hachijo and Oshima, measuring "
+            "whether non-Bombus visitors maintain outcrossing service when Bombus is absent."
+        ),
+        target_switches=["small_pollinator_substitution"],
+        rationale=(
+            "Falsifies S5 if Hachijo outcrossing opportunity remains lower than Oshima "
+            "when halictids are the available visitors. S5 requires functional "
+            "substitution, not merely the presence of small pollinators."
+        ),
+        pattern_type="pairwise_relation",
+        outcomes=[
+            CandidateOutcome(
+                name="halictids_maintain_outcrossing",
+                description="Hachijo outcrossing opportunity is similar to Oshima (S5 survives).",
+                prior_probability=0.5,
+                extra_pattern_rows=[
+                    _pw("S5_outcrossing_pairwise", "outcrossing_opportunity",
+                        "Oshima", "Hachijo", "Oshima ~= Hachijo", weight=1.2,
+                        source="candidate_falsification"),
+                ],
+            ),
+            CandidateOutcome(
+                name="halictids_fail_to_substitute",
+                description="Hachijo outcrossing opportunity is lower than Oshima (S5 falsified).",
+                prior_probability=0.5,
+                extra_pattern_rows=[
+                    _pw("S5_outcrossing_pairwise", "outcrossing_opportunity",
+                        "Oshima", "Hachijo", "Oshima > Hachijo", weight=1.2,
+                        source="candidate_falsification"),
+                ],
+            ),
+        ],
+    ),
+    CandidateObservation(
         name="He_neutral_diversity_gradient",
         description=(
             "Expected heterozygosity He measured by microsatellites across ≥4 islands "
@@ -558,6 +688,43 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
                 prior_probability=0.35,
                 extra_pattern_rows=[
                     _slope("He_gradient_obs", "neutral_diversity", "positive", weight=1.0),
+                ],
+            ),
+        ],
+    ),
+    CandidateObservation(
+        name="S3_neutral_structure_falsification",
+        description=(
+            "Independent neutral-marker survey across the island gradient, testing "
+            "whether neutral diversity and inferred Ne actually decline with isolation."
+        ),
+        target_switches=["island_isolation_common_cause"],
+        rationale=(
+            "Falsifies S3 if neutral diversity does not decline with isolation while "
+            "floral and mating-system endpoints still differ. S3 is a common-cause "
+            "hypothesis, so it needs an independent demographic/genetic gradient, "
+            "not just correlated floral traits."
+        ),
+        pattern_type="gradient_slope",
+        outcomes=[
+            CandidateOutcome(
+                name="neutral_structure_tracks_isolation",
+                description="Neutral diversity declines with isolation (S3 survives).",
+                prior_probability=0.55,
+                extra_pattern_rows=[
+                    _slope("S3_neutral_diversity_gradient", "neutral_diversity",
+                           "negative", weight=1.2, source="candidate_falsification"),
+                    _rank("S3_neutral_diversity_rank", "neutral_diversity",
+                          "decreasing", weight=0.8, source="candidate_falsification"),
+                ],
+            ),
+            CandidateOutcome(
+                name="neutral_structure_not_isolation_ordered",
+                description="Neutral diversity is flat or higher on isolated islands (S3 falsified).",
+                prior_probability=0.45,
+                extra_pattern_rows=[
+                    _slope("S3_neutral_diversity_gradient", "neutral_diversity",
+                           "positive", weight=1.2, source="candidate_falsification"),
                 ],
             ),
         ],

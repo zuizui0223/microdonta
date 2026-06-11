@@ -39,7 +39,7 @@ def test_causal_admissibility_imports():
     assert callable(next_observation_value)
     assert callable(next_observation_value_simulation)
     assert callable(compute_causal_admissibility_table)
-    assert len(CAMPANULA_CANDIDATE_OBSERVATIONS) == 9
+    assert len(CAMPANULA_CANDIDATE_OBSERVATIONS) == 13
     print("[PASS] test_causal_admissibility_imports")
 
 
@@ -90,6 +90,31 @@ def test_candidate_outcomes_probabilities():
     print("[PASS] test_candidate_outcomes_probabilities")
 
 
+def test_falsification_candidates_cover_all_switches():
+    from causal_model.causal_admissibility import CAMPANULA_CANDIDATE_OBSERVATIONS
+    from causal_model.switch_inference import CAMPANULA_SWITCHES
+
+    falsification = [
+        cand for cand in CAMPANULA_CANDIDATE_OBSERVATIONS
+        if "falsification" in cand.name.lower()
+    ]
+    covered = {
+        sw_name
+        for cand in falsification
+        for sw_name in cand.target_switches
+    }
+    expected = {sw.name for sw in CAMPANULA_SWITCHES}
+    assert covered == expected, (
+        "Each causal switch should have at least one explicit falsification "
+        f"candidate; got covered={sorted(covered)} expected={sorted(expected)}"
+    )
+    assert all(cand.outcomes for cand in falsification), (
+        "Falsification candidates should define confirm/refute outcome rows "
+        "for simulation-based NOV."
+    )
+    print("[PASS] test_falsification_candidates_cover_all_switches")
+
+
 def test_bayes_factor_one_is_neutral():
     from causal_model.causal_admissibility import CausalAdmissibilityResult
     from causal_model.switch_inference import BiologicalSwitch, compute_switch_posterior_table
@@ -114,6 +139,7 @@ if __name__ == "__main__":
         test_switch_inference_imports,
         test_docstring_mentions_rach_notation,
         test_candidate_outcomes_probabilities,
+        test_falsification_candidates_cover_all_switches,
         test_bayes_factor_one_is_neutral,
     ]
     for t in tests:
