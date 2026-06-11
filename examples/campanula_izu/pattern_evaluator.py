@@ -171,7 +171,34 @@ def weighted_pattern_distance(eval_result: EvaluationResult) -> float:
     return 1.0 - eval_result.weighted_match_rate
 
 
-def weighted_standardized_distance(eval_result: EvaluationResult) -> float:
+def distance_components(eval_result: EvaluationResult, cap: float = 3.0) -> list[dict]:
+    """Return per-pattern distance components used by standardized modes."""
+    components: list[dict] = []
+    norm_cap = cap if cap > 0 else 3.0
+    for match in eval_result.matches:
+        if match.distance is None:
+            raw = 0.0 if match.matched else 1.0
+            component = raw
+        elif match.pattern_type == "absolute_summary":
+            raw = float(match.distance)
+            # absolute_summary rows already store min(delta, row_cap) / row_cap.
+            component = max(0.0, min(1.0, raw))
+        else:
+            raw = float(match.distance)
+            component = max(0.0, min(norm_cap, raw)) / norm_cap
+        components.append({
+            "pattern": match.pattern,
+            "type": match.pattern_type,
+            "variable": match.variable,
+            "weight": match.weight,
+            "matched": match.matched,
+            "component": component,
+            "raw_distance": raw,
+        })
+    return components
+
+
+def weighted_standardized_distance(eval_result: EvaluationResult, cap: float = 3.0) -> float:
     """Weighted multi-component distance in [0, 1] when components are capped.
 
     PatternMatch.distance is used when present.  Ordinal/rank patterns without a
@@ -179,21 +206,20 @@ def weighted_standardized_distance(eval_result: EvaluationResult) -> float:
     """
     if not eval_result.matches or eval_result.total_weight == 0:
         return 1.0
-    total = 0.0
-    for match in eval_result.matches:
-        component = match.distance
-        if component is None:
-            component = 0.0 if match.matched else 1.0
-        total += match.weight * max(0.0, min(1.0, float(component)))
+    total = sum(c["weight"] * c["component"] for c in distance_components(eval_result, cap=cap))
     return total / eval_result.total_weight
 
 
-def multi_component_distance(eval_result: EvaluationResult, mode: str = "match_rate") -> float:
+def multi_component_distance(
+    eval_result: EvaluationResult,
+    mode: str = "match_rate",
+    cap: float = 3.0,
+) -> float:
     """Select a backward-compatible or standardized distance mode."""
     if mode == "match_rate":
         return weighted_pattern_distance(eval_result)
     if mode in {"standardized", "hybrid"}:
-        return weighted_standardized_distance(eval_result)
+        return weighted_standardized_distance(eval_result, cap=cap)
     raise ValueError(f"Unknown distance_mode: {mode}")
 
 

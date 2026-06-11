@@ -147,6 +147,6 @@ Avoid:
 RACH resolves the Campanula causal history.
 Six observed patterns are used.
 Herkogamy is field-derived y_obs.
-Fis is observed_target.
+Fis is part of the current acceptance target.
 Primary pollinator frequency is y_obs.
 ```

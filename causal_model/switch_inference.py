@@ -470,6 +470,8 @@ def _count_response_target_patterns() -> int:
 
 GRADIENT_N_PATTERNS: int = _count_response_target_patterns()
 
+CORE_REQUIRED_PATTERNS: tuple[str, ...] = ("selfing_distance", "flower_size_distance")
+
 
 def _acceptance_threshold(acceptance_rule: str) -> float:
     """Map an ABC acceptance rule name to a minimum weighted_match_rate threshold."""
@@ -509,6 +511,51 @@ def structure_prior_weight(row: dict, switches: Sequence[BiologicalSwitch], lam:
         return 1.0
     n_on = sum(1 for sw in switches if bool(row.get(sw.name)))
     return math.exp(-float(lam) * n_on)
+
+
+def _weighted_match_distance(matches) -> float:
+    total_weight = sum(float(m.weight) for m in matches)
+    if total_weight == 0:
+        return 1.0
+    mismatch = sum(float(m.weight) * (0.0 if m.matched else 1.0) for m in matches)
+    return mismatch / total_weight
+
+
+def _weighted_component_distance(matches) -> float:
+    total_weight = sum(float(m.weight) for m in matches)
+    if total_weight == 0:
+        return 0.0
+    total = 0.0
+    for m in matches:
+        component = m.distance if m.distance is not None else (0.0 if m.matched else 1.0)
+        total += float(m.weight) * max(0.0, min(1.0, float(component)))
+    return total / total_weight
+
+
+def strict_core_soft_acceptance(
+    eval_result,
+    distance_mode: str,
+    epsilon: float,
+) -> dict:
+    """Evaluate strict_all as core_required pass plus optional soft distance."""
+    core = [m for m in eval_result.matches if m.pattern in CORE_REQUIRED_PATTERNS]
+    core_names = {m.pattern for m in core}
+    core_required_passed = (
+        set(CORE_REQUIRED_PATTERNS) <= core_names
+        and all(m.matched for m in core)
+    )
+    soft = [m for m in eval_result.matches if m.pattern not in CORE_REQUIRED_PATTERNS]
+    if not soft:
+        soft_distance = 0.0
+    elif distance_mode == "match_rate":
+        soft_distance = _weighted_match_distance(soft)
+    else:
+        soft_distance = _weighted_component_distance(soft)
+    return {
+        "core_required_passed": core_required_passed,
+        "soft_distance": soft_distance,
+        "accepted": core_required_passed and soft_distance <= epsilon,
+    }
 
 
 def run_switch_posterior_inference(
@@ -647,10 +694,15 @@ def run_switch_posterior_inference(
 
         dist = multi_component_distance(eval_result, mode=distance_mode)
         fixed_epsilon = max(0.0, 1.0 - float(threshold))
+        strict_parts = strict_core_soft_acceptance(eval_result, distance_mode, fixed_epsilon)
         accepted = (
-            eval_result.weighted_match_rate >= threshold
-            if distance_mode == "match_rate"
-            else dist <= fixed_epsilon
+            strict_parts["accepted"]
+            if acceptance_rule == "strict_all"
+            else (
+                eval_result.weighted_match_rate >= threshold
+                if distance_mode == "match_rate"
+                else dist <= fixed_epsilon
+            )
         )
 
         # Build relation strings for the 4 populations for diagnostics
@@ -678,6 +730,9 @@ def run_switch_posterior_inference(
             "distance_mode":            distance_mode,
             "epsilon_mode":             epsilon_mode,
             "epsilon":                  round(fixed_epsilon, 4),
+            "acceptance_distance":       round(strict_parts["soft_distance"] if acceptance_rule == "strict_all" else dist, 4),
+            "core_required_passed":      strict_parts["core_required_passed"],
+            "soft_distance":             round(strict_parts["soft_distance"], 4),
             "accepted_by_epsilon":      accepted,
             "acceptance_rule":          acceptance_rule,
             "guide_tradeoff_class":     param_set.get("guide_tradeoff_class", ""),
@@ -710,14 +765,18 @@ def run_switch_posterior_inference(
 
     if epsilon_mode == "adaptive_percentile":
         selected = select_adaptive_epsilon(
-            [r["gradient_distance"] for r in evaluated_rows],
+            [r.get("acceptance_distance", r["gradient_distance"]) for r in evaluated_rows],
             percentile=adaptive_percentile,
             min_accept=min_accept,
         )
         eps = selected["epsilon"]
         for row in evaluated_rows:
             row["epsilon"] = round(eps, 4) if math.isfinite(eps) else eps
-            row["accepted_by_epsilon"] = row["gradient_distance"] <= eps
+            row["accepted_by_epsilon"] = (
+                bool(row.get("core_required_passed")) and row.get("soft_distance", row["gradient_distance"]) <= eps
+                if acceptance_rule == "strict_all"
+                else row["gradient_distance"] <= eps
+            )
             row["adaptive_epsilon_warning"] = selected.get("warning", "")
         accepted_rows = [r for r in evaluated_rows if r["accepted_by_epsilon"]]
 
@@ -989,10 +1048,15 @@ def run_switch_posterior_inference_abm(
 
         dist = multi_component_distance(eval_result, mode=distance_mode)
         fixed_epsilon = max(0.0, 1.0 - float(threshold))
+        strict_parts = strict_core_soft_acceptance(eval_result, distance_mode, fixed_epsilon)
         accepted = (
-            eval_result.weighted_match_rate >= threshold
-            if distance_mode == "match_rate"
-            else dist <= fixed_epsilon
+            strict_parts["accepted"]
+            if acceptance_rule == "strict_all"
+            else (
+                eval_result.weighted_match_rate >= threshold
+                if distance_mode == "match_rate"
+                else dist <= fixed_epsilon
+            )
         )
 
         pop_trait_cols: dict = {}
@@ -1026,6 +1090,9 @@ def run_switch_posterior_inference_abm(
             "distance_mode":          distance_mode,
             "epsilon_mode":           epsilon_mode,
             "epsilon":                round(fixed_epsilon, 4),
+            "acceptance_distance":     round(strict_parts["soft_distance"] if acceptance_rule == "strict_all" else dist, 4),
+            "core_required_passed":    strict_parts["core_required_passed"],
+            "soft_distance":           round(strict_parts["soft_distance"], 4),
             "accepted_by_epsilon":    accepted,
             "acceptance_rule":        acceptance_rule,
             "guide_tradeoff_class":   param_set.get("guide_tradeoff_class", ""),
@@ -1056,14 +1123,18 @@ def run_switch_posterior_inference_abm(
 
     if epsilon_mode == "adaptive_percentile":
         selected = select_adaptive_epsilon(
-            [r["gradient_distance"] for r in evaluated_rows],
+            [r.get("acceptance_distance", r["gradient_distance"]) for r in evaluated_rows],
             percentile=adaptive_percentile,
             min_accept=min_accept,
         )
         eps = selected["epsilon"]
         for row in evaluated_rows:
             row["epsilon"] = round(eps, 4) if math.isfinite(eps) else eps
-            row["accepted_by_epsilon"] = row["gradient_distance"] <= eps
+            row["accepted_by_epsilon"] = (
+                bool(row.get("core_required_passed")) and row.get("soft_distance", row["gradient_distance"]) <= eps
+                if acceptance_rule == "strict_all"
+                else row["gradient_distance"] <= eps
+            )
             row["adaptive_epsilon_warning"] = selected.get("warning", "")
         accepted_rows = [r for r in evaluated_rows if r["accepted_by_epsilon"]]
 
