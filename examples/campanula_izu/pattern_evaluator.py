@@ -24,6 +24,11 @@ categorical_transition
 trait_correlation
     Sign of association between two simulated or contextual variables.
 
+absolute_summary
+    Standardized absolute difference between a population summary and a
+    measured numeric observation.  Pending/empty absolute observations should
+    be filtered by the loader and not passed as observed_target rows.
+
 Role filtering
 --------------
 Only ``observed_target`` (and legacy ``response_target``) rows enter ABC/RACH
@@ -47,6 +52,7 @@ class PatternMatch:
     weight: float
     matched: bool
     detail: str
+    distance: float | None = None
 
 
 @dataclass
@@ -144,6 +150,8 @@ def evaluate_patterns(
             match = match_categorical_transition(by_pop, env_table, row)
         elif ptype == "trait_correlation":
             match = match_trait_correlation(by_pop, env_table, row)
+        elif ptype == "absolute_summary":
+            match = match_absolute_summary(by_pop, env_table, row)
         else:
             match = PatternMatch(
                 pattern=pattern_id,
@@ -152,6 +160,7 @@ def evaluate_patterns(
                 weight=weight,
                 matched=False,
                 detail=f"Unknown pattern type {ptype!r}",
+                distance=1.0,
             )
         result.matches.append(match)
     return result
@@ -160,6 +169,32 @@ def evaluate_patterns(
 def weighted_pattern_distance(eval_result: EvaluationResult) -> float:
     """Compute ABC distance = 1 - weighted_match_rate."""
     return 1.0 - eval_result.weighted_match_rate
+
+
+def weighted_standardized_distance(eval_result: EvaluationResult) -> float:
+    """Weighted multi-component distance in [0, 1] when components are capped.
+
+    PatternMatch.distance is used when present.  Ordinal/rank patterns without a
+    continuous component contribute 0 if matched, 1 otherwise.
+    """
+    if not eval_result.matches or eval_result.total_weight == 0:
+        return 1.0
+    total = 0.0
+    for match in eval_result.matches:
+        component = match.distance
+        if component is None:
+            component = 0.0 if match.matched else 1.0
+        total += match.weight * max(0.0, min(1.0, float(component)))
+    return total / eval_result.total_weight
+
+
+def multi_component_distance(eval_result: EvaluationResult, mode: str = "match_rate") -> float:
+    """Select a backward-compatible or standardized distance mode."""
+    if mode == "match_rate":
+        return weighted_pattern_distance(eval_result)
+    if mode in {"standardized", "hybrid"}:
+        return weighted_standardized_distance(eval_result)
+    raise ValueError(f"Unknown distance_mode: {mode}")
 
 
 # ---------------------------------------------------------------------------
@@ -180,6 +215,7 @@ def match_pairwise(simulated_relations: dict[str, str], pattern_row: dict) -> Pa
         weight=weight,
         matched=bool(expected) and simulated == expected,
         detail=f"sim={simulated!r} expected={expected!r}",
+        distance=0.0 if bool(expected) and simulated == expected else 1.0,
     )
 
 
@@ -200,6 +236,7 @@ def match_gradient_slope(by_pop: dict, env_table: dict, pattern_row: dict) -> Pa
             weight=weight,
             matched=False,
             detail=f"insufficient data (n={len(points)}, missing={missing})",
+            distance=1.0,
         )
     xs = [p[1] for p in points]
     ys = [p[2] for p in points]
@@ -212,6 +249,7 @@ def match_gradient_slope(by_pop: dict, env_table: dict, pattern_row: dict) -> Pa
         weight=weight,
         matched=matched,
         detail=f"slope={slope:.4f} expected={expected_dir} n={len(points)} pops={[p[0] for p in points]}",
+        distance=0.0 if matched else 1.0,
     )
 
 
@@ -243,6 +281,7 @@ def match_numeric_gradient(by_pop: dict, env_table: dict, pattern_row: dict) -> 
             weight=weight,
             matched=False,
             detail=f"insufficient data (n={len(points)}, missing={missing})",
+            distance=1.0,
         )
     xs = [p[1] for p in points]
     ys = [p[2] for p in points]
@@ -276,6 +315,47 @@ def match_numeric_gradient(by_pop: dict, env_table: dict, pattern_row: dict) -> 
         weight=weight,
         matched=matched,
         detail=detail,
+        distance=0.0 if matched else 1.0,
+    )
+
+
+def match_absolute_summary(by_pop: dict, env_table: dict, pattern_row: dict) -> PatternMatch:
+    """Evaluate one measured population summary with standardized distance."""
+    variable = pattern_row.get("variable", "")
+    pattern_id = pattern_row.get("pattern", pattern_row.get("observation", variable))
+    weight = _to_float(pattern_row.get("weight", 1.0), 1.0)
+    population = pattern_row.get("population", "")
+    obs = _optional_float(pattern_row.get("observed_value"))
+    out = by_pop.get(population)
+    sim = _value_from_output_or_env(population, out, env_table, variable)
+    if obs is None or sim is None:
+        return PatternMatch(
+            pattern=pattern_id,
+            pattern_type="absolute_summary",
+            variable=variable,
+            weight=weight,
+            matched=False,
+            detail=f"missing absolute value population={population!r} sim={sim} obs={obs}",
+            distance=1.0,
+        )
+    scale = _absolute_scale(pattern_row, variable)
+    cap = _to_float(pattern_row.get("cap", 3.0), 3.0)
+    cap = cap if cap > 0 else 3.0
+    standardized = abs(float(sim) - float(obs)) / scale
+    component = min(standardized, cap) / cap
+    tolerance = _to_float(pattern_row.get("tolerance", 1.0), 1.0)
+    matched = standardized <= tolerance
+    return PatternMatch(
+        pattern=pattern_id,
+        pattern_type="absolute_summary",
+        variable=variable,
+        weight=weight,
+        matched=matched,
+        detail=(
+            f"population={population} sim={float(sim):.4f} obs={float(obs):.4f} "
+            f"scale={scale:.4f} standardized={standardized:.4f} tolerance={tolerance:.4f}"
+        ),
+        distance=component,
     )
 
 
@@ -320,6 +400,7 @@ def match_categorical_transition(by_pop: dict, env_table: dict, pattern_row: dic
         weight=weight,
         matched=matched,
         detail=detail,
+        distance=0.0 if matched else 1.0,
     )
 
 
@@ -339,6 +420,7 @@ def match_trait_correlation(by_pop: dict, env_table: dict, pattern_row: dict) ->
             weight=weight,
             matched=False,
             detail="missing variable or predictor field",
+            distance=1.0,
         )
 
     xs, ys, missing = [], [], []
@@ -359,6 +441,7 @@ def match_trait_correlation(by_pop: dict, env_table: dict, pattern_row: dict) ->
             weight=weight,
             matched=False,
             detail=f"insufficient data (n={len(xs)}, missing={missing})",
+            distance=1.0,
         )
 
     slope = _ols_slope(xs, ys)
@@ -370,6 +453,7 @@ def match_trait_correlation(by_pop: dict, env_table: dict, pattern_row: dict) ->
         weight=weight,
         matched=matched,
         detail=f"corr_slope={slope:.4f} expected={expected_dir} n={len(xs)} y={variable} x={predictor}",
+        distance=0.0 if matched else 1.0,
     )
 
 
@@ -400,6 +484,7 @@ def match_rank_order(by_pop: dict, pattern_row: dict) -> PatternMatch:
             weight=weight,
             matched=False,
             detail=f"insufficient data for populations {pop_list}",
+            distance=1.0,
         )
 
     tau = _kendall_tau(values)
@@ -416,6 +501,7 @@ def match_rank_order(by_pop: dict, pattern_row: dict) -> PatternMatch:
         weight=weight,
         matched=matched,
         detail=f"tau={tau:.4f} expected={expected_dir} values={[round(v, 3) for v in values]} pops={available}",
+        distance=0.0 if matched else 1.0,
     )
 
 
@@ -479,6 +565,25 @@ def _category_for(pop: str, out, env_row: dict, variable: str) -> str | None:
             return "SC_mixed"
         return "SC_selfing"
     return None
+
+
+def _absolute_scale(pattern_row: dict, variable: str) -> float:
+    for key in ("se", "scale"):
+        val = _optional_float(pattern_row.get(key))
+        if val is not None and val > 0:
+            return val
+    fallback = {
+        "selfing_rate": 0.1,
+        "outcrossing_rate": 0.1,
+        "flower_size": 0.1,
+        "nectar_guide": 0.1,
+        "herkogamy": 0.1,
+        "Fis": 0.05,
+        "neutral_diversity": 0.1,
+        "outcrossing_opportunity": 0.1,
+        "primary_pollinator_frequency": 0.1,
+    }
+    return fallback.get(variable, 1.0)
 
 
 def _parse_transition(text: str) -> list[str]:

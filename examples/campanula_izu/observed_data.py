@@ -21,6 +21,7 @@ _DEFAULT_PATTERNS_CSV = Path(__file__).parent / "data" / "observed_patterns.csv"
 _DEFAULT_CONTEXT_CSV = Path(__file__).parent / "data" / "ecological_context.csv"
 _DEFAULT_INDEPENDENT_OBS_CSV = Path(__file__).parent / "data" / "independent_observations.csv"
 _DEFAULT_FUTURE_OBS_CSV = Path(__file__).parent / "data" / "future_observations.csv"
+_DEFAULT_ABSOLUTE_OBS_CSV = Path(__file__).parent / "data" / "absolute_observations.csv"
 _DEFAULT_ENV_CSV = _DEFAULT_CONTEXT_CSV
 
 ABC_TARGET_ROLES = {"observed_target", "response_target"}
@@ -33,6 +34,11 @@ EXCLUDED_ROLES = {
     "future_observation",
 }
 FUTURE_ROLES = {"future_observation", "planned_observation"}
+PENDING_STATUSES = {
+    "pending_pdf_check",
+    "pending_field_validation",
+    "pending_independent_genetic_validation",
+}
 
 _FALLBACK_PAIRWISE: list[dict] = [
     {"pattern": "nectar_guide_pairwise", "type": "pairwise_relation", "variable": "nectar_guide", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "future_field_validation", "notes": "fallback; planned own field data, not an Inoue measurement; NOV candidate for S1", "role": "excluded_from_ABC", "epistemic_status": "pending_field_validation"},
@@ -236,6 +242,45 @@ def load_future_observations(path: str | Path | None = None) -> list[dict]:
         for col in ("expected_weight", "cost", "feasibility", "priority"):
             row[col] = _to_optional_float(row.get(col))
     return rows
+
+
+def load_absolute_observations(path: str | Path | None = None) -> list[dict]:
+    """Load absolute numeric observations and parse numeric fields.
+
+    Empty values and pending rows are deliberately preserved outside acceptance.
+    A row can become an acceptance target only when ``role == observed_target``,
+    ``observed_value`` is numeric, and ``epistemic_status`` is not pending.
+    """
+    p = Path(path) if path else _DEFAULT_ABSOLUTE_OBS_CSV
+    try:
+        rows = _read_csv_rows(p)
+    except FileNotFoundError:
+        return []
+    for row in rows:
+        for col in ("observed_value", "se", "scale", "weight"):
+            row[col] = _to_optional_float(row.get(col))
+        if row.get("weight") is None:
+            row["weight"] = 1.0
+    return rows
+
+
+def observed_absolute_targets(path: str | Path | None = None) -> list[dict]:
+    """Return measured absolute observations eligible for acceptance."""
+    return [
+        row for row in load_absolute_observations(path)
+        if row.get("role") in ABC_TARGET_ROLES
+        and row.get("observed_value") is not None
+        and row.get("epistemic_status") not in PENDING_STATUSES
+    ]
+
+
+def future_absolute_observations(path: str | Path | None = None) -> list[dict]:
+    """Return future or pending absolute observations for NOV/study design."""
+    return [
+        row for row in load_absolute_observations(path)
+        if row.get("role") in FUTURE_ROLES
+        or row.get("epistemic_status") in PENDING_STATUSES
+    ]
 
 
 def future_observation_patterns(path: str | Path | None = None) -> list[dict]:

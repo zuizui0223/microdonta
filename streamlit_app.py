@@ -757,6 +757,12 @@ with st.expander("Worked example — シマホタルブクロ / Izu Islands cont
             "input_context, hypothesis_prediction, excluded_from_ABC, diagnostic_only, "
             "and planned/pending rows are excluded."
         )
+        st.warning(
+            "Current empirical y_obs contains only 2 source-confirmed directional gradients: "
+            "selfing_distance and flower_size_distance. Causal resolution is expected to be "
+            "low until future observations are measured. This is a preliminary worked example, "
+            "not an empirical resolution of the C. microdonta causal history."
+        )
     with col_xobs:
         st.markdown("**x_obs — fixed empirical context fed into f(x_obs; θ, s)**")
         _xobs_rows = [
@@ -810,6 +816,18 @@ with st.sidebar:
     _thresh_display = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
     st.caption(f"y_obs: {_N_PAT} patterns · threshold ≥ {_thresh_display:.3f}")
     seed = st.number_input("Random seed", 0, 999999, 42, 1)
+
+    with st.expander("Advanced RACH options (optional)", expanded=False):
+        distance_mode = st.selectbox("distance_mode", ["match_rate", "standardized", "hybrid"], index=0)
+        epsilon_mode = st.selectbox("epsilon_mode", ["fixed", "adaptive_percentile"], index=0)
+        adaptive_percentile = st.number_input("adaptive_percentile", 0.1, 50.0, 5.0, 0.5)
+        min_accepted_adaptive = st.number_input("min_accepted", 1, 500, 20, 1, key="adaptive_min_accepted")
+        structure_prior_lambda = st.number_input("structure_prior_lambda", 0.0, 5.0, 0.0, 0.1)
+        show_distance_components = st.checkbox("show_distance_components", value=False)
+        st.caption(
+            "Optional sensitivity controls only. Unmeasured guide, herkogamy, Fis, "
+            "seed set, and visitation remain NOV/future observations, not current y_obs."
+        )
 
     # ── ABM settings ───────────────────────────────────────────────────────
     with st.expander("ABM 設定 (② で使用)", expanded=False):
@@ -1040,6 +1058,11 @@ if _step_idx == 0:
                         switches=CAMPANULA_SWITCHES,
                         n_attempts=_ens_n, seed=int(_ens_seed),
                         backend=_ens_backend_key,
+                        distance_mode=distance_mode,
+                        epsilon_mode=epsilon_mode,
+                        adaptive_percentile=float(adaptive_percentile),
+                        min_accept=int(min_accepted_adaptive),
+                        structure_prior_lambda=float(structure_prior_lambda),
                         progress_callback=_ens_cb,
                     )
                 _ens_prog.progress(1.0, text="Done ✓")
@@ -1206,6 +1229,11 @@ elif _step_idx == 1:
             generations=st.session_state.get("sp_gen", 30),
             population_size=st.session_state.get("sp_pop", 100),
             replicates=st.session_state.get("sp_rep", 3),
+            distance_mode=distance_mode,
+            epsilon_mode=epsilon_mode,
+            adaptive_percentile=float(adaptive_percentile),
+            min_accept=int(min_accepted_adaptive),
+            structure_prior_lambda=float(structure_prior_lambda),
             progress_callback=_sp_progress,
         )
         _sp_bar.progress(1.0, text="Switch Posterior: Done ✓")
@@ -1214,6 +1242,11 @@ elif _step_idx == 1:
         st.session_state["sp_settings"] = {
             "preset_name": preset_name, "seed": int(seed) + 1,
             "acceptance_rule": acceptance_rule, "backend": "stochastic_abm",
+            "distance_mode": distance_mode,
+            "epsilon_mode": epsilon_mode,
+            "adaptive_percentile": float(adaptive_percentile),
+            "min_accept": int(min_accepted_adaptive),
+            "structure_prior_lambda": float(structure_prior_lambda),
         }
         # Auto-advance to ③ CA_j
         st.session_state["nav_step"] = _STEPS[2]
@@ -1250,6 +1283,23 @@ elif _step_idx == 2:
     _mc2.metric("Total draws", sp.n_attempts)
     _mc3.metric("Acceptance rate", f"{sp.acceptance_rate:.1%}")
     _mc4.metric("K (switches)", len(CAMPANULA_SWITCHES))
+    st.caption(
+        f"distance_mode={_sp_settings.get('distance_mode', 'match_rate')} · "
+        f"epsilon_mode={_sp_settings.get('epsilon_mode', 'fixed')} · "
+        f"structure_prior_lambda={_sp_settings.get('structure_prior_lambda', 0.0)}"
+    )
+    if show_distance_components and sp.accepted_rows:
+        _dc_rows = []
+        for _r in sp.accepted_rows[:10]:
+            for _pat, (_dist, _w) in _r.get("per_pattern_distance", {}).items():
+                _dc_rows.append({
+                    "sample_id": str(_r.get("sample_id", ""))[:8],
+                    "pattern": _pat,
+                    "distance": _dist,
+                    "weight": _w,
+                })
+        if _dc_rows:
+            stretch_df(pd.DataFrame(_dc_rows), hide_index=True)
 
     if len(sp.accepted_rows) < 30:
         st.warning(f"Only {len(sp.accepted_rows)} accepted — estimates unstable.")

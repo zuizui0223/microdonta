@@ -84,6 +84,11 @@ def run_ensemble(
     n_attempts: int = 200,
     seed: int = 42,
     backend: str = "abm",
+    distance_mode: str = "match_rate",
+    epsilon_mode: str = "fixed",
+    adaptive_percentile: float = 5.0,
+    min_accept: int = 20,
+    structure_prior_lambda: float = 0.0,
     progress_callback=None,   # callable(done, total, preset_name, rule)
 ) -> list[EnsembleResult]:
     """Run ABC inference over every (preset, acceptance_rule) combination.
@@ -139,6 +144,11 @@ def run_ensemble(
             acceptance_rule=acceptance_rule,
             seed=_seed,
             threshold=thresh,
+            distance_mode=distance_mode,
+            epsilon_mode=epsilon_mode,
+            adaptive_percentile=adaptive_percentile,
+            min_accept=min_accept,
+            structure_prior_lambda=structure_prior_lambda,
         )
 
         accepted = sp.accepted_rows
@@ -150,8 +160,13 @@ def run_ensemble(
         # CA_j per switch
         sw_names = [sw.name for sw in switches]
         if accepted:
+            weights = [max(0.0, float(r.get("structure_prior_weight", 1.0))) for r in accepted]
+            denom = sum(weights) or float(len(accepted))
             ca = {
-                name: round(sum(1 for r in accepted if r.get(name)) / len(accepted), 4)
+                name: round(
+                    sum(w for r, w in zip(accepted, weights) if r.get(name)) / denom,
+                    4,
+                )
                 for name in sw_names
             }
         else:

@@ -41,6 +41,7 @@ The switch posterior subsumes and extends structure ranking.
 
 from __future__ import annotations
 
+import math
 import random
 import uuid
 from dataclasses import dataclass, field
@@ -291,6 +292,7 @@ class SwitchPosteriorResult:
 def compute_switch_posterior_table(
     accepted_rows: list[dict],
     switches: Sequence[BiologicalSwitch] = CAMPANULA_SWITCHES,
+    weight_key: str | None = None,
 ) -> list[dict]:
     """Compute P(switch ON | accepted) for each switch.
 
@@ -327,10 +329,17 @@ def compute_switch_posterior_table(
             for sw in switches
         ]
 
+    weights = [
+        max(0.0, float(r.get(weight_key, 1.0))) if weight_key else 1.0
+        for r in accepted_rows
+    ]
+    total_weight = sum(weights) or float(n)
+
     rows = []
     for sw in switches:
         n_on = sum(1 for r in accepted_rows if r.get(sw.name))
-        p_post = n_on / n
+        w_on = sum(w for r, w in zip(accepted_rows, weights) if r.get(sw.name))
+        p_post = w_on / total_weight
         p_prior = sw.prior_on_prob
 
         # Bayes factor for ON vs OFF
@@ -367,6 +376,8 @@ def compute_switch_posterior_table(
             "Bayes_factor": round(bf, 3) if bf == bf else None,
             "n_ON": n_on,
             "n_accepted": n,
+            "posterior_weighted": bool(weight_key),
+            "accepted_weight": round(total_weight, 4),
             "interpretation": interp,
         })
     return rows
@@ -465,6 +476,41 @@ def _acceptance_threshold(acceptance_rule: str) -> float:
     return GRADIENT_THRESH_MAP.get(acceptance_rule, 1.000)
 
 
+def select_adaptive_epsilon(
+    distances: list[float],
+    percentile: float = 5.0,
+    min_accept: int = 20,
+) -> dict:
+    """Select an adaptive epsilon from evaluated distances.
+
+    The percentile threshold is widened only enough to include ``min_accept``
+    evaluated rows.  This is optional and should be interpreted as a stability
+    device, not stronger empirical support.
+    """
+    vals = sorted(float(d) for d in distances if d is not None)
+    if not vals:
+        return {"epsilon": float("inf"), "n_accepted": 0, "warning": "no distances"}
+    pct = max(0.0, min(100.0, float(percentile)))
+    idx = int(round((pct / 100.0) * (len(vals) - 1)))
+    idx = max(0, min(len(vals) - 1, idx))
+    min_idx = max(0, min(len(vals) - 1, int(min_accept) - 1))
+    chosen_idx = max(idx, min_idx)
+    eps = vals[chosen_idx]
+    n_acc = sum(1 for d in vals if d <= eps)
+    warning = ""
+    if chosen_idx > idx:
+        warning = f"epsilon widened to satisfy min_accept={min_accept}"
+    return {"epsilon": eps, "n_accepted": n_acc, "warning": warning}
+
+
+def structure_prior_weight(row: dict, switches: Sequence[BiologicalSwitch], lam: float = 0.0) -> float:
+    """Optional parsimony prior P(s) proportional to exp(-lambda * |s|)."""
+    if lam <= 0:
+        return 1.0
+    n_on = sum(1 for sw in switches if bool(row.get(sw.name)))
+    return math.exp(-float(lam) * n_on)
+
+
 def run_switch_posterior_inference(
     preset_name: str,
     n_attempts: int,
@@ -474,6 +520,11 @@ def run_switch_posterior_inference(
     progress_callback=None,  # callable(done, total, status_text) or None
     extra_pattern_rows: list[dict] | None = None,  # additional y_obs rows for NOV sim
     threshold: float | None = None,  # override acceptance threshold (default from acceptance_rule)
+    distance_mode: str = "match_rate",
+    epsilon_mode: str = "fixed",
+    adaptive_percentile: float = 5.0,
+    min_accept: int = 20,
+    structure_prior_lambda: float = 0.0,
 ) -> SwitchPosteriorResult:
     """Run switch posterior inference via ABC rejection — 4-population gradient POM.
 
@@ -513,6 +564,7 @@ def run_switch_posterior_inference(
     )
     from examples.campanula_izu.pattern_evaluator import (
         evaluate_patterns,
+        multi_component_distance,
         weighted_pattern_distance,
     )
     from examples.campanula_izu.campanula_phenomenological import (
@@ -592,8 +644,13 @@ def run_switch_posterior_inference(
                     f"draw {_step+1}/{total_steps} · accepted: {len(accepted_rows)} · elapsed {_el:.0f}s")
             continue
 
-        dist = weighted_pattern_distance(eval_result)
-        accepted = eval_result.weighted_match_rate >= threshold
+        dist = multi_component_distance(eval_result, mode=distance_mode)
+        fixed_epsilon = max(0.0, 1.0 - float(threshold))
+        accepted = (
+            eval_result.weighted_match_rate >= threshold
+            if distance_mode == "match_rate"
+            else dist <= fixed_epsilon
+        )
 
         # Build relation strings for the 4 populations for diagnostics
         pop_trait_cols: dict = {}
@@ -617,6 +674,9 @@ def run_switch_posterior_inference(
             "pattern_total":            eval_result.n_total,
             "weighted_match_rate":      round(eval_result.weighted_match_rate, 4),
             "gradient_distance":        round(dist, 4),
+            "distance_mode":            distance_mode,
+            "epsilon_mode":             epsilon_mode,
+            "epsilon":                  round(fixed_epsilon, 4),
             "accepted_by_epsilon":      accepted,
             "acceptance_rule":          acceptance_rule,
             "guide_tradeoff_class":     param_set.get("guide_tradeoff_class", ""),
@@ -624,6 +684,8 @@ def run_switch_posterior_inference(
             # Per-pattern match data — used by identifiability.pattern_contribution()
             "per_pattern_matched": {m.pattern: (m.matched, m.weight)
                                     for m in eval_result.matches},
+            "per_pattern_distance": {m.pattern: (m.distance if m.distance is not None else (0.0 if m.matched else 1.0), m.weight)
+                                     for m in eval_result.matches},
             **pop_trait_cols,
         }
 
@@ -631,7 +693,7 @@ def run_switch_posterior_inference(
         # evaluated_rows is required for unbiased OC_k via LOO:
         # removing pattern k can make previously-rejected rows cross the threshold.
         evaluated_rows.append(row)
-        if accepted:
+        if epsilon_mode == "fixed" and accepted:
             accepted_rows.append(row)
 
         if progress_callback:
@@ -645,8 +707,27 @@ def run_switch_posterior_inference(
                 f"elapsed {_el:.0f}s · ETA {_eta:.0f}s"
             )
 
+    if epsilon_mode == "adaptive_percentile":
+        selected = select_adaptive_epsilon(
+            [r["gradient_distance"] for r in evaluated_rows],
+            percentile=adaptive_percentile,
+            min_accept=min_accept,
+        )
+        eps = selected["epsilon"]
+        for row in evaluated_rows:
+            row["epsilon"] = round(eps, 4) if math.isfinite(eps) else eps
+            row["accepted_by_epsilon"] = row["gradient_distance"] <= eps
+            row["adaptive_epsilon_warning"] = selected.get("warning", "")
+        accepted_rows = [r for r in evaluated_rows if r["accepted_by_epsilon"]]
+
+    for row in accepted_rows:
+        row["structure_prior_weight"] = structure_prior_weight(row, switches, structure_prior_lambda)
+        row["structure_prior_lambda"] = structure_prior_lambda
+
     rejected_count = len(constraint_rejected) + len(constraint_passed) - len(accepted_rows)
-    posterior_table = compute_switch_posterior_table(accepted_rows, switches)
+    posterior_table = compute_switch_posterior_table(
+        accepted_rows, switches, weight_key="structure_prior_weight" if structure_prior_lambda > 0 else None
+    )
 
     return SwitchPosteriorResult(
         accepted_rows=accepted_rows,
@@ -732,6 +813,11 @@ def run_switch_posterior_inference_abm(
     progress_callback=None,  # callable(done, total, status_text) or None
     extra_pattern_rows: list[dict] | None = None,  # additional y_obs rows for NOV sim
     threshold: float | None = None,  # override acceptance threshold
+    distance_mode: str = "match_rate",
+    epsilon_mode: str = "fixed",
+    adaptive_percentile: float = 5.0,
+    min_accept: int = 20,
+    structure_prior_lambda: float = 0.0,
 ) -> SwitchPosteriorResult:
     """Run switch posterior inference using the stochastic ABM backend.
 
@@ -790,6 +876,7 @@ def run_switch_posterior_inference_abm(
     from examples.campanula_izu.pattern_evaluator import (
         ABMPopulationProxy,
         evaluate_patterns,
+        multi_component_distance,
         weighted_pattern_distance,
     )
     from examples.campanula_izu.campanula_phenomenological import (
@@ -898,8 +985,13 @@ def run_switch_posterior_inference_abm(
         except Exception:
             continue
 
-        dist = weighted_pattern_distance(eval_result)
-        accepted = eval_result.weighted_match_rate >= threshold
+        dist = multi_component_distance(eval_result, mode=distance_mode)
+        fixed_epsilon = max(0.0, 1.0 - float(threshold))
+        accepted = (
+            eval_result.weighted_match_rate >= threshold
+            if distance_mode == "match_rate"
+            else dist <= fixed_epsilon
+        )
 
         pop_trait_cols: dict = {}
         for pop, fd in pop_finals.items():
@@ -929,6 +1021,9 @@ def run_switch_posterior_inference_abm(
             "pattern_total":          eval_result.n_total,
             "weighted_match_rate":    round(eval_result.weighted_match_rate, 4),
             "gradient_distance":      round(dist, 4),
+            "distance_mode":          distance_mode,
+            "epsilon_mode":           epsilon_mode,
+            "epsilon":                round(fixed_epsilon, 4),
             "accepted_by_epsilon":    accepted,
             "acceptance_rule":        acceptance_rule,
             "guide_tradeoff_class":   param_set.get("guide_tradeoff_class", ""),
@@ -936,12 +1031,14 @@ def run_switch_posterior_inference_abm(
             # Per-pattern match data — used by identifiability.pattern_contribution()
             "per_pattern_matched": {m.pattern: (m.matched, m.weight)
                                     for m in eval_result.matches},
+            "per_pattern_distance": {m.pattern: (m.distance if m.distance is not None else (0.0 if m.matched else 1.0), m.weight)
+                                     for m in eval_result.matches},
             **pop_trait_cols,
         }
 
         # Store ALL evaluated rows for unbiased OC_k computation.
         evaluated_rows.append(row)
-        if accepted:
+        if epsilon_mode == "fixed" and accepted:
             accepted_rows.append(row)
 
         if progress_callback:
@@ -955,10 +1052,29 @@ def run_switch_posterior_inference_abm(
                 f"elapsed {_el:.0f}s · ETA {_eta:.0f}s"
             )
 
+    if epsilon_mode == "adaptive_percentile":
+        selected = select_adaptive_epsilon(
+            [r["gradient_distance"] for r in evaluated_rows],
+            percentile=adaptive_percentile,
+            min_accept=min_accept,
+        )
+        eps = selected["epsilon"]
+        for row in evaluated_rows:
+            row["epsilon"] = round(eps, 4) if math.isfinite(eps) else eps
+            row["accepted_by_epsilon"] = row["gradient_distance"] <= eps
+            row["adaptive_epsilon_warning"] = selected.get("warning", "")
+        accepted_rows = [r for r in evaluated_rows if r["accepted_by_epsilon"]]
+
+    for row in accepted_rows:
+        row["structure_prior_weight"] = structure_prior_weight(row, switches, structure_prior_lambda)
+        row["structure_prior_lambda"] = structure_prior_lambda
+
     rejected_count = (
         len(constraint_rejected) + len(constraint_passed) - len(accepted_rows)
     )
-    posterior_table = compute_switch_posterior_table(accepted_rows, switches)
+    posterior_table = compute_switch_posterior_table(
+        accepted_rows, switches, weight_key="structure_prior_weight" if structure_prior_lambda > 0 else None
+    )
 
     return SwitchPosteriorResult(
         accepted_rows=accepted_rows,
