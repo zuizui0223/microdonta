@@ -19,7 +19,7 @@ _repo = Path(__file__).resolve().parent.parent
 if str(_repo) not in sys.path:
     sys.path.insert(0, str(_repo))
 
-from causal_model.causal_admissibility import observation_contribution, causal_resolvability
+from causal_model.causal_admissibility import observation_contribution
 from causal_model.switch_inference import BiologicalSwitch
 
 

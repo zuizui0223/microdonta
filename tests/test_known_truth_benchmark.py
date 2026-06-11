@@ -11,15 +11,11 @@ data — it does NOT verify causal truth about real ecological mechanisms.
 from __future__ import annotations
 
 import math
-import tempfile
-from pathlib import Path
 
 import pytest
 
 from causal_model.known_truth_benchmark import (
-    BenchmarkCase,
     BenchmarkResult,
-    SwitchRecovery,
     TRUE_SWITCH_STATES,
     compute_case_metrics,
     generate_synthetic_patterns,

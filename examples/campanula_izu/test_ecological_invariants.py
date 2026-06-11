@@ -59,7 +59,6 @@ if str(_repo) not in sys.path:
 from causal_model.switches import PathwaySwitches
 from examples.campanula_izu.observed_data import (
     load_observed_pattern_table,
-    observed_gradient_only_patterns,
     response_target_patterns,
     ABC_TARGET_ROLES,
 )

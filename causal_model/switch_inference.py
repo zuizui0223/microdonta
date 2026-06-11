@@ -44,10 +44,9 @@ from __future__ import annotations
 import math
 import random
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Sequence
 
-from causal_model.abc_distance import compute_run_distances
 from causal_model.parameter_constraints import (
     predefined_tradeoff_presets,
     sample_all_sets_with_rejection_log,
@@ -612,7 +611,6 @@ def run_switch_posterior_inference(
     from examples.campanula_izu.pattern_evaluator import (
         evaluate_patterns,
         multi_component_distance,
-        weighted_pattern_distance,
     )
     from examples.campanula_izu.campanula_phenomenological import (
         default_campanula_gradient_environments,
@@ -937,7 +935,6 @@ def run_switch_posterior_inference_abm(
         ABMPopulationProxy,
         evaluate_patterns,
         multi_component_distance,
-        weighted_pattern_distance,
     )
     from examples.campanula_izu.campanula_phenomenological import (
         default_campanula_gradient_environments,

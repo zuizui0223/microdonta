@@ -52,7 +52,7 @@ from __future__ import annotations
 
 import random
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 # ---------------------------------------------------------------------------

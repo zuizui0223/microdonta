@@ -62,7 +62,7 @@ See: examples/campanula_izu/campanula_phenomenological.py
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from attraction_trait_model import (
     Environment,

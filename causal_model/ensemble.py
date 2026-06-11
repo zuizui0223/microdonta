@@ -21,7 +21,7 @@ Usage
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -302,7 +302,7 @@ def select_best_ensemble_setting(
     if eligible:
         best = max(eligible, key=key)
         crit_txt = (
-            f"highest R_RACH" if mode == "max_R" else "largest accepted sample"
+            "highest R_RACH" if mode == "max_R" else "largest accepted sample"
         )
         rationale = (
             f"Selected `{best.preset_name}` + `{best.acceptance_rule}` because it had "

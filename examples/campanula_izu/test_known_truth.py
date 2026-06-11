@@ -41,7 +41,6 @@ if str(_repo) not in sys.path:
     sys.path.insert(0, str(_repo))
 
 from causal_model.identifiability import (
-    RACHTheoryMetrics,
     compute_rach_theory_metrics,
     pattern_contribution_table,
 )
@@ -52,12 +51,9 @@ from causal_model.parameter_sampling import (
 )
 from causal_model.switch_inference import (
     CAMPANULA_SWITCHES,
-    pathway_switches_from_state,
-    GRADIENT_THRESH_MAP,
 )
 from examples.campanula_izu.pattern_evaluator import (
     evaluate_patterns,
-    weighted_pattern_distance,
 )
 from examples.campanula_izu.campanula_phenomenological import simulate_campanula_isolation_gradient
 from causal_model.switches import PathwaySwitches
@@ -85,7 +81,6 @@ def _make_synthetic_pattern_targets(
       - selfing_rate  increasing with isolation (gradient_slope + rank_order)
     These mirror the real observed_patterns.csv but are derived synthetically.
     """
-    from attraction_trait_model.parameters import ModelParameters
     outputs_dict, synth_env = simulate_campanula_isolation_gradient(
         true_switches, n_points=n_points
     )
@@ -351,8 +346,8 @@ def test_pattern_contribution_nonzero():
 
     contrib = pattern_contribution_table(accepted, CAMPANULA_SWITCHES, threshold=0.75)
     if not contrib:
-        print(f"[SKIP] test_pattern_contribution_nonzero  "
-              f"no per_pattern_matched data in accepted_rows")
+        print("[SKIP] test_pattern_contribution_nonzero  "
+              "no per_pattern_matched data in accepted_rows")
         return
 
     max_contrib = max(abs(row["C_k_j"]) for row in contrib)

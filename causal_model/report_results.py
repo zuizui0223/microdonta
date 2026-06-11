@@ -483,7 +483,6 @@ def generate_figures(bench: dict, ens: dict, fig_dir: Path) -> list[Path]:
 
     # ensemble figures
     if ens.get("available"):
-        from causal_model.ensemble import select_best_ensemble_setting  # noqa: F401
         results = ens.get("_results")
         switch_names = ens["switch_names"]
 

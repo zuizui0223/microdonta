@@ -28,8 +28,6 @@ import streamlit as st
 from attraction_trait_model.simulation import simulate_population
 from causal_model.abc_distance import (
     available_rules,
-    compute_run_distances,
-    epsilon_for_rule,
 )
 from causal_model.switch_inference import GRADIENT_THRESH_MAP  # single source of truth
 from causal_model.parameter_constraints import (
@@ -51,7 +49,6 @@ from causal_model.switches import switches_for_structure
 from examples.campanula_izu.causal_structures import campanula_causal_structures
 from examples.campanula_izu.observed_data import (
     load_population_env,
-    observed_gradient_only_patterns,
     observed_gradient_patterns,
     observed_pairwise_relations,
     ordered_populations,
@@ -59,15 +56,11 @@ from examples.campanula_izu.observed_data import (
 )
 from examples.campanula_izu.pattern_evaluator import (
     ABMPopulationProxy,
-    EvaluationResult,
     evaluate_patterns,
-    weighted_pattern_distance,
 )
 from examples.campanula_izu.campanula_phenomenological import (
     default_campanula_gradient_environments,
-    env_from_isolation,
     simulate_campanula_gradient,
-    simulate_campanula_isolation_gradient,
 )
 
 st.set_page_config(
@@ -265,7 +258,6 @@ def simulate_structure_proxy(
     env_slopes = env_slopes or {}
     _ne_slope  = float(env_slopes.get("ne_isolation_slope",   0.765))
     _mig_rate  = float(env_slopes.get("migration_decay_rate", 3.19))
-    _pol_slope = float(env_slopes.get("pollinator_loss_slope", 0.94))
 
     # Rebuild named environments with sampled θ slopes.
     # Canonical pollinator frequencies are kept from the literature-derived
@@ -448,11 +440,10 @@ def run_research_mode(
                         env_slopes=_env_slopes,
                     )
                 else:
-                    rels, payload = simulate_structure_proxy(
+                    _, payload = simulate_structure_proxy(
                         structure, model_params, env_slopes=_env_slopes
                     )
             except Exception:
-                rels = {}
                 payload = {"final_values": [], "generation_rows": []}
 
             # --- Primary gradient pattern targets ---
@@ -970,7 +961,6 @@ if _step_idx == 0:
     try:
         from causal_model.ensemble import (
             run_ensemble as _run_ensemble,
-            best_config as _best_config,
             select_best_ensemble_setting as _select_best,
             ensemble_ca_j as _ensemble_ca_j,
             sensitivity_range as _sensitivity_range,

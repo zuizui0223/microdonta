@@ -395,7 +395,6 @@ def _run_pairwise_inference(
     )
     from examples.campanula_izu.pattern_evaluator import (
         evaluate_patterns,
-        weighted_pattern_distance,
     )
     from attraction_trait_model.environment import Environment as _Env
 
@@ -1002,9 +1001,6 @@ def save_outputs(result: BenchmarkResult, output_dir: str | Path) -> dict[str, P
     written["recovery_by_noise.csv"] = noise_path
 
     # ---- recovery_by_n_attempts.csv ----
-    sweep_cases = [c for c in result.cases if c.n_attempts != result.cases[0].n_attempts
-                   or c.noise_rate == 0.0]
-    # Only include cases that vary n_attempts (heuristic: multiple n_attempts values)
     n_att_vals = sorted({c.n_attempts for c in result.cases})
     nattempts_path = out / "recovery_by_n_attempts.csv"
     nattempts_fields = [

@@ -51,8 +51,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import Sequence
+from dataclasses import dataclass
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +311,6 @@ def pattern_contribution_table(
                 continue
             matched_k, weight_k = entry
             # Recompute weighted_match_rate without pattern k
-            cur_wmr = r.get("weighted_match_rate", 0.0)
             total_w = sum(w for _, w in ppm.values())
             matched_w = sum(w for m, w in ppm.values() if m)
             new_total = total_w - weight_k
