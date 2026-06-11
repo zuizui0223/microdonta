@@ -1,6 +1,6 @@
 """Campanula Izu Islands causal structures, latent parameters, and pattern targets.
 
-Campanula punctata var. hondoensis / microdonta-specific instantiation of the
+Campanula microdonta-specific instantiation of the
 general causal_model framework. Moved here from causal_model/ to keep that
 package layer general-purpose.
 

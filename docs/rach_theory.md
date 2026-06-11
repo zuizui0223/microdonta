@@ -1,7 +1,7 @@
 # RACH — Causal Admissibility and Degeneracy Framework: Formal Theory
 
 > **Version**: 2.0 — complete restatement as independent causal framework
-> **Worked example**: *Campanula punctata* along the Izu Islands isolation gradient
+> **Worked example**: Izu Islands *Campanula microdonta* system. Older literature may refer to the broader *C. punctata* complex.
 
 ---
 
@@ -40,7 +40,7 @@ RACH = (X, Y, Θ, S, G, f, P_sim, P_obs, d, ε, A_ε, CA, D, R, OC, NOV)
 | Symbol | Name | Description | Example (Campanula) |
 |--------|------|-------------|---------------------|
 | X | Fixed ecological context | x_obs fed into f; not part of ABC target | island distance, island area, observed Bombus presence |
-| Y | Independent observation space | y_obs used for ABC acceptance | guide expression, selfing rate, herkogamy, flower size, Fis |
+| Y | Independent observation space | y_obs used for ABC acceptance | flower size, selfing/outcrossing rate, genetic endpoints when independently measured |
 | Θ | Latent parameter space | Unknown ecological quantities inferred via ABC | guide_cost, selfing_benefit, Ne_isolation_slope, ... |
 | S | Causal switch space | {0,1}^K — which mechanisms are active | S1: guide attracts Bombus; S2: selfing syndrome; S3: common cause; S5: small pollinator |
 
@@ -257,15 +257,17 @@ Example:
 > This is a **prediction** of S2/S3, not an independent field measurement.
 > Including it in y_obs inflates P(S2=1 | A_ε) regardless of true mechanism.
 
-**Current y_obs** (Campanula worked example, Inoue 1986 / genetic endpoint patterns):
+**Current y_obs** (Campanula microdonta worked example; Inoue-series endpoint patterns):
 
 ```
-nectar_guide_pairwise    Oshima > Hachijo   weight=1.0  field_derived
-selfing_rate_pairwise    Oshima < Hachijo   weight=1.0  field_derived
-herkogamy_pairwise       Oshima > Hachijo   weight=0.8  field_derived
-flower_size_pairwise     Oshima > Hachijo   weight=0.8  field_derived
-Fis_pairwise             Oshima < Hachijo   weight=1.0  genetic_derived
+selfing_rate_pairwise    Oshima < Hachijo   weight=1.0  field_derived / Inoue1990
+flower_size_pairwise     Oshima > Hachijo   weight=0.8  field_derived / Inoue1986
+Fis_pairwise             Oshima < Hachijo   weight=0.5  genetic_derived, if independently measured
 ```
+
+Nectar-guide intensity is planned own-field data, not an Inoue-series per-population
+measurement. Herkogamy is treated as a theoretical/diagnostic selfing-syndrome trait
+or pending field-validation target, not as an Inoue1986 observed_target.
 
 ---
 

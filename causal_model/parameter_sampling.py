@@ -64,7 +64,7 @@ def predefined_tradeoff_presets() -> dict[str, TradeoffPreset]:
         "literature_grounded": TradeoffPreset(
             name="literature_grounded",
             description=(
-                "Izu Islands Campanula punctata literature-calibrated parameter "
+                "Izu Islands Campanula microdonta literature-calibrated parameter "
                 "ranges (Inoue 1986; Larsson 2005; Charlesworth & Charlesworth "
                 "1987). This is the primary RACH analysis preset: the prior "
                 "π(θ) over latent parameters is defined by published empirical "

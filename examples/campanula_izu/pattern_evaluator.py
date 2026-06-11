@@ -200,9 +200,10 @@ def evaluate_patterns(
         #   循環  (circular design)    → diagnostic_only (excluded)
         #   入力  (env input)          → input_context (excluded)
         # observed_target (canonical) / response_target (legacy alias) → included.
-        # All other roles excluded from ABC acceptance.
+        # All other roles excluded from ABC acceptance, including
+        # excluded_from_ABC and planned/pending field-validation rows.
         role = row.get("role", "observed_target")
-        if role in ("input_context", "diagnostic_only", "hypothesis_prediction"):
+        if role not in ("observed_target", "response_target"):
             continue
         ptype = row.get("type", "pairwise_relation")
         weight = float(row.get("weight", 1.0))
