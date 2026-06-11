@@ -2,6 +2,10 @@
 
 > **Version**: 2.0 — complete restatement as independent causal framework
 > **Worked example**: Izu Islands *Campanula microdonta* system. Older literature may refer to the broader *C. punctata* complex.
+> **Mathematical foundations**: for the well-definedness, metric-bound, and Monte
+> Carlo consistency proofs (Propositions 1–7), see
+> [`docs/rach_mathematical_foundations.md`](rach_mathematical_foundations.md).
+> Those theorems establish admissibility well-posedness, not causal truth.
 
 ---
 

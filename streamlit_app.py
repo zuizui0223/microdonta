@@ -1775,6 +1775,7 @@ elif _step_idx == 7:
             _df_rob_dl = pd.DataFrame([
                 {"switch": r.switch, "mean_CA_j": r.mean_ca_j,
                  "sensitivity_range": r.sensitivity_range,
+                 "classification": r.classification,
                  "is_robust": r.is_robust, "call": r.call, "verdict": r.verdict}
                 for r in _rob_dl
             ])

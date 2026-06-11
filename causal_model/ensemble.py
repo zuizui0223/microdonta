@@ -76,6 +76,22 @@ class SwitchRobustness:
     is_stable: bool = True     # sensitivity_range < SENSITIVITY_THRESHOLD
     is_resolved: bool = False  # call is ON or OFF (CA_j away from 0.5)
 
+    @property
+    def classification(self) -> str:
+        """Issue #31 robustness label.
+
+        Maps the two-axis verdict onto the canonical strings:
+        - ``robust_supported``   — robust conclusion, switch ON
+        - ``robust_opposed``     — robust conclusion, switch OFF
+        - ``threshold_sensitive``— resolved direction but prior/ε-sensitive
+        - ``unresolved``         — CA_j ≈ 0.5 (no definite direction)
+        """
+        if not self.is_resolved:
+            return "unresolved"
+        if not self.is_stable:
+            return "threshold_sensitive"
+        return "robust_supported" if self.call == "ON" else "robust_opposed"
+
 
 def run_ensemble(
     presets: list[str],

@@ -193,3 +193,15 @@ def test_nov_without_sensitive_arg_unchanged():
     for r in res:
         assert r.targets_sensitive_switch is False
         assert r.sensitive_targets == []
+
+
+def test_classification_labels_issue31():
+    """SwitchRobustness.classification emits the issue-31 canonical labels."""
+    res = _ensemble()  # S1 robust-ON, S2 sensitive, S3 robust-OFF
+    by = {r.switch: r for r in classify_switch_robustness(res)}
+    assert by["S1"].classification == "robust_supported"   # stable + ON
+    assert by["S3"].classification == "robust_opposed"     # stable + OFF
+    # S2 swings across configs but mean is mid → unresolved (not a robust conclusion)
+    assert by["S2"].classification in ("threshold_sensitive", "unresolved")
+    valid = {"robust_supported", "robust_opposed", "threshold_sensitive", "unresolved"}
+    assert all(r.classification in valid for r in classify_switch_robustness(res))

@@ -232,6 +232,16 @@ By Proposition 4, both `R_RACH(O)` and `R_RACH(O\{o_k})` lie in `[0,1]`. The
 difference of two numbers in `[0,1]` lies in `[-1,1]`. Therefore
 `-1 ≤ OC_k ≤ 1`. □
 
+### Sign and non-monotonicity
+
+`OC_k` **may be negative.** A negative `OC_k` means that *removing* pattern `k`
+*increases* causal resolvability — which happens when `k` is noisy,
+contradictory, or over-constraining relative to the other patterns. Equivalently,
+observation contribution is **not monotone**: adding or removing an observation
+does not guarantee a monotonic increase in `R_RACH`, because conditioning on the
+extra pattern can make the retained switch distribution either more or less
+entropic. Reporting only `|OC_k|` or assuming `OC_k ≥ 0` is therefore incorrect.
+
 ### Implementation requirement
 
 `OC_k` must be computed from all evaluated draws, not only accepted draws. When

@@ -348,12 +348,12 @@ def ensemble_summary_md(ens: dict) -> str:
         ]
 
     lines += ["## Robust vs prior/ε-sensitive switches", "",
-              "| switch | mean_CA_j | sensitivity_range | robust | call |",
+              "| switch | mean_CA_j | sensitivity_range | classification | call |",
               "|---|---|---|---|---|"]
     for r in ens["robustness"]:
         lines.append(
             f"| {r.switch} | {_fmt(r.mean_ca_j)} | {_fmt(r.sensitivity_range)} | "
-            f"{'yes' if r.is_robust else 'no'} | {r.call} |"
+            f"{r.classification} | {r.call} |"
         )
     lines += ["",
               f"- Robust conclusions (stable AND resolved): "
