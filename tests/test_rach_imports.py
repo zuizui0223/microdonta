@@ -39,7 +39,7 @@ def test_causal_admissibility_imports():
     assert callable(next_observation_value)
     assert callable(next_observation_value_simulation)
     assert callable(compute_causal_admissibility_table)
-    assert len(CAMPANULA_CANDIDATE_OBSERVATIONS) == 8
+    assert len(CAMPANULA_CANDIDATE_OBSERVATIONS) == 9
     print("[PASS] test_causal_admissibility_imports")
 
 

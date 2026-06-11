@@ -6,6 +6,8 @@ RACH separates several epistemic roles:
 - observed_target: independent empirical response observations used for ABC/RACH acceptance.
 - hypothesis_prediction: theoretical or posterior-predictive expectations, excluded by default.
 - diagnostic_only: circular/internal checks such as syndrome definitions, excluded by default.
+- excluded_from_ABC: rows with provenance gaps or pending field validation; excluded from
+  ABC until promoted to observed_target. Some are tracked meanwhile as NOV candidates.
 
 `response_target` is accepted only as a backward-compatible alias for old data files.
 """
@@ -21,15 +23,21 @@ _DEFAULT_INDEPENDENT_OBS_CSV = Path(__file__).parent / "data" / "independent_obs
 _DEFAULT_ENV_CSV = _DEFAULT_CONTEXT_CSV
 
 ABC_TARGET_ROLES = {"observed_target", "response_target"}  # response_target is legacy
-EXCLUDED_ROLES = {"input_context", "hypothesis_prediction", "diagnostic_only"}
+EXCLUDED_ROLES = {
+    "input_context",
+    "hypothesis_prediction",
+    "excluded_from_ABC",
+    "diagnostic_only",
+    "planned_observation",  # legacy alias
+}
 
 _FALLBACK_PAIRWISE: list[dict] = [
-    {"pattern": "nectar_guide_pairwise", "type": "pairwise_relation", "variable": "nectar_guide", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "field/Inoue1986", "notes": "fallback", "role": "observed_target"},
-    {"pattern": "selfing_rate_pairwise", "type": "pairwise_relation", "variable": "selfing_rate", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "1.0", "source": "field/Inoue1986", "notes": "fallback", "role": "observed_target"},
-    {"pattern": "herkogamy_pairwise", "type": "pairwise_relation", "variable": "herkogamy", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "field", "notes": "fallback", "role": "observed_target"},
+    {"pattern": "nectar_guide_pairwise", "type": "pairwise_relation", "variable": "nectar_guide", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "future_field_validation", "notes": "fallback; planned own field data, not an Inoue measurement; NOV candidate for S1", "role": "excluded_from_ABC"},
+    {"pattern": "selfing_rate_pairwise", "type": "pairwise_relation", "variable": "selfing_rate", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "1.0", "source": "field/Inoue1990", "notes": "fallback", "role": "observed_target"},
+    {"pattern": "herkogamy_pairwise", "type": "pairwise_relation", "variable": "herkogamy", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "theoretical", "notes": "fallback; latent dichogamy/delayed-selfing, not an Inoue field measurement", "role": "excluded_from_ABC"},
     {"pattern": "flower_size_pairwise", "type": "pairwise_relation", "variable": "flower_size", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "0.8", "source": "field/Inoue1986", "notes": "fallback", "role": "observed_target"},
-    {"pattern": "Fis_pairwise", "type": "pairwise_relation", "variable": "Fis", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "0.5", "source": "genetic", "notes": "fallback; down-weighted — Fis proxy derived from selfing_rate in model", "role": "observed_target"},
-    {"pattern": "Bombus_frequency_pairwise", "type": "pairwise_relation", "variable": "primary_pollinator_frequency", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "field/literature", "notes": "fallback; excluded input context", "role": "input_context"},
+    {"pattern": "Fis_pairwise", "type": "pairwise_relation", "variable": "Fis", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima < Hachijo", "weight": "0.5", "source": "genetic_survey", "notes": "fallback; down-weighted — Fis proxy derived from selfing_rate in model", "role": "observed_target"},
+    {"pattern": "Bombus_frequency_pairwise", "type": "pairwise_relation", "variable": "primary_pollinator_frequency", "left_population": "Oshima", "right_population": "Hachijo", "populations": "", "predictor": "", "expected_direction": "", "relation": "Oshima > Hachijo", "weight": "1.0", "source": "Inoue1986", "notes": "fallback; pollinator assemblage is excluded input context", "role": "input_context"},
 ]
 
 _CONTEXT_NUMERIC_COLS = (
@@ -138,6 +146,22 @@ def diagnostic_only_patterns(path: str | Path | None = None) -> list[dict]:
     return [
         row for row in load_observed_pattern_table(path)
         if row.get("role") == "diagnostic_only"
+    ]
+
+
+def planned_observation_patterns(path: str | Path | None = None) -> list[dict]:
+    """Return not-yet-collected patterns (excluded from ABC until measured).
+
+    These are tracked as NOV candidates; promote to ``observed_target`` after the
+    field data are collected.
+    """
+    return [
+        row for row in load_observed_pattern_table(path)
+        if row.get("role") == "planned_observation"
+        or (
+            row.get("role") == "excluded_from_ABC"
+            and row.get("epistemic_status") in {"planned", "pending_field_validation"}
+        )
     ]
 
 

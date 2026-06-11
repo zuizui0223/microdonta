@@ -722,7 +722,8 @@ st.caption(
     "**RACH** (*Restricted Admissible Causal Hypotheses*) — "
     "estimates the admissible causal region A_ε and quantifies "
     "CA_j, D, R, OC_k, NOV.  "
-    "Worked example: *Campanula punctata* / Izu Islands."
+    "Worked example: Izu Islands *Campanula microdonta* system "
+    "(older literature may refer to the broader *C. punctata* complex)."
 )
 with st.expander("RACH formal definition", expanded=False):
     st.markdown(r"""
@@ -739,7 +740,7 @@ A_ε(y_obs, x_obs) = { (θ, s) ∈ Θ × S :  G(θ)=1,  d(P_sim(f(x_obs; θ, s))
 | s | Causal switch state {0,1}^K | S1 guide→Bombus, S2 selfing syndrome, S3 common cause, S5 small pollinator |
 | G(θ) | Constraint grammar | biological feasibility constraints C1–C5 |
 | f | Generative dynamics | Wright-Fisher drift + selection + stochastic ABM |
-| y_obs | Independent observations | 5 pairwise field measurements (Inoue 1986) |
+| y_obs | Independent observations | flower_size (Inoue 1986) + selfing_rate (Inoue 1990) + Fis (genetic); nectar_guide is planned own-field data, herkogamy is latent dichogamy — both excluded |
 
 **Five core RACH quantities:**
 
@@ -770,15 +771,15 @@ with st.expander("Worked example — シマホタルブクロ / Izu Islands cont
         if _yobs_rows:
             stretch_df(pd.DataFrame(_yobs_rows), hide_index=True)
         st.caption(
-            "These 5 field-derived pairwise comparisons (Oshima vs Hachijo, Inoue 1986) "
-            "are the ONLY patterns used as y_obs in ABC acceptance. "
-            "hypothesis_prediction and input_context rows are excluded."
+            "Rows shown above are the only patterns used as y_obs in ABC acceptance. "
+            "input_context, hypothesis_prediction, excluded_from_ABC, diagnostic_only, "
+            "and planned/pending rows are excluded."
         )
     with col_xobs:
         st.markdown("**x_obs — fixed empirical context fed into f(x_obs; θ, s)**")
         _xobs_rows = [
             {"variable": "island_distance", "role": "input_context", "notes": "normalised isolation index (0=mainland, 1=Hachijo)"},
-            {"variable": "primary_pollinator_frequency", "role": "input_context", "notes": "Bombus ardens presence/frequency per island (field/literature)"},
+            {"variable": "primary_pollinator_frequency", "role": "input_context", "notes": "Bombus ardens presence/frequency per island (Inoue-series context)"},
             {"variable": "island_area", "role": "input_context", "notes": "km² (approximate, affects Ne prior)"},
         ]
         stretch_df(pd.DataFrame(_xobs_rows), hide_index=True)

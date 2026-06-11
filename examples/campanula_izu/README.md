@@ -4,7 +4,7 @@ This directory will contain the first worked example for the constraint-aware pa
 
 ## Biological question
 
-Under what conditions does the nectar guide decline or disappear in island populations of *Campanula punctata* / shimahotarubukuro?
+Under what conditions does the nectar guide decline or disappear in island populations of *Campanula microdonta* / シマホタルブクロ? Older literature may refer to the broader *C. punctata* complex.
 
 ## Study gradient
 

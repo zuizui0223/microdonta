@@ -130,7 +130,7 @@ The future `PlantAgent` should carry evolving traits:
 ```python
 nectar_guide: float       # G, attraction trait intensity, 0-1
 flower_size: float        # F, floral display / corolla size, 0-1
-herkogamy: float          # H, anther-stigma separation, 0-1
+herkogamy: float          # H, delayed-selfing barrier, 0-1 (protandrous: female-phase stigma–self-pollen separation, NOT static anther-stigma distance)
 selfing_ability: float    # A, autonomous selfing capacity, 0-1
 neutral_diversity: float  # D, neutral genetic diversity proxy, 0-1
 ```

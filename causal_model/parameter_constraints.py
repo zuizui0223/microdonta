@@ -38,7 +38,8 @@ Inoue & Amano 1986  Plant Species Biol 1:207-217
     Selfing rate proxies (Fis): Oshima ~0.08, Hachijo ~0.35.
 
 Ushimaru et al. 2003 / Takahashi et al.
-    Campanula punctata mating system variation along isolation gradient.
+    Campanula microdonta mating system variation along the Izu isolation gradient
+    (older literature may refer to the broader C. punctata complex).
 """
 
 from __future__ import annotations
@@ -148,7 +149,9 @@ _LIT_OUTCROSSING = LiteratureSource(
     empirical_range="Seed set improvement from cross-pollination: 10-70% in "
                     "mixed-mating plants.",
     modelled_range=(0.10, 0.75),
-    notes="Campanula punctata is a mixed-mating species; outcrossing benefit "
+    notes="Campanula microdonta is treated here as the Izu Islands focal species; "
+          "older literature may refer to the broader C. punctata complex. "
+          "Outcrossing benefit "
           "includes genetic diversity and seed quality components. Range "
           "0.10-0.75 covers the empirical interquartile range for such species.",
 )

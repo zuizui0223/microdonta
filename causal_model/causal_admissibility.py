@@ -432,6 +432,24 @@ CAMPANULA_CANDIDATE_OBSERVATIONS: list[CandidateObservation] = [
         ],
     ),
     CandidateObservation(
+        name="nectar_guide_gradient_survey",
+        description=(
+            "Quantify per-population nectar-guide intensity (spot area / pigment) "
+            "across the island series. This is the PLANNED own-field observation "
+            "that is not in the Inoue series; until collected it is a candidate, "
+            "not a y_obs target."
+        ),
+        target_switches=["guide_attracts_bombus"],
+        rationale=(
+            "S1 (guide → Bombus) is currently weakly identified because no "
+            "independent per-population guide measurement exists. A measured "
+            "guide gradient that co-varies with Bombus availability would "
+            "constrain S1 without the circularity of assuming the guide effect."
+        ),
+        pattern_type="pairwise_relation",
+        outcomes=[],   # heuristic NOV only until outcome model is specified
+    ),
+    CandidateObservation(
         name="bagging_seed_set",
         description=(
             "Bagged (autonomous selfing) vs open-pollinated seed set across "

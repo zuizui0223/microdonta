@@ -187,8 +187,10 @@ def evaluate_patterns(
         #   hypotheses, not independent field measurements.  E.g.
         #   "selfing increases with isolation" is what we expect IF S2 is
         #   active — treating it as y_obs makes the inference circular.
-        #   Only the 5 pairwise field_derived patterns (Oshima vs Hachijo,
-        #   Inoue 1986) are truly independent observations.
+        #   Only the field_derived endpoints (flower_size: Inoue 1986;
+        #   selfing_rate: Inoue 1990; plus genetic Fis) are independent
+        #   observations. nectar_guide is planned own-field data and herkogamy is
+        #   latent dichogamy — both excluded from ABC.
         #
         # Taxonomy:
         #   公理  (axiom)              → encoded in f(θ,s) mechanics
@@ -198,9 +200,10 @@ def evaluate_patterns(
         #   循環  (circular design)    → diagnostic_only (excluded)
         #   入力  (env input)          → input_context (excluded)
         # observed_target (canonical) / response_target (legacy alias) → included.
-        # All other roles excluded from ABC acceptance.
+        # All other roles excluded from ABC acceptance, including
+        # excluded_from_ABC and planned/pending field-validation rows.
         role = row.get("role", "observed_target")
-        if role in ("input_context", "diagnostic_only", "hypothesis_prediction"):
+        if role not in ("observed_target", "response_target"):
             continue
         ptype = row.get("type", "pairwise_relation")
         weight = float(row.get("weight", 1.0))
