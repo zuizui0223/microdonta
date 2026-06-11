@@ -187,8 +187,10 @@ def evaluate_patterns(
         #   hypotheses, not independent field measurements.  E.g.
         #   "selfing increases with isolation" is what we expect IF S2 is
         #   active — treating it as y_obs makes the inference circular.
-        #   Only the 5 pairwise field_derived patterns (Oshima vs Hachijo,
-        #   Inoue 1986) are truly independent observations.
+        #   Only the field_derived endpoints (flower_size: Inoue 1986;
+        #   selfing_rate: Inoue 1990; plus genetic Fis) are independent
+        #   observations. nectar_guide is planned own-field data and herkogamy is
+        #   latent dichogamy — both excluded from ABC.
         #
         # Taxonomy:
         #   公理  (axiom)              → encoded in f(θ,s) mechanics

@@ -103,7 +103,13 @@ def outcrossing_probability(
 
 
 def selfing_probability(agent: PlantAgent, outcross_prob: float) -> float:
-    """Probability of autonomous selfing after outcrossing failure."""
+    """Probability of autonomous selfing after outcrossing failure.
+
+    ``herkogamy`` here is the female-phase delayed-selfing barrier (this species
+    is protandrous, so it is not a static anther-stigma distance): high herkogamy
+    means the recurving stigma avoids self-pollen on the style, suppressing
+    autonomous delayed selfing.
+    """
 
     probability = (
         (1.0 - clamp(outcross_prob))

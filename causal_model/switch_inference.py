@@ -530,8 +530,10 @@ def run_switch_posterior_inference(
     if threshold is None:
         threshold = _acceptance_threshold(acceptance_rule)
 
-    # y_obs = response_target patterns only (5 field_derived pairwise, Inoue 1986).
-    # hypothesis_prediction gradient patterns excluded to prevent circular inference.
+    # y_obs = observed_target patterns only (flower_size: Inoue 1986; selfing_rate:
+    # Inoue 1990; Fis: genetic, down-weighted). nectar_guide (planned own-field) and
+    # herkogamy (latent dichogamy, protandrous species) are excluded, as are
+    # hypothesis_prediction gradients — preventing circular inference.
     all_patterns = list(response_target_patterns())
     if extra_pattern_rows:
         all_patterns = all_patterns + list(extra_pattern_rows)
@@ -809,8 +811,10 @@ def run_switch_posterior_inference_abm(
     if threshold is None:
         threshold = _acceptance_threshold(acceptance_rule)
 
-    # y_obs = response_target patterns only (5 field_derived pairwise, Inoue 1986).
-    # hypothesis_prediction gradient patterns excluded to prevent circular inference.
+    # y_obs = observed_target patterns only (flower_size: Inoue 1986; selfing_rate:
+    # Inoue 1990; Fis: genetic, down-weighted). nectar_guide (planned own-field) and
+    # herkogamy (latent dichogamy, protandrous species) are excluded, as are
+    # hypothesis_prediction gradients — preventing circular inference.
     all_patterns = list(response_target_patterns())
     if extra_pattern_rows:
         all_patterns = all_patterns + list(extra_pattern_rows)

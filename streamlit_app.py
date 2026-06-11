@@ -739,7 +739,7 @@ A_ε(y_obs, x_obs) = { (θ, s) ∈ Θ × S :  G(θ)=1,  d(P_sim(f(x_obs; θ, s))
 | s | Causal switch state {0,1}^K | S1 guide→Bombus, S2 selfing syndrome, S3 common cause, S5 small pollinator |
 | G(θ) | Constraint grammar | biological feasibility constraints C1–C5 |
 | f | Generative dynamics | Wright-Fisher drift + selection + stochastic ABM |
-| y_obs | Independent observations | 5 pairwise field measurements (Inoue 1986) |
+| y_obs | Independent observations | flower_size (Inoue 1986) + selfing_rate (Inoue 1990) + Fis (genetic); nectar_guide is planned own-field data, herkogamy is latent dichogamy — both excluded |
 
 **Five core RACH quantities:**
 

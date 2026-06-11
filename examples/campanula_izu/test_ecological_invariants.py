@@ -236,7 +236,11 @@ def test_input_context_excluded_from_abc():
     - diagnostic_only: syndrome/mechanism definition (circular)
     - hypothesis_prediction: gradient expected from hypothesis, not field data
 
-    Only response_target rows (5 field_derived pairwise, Inoue 1986) enter ABC.
+    Only observed_target rows enter ABC. The field-derived endpoints are
+    flower_size (Amano & Inoue 1986) and selfing_rate (Inoue 1990), plus a
+    down-weighted genetic Fis row. nectar_guide is planned_observation (own
+    field data, not yet collected) and herkogamy is diagnostic_only (latent
+    dichogamy in this protandrous species) — both excluded from ABC.
 
     Two checks:
     a) response_target_patterns() contains no excluded-role rows.

@@ -1,12 +1,12 @@
 population,variable,observed_value,se,source,role,epistemic_status,notes
-Oshima,nectar_guide,, ,Inoue1986,observed_target,field_derived,fill numeric field value when extracted from source; used for future numeric ABC distance
-Hachijo,nectar_guide,, ,Inoue1986,observed_target,field_derived,fill numeric field value when extracted from source; used for future numeric ABC distance
-Oshima,selfing_rate,, ,Inoue1986,observed_target,field_derived,fill numeric breeding-system estimate when extracted from source
-Hachijo,selfing_rate,, ,Inoue1986,observed_target,field_derived,fill numeric breeding-system estimate when extracted from source
-Oshima,herkogamy,, ,Inoue1986,observed_target,field_derived,fill numeric morphology value when extracted from source
-Hachijo,herkogamy,, ,Inoue1986,observed_target,field_derived,fill numeric morphology value when extracted from source
-Oshima,flower_size,, ,Inoue1986,observed_target,field_derived,fill numeric morphology value when extracted from source
-Hachijo,flower_size,, ,Inoue1986,observed_target,field_derived,fill numeric morphology value when extracted from source
+Oshima,nectar_guide,, ,planned_own_field,planned_observation,planned,PLANNED own field data; no Inoue per-population nectar-guide measurement exists. Fill after collection then promote to observed_target
+Hachijo,nectar_guide,, ,planned_own_field,planned_observation,planned,PLANNED own field data; no Inoue per-population nectar-guide measurement exists. Fill after collection then promote to observed_target
+Oshima,selfing_rate,, ,Inoue1990,observed_target,field_derived,fill outcrossing/selfing estimate from Inoue 1990 (t≈0.62-0.79 SI mainland/Oshima); transcribe from primary PDF
+Hachijo,selfing_rate,, ,Inoue1990,observed_target,field_derived,fill selfing estimate from Inoue 1990 (southern islands predominantly selfing); transcribe from primary PDF
+Oshima,herkogamy,, ,syndrome_logic,diagnostic_only,theoretical_design,NOT an Inoue measurement; protandrous species — latent dichogamy/delayed-selfing mechanism, excluded from ABC
+Hachijo,herkogamy,, ,syndrome_logic,diagnostic_only,theoretical_design,NOT an Inoue measurement; protandrous species — latent dichogamy/delayed-selfing mechanism, excluded from ABC
+Oshima,flower_size,, ,Inoue1986,observed_target,field_derived,fill corolla-size value from Amano & Inoue 1986; transcribe from primary PDF
+Hachijo,flower_size,, ,Inoue1986,observed_target,field_derived,fill corolla-size value from Amano & Inoue 1986; transcribe from primary PDF
 Oshima,Fis,, ,genetic_survey,observed_target,genetic_derived,fill only when independent genetic estimate is available; not Inoue field measurement unless source confirms
 Hachijo,Fis,, ,genetic_survey,observed_target,genetic_derived,fill only when independent genetic estimate is available; not Inoue field measurement unless source confirms
 Oshima,primary_pollinator_frequency,0.35,,Inoue1986,input_context,field_derived,fixed empirical context x_obs; excluded from ABC target distance

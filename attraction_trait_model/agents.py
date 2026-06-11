@@ -17,6 +17,11 @@ class PlantAgent:
 
     nectar_guide: float
     flower_size: float
+    # herkogamy: autonomous-selfing avoidance, 0-1. NOTE: Campanula punctata /
+    # microdonta is protandrous with secondary pollen presentation, so this is
+    # NOT a static anther-stigma distance. It denotes female-phase delayed-selfing
+    # geometry (how far the recurving stigma stays from self-pollen on the style);
+    # high = stigma avoids self-pollen (no delayed selfing), low = contacts it.
     herkogamy: float
     selfing_ability: float
     neutral_diversity: float
