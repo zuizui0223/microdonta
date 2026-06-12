@@ -43,8 +43,8 @@ RACH = (X, Y, Θ, S, G, f, P_sim, P_obs, d, ε, A_ε, CA, D, R, OC, NOV)
 
 | Symbol | Name | Description | Example (Campanula) |
 |--------|------|-------------|---------------------|
-| X | Fixed ecological context | x_obs fed into f; not part of ABC target | island distance, island area, observed Bombus presence |
-| Y | Independent observation space | y_obs used for ABC acceptance | current: flower-size and selfing/outcrossing directional gradients; genetic endpoints only when independently measured |
+| X | Fixed ecological context | x_obs fed into f; **not** part of the ABC target distance | island isolation (`distance_from_mainland`), island area, observed Bombus/pollinator assemblage per population |
+| Y | Independent observation space | y_obs used for ABC acceptance — **ordinal directional gradients along the island-isolation axis**, not pairwise endpoint contrasts | current: `selfing_distance` (selfing ↑ with isolation) and `flower_size_distance` (flower size ↓ with isolation); genetic / guide / herkogamy endpoints enter only when independently measured |
 | Θ | Latent parameter space | Unknown ecological quantities inferred via ABC | guide_cost, selfing_benefit, Ne_isolation_slope, ... |
 | S | Causal switch space | {0,1}^K — which mechanisms are active | S1: guide attracts Bombus; S2: selfing syndrome; S3: common cause; S5: small pollinator |
 
@@ -98,14 +98,33 @@ Bombus frequency declines with isolation
 
 ### 1.4 Pattern maps and distance
 
-```
-P_sim:  Y_sim → pattern space
-P_obs:  y_obs → pattern space
+`P_obs` and `P_sim` map raw values to a common **ordinal pattern space** defined
+on the island-isolation axis. The patterns are **not** pairwise endpoint contrasts
+(e.g. Oshima vs Hachijo); each pattern is the **sign of a trait's monotone trend
+along the isolation gradient** `x` (`distance_from_mainland`):
 
-d(P_sim(y_sim), P_obs(y_obs)) = 1 - weighted_match_rate
+```
+pattern space:  for each y_obs variable k, an ordinal direction
+                σ_k ∈ {increasing, decreasing, flat}  ( +, −, ~ )
+
+P_obs(y_obs)_k = sign of the observed trend of trait k vs island isolation
+                 (source-confirmed directional gradient; see §3)
+
+P_sim(y_sim)_k = sign of the simulated trend of trait k vs island isolation,
+                 evaluated across the simulated population gradient
+                 (mainland → Oshima → Kozushima → Hachijo)
+
+d(P_sim, P_obs) = 1 − weighted_match_rate
+               = ( Σ_k w_k · 1[ σ_k^sim ≠ σ_k^obs ] ) / ( Σ_k w_k )
 ```
 
-A pattern is matched if the simulated direction (>, <, ~=) equals the observed direction.
+Pattern `k` is **matched** iff the simulated ordinal direction `σ_k^sim` equals the
+observed direction `σ_k^obs`; `d` is the weight-normalised fraction of mismatched
+directions (so `d = 0` ⇔ all observed gradient directions are reproduced).
+Optional standardized / hybrid distance modes (see
+`pattern_evaluator.multi_component_distance`) extend this to numeric
+`absolute_summary` patterns once measured values exist; the current ABC `y_obs`
+uses ordinal `gradient_slope` patterns only.
 
 ### 1.5 The admissible causal region A_ε
 

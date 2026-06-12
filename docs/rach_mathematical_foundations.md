@@ -40,6 +40,18 @@ A_ε(y_obs, x_obs)
 
 This is the central inferential object of RACH.
 
+**Worked-example instantiation (Campanula).** The abstract objects above are
+realised, in the Izu Islands example, as follows. The pattern space `P` is the
+product of **ordinal gradient directions** `{+, −, ~}` (one per observed variable),
+where each direction is the sign of a trait's monotone trend along the
+island-isolation axis (`x_obs = distance_from_mainland`) — **not** a pairwise
+endpoint contrast. `P_obs(y_obs)` is the source-confirmed observed direction of
+each gradient (current y_obs: selfing `+`, flower-size `−`); `P_sim` is the same
+sign extracted from the simulated population gradient; and
+`d(P_sim, P_obs) = 1 − weighted_match_rate` is the weight-normalised fraction of
+gradient directions that disagree. The propositions below hold for this
+instantiation because `P` is finite and `d ∈ [0, 1]`.
+
 ---
 
 ## 2. Proposition 1 — A_ε is well-defined

@@ -17,8 +17,10 @@ Formal RACH object
 ------------------
 RACH = (X, Y, Θ, S, G, f, P_sim, P_obs, d, ε, A_ε, CA, D, R, OC, NOV)
 
-    X       fixed ecological context space (island distance, Bombus frequency, ...)
-    Y       independent observation space  (guide, selfing, herkogamy, Fis, ...)
+    X       fixed ecological context space (island isolation, pollinator assemblage, ...)
+    Y       independent observation space — ordinal directional gradients along the
+            island-isolation axis (current y_obs: selfing↑ and flower-size↓ with
+            isolation; guide / herkogamy / Fis excluded until independently measured)
     Θ       latent ecological parameter space
     S       causal switch space {0,1}^K
     G       biological constraint grammar  (G(θ) = 1 iff θ is feasible)
