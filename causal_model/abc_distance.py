@@ -5,9 +5,11 @@ Formalises the pattern-distance rejection step that is central to the RACH
 
 Distance definition
 -------------------
-We treat each ordinal pattern comparison (e.g. "Oshima > Hachijo") as a
-binary outcome: the simulated relation either matches the observed target
-(match = 0) or does not (mismatch = 1).
+We treat each ordinal pattern as a binary outcome: the simulated direction either
+matches the observed target (match = 0) or does not (mismatch = 1). The canonical
+RACH y_obs patterns are ordinal *gradient* directions along the island-isolation
+axis (e.g. "selfing increases with isolation"); legacy pairwise endpoint forms
+(e.g. "Oshima > Hachijo") are handled by the same matcher but are diagnostic_only.
 
 Unweighted distance::
 

@@ -24,6 +24,8 @@ Hachijo
 
 The empirical data should be organized as observable patterns rather than as direct causal mechanisms.
 
+> **RACH role note.** The list below is the full set of *candidate* observables. Their roles are assigned in **§RACH observation roles** below: the current ABC `y_obs` is only the two source-confirmed **ordinal isolation gradients** (`selfing_distance`, `flower_size_distance`). Pollinator/Bombus frequency is `x_obs`; Oshima–Hachijo pairwise summaries are `diagnostic_only`; nectar guide, herkogamy, Fis/Fst/Pst, seed set, and visitation are `future_observation` / NOV candidates until independently measured.
+
 Core patterns:
 
 ```text

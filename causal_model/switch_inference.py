@@ -428,16 +428,21 @@ def compute_coactivation_table(
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# Gradient POM acceptance thresholds  (single source of truth)
+# Acceptance thresholds on the weighted match-rate over the ordinal y_obs
+# gradients (single source of truth).
 # ---------------------------------------------------------------------------
-# POM = 6 gradient-direction patterns (4 gradient_slope + 2 rank_order).
-# Bombus_distance removed — it was tautological (always matches because
-# primary_pollinator_frequency is injected from the environment, not simulated).
+# y_obs = ordinal directional gradients on the island-isolation axis. The current
+# observed_target set is 2 gradient_slope patterns (selfing_distance,
+# flower_size_distance); the count is data-driven (observed_patterns.csv), so the
+# thresholds below are expressed as fractions of the weighted match-rate, NOT as
+# fixed pattern counts. Bombus / pollinator frequency is x_obs (injected from the
+# environment), so it is excluded — including it would always match and be
+# tautological.
 #
-# Rule name semantics (pattern-count-independent):
-#   strict_all       → 1.000  (all patterns must match)
-#   relaxed_0.83     → 5/6    (≥83% of patterns by weight)
-#   relaxed_0.67     → 4/6    (≥67% of patterns by weight)
+# Rule-name semantics (pattern-count-independent; ε = 1 − threshold):
+#   strict_all       → 1.000  (every y_obs gradient direction must match)
+#   relaxed_0.83     → ≈0.833 (≥ 83% of weighted gradient directions match)
+#   relaxed_0.67     → ≈0.667 (≥ 67% of weighted gradient directions match)
 #   weighted_strict  → 1.000
 #   weighted_lax     → 0.800
 GRADIENT_THRESH_MAP: dict[str, float] = {
@@ -587,8 +592,9 @@ def run_switch_posterior_inference(
     This function is retained for backward compatibility and fast diagnostic
     screening only.
 
-    Evaluates 6 gradient-direction patterns (gradient_slope + rank_order,
-    Bombus_distance excluded as tautological) across all simulated populations.
+    Evaluates the ordinal y_obs gradient-direction patterns (role=observed_target;
+    currently selfing_distance and flower_size_distance) across the simulated
+    isolation gradient. Pollinator-frequency patterns are excluded (they are x_obs).
     Acceptance criterion: weighted_match_rate >= threshold (mapped from acceptance_rule).
 
     Parameters
@@ -650,8 +656,9 @@ def run_switch_posterior_inference(
         pw = pathway_switches_from_state(state, switches)
 
         # Rebuild named environments (mainland/Oshima/Kozushima/Hachijo) with sampled
-        # θ slopes so Ne and migration_rate reflect each draw's θ.
-        # Named populations are required: pairwise patterns look for "Oshima"/"Hachijo".
+        # θ slopes so Ne and migration_rate reflect each draw's θ. The named
+        # isolation gradient is what the ordinal gradient_slope y_obs is evaluated
+        # over (and legacy pairwise/diagnostic rows resolve "Oshima"/"Hachijo").
         _ne_slope = float(env_slopes.get("ne_isolation_slope", 0.765))
         _mig_rate = float(env_slopes.get("migration_decay_rate", 3.19))
         _base_envs = default_campanula_gradient_environments()
@@ -970,7 +977,8 @@ def run_switch_posterior_inference_abm(
         env_slopes = env_slopes_from_param_set(param_set)   # θ: Ne/migration/pollinator slopes
 
         # Rebuild named environments (mainland/Oshima/Kozushima/Hachijo) per draw.
-        # Named populations required: pairwise patterns look for "Oshima"/"Hachijo".
+        # The named isolation gradient is what the ordinal gradient_slope y_obs is
+        # evaluated over (legacy pairwise/diagnostic rows resolve "Oshima"/"Hachijo").
         # Ne slope and migration_rate are updated from sampled θ; canonical pollinator
         # frequencies are kept from the literature-derived population defaults.
         _ne_slope = float(env_slopes.get("ne_isolation_slope", 0.765))
