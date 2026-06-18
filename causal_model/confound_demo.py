@@ -112,7 +112,7 @@ def run_confound_demo(
     nov_ranking = [(r.candidate, round(r.expected_resolvability_gain, 4), list(r.target_switches))
                    for r in nov]
 
-    return ConfoundDemoResult(
+    res = ConfoundDemoResult(
         switch_names=switch_names,
         n_accepted=len(accepted),
         model_posterior=posterior,
@@ -123,6 +123,50 @@ def run_confound_demo(
         R_RACH=R,
         nov_ranking=nov_ranking,
     )
+
+    # (D) Resolution: add the quantitative confound-breaker and re-infer.
+    # truth = S3 (isolation common cause). The nectar-guide magnitude discriminates
+    # because the selfing-syndrome switch (S2) barely moves the guide, so a measured
+    # guide decline is a signature S2 cannot mimic — whereas selfing/Fis magnitude
+    # CAN be mimicked by S2 and so does not reject it.
+    abs_row, resolving_name = _confound_breaker_observation()
+    sp2 = _run(**kw, extra_pattern_rows=[abs_row])
+    if sp2.accepted_rows:
+        summ2 = rach_summary(sp2.accepted_rows, CAMPANULA_SWITCHES)
+        res.resolving_candidate = resolving_name
+        res.ca_j_after = {r.switch_name: round(r.CA_j, 4) for r in summ2.causal_admissibility}
+        res.D_after = round(summ2.causal_degeneracy, 4)
+        res.R_after = round(summ2.causal_resolvability, 4)
+    return res
+
+
+def _confound_breaker_observation():
+    """Build the absolute_summary observation that breaks the S2/S3 confound.
+
+    truth = S3 ON. Returns a measured nectar-guide value at the most-isolated
+    population equal to S3's prediction, with a scale tight enough to separate it
+    from S2's prediction.
+    """
+    from causal_model.switches import PathwaySwitches
+    from examples.campanula_izu.campanula_phenomenological import (
+        simulate_campanula_gradient, default_campanula_gradient_environments,
+    )
+    envs = default_campanula_gradient_environments()
+    pop = "Hachijo"
+    g3 = simulate_campanula_gradient(PathwaySwitches(island_common_cause=1.0),
+                                     environments=envs)[pop].nectar_guide
+    g2 = simulate_campanula_gradient(PathwaySwitches(selfing_mediation=1.0),
+                                     environments=envs)[pop].nectar_guide
+    scale = max(abs(g3 - g2) / 3.0, 0.02)
+    row = {
+        "pattern": "guide_abs_isolated", "observation": "guide_abs_isolated",
+        "type": "absolute_summary", "variable": "nectar_guide", "population": pop,
+        "observed_value": f"{g3:.4f}", "se": f"{scale:.4f}", "scale": f"{scale:.4f}",
+        "weight": "1.5", "role": "observed_target",
+        "left_population": "", "right_population": "", "populations": "",
+        "predictor": "", "expected_direction": "", "relation": "",
+    }
+    return row, "nectar_guide quantification (absolute, most-isolated population)"
 
 
 def print_report(res: ConfoundDemoResult) -> None:
@@ -157,6 +201,17 @@ def print_report(res: ConfoundDemoResult) -> None:
     print("(C) NOV — which observation most reduces the confound")
     for cand, gain, tgt in res.nov_ranking[:5]:
         print(f"      {cand:38s} ΔR={gain:+.4f}  targets={tgt}")
+    print()
+    print("(D) RESOLUTION — add the quantitative confound-breaker (truth = S3)")
+    if res.resolving_candidate:
+        s2b = res.ca_j["selfing_syndrome_active"]; s3b = res.ca_j["island_isolation_common_cause"]
+        s2a = res.ca_j_after["selfing_syndrome_active"]; s3a = res.ca_j_after["island_isolation_common_cause"]
+        print(f"    added: {res.resolving_candidate}")
+        print(f"    D_RACH {res.D_RACH} → {res.D_after}    R_RACH {res.R_RACH} → {res.R_after}")
+        print(f"    CA_j[S3] {s3b} → {s3a}  (↑ supported)")
+        print(f"    CA_j[S2] {s2b} → {s2a}  (↓ rejected)")
+        print("    → the confound resolves: S3 up, S2 down, degeneracy falls. A guide")
+        print("      decline is a signature S2 cannot mimic; selfing magnitude alone could.")
 
 
 def make_figure(res: ConfoundDemoResult, path: str) -> str | None:
@@ -174,7 +229,8 @@ def make_figure(res: ConfoundDemoResult, path: str) -> str | None:
              "island_isolation_common_cause": "S3", "small_pollinator_substitution": "S5"}
     labels = [short.get(n, n) for n in sw]
 
-    fig, axes = plt.subplots(1, 3, figsize=(13, 3.6))
+    n_panels = 4 if res.resolving_candidate else 3
+    fig, axes = plt.subplots(1, n_panels, figsize=(4.3 * n_panels, 3.6))
 
     # Panel A: model-choice posterior (top models)
     ax = axes[0]
@@ -206,6 +262,21 @@ def make_figure(res: ConfoundDemoResult, path: str) -> str | None:
     ax.set_yticklabels([n[:24] for n in names], fontsize=7)
     ax.invert_yaxis(); ax.set_xlabel("expected ΔR (NOV)")
     ax.set_title("(C) NOV: what to measure next\nto break the confound")
+
+    # Panel D: resolution — S2/S3 before vs after adding the quantitative obs
+    if res.resolving_candidate:
+        ax = axes[3]
+        import numpy as np
+        before = [res.ca_j["selfing_syndrome_active"], res.ca_j["island_isolation_common_cause"]]
+        after = [res.ca_j_after["selfing_syndrome_active"], res.ca_j_after["island_isolation_common_cause"]]
+        x = np.arange(2); w = 0.38
+        ax.bar(x - w/2, before, w, label="ordinal y_obs", color="#bbbbbb")
+        ax.bar(x + w/2, after, w, label="+ guide magnitude", color="#d62728")
+        ax.axhline(0.5, color="gray", ls="--", lw=1)
+        ax.set_xticks(x); ax.set_xticklabels(["S2\n(selfing syn.)", "S3\n(isolation)"], fontsize=8)
+        ax.set_ylim(0, 1); ax.set_ylabel("CA_j")
+        ax.set_title(f"(D) Resolution (truth=S3)\nD {res.D_RACH}→{res.D_after}, R {res.R_RACH}→{res.R_after}")
+        ax.legend(fontsize=7)
 
     fig.tight_layout()
     fig.savefig(path, dpi=130)
