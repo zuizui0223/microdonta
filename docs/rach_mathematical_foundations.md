@@ -297,7 +297,53 @@ conditions. □
 The current app may report a heuristic NOV priority score. Exact NOV requires a
 predictive distribution over possible outcomes of `q`. Without that outcome
 model, NOV should be described as a heuristic causal-resolution priority score,
-not exact EVSI.
+not exact EVSI. Proposition 6′ supplies the missing outcome model constructively
+for quantitative observations.
+
+### Proposition 6′ — Constructive admissible-region EVSI on resolvability
+
+Let a quantitative candidate observation be a measurable function of the
+admissible draw, `q = g(θ, s)` (the simulated value the measurement would take).
+Take the predictive distribution `P(y_q | A_ε)` to be the **pushforward of the
+restricted prior `π|A_ε` under `g`** — i.e. outcomes are weighted by the mass of
+the admissible region that predicts them — and define the conditioned region at
+measurement tolerance `τ`:
+
+```text
+A_ε | {q = v} = { (θ, s) ∈ A_ε : |g(θ, s) − v| ≤ τ }
+
+EVSI(q) = Σ_v P(y_q = v | A_ε) · [ R_RACH(A_ε | {q=v}) − R_RACH(A_ε) ]
+```
+
+**Claim 1 (well-defined, bounded).** `EVSI(q)` exists and lies in `[-1, 1]`.
+*Proof.* `g` is measurable and the outcome support is the (finite, when sampled)
+image of `A_ε`; by Proposition 4 each bracket lies in `[-1,1]`, and a
+probability-weighted average of values in `[-1,1]` lies in `[-1,1]`. It is a
+special case of Proposition 6 with `P(y_q|A_ε)` the pushforward measure. □
+
+**Claim 2 (exactness — no re-inference needed).** If the simulator `f` is
+deterministic in `(θ, s)` given `x_obs`, then conditioning a *fresh* ABC run on
+the augmented observation `q=v` accepts exactly the sub-region
+`A_ε | {q=v}` obtained by *filtering the existing admissible region*. Hence the
+EVSI computed from the stored admissible draws equals the EVSI obtained by
+re-running inference with `q` added.
+*Proof.* With deterministic `f`, acceptance of `(θ,s)` under the augmented target
+`O ∪ {q=v}` holds iff `(θ,s)` was accepted under `O` (it satisfies the original
+patterns) **and** `|g(θ,s) − v| ≤ τ` (it satisfies the added pattern). That is
+exactly membership of `A_ε | {q=v}`. The resolvability of the two identical sets
+is identical. □
+
+**Claim 3 (unbiasedness).** `EVSI(q)` equals the predictive mean of the realised
+resolvability gain: `EVSI(q) = E_{v ~ P(y_q|A_ε)}[ R_RACH(A_ε|{q=v}) − R_RACH(A_ε) ]`.
+*Proof.* Immediate from the definition; the realised gain at an outcome `v` is the
+bracket, and `EVSI(q)` is its `P(y_q|A_ε)`-weighted average. □
+
+These three claims are verified empirically by `causal_model/nov_calibration.py`:
+Claim 2 gives a perfect 1:1 match between the filter-based and re-inference gains,
+and Claim 3 underlies the positive calibration of `EVSI(q)` against realised gains
+across true states. Proposition 6′ therefore upgrades NOV from a heuristic priority
+score to a **constructive, validated EVSI** for quantitative observations, while
+ordinal-only candidates without an outcome model remain heuristic.
 
 ---
 
@@ -390,7 +436,10 @@ The claims follow from Propositions 1–7. □
   extractors, distance function, tolerance `ε`, and independent observations.
 - If `π(A_ε)=0`, conditional RACH quantities are not estimable under that
   configuration.
-- Exact NOV requires a predictive distribution over future observation outcomes.
+- Exact NOV requires a predictive distribution over future observation outcomes;
+  Proposition 6′ supplies one constructively for *quantitative* observations (the
+  admissible-region pushforward), validated in `nov_calibration.py`. Candidates
+  without an outcome model remain heuristic priority scores.
 - Empirical claims require prior sensitivity, ε sensitivity, pattern-weight
   sensitivity, known-truth recovery, and independent validation.
 

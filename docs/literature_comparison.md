@@ -106,9 +106,9 @@ Value of Information (VOI) and Expected Value of Sample Information (EVSI) quant
 |---|---|---|
 | **What is valued** | Expected utility gain from information | Expected causal-resolvability gain E[ΔR_RACH] |
 | **Requires** | Utility function and decision model | Only R_RACH and the candidate observation's prior outcome distribution |
-| **Exactness** | Full EVSI is exact if prior and likelihood are specified | Current NOV(q) is heuristic or simulation-based approximation |
+| **Exactness** | Full EVSI is exact if prior and likelihood are specified | Constructive resolvability-EVSI for quantitative observations (Prop 6′), exact from the admissible region under a deterministic simulator; heuristic for ordinal candidates |
 
-**Current limitation:** NOV(q) as implemented is either a heuristic priority score (based on current CA_j ambiguity) or a simulation-based approximation (integrating over discrete candidate outcomes with prior-weighted ABC re-runs). It is **not** a full decision-theoretic EVSI. Future work can define a utility function over causal resolution and compute exact preposterior NOV.
+**Status:** For **quantitative** observations RACH now computes a *constructive preposterior EVSI on causal resolvability* (Proposition 6′ in `rach_mathematical_foundations.md`): the outcome distribution is the admissible-region pushforward of the measured value, the utility is internal (resolvability, so no external decision model is needed), and the computation is exact from the stored admissible region under a deterministic simulator — validated 1:1 against fresh re-inference and positively calibrated against realised gains in `nov_calibration.py`. The remaining heuristic case is ordinal/qualitative candidates that lack an outcome model; these are reported as priority scores, not EVSI.
 
 ---
 
@@ -124,7 +124,7 @@ The following claims are defensible:
 
 4. **OC_k — observation contribution.** A leave-one-out metric OC_k = R_RACH(O) − R_RACH(O∖{k}) quantifies how much each observed pattern contributes to mechanism resolution. Critically, OC_k must be computed from all evaluated draws (not only accepted draws) to avoid downward bias when LOO re-acceptance occurs.
 
-5. **NOV(q) — next-observation value.** A forward-looking metric for which future observation is expected to increase causal resolvability most, analogous to VOI but targeted at ecological mechanism resolution without requiring a full utility model.
+5. **NOV(q) — next-observation value as a constructive resolvability-EVSI.** A forward-looking preposterior expectation of the gain in causal resolvability from a future observation. For quantitative observations it is a genuine EVSI with an internal (resolvability) utility and the admissible-region pushforward as the outcome model (Proposition 6′), computable exactly from the stored admissible region without re-inference under a deterministic simulator. This targets ecological mechanism resolution without requiring an external decision/utility model.
 
 6. **Epistemic role separation.** RACH explicitly labels each observation row as `observed_target`, `input_context`, `hypothesis_prediction`, or `diagnostic_only`, preventing circular inference and tautological calibration.
 
@@ -158,7 +158,7 @@ The following claims are defensible:
 | Claim | Why to avoid |
 |---|---|
 | "RACH proves causal truth" | A_ε is an admissibility region, not a proof of causation |
-| "NOV is exact EVSI" | Current NOV is heuristic or simulation-based approximation without a full utility model |
+| "NOV is exact EVSI for all candidates" | NOV is a constructive resolvability-EVSI for *quantitative* observations (Prop 6′); ordinal candidates without an outcome model remain heuristic priority scores |
 | "High CA_j means the mechanism is true" | CA_j = P(s_j = 1 \| A_ε) is a conditional empirical frequency, not proof |
 | "RACH is unrelated to ABC / POM / ABM" | RACH borrows key ideas from all three |
 | "Bayes factors from CA_j are reliable" | BF = CA_j / (1 − CA_j) × prior ratio; reliable only if prior is carefully justified |
