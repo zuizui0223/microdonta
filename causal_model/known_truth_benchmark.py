@@ -1027,6 +1027,75 @@ def save_outputs(result: BenchmarkResult, output_dir: str | Path) -> dict[str, P
     return written
 
 
+def make_figure(written: dict[str, Path], path: str) -> str | None:
+    """Plot known-truth recovery from the written CSV aggregates.
+
+    Panel A: mean accuracy and F1 vs injected pattern-noise rate.
+    Panel B: convergence of accuracy / F1 / R_RACH with ABC draws
+    (only drawn when an n_attempts sweep with >1 point is present).
+    """
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception:
+        print("matplotlib unavailable — skipping figure.")
+        return None
+    import os
+
+    def _read(name: str) -> list[dict[str, str]]:
+        p = written.get(name)
+        if p is None or not Path(p).exists():
+            return []
+        with open(p, newline="", encoding="utf-8") as f:
+            return list(csv.DictReader(f))
+
+    def _f(rows, key):
+        out = []
+        for r in rows:
+            try:
+                out.append(float(r[key]))
+            except (KeyError, ValueError):
+                out.append(float("nan"))
+        return out
+
+    noise = _read("recovery_by_noise.csv")
+    sweep = _read("recovery_by_n_attempts.csv")
+    has_sweep = len(sweep) > 1
+
+    n_panels = 2 if has_sweep else 1
+    fig, axes = plt.subplots(1, n_panels, figsize=(4.6 * n_panels, 3.8), squeeze=False)
+
+    ax = axes[0][0]
+    xs = _f(noise, "noise_rate")
+    ax.plot(xs, _f(noise, "mean_accuracy"), "o-", label="accuracy", color="#2c7fb8")
+    ax.plot(xs, _f(noise, "mean_f1"), "s--", label="F1", color="#d95f0e")
+    ax.set_xlabel("pattern-noise rate")
+    ax.set_ylabel("switch recovery")
+    ax.set_ylim(0, 1.02)
+    ax.legend(fontsize=8)
+    ax.set_title("(A) Recovery vs noise\n(self-consistency under corrupted patterns)")
+
+    if has_sweep:
+        ax = axes[0][1]
+        xs = _f(sweep, "n_attempts")
+        ax.plot(xs, _f(sweep, "mean_accuracy"), "o-", label="accuracy", color="#2c7fb8")
+        ax.plot(xs, _f(sweep, "mean_f1"), "s--", label="F1", color="#d95f0e")
+        ax.plot(xs, _f(sweep, "mean_R_RACH"), "^:", label="R_RACH", color="#31a354")
+        ax.set_xscale("log")
+        ax.set_xlabel("ABC draws (log scale)")
+        ax.set_ylim(0, 1.02)
+        ax.legend(fontsize=8)
+        ax.set_title("(B) Convergence with draws")
+
+    fig.tight_layout()
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+    print(f"figure written: {path}")
+    return path
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -1065,6 +1134,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--output-dir", type=str, default="outputs/known_truth_benchmark",
         help="Output directory (default: outputs/known_truth_benchmark)",
+    )
+    p.add_argument(
+        "--figure", type=str, default="",
+        help="If set, write a recovery figure (noise + convergence) to this path.",
     )
     p.add_argument(
         "--n-attempts-sweep", type=str, default="",
@@ -1171,6 +1244,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"\nDone in {elapsed}s.  Files written:")
     for name, path in written.items():
         print(f"  {path}")
+
+    if args.figure:
+        make_figure(written, args.figure)
 
     # Print summary table
     print("\n--- Summary by noise rate ---")
