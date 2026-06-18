@@ -572,6 +572,7 @@ _STEPS = [
     "⑥ NOV",
     "⑦ Parameter A_ε",
     "⑧ Downloads",
+    "⑨ Generality",
 ]
 
 _STEP_SUBTITLES = {
@@ -583,6 +584,7 @@ _STEP_SUBTITLES = {
     "⑥ NOV":             "Next-observation value",
     "⑦ Parameter A_ε":   "Accepted (θ,s) in parameter space",
     "⑧ Downloads":       "Export all tables as CSV / ZIP",
+    "⑨ Generality":      "Model-selection-vs-RACH confound demo (Campanula / synthetic)",
 }
 
 if "nav_step" not in st.session_state:
@@ -756,6 +758,8 @@ with st.sidebar:
             return "✅" if _has_ens else "▶"
         if i == 1:
             return "✅" if _has_inf else ("▶" if _has_ens else "⬜")
+        if i == len(_STEPS) - 1:      # ⑨ Generality — self-contained, always open
+            return "🔬"
         return "🟢" if _has_inf else "🔒"
 
     _nav_labels = [f"{_nav_icon(i)}  {s}" for i, s in enumerate(_STEPS)]
@@ -1761,3 +1765,77 @@ elif _step_idx == 7:
                 _df_summary_dl.to_csv(index=False).encode("utf-8"),
                 f"{_sp_tag}_rach_summary.csv", "text/csv")
 
+
+
+# ===========================================================================
+# ⑨ Generality — model-selection-vs-RACH confound demo (paper Figs 1–2)
+# ===========================================================================
+elif _step_idx == 8:
+    st.markdown(
+        "**Reproduces the worked-example figures from the manuscript.** The same "
+        "RACH inference layer (degeneracy → NOV → resolution) is run on a chosen "
+        "system. `Campanula` reproduces the money figure (model selection picks an "
+        "arbitrary best model while RACH reports the S2/S3 confound and the "
+        "observation that resolves it). `Synthetic` shows the *identical* workflow "
+        "on a generic, non-Campanula switch system — i.e. the contribution is the "
+        "method, not the Campanula ABM."
+    )
+    _gc1, _gc2, _gc3 = st.columns([2, 1, 1])
+    with _gc1:
+        _gen_system = st.radio(
+            "System", ["Campanula (worked example)", "Synthetic (generality)"],
+            horizontal=True,
+        )
+    with _gc2:
+        _gen_n = st.slider("draws", 200, 4000, 800, 100)
+    with _gc3:
+        _gen_seed = st.number_input("seed", value=7, step=1, key="gen_seed")
+
+    if st.button("▶ Run demo", type="primary", width="stretch"):
+        import tempfile, os
+        _fig_path = os.path.join(tempfile.gettempdir(), "rach_generality_demo.png")
+        with st.spinner("Running demo…"):
+            if _gen_system.startswith("Campanula"):
+                from causal_model.confound_demo import run_confound_demo, make_figure as _cf_fig
+                _gres = run_confound_demo(backend="proxy", n_attempts=int(_gen_n),
+                                          acceptance_rule="strict_all", seed=int(_gen_seed))
+                _cf_fig(_gres, _fig_path)
+                st.session_state["_gen_kind"] = "campanula"
+            else:
+                from causal_model.synthetic_demo import run_synthetic_demo, make_figure as _sy_fig
+                _gres = run_synthetic_demo(n_attempts=int(_gen_n) * 4, seed=int(_gen_seed))
+                _sy_fig(_gres, _fig_path)
+                st.session_state["_gen_kind"] = "synthetic"
+        st.session_state["_gen_result"] = _gres
+        st.session_state["_gen_fig"] = _fig_path
+
+    if "_gen_fig" in st.session_state and os.path.exists(st.session_state["_gen_fig"]):
+        _g = st.session_state["_gen_result"]
+        st.image(st.session_state["_gen_fig"], width="stretch")
+        if st.session_state.get("_gen_kind") == "campanula":
+            st.markdown(
+                f"- **ABC model choice** MAP model `{_g.map_model}` has only "
+                f"P={_g.map_prob:.3f} — reporting a single best model is overconfident.\n"
+                f"- **RACH** D_RACH={_g.D_RACH}/4, R={_g.R_RACH}; "
+                f"CA(S2)={_g.ca_j['selfing_syndrome_active']} ≈ "
+                f"CA(S3)={_g.ca_j['island_isolation_common_cause']} → confound reported.\n"
+                + (f"- **Resolution** (add nectar-guide magnitude): "
+                   f"CA(S3) {_g.ca_j['island_isolation_common_cause']}→{_g.ca_j_after['island_isolation_common_cause']} (↑), "
+                   f"CA(S2) {_g.ca_j['selfing_syndrome_active']}→{_g.ca_j_after['selfing_syndrome_active']} (↓), "
+                   f"D {_g.D_RACH}→{_g.D_after}." if _g.ca_j_after else "")
+            )
+        else:
+            st.markdown(
+                f"- **RACH** D_RACH={_g.D_RACH}/4, R={_g.R_RACH}; "
+                f"CA(B)={_g.ca_j['B']} ≈ CA(C)={_g.ca_j['C']} → ordinal confound.\n"
+                f"- **Resolution** (add quantitative magnitude): "
+                f"CA(C) {_g.ca_j['C']}→{_g.ca_j_after.get('C')} (↑), "
+                f"CA(B) {_g.ca_j['B']}→{_g.ca_j_after.get('B')} (↓), D {_g.D_RACH}→{_g.D_after}.\n"
+                "- Same signatures as Campanula → the workflow is simulator-agnostic."
+            )
+        st.caption(
+            "CLI equivalents: `python -m causal_model.confound_demo` / "
+            "`python -m causal_model.synthetic_demo` / `python -m causal_model.nov_calibration`."
+        )
+    else:
+        st.info("Pick a system and click ▶ Run demo.")
