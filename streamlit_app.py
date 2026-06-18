@@ -575,7 +575,7 @@ _STEPS = [
 ]
 
 _STEP_SUBTITLES = {
-    "① Ensemble":        "Prior sensitivity grid — robustness check",
+    "① Ensemble":        "Optional robustness check (does not select the rule)",
     "② RACH Inference":  "Run A_ε sampling (ABM backend)",
     "③ CA_j":            "Causal admissibility P(s_j=1 | A_ε)",
     "④ D · R":           "Degeneracy & resolvability",
@@ -586,7 +586,9 @@ _STEP_SUBTITLES = {
 }
 
 if "nav_step" not in st.session_state:
-    st.session_state["nav_step"] = _STEPS[0]
+    # Land on the primary analysis (② RACH Inference), not the optional Ensemble
+    # robustness grid — the ensemble does not select the rule (MEE framing).
+    st.session_state["nav_step"] = _STEPS[1]
 
 # ---------------------------------------------------------------------------
 # Page header (always shown)
@@ -695,18 +697,22 @@ with st.sidebar:
     acceptance_rule = st.selectbox(
         "ε (ABC acceptance rule)",
         _rules,
-        index=_rules.index("weighted_lax") if "weighted_lax" in _rules else 0,
+        index=_rules.index("strict_all") if "strict_all" in _rules else 0,
         format_func=lambda r: {
-            "strict_all":      "strict - all current y_obs patterns must match",
-            "weighted_strict": "weighted strict — match = 1.0",
-            "weighted_lax":    "weighted lax — match ≥ 0.80  ← recommended",
-            "relaxed_0.83":    "relaxed — ≥4/5",
-            "relaxed_0.67":    "lax — ≥3/5",
+            "strict_all":      "strict_all — every current y_obs gradient must match  ← pre-specified primary",
+            "weighted_strict": "weighted_strict — weighted match = 1.0  (sensitivity)",
+            "weighted_lax":    "weighted_lax — weighted match ≥ 0.80  (sensitivity)",
+            "relaxed_0.83":    "relaxed_0.83 — weighted match ≥ 0.83  (sensitivity)",
+            "relaxed_0.67":    "relaxed_0.67 — weighted match ≥ 0.67  (sensitivity)",
         }.get(r, r),
     )
     from causal_model.switch_inference import GRADIENT_N_PATTERNS as _N_PAT
     _thresh_display = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
-    st.caption(f"y_obs: {_N_PAT} patterns · threshold ≥ {_thresh_display:.3f}")
+    st.caption(
+        f"y_obs: {_N_PAT} ordinal gradients · threshold ≥ {_thresh_display:.3f}. "
+        "strict_all is the pre-specified primary rule; the others are sensitivity "
+        "settings (RACH is reported across them, not at the rule that maximises R)."
+    )
     st.caption(
         "Current empirical y_obs contains only two source-confirmed directional "
         "gradients: selfing_distance and flower_size_distance. Causal resolution "
@@ -855,8 +861,12 @@ def _next_btn(label: str, next_step: str) -> None:
 # ===========================================================================
 if _step_idx == 0:
     st.markdown(
-        "複数の (θ-prior preset, ε ルール) を網羅的に走査し、先験依存しない結論だけを抽出します。  \n"
-        "ここで得たベスト設定を ② RACH Inference に引き継ぎます。"
+        "**Optional robustness check (supplementary).** Scans (θ-prior preset × ε "
+        "rule) to test whether the per-switch conclusions are *stable* across "
+        "reasonable analytic choices. It **does not** select the acceptance rule — "
+        "the primary result (② RACH Inference) uses the pre-specified strict_all. "
+        "Selecting the rule that maximises R_RACH would overfit ε, so this grid is "
+        "reported as sensitivity only."
     )
 
     try:
@@ -907,7 +917,7 @@ if _step_idx == 0:
             _ens_min_n = st.number_input("Min accepted", 5, 100, 20, 5)
         _ens_seed = st.number_input("Seed", value=42, step=1, key="ens_seed")
 
-        with st.expander("ベスト設定の安定性フィルタ (issue #25)"):
+        with st.expander("安定性フィルタ（参考 highest-R 設定の表示用のみ · issue #25）"):
             _sf1, _sf2, _sf3 = st.columns(3)
             with _sf1:
                 _ens_min_rate = st.number_input(
@@ -1014,18 +1024,15 @@ if _step_idx == 0:
             )
             _best = _sel.best
             if _best:
-                if _sel.passed_filters:
-                    st.success(
-                        f"**推奨設定 → ② で使用:** `{_best.preset_name}` + `{_best.acceptance_rule}`  "
-                        f"(R={_best.R_RACH:.3f},  n={_best.n_accepted},  "
-                        f"acc_rate={_best.acceptance_rate:.3f})"
-                    )
-                else:
-                    st.warning(
-                        f"**フォールバック設定 → ② で使用:** `{_best.preset_name}` + "
-                        f"`{_best.acceptance_rule}`  (R={_best.R_RACH:.3f},  n={_best.n_accepted})"
-                    )
-                st.caption(_sel.rationale)
+                st.info(
+                    f"Highest-R_RACH configuration (**reference only**): "
+                    f"`{_best.preset_name}` + `{_best.acceptance_rule}` "
+                    f"(R={_best.R_RACH:.3f}, n={_best.n_accepted}). "
+                    "**The primary RACH result is NOT reported at this setting** — "
+                    "selecting the rule that maximises R_RACH would overfit ε. The "
+                    "primary analysis uses the pre-specified strict_all (② RACH "
+                    "Inference); this grid only shows whether conclusions are stable."
+                )
 
             st.divider()
             st.markdown("#### 設定比較テーブル")
@@ -1082,23 +1089,18 @@ if _step_idx == 0:
 # ② RACH Inference
 # ===========================================================================
 elif _step_idx == 1:
+    st.info(
+        "**Primary analysis.** Runs the pre-specified rule (strict_all over the "
+        "current ordinal y_obs) — *not* a setting chosen to maximise R_RACH. The "
+        "Ensemble step is an optional robustness check only; it does not select the "
+        "rule used here."
+    )
     if _has_ens:
-        try:
-            from causal_model.ensemble import best_config as _bc2
-            _best2 = _bc2(st.session_state["_ens_results"], min_accepted=20)
-            _sens2 = st.session_state.get("_ens_sens", {})
-            if _best2:
-                st.info(
-                    f"**Ensemble 推奨設定:** `{_best2.preset_name}` + `{_best2.acceptance_rule}`  "
-                    f"(R={_best2.R_RACH:.3f})  \nサイドバーの設定をこれに合わせてから実行してください。"
-                )
-            _sensitive2 = [k for k, v in _sens2.items() if v >= 0.20]
-            if _sensitive2:
-                st.warning(f"感度大 (≥0.20): **{', '.join(_sensitive2)}** — ⑥ NOV で追加観測計画を。")
-        except Exception:
-            pass
-    else:
-        st.info("① Ensemble を先に実行するとベスト設定が自動推奨されます。スキップも可。")
+        _sens2 = st.session_state.get("_ens_sens", {})
+        _sensitive2 = [k for k, v in _sens2.items() if v >= 0.20]
+        if _sensitive2:
+            st.warning(f"Ensemble flagged as prior/ε-sensitive (≥0.20): "
+                       f"**{', '.join(_sensitive2)}** — see ⑥ NOV for resolving observations.")
 
     st.markdown(
         f"**現在の設定:** `{preset_name}` + `{acceptance_rule}` · threshold ≥ {_thresh_display:.3f}  \n"
