@@ -564,33 +564,32 @@ def run_research_mode(
 # Navigation steps
 # ---------------------------------------------------------------------------
 _STEPS = [
-    "① Ensemble",
-    "② RACH Inference",
-    "③ CA_j",
-    "④ D · R",
-    "⑤ OC_k",
-    "⑥ NOV",
-    "⑦ Parameter A_ε",
-    "⑧ Downloads",
-    "⑨ Generality",
+    "① RACH Inference",
+    "② CA_j",
+    "③ D · R",
+    "④ OC_k",
+    "⑤ NOV",
+    "⑥ Parameter A_ε",
+    "⑦ Downloads",
+    "⑧ Generality",
 ]
 
 _STEP_SUBTITLES = {
-    "① Ensemble":        "Optional robustness check (does not select the rule)",
-    "② RACH Inference":  "Run A_ε sampling (ABM backend)",
-    "③ CA_j":            "Causal admissibility P(s_j=1 | A_ε)",
-    "④ D · R":           "Degeneracy & resolvability",
-    "⑤ OC_k":            "Observation contribution (LOO)",
-    "⑥ NOV":             "Next-observation value",
-    "⑦ Parameter A_ε":   "Accepted (θ,s) in parameter space",
-    "⑧ Downloads":       "Export all tables as CSV / ZIP",
-    "⑨ Generality":      "Model-selection-vs-RACH confound demo (Campanula / synthetic)",
+    "① RACH Inference":  "Run A_ε sampling (ABM backend)",
+    "② CA_j":            "Causal admissibility P(s_j=1 | A_ε)",
+    "③ D · R":           "Degeneracy & resolvability",
+    "④ OC_k":            "Observation contribution (LOO)",
+    "⑤ NOV":             "Next-observation value",
+    "⑥ Parameter A_ε":   "Accepted (θ,s) in parameter space",
+    "⑦ Downloads":       "Export all tables as CSV / ZIP",
+    "⑧ Generality":      "Model-selection-vs-RACH confound demo (Campanula / synthetic)",
 }
 
 if "nav_step" not in st.session_state:
-    # Land on the primary analysis (② RACH Inference), not the optional Ensemble
-    # robustness grid — the ensemble does not select the rule (MEE framing).
-    st.session_state["nav_step"] = _STEPS[1]
+    # Land on the primary analysis (① RACH Inference). The pre-specified
+    # strict_all rule is the reported result (MEE framing); there is no
+    # ensemble rule-selection step.
+    st.session_state["nav_step"] = _STEPS[0]
 
 # ---------------------------------------------------------------------------
 # Page header (always shown)
@@ -735,7 +734,7 @@ with st.sidebar:
         )
 
     # ── ABM settings ───────────────────────────────────────────────────────
-    with st.expander("ABM 設定 (② で使用)", expanded=False):
+    with st.expander("ABM 設定 (① で使用)", expanded=False):
         sp_n_attempts = st.slider(
             "Joint prior draws (θ,s)", 50, 1000, 200, 50, key="sp_n_abm",
         )
@@ -750,15 +749,12 @@ with st.sidebar:
     # ── Step navigation ────────────────────────────────────────────────────
     st.subheader("分析ステップ")
 
-    _has_ens = "_ens_results" in st.session_state
     _has_inf = "sp_result" in st.session_state
 
     def _nav_icon(i: int) -> str:
-        if i == 0:
-            return "✅" if _has_ens else "▶"
-        if i == 1:
-            return "✅" if _has_inf else ("▶" if _has_ens else "⬜")
-        if i == len(_STEPS) - 1:      # ⑨ Generality — self-contained, always open
+        if i == 0:                    # ① RACH Inference — the entry point
+            return "✅" if _has_inf else "▶"
+        if i == len(_STEPS) - 1:      # ⑧ Generality — self-contained, always open
             return "🔬"
         return "🟢" if _has_inf else "🔒"
 
@@ -846,7 +842,6 @@ if "research_result" in st.session_state:
 # ===========================================================================
 _current_step = st.session_state.get("nav_step", _STEPS[0])
 _step_idx     = _STEPS.index(_current_step)
-_has_ens      = "_ens_results" in st.session_state
 _has_inf      = "sp_result" in st.session_state
 
 st.divider()
@@ -861,250 +856,14 @@ def _next_btn(label: str, next_step: str) -> None:
 
 
 # ===========================================================================
-# ① Ensemble
+# ① RACH Inference
 # ===========================================================================
 if _step_idx == 0:
-    st.markdown(
-        "**Optional robustness check (supplementary).** Scans (θ-prior preset × ε "
-        "rule) to test whether the per-switch conclusions are *stable* across "
-        "reasonable analytic choices. It **does not** select the acceptance rule — "
-        "the primary result (② RACH Inference) uses the pre-specified strict_all. "
-        "Selecting the rule that maximises R_RACH would overfit ε, so this grid is "
-        "reported as sensitivity only."
-    )
-
-    try:
-        from causal_model.ensemble import (
-            run_ensemble as _run_ensemble,
-            select_best_ensemble_setting as _select_best,
-            ensemble_ca_j as _ensemble_ca_j,
-            sensitivity_range as _sensitivity_range,
-            classify_switch_robustness as _classify_robustness,
-        )
-        from causal_model.switch_inference import GRADIENT_THRESH_MAP as _THRESH_MAP
-        from causal_model.parameter_sampling import predefined_tradeoff_presets as _presets_fn
-        _ensemble_ok = True
-        _ensemble_err = ""
-    except Exception as _e:
-        _ensemble_ok = False
-        _ensemble_err = str(_e)
-
-    if not _ensemble_ok:
-        st.error(f"Ensemble module load failed: {_ensemble_err}")
-    else:
-        _all_presets = list(_presets_fn().keys())
-        _all_rules   = list(_THRESH_MAP.keys())
-
-        _ec1, _ec2 = st.columns(2)
-        with _ec1:
-            _ens_presets = st.multiselect(
-                "θ-prior presets", options=_all_presets, default=_all_presets,
-            )
-        with _ec2:
-            _ens_rules = st.multiselect(
-                "ε ルール", options=_all_rules,
-                default=["weighted_lax", "relaxed_0.83", "relaxed_0.67"],
-            )
-
-        _ec3, _ec4, _ec5 = st.columns(3)
-        with _ec3:
-            _ens_backend_sel = st.radio(
-                "Backend", ["proxy (fast)", "abm (slow)"], index=0, horizontal=True,
-            )
-            _ens_backend_key = "proxy" if _ens_backend_sel.startswith("proxy") else "abm"
-        with _ec4:
-            _ens_n = st.slider(
-                "Draws / config", 50, 500,
-                200 if _ens_backend_key == "proxy" else 100, 50,
-            )
-        with _ec5:
-            _ens_min_n = st.number_input("Min accepted", 5, 100, 20, 5)
-        _ens_seed = st.number_input("Seed", value=42, step=1, key="ens_seed")
-
-        with st.expander("安定性フィルタ（参考 highest-R 設定の表示用のみ · issue #25）"):
-            _sf1, _sf2, _sf3 = st.columns(3)
-            with _sf1:
-                _ens_min_rate = st.number_input(
-                    "Min acceptance rate", 0.0, 1.0, 0.02, 0.01, format="%.2f",
-                    help="n_accepted / n_evaluated の下限。厳しすぎる設定（確率的アーティファクト）を除外。",
-                )
-            with _sf2:
-                _ens_use_max_rate = st.checkbox("Max acceptance rate を有効化", value=False)
-                _ens_max_rate = st.number_input(
-                    "Max acceptance rate", 0.0, 1.0, 0.80, 0.05, format="%.2f",
-                    disabled=not _ens_use_max_rate,
-                    help="緩すぎる設定（A_ε がほぼ制約されない）を除外。",
-                )
-            with _sf3:
-                _ens_mode_sel = st.radio(
-                    "Selection criterion", ["max R_RACH", "max accepted"], index=0,
-                    help="フィルタ通過設定の中から R_RACH 最大、または受容数最大を選ぶ。",
-                )
-        _ens_mode_key = "max_R" if _ens_mode_sel.startswith("max R") else "max_accepted"
-        _ens_max_rate_val = _ens_max_rate if _ens_use_max_rate else None
-        st.session_state["_ens_sel_criteria"] = {
-            "min_accepted": int(_ens_min_n),
-            "min_acceptance_rate": float(_ens_min_rate),
-            "max_acceptance_rate": _ens_max_rate_val,
-            "mode": _ens_mode_key,
-        }
-
-        if st.button("▶ Run Ensemble", type="primary", width="stretch"):
-            if not _ens_presets or not _ens_rules:
-                st.warning("プリセットとルールを1つ以上選択してください。")
-            else:
-                _n_configs  = len(_ens_presets) * len(_ens_rules)
-                _ens_prog   = st.progress(0.0, text="Starting ensemble…")
-                _ens_status = st.empty()
-
-                def _ens_cb(done, total, preset, rule):
-                    _ens_prog.progress(done / max(total, 1),
-                                       text=f"{preset} / {rule}  ({done}/{total})")
-                    _ens_status.caption(f"Running: {preset} + {rule}")
-
-                with st.spinner(f"{_n_configs} configs 実行中…"):
-                    _ens_results = _run_ensemble(
-                        presets=_ens_presets, acceptance_rules=_ens_rules,
-                        switches=CAMPANULA_SWITCHES,
-                        n_attempts=_ens_n, seed=int(_ens_seed),
-                        backend=_ens_backend_key,
-                        distance_mode=distance_mode,
-                        epsilon_mode=epsilon_mode,
-                        adaptive_percentile=float(adaptive_percentile),
-                        min_accept=int(min_accepted_adaptive),
-                        structure_prior_lambda=float(structure_prior_lambda),
-                        progress_callback=_ens_cb,
-                    )
-                _ens_prog.progress(1.0, text="Done ✓")
-                _ens_status.empty()
-                st.session_state["_ens_results"] = _ens_results
-                try:
-                    st.session_state["_ens_sens"] = _sensitivity_range(_ens_results)
-                except Exception:
-                    pass
-                # Auto-advance to ②
-                st.session_state["nav_step"] = _STEPS[1]
-                st.rerun()
-
-        if "_ens_results" in st.session_state:
-            _ens_res  = st.session_state["_ens_results"]
-            _sw_names = [sw.name for sw in CAMPANULA_SWITCHES]
-            _ens_sens_cur = st.session_state.get("_ens_sens", {})
-            _ca_avg   = _ensemble_ca_j(_ens_res, min_accepted=1)
-
-            st.markdown("#### ロバスト結論サマリー")
-            _rob_verdicts = _classify_robustness(_ens_res)
-            st.session_state["_ens_robustness"] = _rob_verdicts
-            if _rob_verdicts:
-                def _badge(rv):
-                    if rv.is_robust:
-                        return "🔒 robust 結論"
-                    if not rv.is_resolved:
-                        return "❓ 未解決（要追加観測）"
-                    return "⚠ 先験/ε 感度大"
-                _rob_rows = [{
-                    "switch": _rv.switch,
-                    "ensemble CA_j": _rv.mean_ca_j,
-                    "sensitivity": _rv.sensitivity_range,
-                    "call": _rv.call,
-                    "verdict": _badge(_rv),
-                } for _rv in _rob_verdicts]
-                stretch_df(pd.DataFrame(_rob_rows), hide_index=True)
-                _n_robust = sum(1 for _rv in _rob_verdicts if _rv.is_robust)
-                if _n_robust == 0:
-                    st.warning(
-                        "robust な結論ゼロ。全 switch が未解決 or 先験依存 = "
-                        "現状の観測では因果が分離できていません（R_RACH も低いはず）。"
-                        "⑥ NOV で次に測るべき観測を確認してください。"
-                    )
-
-            _sel_crit = st.session_state.get("_ens_sel_criteria", {})
-            _sel = _select_best(
-                _ens_res,
-                min_accepted=int(_sel_crit.get("min_accepted", _ens_min_n)),
-                min_acceptance_rate=float(_sel_crit.get("min_acceptance_rate", 0.02)),
-                max_acceptance_rate=_sel_crit.get("max_acceptance_rate"),
-                mode=_sel_crit.get("mode", "max_R"),
-            )
-            _best = _sel.best
-            if _best:
-                st.info(
-                    f"Highest-R_RACH configuration (**reference only**): "
-                    f"`{_best.preset_name}` + `{_best.acceptance_rule}` "
-                    f"(R={_best.R_RACH:.3f}, n={_best.n_accepted}). "
-                    "**The primary RACH result is NOT reported at this setting** — "
-                    "selecting the rule that maximises R_RACH would overfit ε. The "
-                    "primary analysis uses the pre-specified strict_all (② RACH "
-                    "Inference); this grid only shows whether conclusions are stable."
-                )
-
-            st.divider()
-            st.markdown("#### 設定比較テーブル")
-            _ens_rows = []
-            for _r in _ens_res:
-                _row = {"preset": _r.preset_name, "rule": _r.acceptance_rule,
-                        "ε": _r.threshold, "n_accepted": _r.n_accepted,
-                        "D_RACH": _r.D_RACH, "R_RACH": _r.R_RACH,
-                        "_is_best": (_r is _best)}
-                for _sw in _sw_names:
-                    _row[f"CA_{_sw[:10]}"] = _r.ca_j.get(_sw, float("nan"))
-                _ens_rows.append(_row)
-            _df_ens = pd.DataFrame(_ens_rows)
-            _df_disp = _df_ens.drop(columns=["_is_best"])
-            st.dataframe(
-                _df_disp.style.apply(
-                    lambda row: [
-                        "background-color: #d4edda" if _ens_rows[row.name]["_is_best"] else ""
-                        for _ in row
-                    ], axis=1,
-                ), width="stretch",
-            )
-
-            _c1, _c2 = st.columns(2)
-            with _c1:
-                st.markdown("**Ensemble CA_j**")
-                if _ca_avg:
-                    st.bar_chart(
-                        pd.DataFrame([{"switch": k, "CA_j": v} for k, v in _ca_avg.items()])
-                        .set_index("switch"), width="stretch",
-                    )
-            with _c2:
-                st.markdown("**感度レンジ (max − min CA_j)**")
-                if _ens_sens_cur:
-                    st.bar_chart(
-                        pd.DataFrame([{"switch": k, "sensitivity": v} for k, v in _ens_sens_cur.items()])
-                        .set_index("switch"), width="stretch",
-                    )
-                    st.caption("< 0.20 → ロバスト。≥ 0.20 → 先験依存。")
-
-            st.line_chart(
-                pd.DataFrame([{"config": f"{_r.preset_name}/{_r.acceptance_rule}", **_r.ca_j}
-                               for _r in _ens_res]).set_index("config"),
-                width="stretch",
-            )
-            st.divider()
-            st.download_button("⬇ ensemble_comparison.csv", _df_disp.to_csv(index=False).encode("utf-8"),
-                               "ensemble_comparison.csv", "text/csv")
-            st.divider()
-            _next_btn("② RACH Inference へ進む →", _STEPS[1])
-
-
-# ===========================================================================
-# ② RACH Inference
-# ===========================================================================
-elif _step_idx == 1:
     st.info(
         "**Primary analysis.** Runs the pre-specified rule (strict_all over the "
-        "current ordinal y_obs) — *not* a setting chosen to maximise R_RACH. The "
-        "Ensemble step is an optional robustness check only; it does not select the "
-        "rule used here."
+        "current ordinal y_obs) — *not* a setting chosen to maximise R_RACH. This "
+        "is the reported RACH result; there is no separate rule-selection step."
     )
-    if _has_ens:
-        _sens2 = st.session_state.get("_ens_sens", {})
-        _sensitive2 = [k for k, v in _sens2.items() if v >= 0.20]
-        if _sensitive2:
-            st.warning(f"Ensemble flagged as prior/ε-sensitive (≥0.20): "
-                       f"**{', '.join(_sensitive2)}** — see ⑥ NOV for resolving observations.")
 
     st.markdown(
         f"**現在の設定:** `{preset_name}` + `{acceptance_rule}` · threshold ≥ {_thresh_display:.3f}  \n"
@@ -1150,8 +909,8 @@ elif _step_idx == 1:
             "min_accept": int(min_accepted_adaptive),
             "structure_prior_lambda": float(structure_prior_lambda),
         }
-        # Auto-advance to ③ CA_j
-        st.session_state["nav_step"] = _STEPS[2]
+        # Auto-advance to ② CA_j
+        st.session_state["nav_step"] = _STEPS[1]
         st.rerun()
 
     if _has_inf:
@@ -1162,20 +921,20 @@ elif _step_idx == 1:
         )
         if len(_sp.accepted_rows) < 30:
             st.warning(f"accepted = {len(_sp.accepted_rows)} < 30 → 推定不安定。draws を増やすか ε を緩めてください。")
-        _next_btn("③ CA_j で結果を見る →", _STEPS[2])
+        _next_btn("② CA_j で結果を見る →", _STEPS[1])
 
 
 # ===========================================================================
-# Steps ③–⑧ require inference results
+# Steps ②–⑦ require inference results
 # ===========================================================================
-elif _step_idx >= 2 and not _has_inf:
-    st.info("② RACH Inference を先に実行してください。")
-    _next_btn("② RACH Inference へ", _STEPS[1])
+elif _step_idx >= 1 and not _has_inf:
+    st.info("① RACH Inference を先に実行してください。")
+    _next_btn("① RACH Inference へ", _STEPS[0])
 
 # ===========================================================================
-# ③ CA_j
+# ② CA_j
 # ===========================================================================
-elif _step_idx == 2:
+elif _step_idx == 1:
     sp = st.session_state["sp_result"]
     _sp_settings = st.session_state.get("sp_settings", {})
     _thresh_sp   = GRADIENT_THRESH_MAP.get(_sp_settings.get("acceptance_rule", acceptance_rule), 1.0)
@@ -1215,27 +974,20 @@ elif _step_idx == 2:
                 sw.name: round(sum(1 for r in sp.accepted_rows if r.get(sw.name)) / _n_acc, 3)
                 for sw in CAMPANULA_SWITCHES
             }
-            _ens_sens_rc = st.session_state.get("_ens_sens", {})
             with st.expander("**Robust Conclusions** (A_ε サマリー)", expanded=True):
                 _rc_cols = st.columns(len(CAMPANULA_SWITCHES))
                 for _i, sw in enumerate(CAMPANULA_SWITCHES):
                     _cv  = _ca_now.get(sw.name, 0.5)
-                    _sv  = _ens_sens_rc.get(sw.name)
                     _verd = "✅ ON" if _cv > 2/3 else ("❌ OFF" if _cv < 1/3 else "〜 不定")
-                    _rlbl = (
-                        "🔒 Robust" if _sv is not None and _sv < 0.20
-                        else (f"⚠ 感度={_sv:.2f}" if _sv is not None else "(Ensemble未実行)")
-                    )
                     _rc_cols[_i].metric(sw.name[:18], f"CA={_cv:.2f}",
-                                        delta=f"{_verd}  {_rlbl}", delta_color="normal")
-                _rob_sw = [k for k, v in _ens_sens_rc.items() if v < 0.20] if _ens_sens_rc else []
-                _sen_sw = [k for k, v in _ens_sens_rc.items() if v >= 0.20] if _ens_sens_rc else []
-                if _rob_sw:
-                    st.success(f"**ロバスト結論** (感度 < 0.20): {', '.join(_rob_sw)}")
-                if _sen_sw:
-                    st.warning(f"**先験依存** (感度 ≥ 0.20): {', '.join(_sen_sw)}  \n→ ⑥ NOV で追加観測計画を。")
-                if not _ens_sens_rc:
-                    st.info("① Ensemble を先に実行するとロバスト性の判定が表示されます。")
+                                        delta=_verd, delta_color="normal")
+                _undet = [sw.name for sw in CAMPANULA_SWITCHES
+                          if 1/3 <= _ca_now.get(sw.name, 0.5) <= 2/3]
+                if _undet:
+                    st.warning(
+                        "**未解決スイッチ** (CA_j ≈ 0.5、A_ε では分離できていない): "
+                        f"{', '.join(_undet)}  \n→ ⑤ NOV で追加観測計画を。"
+                    )
         except Exception:
             pass
 
@@ -1287,13 +1039,13 @@ elif _step_idx == 2:
                 st.info("Not enough accepted samples.")
 
         st.divider()
-        _next_btn("④ D · R へ →", _STEPS[3])
+        _next_btn("③ D · R へ →", _STEPS[2])
 
 
 # ===========================================================================
-# ④ D · R
+# ③ D · R
 # ===========================================================================
-elif _step_idx == 3:
+elif _step_idx == 2:
     sp = st.session_state["sp_result"]
 
     try:
@@ -1361,13 +1113,13 @@ elif _step_idx == 3:
         st.error(f"RACH modules failed: {_dr_err}")
 
     st.divider()
-    _next_btn("⑤ OC_k へ →", _STEPS[4])
+    _next_btn("④ OC_k へ →", _STEPS[3])
 
 
 # ===========================================================================
-# ⑤ OC_k
+# ④ OC_k
 # ===========================================================================
-elif _step_idx == 4:
+elif _step_idx == 3:
     sp = st.session_state["sp_result"]
 
     try:
@@ -1413,29 +1165,18 @@ elif _step_idx == 4:
         st.error(f"OC_k computation failed: {_oc_err}")
 
     st.divider()
-    _next_btn("⑥ NOV へ →", _STEPS[5])
+    _next_btn("⑤ NOV へ →", _STEPS[4])
 
 
 # ===========================================================================
-# ⑥ NOV
+# ⑤ NOV
 # ===========================================================================
-elif _step_idx == 5:
+elif _step_idx == 4:
     sp = st.session_state["sp_result"]
 
-    _ens_sens_nov = st.session_state.get("_ens_sens", {})
-    _sensitive_sw_names = [k for k, v in _ens_sens_nov.items() if v >= 0.20]
-    if _ens_sens_nov:
-        _sen_nov = {k: v for k, v in _ens_sens_nov.items() if v >= 0.20}
-        if _sen_nov:
-            st.info(
-                "**Ensemble 感度分析 → 優先 NOV ターゲット:**  \n" +
-                "  \n".join(f"- **{k}** (感度={v:.2f})"
-                            for k, v in sorted(_sen_nov.items(), key=lambda x: -x[1]))
-            )
-        else:
-            st.success("全スイッチ 感度 < 0.20 でロバストです。")
-    else:
-        st.caption("① Ensemble を実行すると、どのスイッチの NOV を優先すべきか自動推奨されます。")
+    # NOV ranks candidate future observations directly from A_ε; no ensemble
+    # pre-pass is used to flag "sensitive" switches.
+    _sensitive_sw_names: list[str] = []
 
     st.markdown("### NOV(q) = E[ R(O ∪ q) − R(O) ]")
     st.caption(
@@ -1534,13 +1275,13 @@ elif _step_idx == 5:
                     st.markdown(f"**{_r2.candidate}** (p={_r2.priority}): {_r2.rationale[:300]}")
 
     st.divider()
-    _next_btn("⑦ Parameter A_ε へ →", _STEPS[6])
+    _next_btn("⑥ Parameter A_ε へ →", _STEPS[5])
 
 
 # ===========================================================================
-# ⑦ Parameter A_ε
+# ⑥ Parameter A_ε
 # ===========================================================================
-elif _step_idx == 6:
+elif _step_idx == 5:
     sp = st.session_state["sp_result"]
 
     st.markdown("### 受容された (θ, s) の分布")
@@ -1573,13 +1314,13 @@ elif _step_idx == 6:
             st.bar_chart(_df_sp["nearest_structure"].value_counts(), width="stretch")
 
     st.divider()
-    _next_btn("⑧ Downloads へ →", _STEPS[7])
+    _next_btn("⑦ Downloads へ →", _STEPS[6])
 
 
 # ===========================================================================
-# ⑧ Downloads
+# ⑦ Downloads
 # ===========================================================================
-elif _step_idx == 7:
+elif _step_idx == 6:
     import json as _json
     sp = st.session_state["sp_result"]
     _sp_settings = st.session_state.get("sp_settings", {})
@@ -1612,9 +1353,8 @@ elif _step_idx == 7:
         _thresh_dl = GRADIENT_THRESH_MAP.get(_sp_settings.get("acceptance_rule", acceptance_rule), 1.0)
         _oc_dl_res  = _oc_dl(getattr(sp, "evaluated_rows", None) or sp.accepted_rows,
                              CAMPANULA_SWITCHES, threshold=_thresh_dl)
-        _sens_dl = [k for k, v in st.session_state.get("_ens_sens", {}).items() if v >= 0.20]
         _nov_dl_res = _nov_dl(sp.accepted_rows, CAMPANULA_SWITCHES,
-                              sensitive_switches=_sens_dl)
+                              sensitive_switches=[])
         _rs_dl_res  = _rs_dl(sp.accepted_rows, CAMPANULA_SWITCHES)
         _rm_dl_res  = _rm_dl(sp.accepted_rows, CAMPANULA_SWITCHES)
         _df_oc_dl = pd.DataFrame([
@@ -1649,74 +1389,7 @@ elif _step_idx == 7:
         _df_nov_dl = pd.DataFrame()
         _df_summary_dl = pd.DataFrame()
 
-    # Ensemble provenance: the main RACH result is reported from the
-    # ensemble-selected best setting, so the reproducible ZIP must carry the
-    # ensemble scan, the robust/sensitive verdicts, and the selected setting.
-    _df_ens_dl = pd.DataFrame()
-    _df_rob_dl = pd.DataFrame()
-    _df_best_dl = pd.DataFrame()
-    if "_ens_results" in st.session_state:
-        try:
-            from causal_model.ensemble import (
-                classify_switch_robustness as _csr_dl,
-                select_best_ensemble_setting as _sbs_dl,
-            )
-            _ens_dl_res = st.session_state["_ens_results"]
-            _sw_dl = [sw.name for sw in CAMPANULA_SWITCHES]
-            _ens_rows_dl = []
-            for _r in _ens_dl_res:
-                _row = {"preset": _r.preset_name, "acceptance_rule": _r.acceptance_rule,
-                        "threshold": _r.threshold, "n_accepted": _r.n_accepted,
-                        "n_evaluated": _r.n_evaluated,
-                        "acceptance_rate": round(_r.acceptance_rate, 4),
-                        "D_RACH": _r.D_RACH, "R_RACH": _r.R_RACH}
-                for _sw in _sw_dl:
-                    _row[f"CA_{_sw}"] = _r.ca_j.get(_sw, float("nan"))
-                _ens_rows_dl.append(_row)
-            _df_ens_dl = pd.DataFrame(_ens_rows_dl)
-
-            _rob_dl = _csr_dl(_ens_dl_res)
-            _df_rob_dl = pd.DataFrame([
-                {"switch": r.switch, "mean_CA_j": r.mean_ca_j,
-                 "sensitivity_range": r.sensitivity_range,
-                 "classification": r.classification,
-                 "is_robust": r.is_robust, "call": r.call, "verdict": r.verdict}
-                for r in _rob_dl
-            ])
-
-            _crit_dl = st.session_state.get("_ens_sel_criteria", {})
-            _sel_dl = _sbs_dl(
-                _ens_dl_res,
-                min_accepted=int(_crit_dl.get("min_accepted", 20)),
-                min_acceptance_rate=float(_crit_dl.get("min_acceptance_rate", 0.02)),
-                max_acceptance_rate=_crit_dl.get("max_acceptance_rate"),
-                mode=_crit_dl.get("mode", "max_R"),
-            )
-            _best_dl = _sel_dl.best
-            if _best_dl is not None:
-                _best_row = {
-                    "preset": _best_dl.preset_name,
-                    "acceptance_rule": _best_dl.acceptance_rule,
-                    "threshold": _best_dl.threshold,
-                    "n_accepted": _best_dl.n_accepted,
-                    "n_evaluated": _best_dl.n_evaluated,
-                    "acceptance_rate": round(_best_dl.acceptance_rate, 4),
-                    "D_RACH": _best_dl.D_RACH, "R_RACH": _best_dl.R_RACH,
-                    "passed_stability_filters": _sel_dl.passed_filters,
-                    "selection_rationale": _sel_dl.rationale,
-                }
-                for _sw in _sw_dl:
-                    _best_row[f"CA_{_sw}"] = _best_dl.ca_j.get(_sw, float("nan"))
-                _df_best_dl = pd.DataFrame([_best_row])
-        except Exception:
-            _df_ens_dl = pd.DataFrame()
-            _df_rob_dl = pd.DataFrame()
-            _df_best_dl = pd.DataFrame()
-
     _zip_contents = {
-        f"{_sp_tag}_ensemble_results":         _df_ens_dl,
-        f"{_sp_tag}_robustness_table":         _df_rob_dl,
-        f"{_sp_tag}_best_setting_summary":     _df_best_dl,
         f"{_sp_tag}_accepted_rows":            _df_accepted,
         f"{_sp_tag}_evaluated_rows":           _df_evaluated,
         f"{_sp_tag}_posterior_table":          _df_posterior,
@@ -1733,8 +1406,7 @@ elif _step_idx == 7:
         width="stretch", type="primary",
     )
     st.caption(
-        "ZIP: ensemble_results · robustness_table · best_setting_summary · "
-        "accepted_rows · evaluated_rows · posterior_table · "
+        "ZIP: accepted_rows · evaluated_rows · posterior_table · "
         "observation_contribution · nov_table · rach_summary"
     )
     st.divider()
@@ -1768,9 +1440,9 @@ elif _step_idx == 7:
 
 
 # ===========================================================================
-# ⑨ Generality — model-selection-vs-RACH confound demo (paper Figs 1–2)
+# ⑧ Generality — model-selection-vs-RACH confound demo (paper Figs 1–2)
 # ===========================================================================
-elif _step_idx == 8:
+elif _step_idx == 7:
     st.markdown(
         "**Reproduces the worked-example figures from the manuscript.** The same "
         "RACH inference layer (degeneracy → NOV → resolution) is run on a chosen "

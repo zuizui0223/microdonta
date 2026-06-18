@@ -116,13 +116,14 @@ so no re-inference is needed); and it is the **unbiased** predictive mean of the
 realised gain. This upgrades NOV from a heuristic priority score to a validated
 EVSI for quantitative observations.
 
-### 2.4 Ensemble robustness, not rule selection
+### 2.4 Sensitivity to ε and the prior, not rule selection
 
-Because `R_RACH` depends on `ε` and the prior, RACH is reported for a
-*pre-specified* acceptance rule and distance, with an ensemble over (prior × ε ×
-distance) used only as a **sensitivity** diagnostic. Choosing the rule that
-maximises `R_RACH` would overfit `ε` and is explicitly avoided; switches are
-classified `robust_supported / robust_opposed / threshold_sensitive / unresolved`.
+Because `R_RACH` depends on `ε` and the prior, RACH is reported for a single
+*pre-specified* acceptance rule and distance. Varying (prior × ε × distance) is
+treated only as a post-hoc **sensitivity check**, never as a way to choose the
+rule: selecting the setting that maximises `R_RACH` would overfit `ε` and is
+explicitly avoided. The reported result is the pre-specified one, with ε/prior
+sensitivity disclosed rather than optimised over.
 
 ## 3. Validation
 
@@ -185,9 +186,9 @@ preliminary worked example, not a definitive empirical resolution.
 ## 5. Software
 
 An open-source Python package implements the framework, with a Streamlit
-application (interactive worked example, ensemble sensitivity, and an in-app
-reproduction of Figures 1–2 with a Campanula/synthetic system selector) and a
-test suite. Scripts reproduce every figure.
+application (interactive worked example and an in-app reproduction of
+Figures 1–2 with a Campanula/synthetic system selector) and a test suite.
+Scripts reproduce every figure.
 
 ## 6. Discussion
 
