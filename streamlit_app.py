@@ -49,9 +49,6 @@ from causal_model.switches import switches_for_structure
 from examples.campanula_izu.causal_structures import campanula_causal_structures
 from examples.campanula_izu.observed_data import (
     load_population_env,
-    observed_gradient_patterns,
-    observed_pairwise_relations,
-    ordered_populations,
     response_target_patterns,
 )
 from examples.campanula_izu.pattern_evaluator import (
@@ -82,14 +79,8 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 try:
     _POP_ENV = load_population_env()
-    _GRADIENT_PATTERNS = observed_gradient_patterns()
-    _PAIRWISE_RELS = observed_pairwise_relations()
-    _POP_ORDER = ordered_populations()
 except Exception:
     _POP_ENV = {}
-    _GRADIENT_PATTERNS = []
-    _PAIRWISE_RELS = {}
-    _POP_ORDER = ["mainland", "Oshima", "Kozushima", "Hachijo"]
 
 LATENT_PARAMS = [
     "guide_cost",
@@ -111,26 +102,12 @@ WORKFLOW_STEPS = [
     {"Step": "6. Quantify",    "RACH object": "CA_j, D, R, OC_k, NOV", "Meaning": "Compute the 5 core RACH quantities from A_ε: causal admissibility, degeneracy, resolvability, observation contribution, next-observation value."},
 ]
 
-BACKEND_DESCRIPTIONS = {
-    "stochastic_abm": (
-        "Stochastic individual-based ABM — the canonical RACH f(θ,s) for this system. "
-        "Models heritable trait evolution, drift, selection, and reproduction "
-        "explicitly across generations. Switch posteriors P(S|A_ε) reflect "
-        "emergent population dynamics, not hand-coded assumptions."
-    ),
-}
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def stretch_df(df: pd.DataFrame, **kwargs) -> None:
     st.dataframe(df, width="stretch", **kwargs)
-
-
-def to_csv_bytes(df: pd.DataFrame) -> bytes:
-    return df.to_csv(index=False).encode("utf-8")
 
 
 def _run_tag(settings: dict) -> str:
@@ -157,18 +134,6 @@ def _build_zip(files: dict[str, pd.DataFrame]) -> bytes:
             if df is not None and not df.empty:
                 zf.writestr(f"{name}.csv", df.to_csv(index=False).encode("utf-8"))
     return buf.getvalue()
-
-
-def relation_from_values(
-    left_name: str, left_value: float,
-    right_name: str, right_value: float,
-    tolerance: float = 0.03,
-) -> str:
-    if abs(left_value - right_value) <= tolerance:
-        return f"{left_name} ~= {right_name}"
-    if left_value > right_value:
-        return f"{left_name} > {right_name}"
-    return f"{left_name} < {right_name}"
 
 
 def final_abm_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -446,15 +411,13 @@ def run_research_mode(
             except Exception:
                 payload = {"final_values": [], "generation_rows": []}
 
-            # --- Primary gradient pattern targets ---
-            # Acceptance is driven by observed_target gradient patterns
-            # (gradient_slope + rank_order across the isolation axis).
-            # input_context rows (predictor variables) are excluded automatically.
+            # --- y_obs acceptance targets ---
+            # Acceptance is driven by the role-filtered observed_target rows: the
+            # ordinal isolation gradients (currently selfing_distance and
+            # flower_size_distance). input_context / hypothesis_prediction /
+            # diagnostic_only / excluded rows are filtered out by role.
             _outputs_list = payload.get("outputs_list", [])
             _is_abm = payload.get("abm", False)
-            # Use observed_target patterns as y_obs.
-            # observed_gradient_only_patterns() returns hypothesis_prediction rows
-            # which are skipped by evaluate_patterns() → pattern_total=0 → 0 accepted.
             _grad_pats = response_target_patterns()
             _synth_env  = payload.get("synth_pop_env", _POP_ENV)
             if _outputs_list and _grad_pats:
@@ -593,68 +556,6 @@ def run_research_mode(
 # Chart helpers
 # ---------------------------------------------------------------------------
 
-def parameter_space_chart(df_runs: pd.DataFrame, x: str, y: str) -> None:
-    if df_runs.empty or x not in df_runs or y not in df_runs:
-        st.info("No parameter-space data to plot.")
-        return
-    plot_df = df_runs[[x, y, "admissible_by_epsilon", "causal_hypothesis"]].dropna().copy()
-    plot_df["admissible"] = plot_df["admissible_by_epsilon"].map(
-        {True: "admissible", False: "rejected"}
-    )
-    st.scatter_chart(plot_df, x=x, y=y, color="admissible", size=40)
-
-
-def final_values_long(df_final_values: pd.DataFrame) -> pd.DataFrame:
-    if df_final_values.empty:
-        return pd.DataFrame()
-    mappings = {
-        "nectar_guide": ["nectar_guide", "mean_nectar_guide"],
-        "selfing_rate": ["selfing_rate"],
-        "herkogamy": ["herkogamy", "mean_herkogamy"],
-        "flower_size": ["flower_size", "mean_flower_size"],
-        "Fis": ["Fis", "Fis_proxy"],
-    }
-    rows: list[dict[str, Any]] = []
-    for _, row in df_final_values.iterrows():
-        for variable, candidates in mappings.items():
-            for candidate in candidates:
-                if candidate in row and pd.notna(row[candidate]):
-                    rows.append({
-                        "causal_hypothesis": row.get(
-                            "causal_hypothesis", row.get("structure", "")),
-                        "structure": row.get("structure", ""),
-                        "population": row.get("population", ""),
-                        "variable": variable,
-                        "value": float(row[candidate]),
-                    })
-                    break
-    return pd.DataFrame(rows)
-
-
-def generation_timeseries_long(df_generation_rows: pd.DataFrame) -> pd.DataFrame:
-    if df_generation_rows.empty:
-        return pd.DataFrame()
-    value_columns = {
-        "mean_nectar_guide": "nectar_guide",
-        "selfing_rate": "selfing_rate",
-        "mean_herkogamy": "herkogamy",
-        "mean_flower_size": "flower_size",
-        "Fis_proxy": "Fis",
-    }
-    rows: list[dict[str, Any]] = []
-    for _, row in df_generation_rows.iterrows():
-        for source, variable in value_columns.items():
-            if source in row and pd.notna(row[source]):
-                rows.append({
-                    "generation": int(row.get("generation", 0)),
-                    "structure": row.get("structure", ""),
-                    "population": row.get("population", ""),
-                    "variable": variable,
-                    "value": float(row[source]),
-                })
-    return pd.DataFrame(rows)
-
-
 # ============================================================================
 # UI
 # ============================================================================
@@ -723,7 +624,7 @@ A_ε(y_obs, x_obs) = { (θ, s) ∈ Θ × S :  G(θ)=1,  d(P_sim(f(x_obs; θ, s))
 | Causal degeneracy | D = H(S \| A_ε) | Remaining entropy of mechanism combinations (bits) |
 | Causal resolvability | R = 1 − D/K | Fraction of causal uncertainty resolved (0→1) |
 | Observation contribution | OC_k = R(O) − R(O\\{k}) | How much pattern k adds to resolvability |
-| Next-observation value | NOV(q) ≈ E[R(O∪q)−R(O)] | Expected resolvability gain from new measurement q |
+| Next-observation value | NOV(q) = E[R(O∪q)−R(O)] | Expected resolvability gain from q (constructive EVSI for quantitative obs; heuristic for ordinal) |
 """)
 
 # --- Worked example context panel ----------------------------------------
@@ -1530,7 +1431,14 @@ elif _step_idx == 5:
     else:
         st.caption("① Ensemble を実行すると、どのスイッチの NOV を優先すべきか自動推奨されます。")
 
-    st.markdown("### NOV(q) ≈ E[ R(O ∪ q) − R(O) ]")
+    st.markdown("### NOV(q) = E[ R(O ∪ q) − R(O) ]")
+    st.caption(
+        "Next-observation value: the expected gain in causal resolvability from a "
+        "future observation q. For quantitative observations this is a constructive "
+        "preposterior EVSI on resolvability (see docs/rach_mathematical_foundations.md, "
+        "Prop 6′); for ordinal candidates without an outcome model it is a heuristic "
+        "priority score."
+    )
 
     try:
         from causal_model.causal_admissibility import (
