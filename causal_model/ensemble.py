@@ -43,7 +43,7 @@ class EnsembleResult:
         return self.n_accepted / self.n_evaluated if self.n_evaluated > 0 else 0.0
 
 
-# Default robustness thresholds (see docs/streamlit_ensemble_first_flow.md, Step 2).
+# Default robustness thresholds for the ε/prior sensitivity diagnostic.
 SENSITIVITY_THRESHOLD = 0.20   # sensitivity_range >= this => prior/epsilon sensitive
 CA_ON_THRESHOLD       = 2 / 3  # mean CA_j >= this => switch called ON
 CA_OFF_THRESHOLD      = 1 / 3  # mean CA_j <= this => switch called OFF
