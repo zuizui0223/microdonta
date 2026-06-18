@@ -1,4 +1,4 @@
-# ODD protocol draft
+# ODD protocol
 
 This document follows the ODD structure: Overview, Design concepts, and Details.
 

@@ -1,5 +1,7 @@
 # RACH: Causal Admissibility and Degeneracy Framework
 
+[![CI](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml/badge.svg)](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml)
+
 **RACH** stands for **Restricted Admissible Causal Hypotheses**.
 
 RACH is a **causal admissibility and degeneracy framework** for ecological systems. It estimates which latent causal mechanisms remain admissible under biological constraints and independent observations, and quantifies whether the available observations are sufficient to resolve competing mechanisms.
