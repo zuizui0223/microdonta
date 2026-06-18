@@ -46,6 +46,18 @@ New to RACH? Start with the **[5-minute tutorial](docs/tutorial.md)** — run th
 worked example, read the outputs, and adapt the simulator-agnostic inference
 layer to your own system.
 
+### Archiving a citable snapshot (Zenodo DOI)
+
+The Zenodo archive is a **snapshot of the tagged tree**, so it contains only the
+files present at that tag — no repository history. To mint a DOI:
+
+1. Fill the author placeholders in `.zenodo.json`, `CITATION.cff`, `pyproject.toml`
+   and `LICENSE` (`[AUTHOR]`, `[ORCID]`, …) so the DOI metadata is correct.
+2. Enable this repository in Zenodo (https://zenodo.org/account/settings/github/),
+   then create a GitHub **Release** from the `v0.1.0` tag.
+3. Zenodo archives the release and returns a DOI; paste it back into
+   `CITATION.cff`, `.zenodo.json` and the manuscript's Data Accessibility section.
+
 ---
 
 ## Formal definition

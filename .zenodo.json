@@ -1,0 +1,21 @@
+{
+  "upload_type": "software",
+  "title": "RACH: Restricted Admissible Causal Hypotheses",
+  "description": "A constraint-aware framework for diagnosing causal degeneracy and prioritising the next observation in ecological mechanism inference. Defines an admissible region over mechanism-switch combinations, reports causal degeneracy instead of collapsing to a single best model, and computes a next-observation value (NOV) as a constructive expected-value-of-sample-information on causal resolvability. Companion software to the Methods in Ecology and Evolution manuscript.",
+  "license": "MIT",
+  "creators": [
+    {
+      "name": "[AUTHOR-FAMILY], [AUTHOR-GIVEN]",
+      "orcid": "[ORCID]"
+    }
+  ],
+  "keywords": [
+    "causal admissibility",
+    "causal degeneracy",
+    "pattern-oriented modelling",
+    "approximate Bayesian computation",
+    "value of information",
+    "observation design"
+  ],
+  "version": "0.1.0"
+}
