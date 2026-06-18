@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run test suite
+        run: pytest -q
+
+      - name: Smoke-test figure CLIs
+        run: |
+          mkdir -p outputs/ci
+          python -m causal_model.confound_demo  --n-attempts 200 --figure outputs/ci/confound.png
+          python -m causal_model.synthetic_demo --n-attempts 800 --figure outputs/ci/synthetic.png
+          python -m causal_model.nov_calibration --n-attempts 400 --figure outputs/ci/nov.png
+          python -m causal_model.known_truth_benchmark \
+            --n-attempts 100 --noise-rates 0.0,0.1 \
+            --figure outputs/ci/known_truth.png
+
+      - name: Check figures were written
+        run: |
+          for f in confound synthetic nov known_truth; do
+            test -s "outputs/ci/$f.png" || { echo "missing outputs/ci/$f.png"; exit 1; }
+          done
+          echo "all smoke-test figures generated"

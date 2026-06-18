@@ -1,0 +1,5 @@
+# Development / reproducibility dependencies.
+# Install with:  pip install -r requirements.txt -r requirements-dev.txt
+# (or, equivalently:  pip install -e ".[dev]")
+pytest>=7.0
+matplotlib>=3.7

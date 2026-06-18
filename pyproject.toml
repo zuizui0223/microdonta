@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rach"
+version = "0.1.0"
+description = "RACH: a constraint-aware framework for diagnosing causal degeneracy and prioritising the next observation in ecological mechanism inference."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "[AUTHOR]", email = "[EMAIL]" },
+]
+keywords = [
+    "causal admissibility",
+    "causal degeneracy",
+    "pattern-oriented modelling",
+    "approximate Bayesian computation",
+    "value of information",
+    "observation design",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+# Figure generation and the interactive app.
+viz = [
+    "matplotlib>=3.7",
+    "streamlit>=1.40",
+]
+# Everything needed to run the test suite and reproduce every figure/CLI.
+dev = [
+    "pytest>=7.0",
+    "matplotlib>=3.7",
+    "streamlit>=1.40",
+]
+
+[project.urls]
+Repository = "[REPOSITORY URL]"
+
+[tool.setuptools]
+# These are the importable packages exercised by the test suite and figures.
+packages = ["causal_model", "attraction_trait_model"]
+
+[tool.pytest.ini_options]
+# Tests live under tests/, plus a few co-located with the package and example.
+testpaths = ["tests", "causal_model", "examples"]
+addopts = "-q"
