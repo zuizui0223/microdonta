@@ -51,8 +51,8 @@ layer to your own system.
 The Zenodo archive is a **snapshot of the tagged tree**, so it contains only the
 files present at that tag — no repository history. To mint a DOI:
 
-1. Fill the author placeholders in `.zenodo.json`, `CITATION.cff`, `pyproject.toml`
-   and `LICENSE` (`[AUTHOR]`, `[ORCID]`, …) so the DOI metadata is correct.
+1. Optionally add an ORCID in `.zenodo.json` / `CITATION.cff` so the DOI metadata
+   is complete (author and affiliation are already set).
 2. Enable this repository in Zenodo (https://zenodo.org/account/settings/github/),
    then create a GitHub **Release** from the `v0.1.0` tag.
 3. Zenodo archives the release and returns a DOI; paste it back into

@@ -8,9 +8,9 @@ abstract: >-
   collapsing to a single best model, and computes a next-observation value (NOV)
   as a constructive expected-value-of-sample-information on causal resolvability.
 authors:
-  - family-names: "[AUTHOR-FAMILY]"
-    given-names: "[AUTHOR-GIVEN]"
-    orcid: "https://orcid.org/[ORCID]"
+  - family-names: "Zhang"
+    given-names: "Ruiqi"
+    affiliation: "Kyoto University"
 keywords:
   - causal admissibility
   - causal degeneracy
@@ -18,16 +18,17 @@ keywords:
   - approximate Bayesian computation
   - value of information
   - observation design
-license: "[LICENSE — e.g. MIT; to confirm]"
-repository-code: "[REPOSITORY URL]"
+license: "MIT"
+repository-code: "https://github.com/zuizui0223/microdonta"
 version: "0.1.0"
 date-released: "2026-06-18"
 preferred-citation:
   type: article
   title: "RACH: diagnosing causal degeneracy and prioritising the next observation in ecological mechanism inference"
   authors:
-    - family-names: "[AUTHOR-FAMILY]"
-      given-names: "[AUTHOR-GIVEN]"
+    - family-names: "Zhang"
+      given-names: "Ruiqi"
+      affiliation: "Kyoto University"
   journal: "Methods in Ecology and Evolution"
   year: 2026
   notes: "Under preparation; details to be completed at submission."

@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
-    { name = "[AUTHOR]", email = "[EMAIL]" },
+    { name = "Ruiqi Zhang" },
 ]
 keywords = [
     "causal admissibility",
@@ -45,7 +45,7 @@ dev = [
 ]
 
 [project.urls]
-Repository = "[REPOSITORY URL]"
+Repository = "https://github.com/zuizui0223/microdonta"
 
 [tool.setuptools]
 # These are the importable packages exercised by the test suite and figures.
