@@ -276,7 +276,40 @@ because EVSI is the full-predictive expectation it orders observations by value
 with honest spread across truths. Together these close the "it is just heuristic
 value-of-information" objection: NOV is a genuine, validated EVSI.
 
-## 4. Worked example: *Campanula microdonta* in the Izu Islands
+## 4. Worked examples
+
+### 4.1 A published ecological rule: Bergmann's rule
+
+*(`python -m causal_model.bergmann_worked_example --truth fasting_endurance
+--figure …`; seed 1, n = 4000, |A_ε| = 2994; Fig. 4)*  To show RACH on a system
+with no plant, mating-system or island content, we apply it to **Bergmann's
+rule** — the increase of endotherm body size with latitude / colder climate.
+The pattern is uncontested; its mechanism is a textbook case of acknowledged
+degeneracy. We encode four mechanism switches — `heat_conservation`
+(thermoregulatory surface-area-to-volume, Bergmann's original) and
+`fasting_endurance` (larger reserves survive seasonal food shortage), both of
+which drive the cline, plus `resource_productivity` and `dispersal_gradient` as
+inert controls. `y_obs` is **only the published ordinal cline** (body size
+increases with latitude) — the kind of directional statement a comparative study
+or natural-history note reports; the mechanism-specific assays (thermal
+conductance / Allen's-rule scaling; overwinter fasting endurance) are *not* in
+`y_obs` but are NOV candidates.
+
+On the cline alone the two driving mechanisms are confounded exactly as in the
+Campanula case: `CA(heat_conservation) = 0.66 ≈ CA(fasting_endurance) = 0.66`,
+`D = 3.58 of 4` (R = 0.10), with an explicit disjunction confounding edge
+("at least one of heat conservation, fasting endurance"; φ = −0.52, MI = 0.27
+bits), while the two control mechanisms sit at CA ≈ 0.50 and are correctly left
+free. ABC model choice instead returns a single MAP switch-combination with
+P = 0.09 — a near-arbitrary winner. RACH-SEQ then resolves the confound: the
+mechanism-specific assays (truth = fasting endurance) cut the confounding edge in
+a single observation and, with both assays measured, pin
+`CA(fasting_endurance) → 1.00` and `CA(heat_conservation) → 0.00`,
+`D 3.58 → 1.99`, `R 0.10 → 0.50` (Fig. 4). The identical workflow, the identical
+code, on a completely different biological rule: the contribution is the method,
+not the Campanula system.
+
+### 4.2 An own-field system in progress: *Campanula microdonta* in the Izu Islands
 
 Island populations along an isolation gradient lose bumblebee pollinators and
 shift toward selfing with reduced flower size (Inoue & Amano 1986; Inoue 1990).
@@ -323,12 +356,13 @@ in this paper is produced by a single command-line call to the corresponding mod
 (§3), and the random seeds are fixed, so all reported numbers are reproducible.
 
 **Applying RACH to other systems from published pattern data.** The inference
-layer imposes no taxon, trait, or simulator constraint. Any published ecological
-study that documents ordinal or directional patterns along an environmental
-gradient — body-size clines along latitudinal or island gradients (Bergmann's and
-Foster's rules), immune-function or life-history trade-offs across resource
-gradients, community turnover along disturbance axes — can serve as `y_obs` by
-transcribing the published comparisons into the package's CSV pattern schema
+layer imposes no taxon, trait, or simulator constraint. The Bergmann's-rule
+worked example (§4.1) is built entirely from a published ordinal pattern: any
+study that documents directional patterns along an environmental gradient —
+body-size clines along latitudinal or island gradients (Bergmann's and Foster's
+rules), immune-function or life-history trade-offs across resource gradients,
+community turnover along disturbance axes — can serve as `y_obs` by transcribing
+the published comparisons into the package's CSV pattern schema
 (`role = observed_target`, `type = gradient_slope` or `pairwise_relation`). A
 simulator only needs to reproduce the *direction* of those patterns under each
 candidate mechanism; even a phenomenological model parameterised on published
@@ -337,9 +371,9 @@ note journals (e.g., *The Scientific Naturalist* section of *Ecology*; *The
 American Naturalist*; *Ecological Research*) routinely report exactly the kind of
 signed ordinal patterns that enter `y_obs` in RACH: the method is designed to
 consume those observations without requiring the researcher to generate new data
-before deciding which data to collect. The Campanula worked example is one
+before deciding which data to collect. The Bergmann example is one such executed
 instantiation; the generality sweep (§3.3) is the distributional argument that the
-framework transfers.
+framework transfers across systems.
 
 ## 6. Discussion
 
@@ -406,6 +440,18 @@ map. (2) The preposterior EVSI(q) predicts the realised resolvability gain acros
 observations and true states (Pearson r = 0.77); EVSI is the full-predictive
 expectation, hence the spread across specific truths. Seed 7, n = 1000. Generated
 by `causal_model/nov_calibration.py`.
+
+**Figure 4. RACH on a published ecological rule (Bergmann's rule).**
+A real, executed worked example on an animal/physiological/latitudinal system
+with no plant, mating-system or island content. (A) From the published ordinal
+body-size cline alone, the two driving mechanisms are confounded
+(CA(heat conservation) = 0.66 ≈ CA(fasting endurance) = 0.66, D = 3.58 of 4),
+with the two control mechanisms correctly left free at CA ≈ 0.5; an explicit
+disjunction confounding edge (φ = −0.52, MI = 0.27 bits) is reported. (B) The
+mechanism-specific assays resolve it (truth = fasting endurance):
+CA(fasting endurance) → 1.00, CA(heat conservation) → 0.00, D 3.58 → 1.99,
+R 0.10 → 0.50. Identical workflow and code to the Campanula and synthetic cases.
+Seed 1, n = 4000. Generated by `causal_model/bergmann_worked_example.py --figure`.
 
 **Figure S1. Known-truth recovery (self-consistency).**
 (A) Mean per-switch recovery (accuracy, F1) as a function of injected
