@@ -242,28 +242,28 @@ the paper's central claim in one figure: model selection answers "which model
 wins?" with a near-arbitrary winner, while RACH answers "are these mechanisms
 even separable, and what would separate them?"
 
-### 3.3 Generality (Fig. 2)
+### 3.3 Generality (Figs. 2, S2)
 
-*(`python -m causal_model.synthetic_demo --figure …`; seed 1, n = 4000,
-|A_ε| = 2995)*  The identical workflow on an unrelated synthetic 4-switch system
-(two mechanisms sharing an ordinal trend but differing in magnitude) reproduces
-the same signatures: `D = 3.58 of 4`, `CA(B) = 0.66 ≈ CA(C) = 0.66` confounded,
-resolved by the quantitative magnitude to `CA(C) → 1.00`, `CA(B) → 0.08`. The inference layer is simulator-agnostic — it
-consumes accepted (θ, s) draws and a switch list with no Campanula dependency —
-so the contribution is the method, not any one model.
+*(`python -m causal_model.generality_sweep --n-systems 200 --seed 0
+--figure …`)*  The generality claim is made *distributional* by running RACH-SEQ
+over a *family* of randomly generated confounded systems: each draws K ∈ {4,5,6}
+binary mechanism switches and one or two independent confounds, with coupling
+structure, driver coefficients, and underlying truth all randomised. RACH-SEQ
+solves each under a fixed observation budget (≤4 observations), scoring
+candidates by expected confounding-edge cuts (§2.5). Across **200 such systems**
+the algorithm resolves a mean **99.2% of confounding edges** (median 100%), with
+**98.5% of systems fully converging** to an empty confounding graph, lifting mean
+resolvability from **R = 0.14 to 0.64** in 1.5 observations on average (Fig. 2).
+Generality is therefore shown as a distribution over a population of random
+systems with an error bar — not as a second hand-built example.
 
-A single synthetic instance, however, is still one instance. To make the
-generality claim *distributional* we run RACH-SEQ over a *family* of randomly
-generated confounded systems (*(`python -m causal_model.generality_sweep
---n-systems 200 --seed 0`)*): each system draws K ∈ {4,5,6} switches and one or
-two independent confounds, randomises which switches are coupled, their
-magnitudes, and the underlying truth, and is solved by the closed-loop algorithm
-under a fixed observation budget. Across 200 such systems RACH-SEQ resolves a mean
-**99.2% of confounding edges** (median 100%), with **98.5% of systems fully
-converging** to an empty confounding graph, lifting mean resolvability from
-**R = 0.14 to 0.64** in 1.5 observations on average (Fig. 4). Generality is
-thus shown as a sweep over a population of systems with an error bar — not as a
-single hand-built example.
+The mechanism is illustrated concretely in Fig. S2 *(`python -m
+causal_model.synthetic_demo --figure …`; seed 1, n = 4000, |A_ε| = 2995)*: an
+unrelated 4-switch system (mechanisms B and C sharing an ordinal trend but
+differing in magnitude) reproduces the same RACH signatures (`D = 3.58 of 4`,
+`CA(B) ≈ CA(C) ≈ 0.66` confounded) and resolves them with a single quantitative
+magnitude observation (`CA(C) → 1.00`, `CA(B) → 0.08`). The inference layer
+consumes accepted (θ, s) draws and a switch list with no Campanula dependency.
 
 ### 3.4 NOV-EVSI calibration (Fig. 3)
 
@@ -287,21 +287,59 @@ Fis, seed set and visitation are explicitly **future/NOV candidates**, not curre
 targets (the species is protandrous, so static herkogamy is not the operative
 trait). With two correlated gradients, `A_ε` is broad and causal resolution is
 **low** — RACH reports this honestly rather than over-claiming a resolved causal
-history. NOV identifies dichogamy/guide quantification as the highest-value next
-observations, and the confound demonstration (§3.2) shows that the planned
-nectar-guide measurement would resolve the central S2/S3 confound. This is a
-preliminary worked example whose value is to *motivate* observation design, not a
-definitive empirical resolution; the numeric per-island endpoints remain to be
-transcribed from the primary sources before any quantitative `y_obs` replaces the
-current directional gradients.
+history. NOV identifies nectar-guide quantification as the highest-value next
+observation, and the confound demonstration (§3.2) confirms it would resolve the
+central S2/S3 confound. This is a preliminary example whose value is to *motivate*
+observation design, not a definitive empirical resolution.
+
+**Field data that would replace the current ordinal y_obs with quantitative
+targets.** The following measurements, across ≥3 Izu Island populations
+(minimum: Oshima + 1 intermediate, e.g. Kozushima or Niijima + Hachijo), would
+upgrade the worked example from directional-gradient to quantitative-RACH:
+
+| Priority | Measurement | RACH role | Resolves |
+|----------|-------------|-----------|---------|
+| 1 | **Nectar-guide expression** — UV-reflectance spectrophotometry or standardised guide-area scoring (cm²) per flower, n ≥ 10 per population | highest-NOV `observed_target` | S1/S2/S3 confound |
+| 1 | **Flower size** — corolla width or length per plant (digital caliper), n ≥ 20 per population | replaces ordinal `flower_size_distance` with `absolute_summary` | S2 magnitude |
+| 2 | **Reproductive assurance** — bagged (autonomous) vs. open-pollinated seed-set ratio, n ≥ 15 per population | direct S2 test: RA benefit required for selfing-syndrome selection | S2 vs. S5 |
+| 2 | **Pollinator census** — timed flower-visitor observations (≥ 4 hr per population), recording guild identity (Bombus / halictid / other) and visit frequency | upgrades pollinator gradient from x_obs assumption to measured data | S1 vs. S5 |
+| 3 | **Selfing rate / F_IS** — microsatellite or SNP genotyping (n ≥ 20, ≥ 5 loci, ≥ 3 populations) | replaces ordinal `selfing_distance` | S2 vs. S3 |
+| 3 | **Neutral diversity He** — same genetic samples as F_IS | independent test of Ne–isolation relationship (S3 prediction) | S3 |
+
+Priority 1 measurements (guide + flower size) can be completed in a single
+field season with a UV-sensitive camera or spectrophotometer and caliper. The
+nectar-guide gradient is the single highest-impact observation the NOV computation
+identifies, because only S3 (common environmental cause) predicts a guide decline
+without a corresponding reproductive-assurance change, while S2 predicts both
+declining together. These two outcomes are not distinguishable by the current
+ordinal gradients alone.
 
 ## 5. Software
 
 An open-source Python package implements the framework, with a Streamlit
-application (interactive worked example and an in-app reproduction of Figures 1–2
-with a Campanula/synthetic system selector) and a test suite. Every figure in
-this paper is produced by a single command-line call to the corresponding module
+application (interactive worked example and an in-app reproduction of Figures 1
+and S2 with a Campanula/synthetic system selector) and a test suite. Every figure
+in this paper is produced by a single command-line call to the corresponding module
 (§3), and the random seeds are fixed, so all reported numbers are reproducible.
+
+**Applying RACH to other systems from published pattern data.** The inference
+layer imposes no taxon, trait, or simulator constraint. Any published ecological
+study that documents ordinal or directional patterns along an environmental
+gradient — body-size clines along latitudinal or island gradients (Bergmann's and
+Foster's rules), immune-function or life-history trade-offs across resource
+gradients, community turnover along disturbance axes — can serve as `y_obs` by
+transcribing the published comparisons into the package's CSV pattern schema
+(`role = observed_target`, `type = gradient_slope` or `pairwise_relation`). A
+simulator only needs to reproduce the *direction* of those patterns under each
+candidate mechanism; even a phenomenological model parameterised on published
+trait means is sufficient for initial causal diagnosis. Short natural-history
+note journals (e.g., *The Scientific Naturalist* section of *Ecology*; *The
+American Naturalist*; *Ecological Research*) routinely report exactly the kind of
+signed ordinal patterns that enter `y_obs` in RACH: the method is designed to
+consume those observations without requiring the researcher to generate new data
+before deciding which data to collect. The Campanula worked example is one
+instantiation; the generality sweep (§3.3) is the distributional argument that the
+framework transfers.
 
 ## 6. Discussion
 
@@ -348,12 +386,17 @@ magnitude (truth = S3) resolves the confound: D 3.56→2.37, R 0.11→0.41,
 CA(S3) 0.66→0.84, CA(S2) 0.67→0.49. Proxy backend, seed 7, n = 600. Generated by
 `causal_model/confound_demo.py`.
 
-**Figure 2. The workflow is simulator-agnostic.**
-The identical RACH analysis on an unrelated synthetic 4-switch system, where
-mechanisms B and C share an ordinal trend but differ in magnitude. (A) The
-confound is reproduced (D = 3.58 of 4, CA(B) = 0.66 ≈ CA(C) = 0.66); (B) a
-quantitative magnitude observation resolves it (CA(C) → 1.00, CA(B) → 0.08).
-Seed 1, n = 4000. Generated by `causal_model/synthetic_demo.py`.
+**Figure 2. Generality as a distributional claim (RACH-SEQ over a family of
+systems).**
+The closed-loop algorithm run on 200 randomly generated confounded systems
+(K ∈ {4,5,6} switches; one or two independent confounds; coupling structure,
+driver magnitudes and underlying truth randomised). (A) Distribution of the
+fraction of confounding edges resolved within the observation budget: mass at
+100%, mean 99.2%, with 98.5% of systems fully converging to an empty confounding
+graph. (B) Causal resolvability before versus after RACH-SEQ; every system lies
+above the 1:1 line (mean R 0.14 → 0.64). Generality is the distribution, not a
+second anecdote. Seed 0, n = 200 systems. Generated by
+`causal_model/generality_sweep.py --figure`.
 
 **Figure 3. NOV is a validated, cheap EVSI.**
 (1) For every tested quantitative observation, the resolvability gain computed by
@@ -364,17 +407,6 @@ observations and true states (Pearson r = 0.77); EVSI is the full-predictive
 expectation, hence the spread across specific truths. Seed 7, n = 1000. Generated
 by `causal_model/nov_calibration.py`.
 
-**Figure 4. Generality as a distributional claim (RACH-SEQ over a family of
-systems).**
-The closed-loop algorithm run on 200 randomly generated confounded systems
-(K ∈ {4,5,6} switches; one or two independent confounds; coupling, magnitudes and
-truth randomised). (A) Distribution of the fraction of confounding edges resolved
-within the observation budget: mass at 100%, mean 99.2%, with 98.5% of systems
-fully converging to an empty confounding graph. (B) Causal resolvability before
-versus after RACH-SEQ; every system lies above the 1:1 line (mean R 0.14 → 0.64).
-Generality is shown as a sweep over a population of systems, not a single example.
-Seed 0, n = 200 systems. Generated by `causal_model/generality_sweep.py --figure`.
-
 **Figure S1. Known-truth recovery (self-consistency).**
 (A) Mean per-switch recovery (accuracy, F1) as a function of injected
 pattern-noise rate; recovery is partial because confounded switches are not
@@ -382,6 +414,14 @@ identifiable from the pattern alone, and degrades gracefully with noise.
 (B) Recovery and R_RACH as a function of ABC draws. This is a self-consistency
 check on synthetic data, not an identification claim. Generated by
 `causal_model/known_truth_benchmark.py --figure`.
+
+**Figure S2. The RACH workflow on a single concrete synthetic instance.**
+The identical analysis on an unrelated 4-switch system, where mechanisms B and C
+share an ordinal trend but differ in magnitude. (A) Confound reproduced
+(D = 3.58 of 4, CA(B) = 0.66 ≈ CA(C) = 0.66); (B) resolved by a single
+quantitative magnitude observation (CA(C) → 1.00, CA(B) → 0.08). This example
+illustrates the mechanism underlying the distributional result in Fig. 2. Seed 1,
+n = 4000. Generated by `causal_model/synthetic_demo.py`.
 
 ## Data accessibility and code availability
 
