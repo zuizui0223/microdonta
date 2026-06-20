@@ -616,10 +616,16 @@ Ruiqi Zhang — ORCID: [to add]
 
 ## References
 
+- Allen, J.A. 1877. The influence of physical conditions in the genesis of species.
+  *Radical Review* 1: 108–140. [Allen's rule; provisional encoding — verify before
+  submission.]
 - Beaumont, M.A., Zhang, W. & Balding, D.J. 2002. Approximate Bayesian computation
   in population genetics. *Genetics* 162: 2025–2035.
 - Beaumont, M.A. 2010. Approximate Bayesian computation in evolution and ecology.
   *Annual Review of Ecology, Evolution, and Systematics* 41: 379–406.
+- Bergmann, C. 1847. Über die Verhältnisse der Wärmeökonomie der Thiere zu ihrer
+  Grösse. *Göttinger Studien* 3: 595–708. [Bergmann's rule; provisional encoding —
+  verify before submission.]
 - Canessa, S., Guillera-Arroita, G., Lahoz-Monfort, J.J., Southwell, D.M.,
   Armstrong, D.P., Chadès, I., Lacy, R.C. & Converse, S.J. 2015. When do we need
   more data? A primer on calculating the value of information for applied
@@ -629,6 +635,10 @@ Ruiqi Zhang — ORCID: [to add]
 - Csilléry, K., Blum, M.G.B., Gaggiotti, O.E. & François, O. 2010. Approximate
   Bayesian computation (ABC) in practice. *Trends in Ecology & Evolution* 25:
   410–418.
+- Foster, J.B. 1964. Evolution of mammals on islands. *Nature* 202: 234–235.
+  [Foster's island rule; provisional encoding — verify before submission.]
+- Gloger, C.W.L. 1833. *Das Abändern der Vögel durch Einfluss des Klimas.* August
+  Schulz, Breslau. [Gloger's rule; provisional encoding — verify before submission.]
 - Grimm, V., Revilla, E., Berger, U., Jeltsch, F., Mooij, W.M., Railsback, S.F.,
   Thulke, H.-H., Weiner, J., Wiegand, T. & DeAngelis, D.L. 2005. Pattern-oriented
   modeling of agent-based complex systems: lessons from ecology. *Science* 310:
@@ -648,6 +658,11 @@ Ruiqi Zhang — ORCID: [to add]
 - Inoue, K. & Kawahara, T. 1990. Allozyme differentiation and genetic structure in
   island and mainland Japanese populations of *Campanula punctata*. *American
   Journal of Botany* 77: 1440–1448.
+- Lomolino, M.V. 2005. Body size evolution in insular vertebrates: generality of the
+  island rule. *Journal of Biogeography* 32: 1683–1699. [Review for Foster's island
+  rule; verify before submission.]
+- Meiri, S. & Dayan, T. 2003. On the validity of Bergmann's rule. *Journal of
+  Biogeography* 30: 331–351. [Review for Bergmann's rule; verify before submission.]
 - Raiffa, H. & Schlaifer, R. 1961. *Applied Statistical Decision Theory.* Harvard
   University Press, Boston.
 - Robert, C.P., Cornuet, J.-M., Marin, J.-M. & Pillai, N.S. 2011. Lack of
