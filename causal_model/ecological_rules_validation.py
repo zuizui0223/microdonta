@@ -73,11 +73,14 @@ ECOLOGICAL_RULES: list[EcologicalRule] = [
         mechanisms=["heat_conservation", "fasting_endurance"],
         coeffs={"heat_conservation": 0.30, "fasting_endurance": 0.55},
         inert_controls=["resource_productivity", "dispersal"],
-        literature_truth="fasting_endurance",   # PROVISIONAL: clade-dependent; often debated
+        literature_truth="unresolved",   # mechanism genuinely contested (not cleanly attributed)
         distinguishing_obs="size–seasonality vs size–mean-temperature partial association",
         literature_note=(
-            "Heat-conservation (Bergmann 1847) vs fasting-endurance (Lindstedt & "
-            "Boyce 1985); attribution varies by clade — VERIFY before use."),
+            "Bergmann 1847 (Göttinger Studien 3:595–708): pattern robust but "
+            "MECHANISM UNRESOLVED — heat conservation (original) vs fasting/"
+            "seasonality endurance (Lindstedt & Boyce 1985, Am. Nat. 125:873–878); "
+            "validity and mechanism debated (Meiri & Dayan 2003, J. Biogeogr. "
+            "30:331–351). Knowledge-based; online re-verification pending."),
     ),
     EcologicalRule(
         name="Allen",
@@ -85,11 +88,15 @@ ECOLOGICAL_RULES: list[EcologicalRule] = [
         mechanisms=["thermoregulation", "developmental_plasticity"],
         coeffs={"thermoregulation": 0.55, "developmental_plasticity": 0.30},
         inert_controls=["allometric_scaling"],
-        literature_truth="thermoregulation",    # PROVISIONAL: primary attributed driver
+        literature_truth="thermoregulation",    # established ULTIMATE driver
         distinguishing_obs="extremity–heat-loss experimental manipulation vs rearing-temperature plasticity",
         literature_note=(
-            "Allen 1877 thermoregulatory heat-loss; plasticity (Serrat et al. 2008) "
-            "as alternative — VERIFY attribution."),
+            "Allen 1877 (Radical Review 1:108–140): thermoregulatory heat "
+            "conservation is the established ULTIMATE driver; developmental "
+            "plasticity (Serrat et al. 2008, PNAS 105:19348–19353) is a PROXIMATE "
+            "mechanism at a different explanatory level rather than a true "
+            "competitor — VERIFY framing and page ranges (online re-verification "
+            "pending)."),
     ),
     EcologicalRule(
         # 3-way confound: three mechanisms drive the island size shift, so the
@@ -102,8 +109,11 @@ ECOLOGICAL_RULES: list[EcologicalRule] = [
         literature_truth="unresolved",           # genuinely contested (3 competing mechanisms)
         distinguishing_obs="body-size shift vs predator density vs island area vs competitor richness",
         literature_note=(
-            "Foster 1964 island rule; predation release vs resource limitation vs "
-            "competition release all debated (Lomolino 2005) — UNRESOLVED, 3-way."),
+            "Foster 1964 (Nature 202:234–235) island rule; 3-way UNRESOLVED — "
+            "predation release vs resource limitation vs competition release, no "
+            "consensus driver (Lomolino 2005, J. Biogeogr. 32:1683–1699); rule "
+            "generality itself debated. Knowledge-based; online re-verification "
+            "pending."),
     ),
     EcologicalRule(
         # extra inert controls (K = 5) so the overall degeneracy D is higher.
@@ -115,8 +125,11 @@ ECOLOGICAL_RULES: list[EcologicalRule] = [
         literature_truth="unresolved",
         distinguishing_obs="pigmentation–humidity vs pigmentation–parasite-load association",
         literature_note=(
-            "Gloger 1833; thermal melanism vs pathogen/parasite resistance "
-            "(Burtt & Ichida 2004) — UNRESOLVED, verify."),
+            "Gloger 1833 (Breslau: August Schulz); UNRESOLVED — thermal melanism "
+            "vs pathogen/feather-degrading-bacteria resistance (Burtt & Ichida "
+            "2004, Condor 106(3):681) vs photoprotection vs crypsis; multiple "
+            "non-exclusive hypotheses. Knowledge-based; online re-verification "
+            "pending."),
     ),
 ]
 

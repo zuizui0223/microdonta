@@ -29,6 +29,13 @@ This is exactly the structure RACH is built for: the published pattern leaves
 heat_conservation and fasting_endurance jointly admissible (a confounding
 edge), and RACH names the observation that separates them.
 
+Note on the mechanism: the Bergmann *mechanism* is genuinely unresolved in the
+literature (heat conservation vs fasting/seasonality endurance; the rule's very
+generality is debated — Meiri & Dayan 2003). The ``--truth`` argument here is an
+*illustrative assumed latent truth* used to demonstrate that, once the
+distinguishing assay is taken, RACH recovers whichever mechanism is real. It is
+NOT a claim that fasting endurance is the true driver.
+
 How RACH consumes it
 --------------------
 y_obs is *only* the published ordinal cline (body size increases with

@@ -30,13 +30,25 @@ def test_all_off_fraction_near_zero_for_disjunction():
     assert frac < 0.02              # at least one mechanism required => disjunction
 
 
-def test_bergmann_validates_with_direction_recovery():
-    res = validate_rule(_rule_by_name("Bergmann"), n_attempts=4000, seed=1)
+def test_allen_validates_with_direction_recovery():
+    # Allen carries a literature-attributed ULTIMATE driver (thermoregulation),
+    # so it is the panel's V3 (direction-recovery) demonstration.
+    res = validate_rule(_rule_by_name("Allen"), n_attempts=4000, seed=1)
     assert res.confound_reproduced            # V1
     assert res.nov_points_correctly           # V2
     assert res.direction_recovered is True    # V3 (resolved truth)
-    assert res.ca_after["fasting_endurance"] > 0.9
-    assert res.ca_after["heat_conservation"] < 0.1
+    assert res.ca_after["thermoregulation"] > 0.9
+    assert res.ca_after["developmental_plasticity"] < 0.1
+
+
+def test_bergmann_confound_without_attribution():
+    # Bergmann's mechanism is genuinely contested (Meiri & Dayan 2003), so the
+    # encoding leaves it unresolved: confound + NOV pass, no V3 attribution.
+    res = validate_rule(_rule_by_name("Bergmann"), n_attempts=4000, seed=1)
+    assert res.confound_reproduced            # V1
+    assert res.nov_points_correctly           # V2
+    assert res.direction_recovered is None    # literature: unresolved
+    assert res.passes
 
 
 def test_three_way_confound_detected():
