@@ -88,13 +88,35 @@ def _binary_entropy(p: float) -> float:
     return -p * math.log2(p) - (1.0 - p) * math.log2(1.0 - p)
 
 
-def _joint_entropy(vectors: list[tuple]) -> float:
-    """Empirical joint entropy of binary vectors, in bits."""
+def _joint_entropy(vectors: list[tuple], bias_correction: str = "none") -> float:
+    """Empirical joint entropy of binary vectors, in bits.
+
+    Parameters
+    ----------
+    bias_correction:
+        ``"none"`` (default) returns the plug-in (maximum-likelihood) entropy.
+        ``"miller_madow"`` adds the first-order bias correction
+        ``(m - 1) / (2 N ln2)`` bits, where ``m`` is the number of occupied
+        cells (distinct observed combinations) and ``N`` the sample size.
+
+    Why a correction exists.  The plug-in estimator is biased *downward*: it
+    underestimates the true entropy by ≈ ``(m - 1) / (2 N)`` nats, so the
+    reported degeneracy ``D`` is biased low and resolvability ``R`` biased high
+    (over-confident).  The bias is negligible for small switch spaces
+    (``K ≤ 6`` ⇒ ``m ≤ 64`` ⇒ < 0.01 bit at N in the thousands) but grows with
+    ``m``: for a ``K = 9`` structure space (``m`` up to 512) it is ≈ 0.13 bit.
+    """
     if not vectors:
         return 0.0
     n = len(vectors)
     counts = Counter(vectors)
-    return -sum((c / n) * math.log2(c / n) for c in counts.values())
+    H = -sum((c / n) * math.log2(c / n) for c in counts.values())
+    if bias_correction == "miller_madow":
+        m = len(counts)
+        H += (m - 1) / (2 * n * math.log(2))
+    elif bias_correction != "none":
+        raise ValueError(f"unknown bias_correction: {bias_correction!r}")
+    return H
 
 
 def _max_entropy(n_switches: int) -> float:
@@ -914,7 +936,9 @@ def causal_admissibility(
 
     for sw in switches:
         n_on = sum(1 for r in accepted_rows if r.get(sw.name))
-        ca = n_on / n if n > 0 else sw.prior_on_prob
+        # Empty A_ε: CA_j is a conditional probability with no conditioning mass,
+        # hence non-estimable — report nan rather than silently returning the prior.
+        ca = n_on / n if n > 0 else float("nan")
 
         # Bayes factor
         prior = sw.prior_on_prob
@@ -941,6 +965,7 @@ def causal_admissibility(
 def causal_degeneracy(
     accepted_rows: list[dict],
     switches,   # Sequence[BiologicalSwitch]
+    bias_correction: str = "none",
 ) -> float:
     """Compute causal degeneracy D = H(S | A_ε) in bits.
 
@@ -950,32 +975,49 @@ def causal_degeneracy(
     D = 0: single mechanism combination — unique causal explanation.
     D = K: maximum uncertainty — observations do not constrain mechanisms.
 
+    Estimation caveat — require N ≫ 2^K.
+        D is estimated from the |A_ε| accepted draws. The empirical joint entropy
+        cannot exceed ``log2(N)``, so to even *represent* a near-maximal
+        degeneracy the sample must satisfy ``N ≫ 2^K`` (there are 2^K possible
+        switch combinations). With ``N < 2^K`` the degeneracy is capped by the
+        sample, not by the data, and is not interpretable. The plug-in estimator
+        is also biased low; pass ``bias_correction="miller_madow"`` for the
+        first-order correction (recommended for K ≳ 7).
+
     Parameters
     ----------
     accepted_rows:
         Accepted sample rows from A_ε.
     switches:
         Sequence of BiologicalSwitch definitions.
+    bias_correction:
+        ``"none"`` (default, plug-in) or ``"miller_madow"`` — see
+        :func:`_joint_entropy`. Miller–Madow results are clamped to ``[0, K]``.
 
     Returns
     -------
     float
-        H(S | A_ε) in bits.
+        H(S | A_ε) in bits, or ``nan`` when A_ε is empty (non-estimable).
     """
     if not accepted_rows:
-        return float(len(list(switches)))  # maximum degeneracy if no accepted rows
+        return float("nan")  # empty A_ε: conditional quantity is non-estimable
 
     switch_names = [sw.name for sw in switches]
+    K = len(switch_names)
     vectors = [
         tuple(bool(r.get(name)) for name in switch_names)
         for r in accepted_rows
     ]
-    return round(_joint_entropy(vectors), 4)
+    H = _joint_entropy(vectors, bias_correction=bias_correction)
+    if bias_correction != "none":
+        H = max(0.0, min(H, float(K)))  # correction can overshoot the K-bit bound
+    return round(H, 4)
 
 
 def causal_resolvability(
     accepted_rows: list[dict],
     switches,   # Sequence[BiologicalSwitch]
+    bias_correction: str = "none",
 ) -> float:
     """Compute causal resolvability R_RACH = 1 - H(S | A_ε) / K.
 
@@ -1002,7 +1044,9 @@ def causal_resolvability(
     K = len(list(switches))
     if K == 0:
         return 1.0
-    D = causal_degeneracy(accepted_rows, switches)
+    if not accepted_rows:
+        return float("nan")  # empty A_ε: non-estimable
+    D = causal_degeneracy(accepted_rows, switches, bias_correction=bias_correction)
     H_prior = _max_entropy(K)
     R = max(0.0, 1.0 - D / H_prior)
     return round(R, 4)
