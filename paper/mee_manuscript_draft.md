@@ -31,8 +31,11 @@ and that NOV is, for quantitative observations, a constructive expected-value-of
 sample-information (EVSI) computable from the admissible region without
 re-inference. In a controlled demonstration, model selection reports an arbitrary
 best model while RACH correctly reports the confound and identifies the resolving
-observation; the same workflow reproduces on an unrelated synthetic system. We
-illustrate the framework on the Izu Islands *Campanula microdonta* pollinator-loss
+observation; the same workflow reproduces on an unrelated synthetic system, on a
+published ecological rule (Bergmann's rule), and — applied one level up to the
+causal *structure* itself — recovers direct-versus-mediated path ambiguity,
+including indirect paths, from a cline pattern without enumerating mechanisms in
+advance. We illustrate the framework on the Izu Islands *Campanula microdonta* pollinator-loss
 gradient, where current evidence is deliberately limited and causal resolution is
 correspondingly low — a finding RACH makes explicit and turns into a measurement
 plan. Open-source software accompanies the method.
@@ -309,6 +312,41 @@ directions, and attributions encoded for each rule are provisional transcription
 to be verified against the primary literature before publication; the validated
 contribution is the method, not the specific directional values.
 
+### 3.6 Discovering the path structure without enumerating mechanisms (Fig. 6)
+
+*(`python -m causal_model.structure_discovery --figure …`; seed 1,
+n_attempts = 20000, |A_ε| = 2774)*  Sections 3.1–3.5 and both worked examples
+take a **hand-enumerated** set of named mechanism switches as input. The deeper
+question a cline poses is whether the candidate causal paths *themselves* —
+including indirect, mediated ones — can be inferred from the pattern when the
+mechanisms are not known in advance and when fitness and cost (the selective
+economics) are unmeasurable. This experiment makes the **causal structure itself
+the random object**: over a minimal vocabulary of an exogenous cline driver `X`,
+two latent unmeasured mediators (`Ma`, `Mb`), and the two observed traits
+(`T1`, `T2`), it treats each of the nine candidate directed edges (`X→T` direct,
+`X→Ma→T` mediated, …) as a Bernoulli switch and gives each present edge a random
+sign and magnitude — the last step marginalising the unmeasurable economics. ABC
+keeps the structures whose forward-propagated trait directions reproduce the
+observed cline, and the entire RACH apparatus (CA, D, NOV) is then applied to the
+**edge space** rather than a named-mechanism space.
+
+The honest and expected result is high **structural** degeneracy. From the
+ordinal cline alone (both traits decline) `D_structural = 8.10 of 9` bits
+(R = 0.10), and the direct and mediated routes to each trait are jointly
+supported (for `T1`: direct 0.65, via `Ma` 0.37, via `Mb` 0.46): the cline cannot
+tell relaxed selection acting directly on the trait (`X→T`) from mediation
+through an unmeasured driver (`X→Ma→T`). This is exactly the Campanula "is
+nectar-guide loss direct relaxed selection, or selfing-mediated?" question
+(§4.2), now *discovered* from randomly generated structures rather than
+hand-coded. RACH then names the measurement that breaks the degeneracy: NOV over
+the edge space ranks measuring a mediator's own cline response highest
+(ΔD = +1.01 bits for `Ma` versus +0.81 for `Mb`), and conditioning on a silent
+mediator collapses every path through it (via `Ma` 0.37 → 0.00) while raising the
+direct route (0.65 → 0.74) (Fig. 6). The method commits only to the variable
+vocabulary and the admissible edges — a far weaker assumption than enumerating
+named mechanisms — and reports the resulting structural ambiguity rather than
+concealing it.
+
 ## 4. Worked examples
 
 ### 4.1 A published ecological rule: Bergmann's rule
@@ -440,6 +478,17 @@ explicitly and exposed to sensitivity analysis. Separating direct selection from
 correlated response ultimately needs manipulative or selection-gradient data,
 which RACH prioritises through NOV but does not replace.
 
+**Beyond enumerated mechanisms.** The core framework requires the analyst to
+name the candidate mechanisms. The structure-discovery experiment (§3.6) shows
+the same machinery applies one level up — treating the causal *structure* (the
+edges of a small DAG, including indirect mediated paths) as the random object and
+inferring path support from the pattern alone. This trades the strong commitment
+of enumerating named mechanisms for the weaker one of fixing a variable
+vocabulary, and surfaces the direct-versus-mediated ambiguity as measurable
+structural degeneracy with an explicit resolving measurement. Scaling the edge
+vocabulary, and combining discovered structures with named-mechanism priors, are
+natural next steps.
+
 ## Figure captions
 
 **Figure 1. Model selection misleads; RACH does not.**
@@ -499,6 +548,22 @@ degeneracy-based test still resolves (Foster), and a higher-dimensional case
 true cause; the directional encodings are provisional and require domain-expert
 verification. Seed 1, n = 4000. Generated by
 `causal_model/ecological_rules_validation.py --figure`.
+
+**Figure 6. Discovering the causal path from the pattern alone.**
+Mechanism-free structure discovery over a vocabulary of an exogenous cline
+driver X, two latent unmeasured mediators (Ma, Mb) and two observed traits
+(T1, T2), with the nine candidate directed edges treated as random switches and
+each present edge given a random sign and magnitude (marginalising the
+unmeasurable fitness/cost economics). (A) Posterior support for each edge given
+only the observed ordinal cline (both traits decline); structural degeneracy
+D = 8.10 of 9 bits (R = 0.10) — the cline barely constrains the structure.
+(B) Path support to T1: the direct (X→T1) and mediated (X→Ma→T1, X→Mb→T1) routes
+are jointly supported from the pattern alone, then separated once the top-NOV
+mediator is measured — a silent mediator removes its route (via Ma 0.37 → 0.00)
+and raises the direct route (0.65 → 0.74). The direct-versus-mediated question is
+thus *discovered* from random structures, not hand-coded. Seed 1,
+n_attempts = 20000, |A_ε| = 2774. Generated by
+`causal_model/structure_discovery.py --figure`.
 
 **Figure S1. Known-truth recovery (self-consistency).**
 (A) Mean per-switch recovery (accuracy, F1) as a function of injected
