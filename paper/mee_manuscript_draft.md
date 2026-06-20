@@ -149,6 +149,51 @@ rule: selecting the setting that maximises `R_RACH` would overfit `ε` and is
 explicitly avoided. The reported result is the pre-specified one, with ε/prior
 sensitivity disclosed rather than optimised over.
 
+### 2.5 The RACH algorithm
+
+RACH is a single procedure (Algorithm 1), not a pipeline of separate analyses.
+Its primitives are standard — prior sampling / ABC, Shannon entropy, and a
+preposterior expectation — but three steps that do not co-occur, with this
+objective, in ABC model choice, pattern-oriented modelling, or classical
+value-of-information give RACH its distinct identity:
+
+(i) a **constraint grammar `G` applied before the data**, together with an
+evidence-role taxonomy (`observed_target` / `input_context` / `diagnostic_only` /
+`future_observation`) that determines which observations may enter the distance
+`d` and thereby blocks circular inference (line 4);
+
+(ii) the **entropy of the switch posterior is reported as the result** — causal
+degeneracy — rather than its mode (line 9);
+
+(iii) an **observation-design step whose utility is the inference's own causal
+resolvability** (lines 10–14): a value-of-information computation that needs no
+external decision or utility model and is obtained *exactly from the stored
+admissible region* by filtering, with no re-inference (§2.3, Proposition 6′).
+
+```
+Algorithm 1  RACH
+Input : switches S = {s_1..s_K}; prior π over (θ,s); constraint grammar G;
+        simulator f; pattern maps P_sim, P_obs; observed patterns y_obs (with
+        evidence roles); context x_obs; tolerance ε; candidate observations Q
+Output: degeneracy D, resolvability R, admissibility CA_j, observation values NOV
+
+ 1  A ← ∅                                       # admissible causal region
+ 2  repeat N times:
+ 3      draw (θ, s) ~ π
+ 4      if G(θ) = 0: continue                   # pre-data feasibility filter
+ 5      p ← P_sim(f(x_obs; θ, s))               # simulate → ordinal pattern
+ 6      if d(p, P_obs(y_obs)) ≤ ε:              # only role = observed_target enter d
+ 7          A ← A ∪ {(θ, s)}
+ 8  CA_j ← mean_{(θ,s)∈A} s_j                   # P(s_j = 1 | A_ε)
+ 9  D ← H(S | A);  R ← 1 − D / K                # DEGENERACY, RESOLVABILITY = result
+10  for each quantitative candidate q ∈ Q:      # observation design, no re-inference
+11      for each value-bin v of g_q over A:
+12          A_{q=v} ← { (θ,s) ∈ A : g_q(θ,s) ≈ v }
+13          R_v ← 1 − H(S | A_{q=v}) / K
+14      NOV(q) ← Σ_v Pr(v | A) · R_v − R        # preposterior EVSI on resolvability
+15  return D, R, CA_j, NOV
+```
+
 ## 3. Validation
 
 ### 3.1 Known-truth recovery (self-consistency; Fig. S1)
@@ -241,7 +286,12 @@ admissibility and the constraint grammar and quantifies what each pattern
 contributes; against **VOI/EVSI** (Chaloner & Verdinelli 1995; Canessa et al.
 2015), it supplies a constructive resolvability-utility EVSI requiring no external
 decision model. The unifying move is to treat causal confounding as a measurable
-quantity (degeneracy) and observation design as its remedy.
+quantity (degeneracy) and observation design as its remedy. None of the primitives
+in Algorithm 1 is exotic; the contribution is their combination under a single
+objective — the constraint-grammar admissibility filter (line 4), degeneracy
+reported as the result (line 9), and a value-of-information step whose utility is
+the inference's own resolvability (lines 10–14) — which, to our knowledge, do not
+appear together elsewhere.
 
 **Limitations.** First, admissibility is not identification: RACH says which
 mechanisms remain possible and what to measure to separate them, not which is
