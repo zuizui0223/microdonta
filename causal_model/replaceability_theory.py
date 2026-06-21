@@ -53,9 +53,12 @@ anything.
 ------------------------------------------------------------------------------
 Theorem A (Elimination Principle: irreplaceability = last driver standing)
 ------------------------------------------------------------------------------
-For any O with A(O) ≠ ∅ and any mechanism j,
+For any O with A(O) ≠ ∅ and any mechanism j IN THE CANDIDATE SET,
         CRC_j(O) = ∞
    ⟺   ∃ trait t with PRESENT(t) ∈ O, j ∈ D(t), and D(t)\{j} ⊆ NullOff(O).
+
+Equivalently: j becomes irreplaceable exactly when it is the last remaining
+mechanism *in the specified candidate set* that could explain some observed effect.
 
 Proof. CRC_j = ∞ ⟺ setting s_j = 0 makes the system unsatisfiable. The system is
 a positive monotone CNF (PRESENT clauses) together with negative units (NULL).
@@ -64,6 +67,21 @@ in it is already fixed to 0, i.e. every driver of t other than j is forced off �
 which by the Lemma means D(t)\{j} ⊆ NullOff(O) — and j ∈ D(t). No other constraint
 can force s_j up (positive clauses force only OR-truth; negative units force only
 zeros). Conversely such a clause makes s_j = 0 unsatisfiable. ∎
+
+Three prerequisites for the model-to-world inference step:
+  (1) Candidate-set completeness. Theorem A proves j irreplaceable within the
+      *stated* candidate set. If the set is incomplete — unknown mechanisms not
+      in the model also drive the focal trait — the conclusion that j is
+      causally necessary in the world does not follow. The appropriate claim is
+      always conditional: "j is necessary GIVEN these are all the candidate
+      mechanisms."
+  (2) Observation fidelity. NULL observations are treated as exact. If a trait
+      believed to be NULL in fact carries a weak signal (measurement error, low
+      power), the elimination may be spurious and CRC_j = ∞ can be false.
+  (3) Absence of latent mediators. If what the model calls "mechanism j" is
+      itself causally mediated by an unmeasured variable M, then eliminating j's
+      competitors does not distinguish j from M. The coarser "mechanism j" label
+      may hide residual replaceability.
 
 Corollary (the counter-intuitive, actionable part).
 A mechanism j can be certified *necessary* (CRC_j = ∞) only by reducing some
@@ -88,19 +106,29 @@ region A_ε,
         I_j  = −log₂ P(s_j = 0 | A_ε) = −log₂(1 − CA_j),
         Λ_j  = min_{ r ∈ A_ε ∩ {s_j = 0} } L_constraint(r).
 
-I_j is a strictly increasing function of the marginal posterior CA_j. Hence:
+The INFO TERM I_j is a strictly increasing function of the marginal posterior
+CA_j (the posterior probability that mechanism j is active). This is
+the only monotonicity claim: I alone determines ordering when Λ ≡ 0.
+
+IMPORTANT: the TOTAL CRC = I_j + Λ_j is NOT in general monotone in CA_j. The
+constraint penalty Λ_j is mechanism-specific and can invert the I-ordering: a
+mechanism with lower CA (lower I) may incur a higher Λ and thus a higher total
+CRC. The decomposition is additive, but the sum is not guaranteed monotone.
+
+Hence:
   (i)  if no external constraints are supplied (Λ ≡ 0), the CRC ranking of
        mechanisms is order-identical to the CA_j ranking — CRC then carries no
        information beyond the marginal posterior;
-  (ii) the constraint term Λ_j can make CRC_a > CRC_b while CA_a = CA_b, so CRC
-       strictly refines the marginal posterior exactly when external constraints
-       discriminate the minimal-cost replacements.
+  (ii) the constraint term Λ_j can make CRC_a > CRC_b while CA_a = CA_b (and
+       even while CA_a < CA_b), so CRC strictly refines the marginal posterior
+       exactly when external constraints discriminate the minimal-cost
+       replacements.
 
 This is the precise sense in which CRC ⊋ posterior, and it pinpoints the unique
 source of the surplus: the external constraint term Λ.
 
 ------------------------------------------------------------------------------
-Theorem C (Elimination is synergistic: myopic/greedy design provably fails)
+Theorem C (Elimination is synergistic: greedy design can provably fail)
 ------------------------------------------------------------------------------
 This is the non-obvious, actionable result. Theorem A's verbal form ("certify a
 mechanism by eliminating its rivals") is just disjunctive syllogism / Popperian
@@ -122,21 +150,28 @@ Consequences:
   (i)  R_j is NOT submodular. A monotone submodular f with f(∅)=0 whose every
        singleton gain is 0 is identically 0; here the n-set gain is 1>0, so the
        diminishing-returns inequality is violated (the returns are INCREASING).
-  (ii) The standard greedy algorithm for experimental design — repeatedly add the
-       observation of largest marginal value — has no positive-gain element to
-       add and makes no progress, returning R_j = 0, while the optimal observation
-       SET returns R_j = 1. The 1−1/e greedy guarantee that holds for submodular
-       objectives DOES NOT transfer to CRC resolution.
+  (ii) Positive-marginal-gain-stopping greedy — the standard experimental-design
+       heuristic that adds the observation of largest marginal resolution gain and
+       stops when no element has positive gain — finds no positive-gain element
+       and makes NO progress, returning R_j = 0, while the optimal observation
+       SET returns R_j = 1. This failure occurs precisely because all singletons
+       have zero marginal gain; greedy never takes its first step.
+       In general: because R_j is not submodular, the (1−1/e)·OPT approximation
+       guarantee that greedy provides for submodular maximisation does NOT apply
+       to CRC resolution. No performance bound from submodular theory transfers.
 
-For the continuous marginal h_j(O) = P(s_j = 1 | A(O)) the same family exhibits
-strictly increasing marginal returns (supermodularity): the gain of the last
-eliminating observation exceeds the gain of the first.
+For the continuous marginal h_j(O) = P(s_j = 1 | A(O)) the same CANONICAL FAMILY
+exhibits increasing marginal returns along the elimination chain: the gain of the
+last eliminating observation exceeds the gain of the first. This is a property of
+the canonical n-competitor family; global supermodularity of h_j is NOT claimed.
 
 Practical upshot (the warning): in a confounded cline you must plan the
 elimination SET jointly; choosing observations one-at-a-time by their individual
-value is provably wrong here. (Note this indicts the greedy RACH-SEQ scheme in
-this very repository.) Theorem C is corroborated below by machine search: greedy-
-failure instances are found across random structural models, and the canonical
+value will miss the synergistic target when all individual observations are
+valueless but their combination is decisive. (This indicts the greedy RACH-SEQ
+scheme in this very repository.) The RACH-SET module provides a budget-B joint
+optimizer. Theorem C is corroborated below by machine search: greedy-failure
+instances are found across random structural models, and the canonical
 n-competitor family is verified to violate submodularity for every n ≥ 2.
 """
 from __future__ import annotations
@@ -437,15 +472,24 @@ def submodularity_violated(
     candidate_nulls: list[str],
     j: int,
 ) -> bool:
-    """True if ∃ x,y: zero singleton resolution gain but the pair resolves j
-    (a witness that R_j is not submodular — returns are increasing)."""
-    from itertools import combinations
+    """True if the marginal gain of some x is higher given a larger context than
+    given a smaller one — i.e. R_j exhibits increasing rather than diminishing
+    returns (non-submodular).
+
+    Checks the extremal pair A=∅, B=all_others for each candidate x: if
+    gain_x(B) > gain_x(∅) then submodularity is violated.
+    """
     base_r = resolution_indicator(model, baseline, j)
-    for x, y in combinations(candidate_nulls, 2):
-        gx = resolution_indicator(model, _add_nulls(baseline, [x]), j) - base_r
-        gy = resolution_indicator(model, _add_nulls(baseline, [y]), j) - base_r
-        gxy = resolution_indicator(model, _add_nulls(baseline, [x, y]), j) - base_r
-        if gx == 0 and gy == 0 and gxy > 0:
+    for x in candidate_nulls:
+        others = [c for c in candidate_nulls if c != x]
+        gain_empty = (resolution_indicator(model, _add_nulls(baseline, [x]), j)
+                      - base_r)
+        r_others = resolution_indicator(model, _add_nulls(baseline, others), j)
+        gain_given_others = (
+            resolution_indicator(model, _add_nulls(baseline, others + [x]), j)
+            - r_others
+        )
+        if gain_given_others > gain_empty:
             return True
     return False
 
