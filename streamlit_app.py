@@ -1,22 +1,34 @@
-"""Streamlit app for RACH: Restricted Admissible Causal Hypotheses.
+"""RACH — Causal Admissibility & Degeneracy Framework  (post-publication tool).
 
-Workflow
---------
-1. Constrain  -- ecological constraint grammar rejects implausible latent parameter combos
-2. Sample     -- random draws from ecology-principled trade-off priors
-3. Simulate   -- stochastic ABM: the canonical RACH f(θ,s) for this system
-4. Filter     -- ABC rejection against independent Inoue-series gradient targets
-5. Retain     -- restricted admissible causal hypotheses + compatible parameter ranges
-6. Infer switches -- PathwaySwitch posterior: which biological mechanisms are active?
+Role
+----
+This app is a post-publication customization companion for the MEE paper
+"RACH: A framework for causal admissibility, degeneracy and next-observation
+value in ecological systems."
 
-Reference: Inoue & Amano (1986) -- pollinator change and breeding system evolution, Izu Islands.
+Two entry points:
+
+  1. **Worked Examples** — reproduces the three Tier-A (validated, magnitude-free)
+     worked examples from the paper, so you can inspect the live RACH output:
+       • Structure discovery (§4.1) — mechanism-free path inference
+       • Campanula isolation cline (§4.2) — S2/S3 confound and guide resolution
+       • Bergmann's rule (§4.3) — heat conservation vs. fasting endurance
+
+  2. **Custom RACH** — enter your own system (mechanisms, trait effects, observed
+     ordinal pattern) and get CA_j, D, R, confound structure, and NOV suggestions
+     using the same Tier-A ABC engine.
+
+No field-data magnitudes are assumed; every active edge gets a random positive
+magnitude per draw, which is then integrated out (Tier A, VALIDATED).
 """
 
 from __future__ import annotations
 
+import math
 import pathlib
+import random
 import sys
-from typing import Any
+from dataclasses import dataclass
 
 _ROOT = pathlib.Path(__file__).resolve().parent
 if str(_ROOT) not in sys.path:
@@ -25,1489 +37,698 @@ if str(_ROOT) not in sys.path:
 import pandas as pd
 import streamlit as st
 
-from attraction_trait_model.simulation import simulate_population
-from causal_model.abc_distance import (
-    available_rules,
+# ---------------------------------------------------------------------------
+# Core RACH imports (always available)
+# ---------------------------------------------------------------------------
+from causal_model.causal_admissibility import (
+    causal_degeneracy,
+    causal_resolvability,
+    rach_summary,
 )
-from causal_model.switch_inference import GRADIENT_THRESH_MAP  # single source of truth
-from causal_model.parameter_constraints import (
-    LITERATURE_SOURCES,
-    predefined_tradeoff_presets,
-    sample_all_sets_with_rejection_log,
-)
-from causal_model.parameter_sampling import (
-    param_set_to_model_parameters,
-    env_slopes_from_param_set,
-)
-from causal_model.range_summary import summarize_parameter_ranges
-from causal_model.switch_inference import (
-    CAMPANULA_SWITCHES,
-    compute_coactivation_table,
-    run_switch_posterior_inference_abm,
-)
-from causal_model.switches import switches_for_structure
-from examples.campanula_izu.causal_structures import campanula_causal_structures
-from examples.campanula_izu.observed_data import (
-    load_population_env,
-    response_target_patterns,
-)
-from examples.campanula_izu.pattern_evaluator import (
-    ABMPopulationProxy,
-    evaluate_patterns,
-)
-from examples.campanula_izu.campanula_phenomenological import (
-    default_campanula_gradient_environments,
-    simulate_campanula_gradient,
-)
+from causal_model.mechanism_equivalence import mechanism_equivalence_structure
+from causal_model.switch_inference import BiologicalSwitch
+from causal_model.simulator import TIER_VALIDATED, evidence_tier
 
+# ---------------------------------------------------------------------------
+# App config
+# ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="RACH -- Campanula / Izu Islands",
+    page_title="RACH — Causal Admissibility Framework",
     layout="wide",
-    page_icon=":telescope:",
+    page_icon="🔬",
 )
 
-# ---------------------------------------------------------------------------
-# Observed patterns
-# ---------------------------------------------------------------------------
-# y_obs is the role-filtered observed_target set, loaded internally by the
-# inference functions (response_target_patterns()). The app no longer threads a
-# separate observed_rels/pattern_weights dict into inference — those arguments
-# were ignored and have been removed.
-
-# ---------------------------------------------------------------------------
-# Gradient / multi-population data
-# ---------------------------------------------------------------------------
-try:
-    _POP_ENV = load_population_env()
-except Exception:
-    _POP_ENV = {}
-
-LATENT_PARAMS = [
-    "guide_cost",
-    "outcrossing_benefit",
-    "selfing_benefit",
-    "inbreeding_depression",
-    "background_pollinator_efficiency",
-    "drift_strength",
-    "direct_pollinator_guide_benefit",
-    "cost_of_waiting_for_pollinators",
-]
-
-WORKFLOW_STEPS = [
-    {"Step": "1. Constrain",   "RACH object": "G(θ)",      "Meaning": "Ecological constraint grammar — biological feasibility constraints on θ. Implausible parameter combinations are rejected before simulation."},
-    {"Step": "2. Sample",      "RACH object": "θ ~ prior",  "Meaning": "Draw latent parameters θ (benefit/cost trade-offs, env slopes) from ecology-principled priors. Also sample causal switch states s ∈ {0,1}^K."},
-    {"Step": "3. Simulate",    "RACH object": "f(x_obs;θ,s)", "Meaning": "Run generative dynamics with fixed empirical context x_obs (island distance, Bombus presence) and sampled (θ,s). Stochastic ABM is the canonical f for this example."},
-    {"Step": "4. Accept",      "RACH object": "d ≤ ε",      "Meaning": "Accept if simulated patterns P_sim match independent y_obs gradients from the Inoue series within tolerance ε. hypothesis_prediction and input_context rows excluded."},
-    {"Step": "5. A_ε",         "RACH object": "A_ε(y_obs,x_obs)", "Meaning": "The admissible causal region: all (θ,s) that satisfy G(θ)=1 and d≤ε. This is the core RACH inferential object."},
-    {"Step": "6. Quantify",    "RACH object": "CA_j, D, R, OC_k, NOV", "Meaning": "Compute the 5 core RACH quantities from A_ε: causal admissibility, degeneracy, resolvability, observation contribution, next-observation value."},
-]
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def stretch_df(df: pd.DataFrame, **kwargs) -> None:
-    st.dataframe(df, width="stretch", **kwargs)
-
-
-def _run_tag(settings: dict) -> str:
-    """Short tag for file names: YYYYMMDD_HHMMSS_preset_seed_rule."""
-    import datetime
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    preset = settings.get("preset_name", "unknown").replace("_", "")[:12]
-    seed   = settings.get("seed", 0)
-    rule   = settings.get("acceptance_rule", "unknown").replace("_", "").replace(".", "")[:10]
-    return f"{ts}_{preset}_s{seed}_{rule}"
-
-
-def _build_zip(files: dict[str, pd.DataFrame]) -> bytes:
-    """Pack multiple DataFrames into an in-memory ZIP.
-
-    Parameters
-    ----------
-    files : {filename_without_ext: DataFrame}
-    """
-    import io, zipfile
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for name, df in files.items():
-            if df is not None and not df.empty:
-                zf.writestr(f"{name}.csv", df.to_csv(index=False).encode("utf-8"))
-    return buf.getvalue()
-
-
-def final_abm_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    if not rows:
-        return {
-            "mean_nectar_guide": 0.0, "selfing_rate": 0.0,
-            "mean_herkogamy": 0.0, "mean_flower_size": 0.0, "Fis_proxy": 0.0,
-        }
-    return rows[-1]
-
-
-def average_summaries(summaries: list[dict[str, Any]]) -> dict[str, float]:
-    numeric_keys = [
-        "mean_nectar_guide", "selfing_rate", "mean_herkogamy",
-        "mean_flower_size", "Fis_proxy", "outcrossing_rate",
-        "failed_rate", "mean_fitness", "mean_selfing_ability", "mean_neutral_diversity",
-    ]
-    if not summaries:
-        return {key: 0.0 for key in numeric_keys}
-    return {
-        key: sum(float(row.get(key, 0.0)) for row in summaries) / len(summaries)
-        for key in numeric_keys
-    }
-
-
-# ---------------------------------------------------------------------------
-# Gradient trait columns helper
-# ---------------------------------------------------------------------------
-
-_GRAD_VARS = ["nectar_guide", "selfing_rate", "herkogamy", "flower_size", "Fis", "primary_pollinator_frequency"]
-_GRAD_POPS = ["mainland", "Oshima", "Kozushima", "Hachijo"]
-
-
-def _gradient_columns(outputs_by_pop: dict[str, Any], abm: bool = False) -> dict[str, float]:
-    """Return per-population trait values as flat columns for the run row.
-
-    Keys: e.g. 'mainland_nectar_guide', 'Oshima_selfing_rate', ...
-    Works with both PhenomenologicalOutput objects and plain dicts (ABM).
-    """
-    cols: dict[str, float] = {}
-    _abm_map = {
-        "nectar_guide": "mean_nectar_guide",
-        "selfing_rate": "selfing_rate",
-        "herkogamy": "mean_herkogamy",
-        "flower_size": "mean_flower_size",
-        "Fis": "Fis_proxy",
-        "primary_pollinator_frequency": "primary_pollinator_frequency",
-    }
-    for pop in _GRAD_POPS:
-        out = outputs_by_pop.get(pop)
-        if out is None:
-            for var in _GRAD_VARS:
-                cols[f"{pop}_{var}"] = float("nan")
-            continue
-        for var in _GRAD_VARS:
-            if abm:
-                key = _abm_map.get(var, var)
-                val = float(out.get(key, float("nan"))) if isinstance(out, dict) else float(getattr(out, var, float("nan")))
-            else:
-                val = float(getattr(out, var, float("nan")))
-            cols[f"{pop}_{var}"] = round(val, 4)
-    return cols
-
-
-# ---------------------------------------------------------------------------
-# Simulation backends
-# ---------------------------------------------------------------------------
-
-def simulate_structure_proxy(
-    structure, model_params, env_slopes: dict | None = None
-) -> tuple[dict, dict[str, Any]]:
-    """Run proxy simulation on the four named gradient populations.
-
-    Uses simulate_campanula_gradient() so outputs are keyed by
-    "mainland" / "Oshima" / "Kozushima" / "Hachijo" — matching
-    the pairwise pattern population names used by evaluate_patterns().
-
-    env_slopes (optional dict with keys ne_isolation_slope,
-    migration_decay_rate, pollinator_loss_slope) is used to rebuild
-    environments with the sampled θ slope values instead of defaults.
-    """
-    import math as _math
-    from attraction_trait_model.environment import Environment
-    from causal_model.switches import switches_for_structure as _sfs
-
-    _sw = _sfs(structure.name)
-    env_slopes = env_slopes or {}
-    _ne_slope  = float(env_slopes.get("ne_isolation_slope",   0.765))
-    _mig_rate  = float(env_slopes.get("migration_decay_rate", 3.19))
-
-    # Rebuild named environments with sampled θ slopes.
-    # Canonical pollinator frequencies are kept from the literature-derived
-    # defaults; only Ne (via ne_isolation_slope) and migration_rate
-    # (via migration_decay_rate) are updated per draw.
-    _base = default_campanula_gradient_environments()
-    named_envs: dict[str, Environment] = {}
-    for pop_name, base_env in _base.items():
-        iso = base_env.island_distance
-        mig = base_env.migration_rate if iso == 0.0 else (
-            0.15 * _math.exp(-_mig_rate * iso)
-        )
-        named_envs[pop_name] = Environment(
-            name=pop_name,
-            primary_pollinator_frequency=base_env.primary_pollinator_frequency,
-            background_pollinator_frequency=base_env.background_pollinator_frequency,
-            community_pollinator_abundance=base_env.community_pollinator_abundance,
-            migration_rate=mig,
-            island_distance=iso,
-            ne_isolation_slope=_ne_slope,
-        )
-
-    outputs_dict = simulate_campanula_gradient(_sw, params=model_params, environments=named_envs)
-    outputs_list = list(outputs_dict.values())
-
-    # Synthetic env table used by gradient_slope pattern evaluator
-    synth_pop_env = {
-        pop_name: {
-            "isolation": env.island_distance,
-            "distance_from_mainland": round(env.island_distance * 290.0, 1),
-            "primary_pollinator_frequency": env.primary_pollinator_frequency,
-        }
-        for pop_name, env in named_envs.items()
-    }
-
-    output_rows = [
-        {
-            "population": out.population,
-            "nectar_guide": out.nectar_guide,
-            "selfing_rate": out.selfing_rate,
-            "herkogamy": out.herkogamy,
-            "flower_size": out.flower_size,
-            "Fis": out.Fis,
-            "primary_pollinator_frequency": out.primary_pollinator_frequency,
-            "outcrossing_opportunity": out.outcrossing_opportunity,
-        }
-        for out in outputs_list
-    ]
-    return {}, {
-        "final_values": output_rows,
-        "generation_rows": [],
-        "outputs_list": outputs_list,
-        "outputs_by_pop": outputs_dict,
-        "synth_pop_env": synth_pop_env,
-    }
-
-
-def simulate_structure_stochastic_abm(
-    structure, model_params,
-    generations: int, population_size: int, replicates: int, seed: int,
-    env_slopes: dict | None = None,
-) -> tuple[dict[str, str], dict[str, Any]]:
-    """Run ABM on the four named gradient populations.
-
-    Population names match pairwise pattern targets (mainland, Oshima,
-    Kozushima, Hachijo) so evaluate_patterns() can find them.
-
-    env_slopes is forwarded from run_research_mode so the sampled θ
-    slopes are used when rebuilding environments per draw.
-    """
-    import math as _math
-    from attraction_trait_model.environment import Environment
-
-    env_slopes = env_slopes or {}
-    _ne_slope  = float(env_slopes.get("ne_isolation_slope",   0.765))
-    _mig_rate  = float(env_slopes.get("migration_decay_rate", 3.19))
-
-    # Rebuild named environments with sampled θ slopes
-    _base = default_campanula_gradient_environments()
-    _grad_envs: dict[str, Environment] = {}
-    for pop_name, base_env in _base.items():
-        iso = base_env.island_distance
-        mig = base_env.migration_rate if iso == 0.0 else (
-            0.15 * _math.exp(-_mig_rate * iso)
-        )
-        _grad_envs[pop_name] = Environment(
-            name=pop_name,
-            primary_pollinator_frequency=base_env.primary_pollinator_frequency,
-            background_pollinator_frequency=base_env.background_pollinator_frequency,
-            community_pollinator_abundance=base_env.community_pollinator_abundance,
-            migration_rate=mig,
-            island_distance=iso,
-            ne_isolation_slope=_ne_slope,
-        )
-    switches = switches_for_structure(structure.name)
-    final_by_population: dict[str, dict[str, float]] = {}
-    generation_rows: list[dict[str, Any]] = []
-
-    for pop_index, (population_name, env) in enumerate(_grad_envs.items()):
-        replicate_finals: list[dict[str, Any]] = []
-        for rep in range(replicates):
-            run_seed = seed + pop_index * 100_000 + rep * 1_000
-            rows = simulate_population(
-                env=env, params=model_params, switches=switches,
-                generations=generations, population_size=population_size,
-                seed=run_seed,
-            )
-            for row in rows:
-                generation_rows.append({
-                    "population": population_name, "replicate": rep,
-                    "structure": structure.name, **row,
-                })
-            replicate_finals.append(final_abm_summary(rows))
-        # Inject primary_pollinator_frequency from environment (ABM doesn't track it)
-        avg = average_summaries(replicate_finals)
-        avg["primary_pollinator_frequency"] = env.primary_pollinator_frequency
-        final_by_population[population_name] = avg
-
-    _abm_synth_env = {
-        name: {
-            "isolation": env.island_distance,
-            "distance_from_mainland": round(env.island_distance * 290.0, 1),
-            "primary_pollinator_frequency": env.primary_pollinator_frequency,
-        }
-        for name, env in _grad_envs.items()
-    }
-    abm_outputs_list = [
-        ABMPopulationProxy(pop, final_dict, _abm_synth_env.get(pop))
-        for pop, final_dict in final_by_population.items()
-    ]
-
-    final_rows = [{"population": n, **v} for n, v in final_by_population.items()]
-    return {}, {
-        "final_values": final_rows,
-        "generation_rows": generation_rows,
-        "outputs_list": abm_outputs_list,
-        "synth_pop_env": _abm_synth_env,
-        "outputs_by_pop": final_by_population,
-        "abm": True,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Core RACH workflow
-# ---------------------------------------------------------------------------
-
-def run_research_mode(
-    preset_name: str, n_attempts: int, seed: int,
-    acceptance_rule: str, backend: str,
-    generations: int, population_size: int, replicates: int,
-    progress_callback=None,   # callable(done, total, status_text) or None
-) -> dict[str, pd.DataFrame]:
-    import time as _time
-    preset = predefined_tradeoff_presets()[preset_name]
-    structures = campanula_causal_structures()
-    constraint_passed, rejected_params = sample_all_sets_with_rejection_log(
-        preset, n_attempts, seed=seed
-    )
-
-    n_structures = len(structures)
-    total_steps = len(constraint_passed) * n_structures
-    done_steps = 0
-    t_start = _time.monotonic()
-
-    all_runs: list[dict[str, Any]] = []
-    final_values: list[dict[str, Any]] = []
-    generation_rows: list[dict[str, Any]] = []
-
-    for param_index, param_set in enumerate(constraint_passed):
-        model_params = param_set_to_model_parameters(param_set)
-        _env_slopes = env_slopes_from_param_set(param_set)
-        for structure_index, structure in enumerate(structures):
-            run_seed = seed + param_index * 10_000 + structure_index * 100
-            try:
-                if backend == "stochastic_abm":
-                    rels, payload = simulate_structure_stochastic_abm(
-                        structure, model_params,
-                        generations=generations, population_size=population_size,
-                        replicates=replicates, seed=run_seed,
-                        env_slopes=_env_slopes,
-                    )
-                else:
-                    _, payload = simulate_structure_proxy(
-                        structure, model_params, env_slopes=_env_slopes
-                    )
-            except Exception:
-                payload = {"final_values": [], "generation_rows": []}
-
-            # --- y_obs acceptance targets ---
-            # Acceptance is driven by the role-filtered observed_target rows: the
-            # ordinal isolation gradients (currently selfing_distance and
-            # flower_size_distance). input_context / hypothesis_prediction /
-            # diagnostic_only / excluded rows are filtered out by role.
-            _outputs_list = payload.get("outputs_list", [])
-            _is_abm = payload.get("abm", False)
-            _grad_pats = response_target_patterns()
-            _synth_env  = payload.get("synth_pop_env", _POP_ENV)
-            if _outputs_list and _grad_pats:
-                try:
-                    _eval   = evaluate_patterns(_outputs_list, _grad_pats, _synth_env)
-                    _wrate  = _eval.weighted_match_rate
-                    _thresh = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
-                    _ok     = _wrate >= _thresh - 1e-9
-                    dist_metrics = {
-                        "pattern_matches":       _eval.n_matched,
-                        "pattern_total":         _eval.n_total,
-                        "abc_distance":          round(1.0 - _wrate, 4),
-                        "weighted_abc_distance": round(1.0 - _wrate, 4),
-                        "epsilon":               round(1.0 - _thresh, 4),
-                        "accepted_by_epsilon":   _ok,
-                        "weighted_accepted":     _ok,
-                        "acceptance_rule":       acceptance_rule,
-                    }
-                except Exception as _exc:
-                    import traceback as _tb
-                    print(f"[WARN] evaluate_patterns failed: {_exc}\n{_tb.format_exc()}")
-                    dist_metrics = {
-                        "pattern_matches": 0, "pattern_total": len(_grad_pats),
-                        "abc_distance": 1.0, "weighted_abc_distance": 1.0,
-                        "epsilon": 0.0, "accepted_by_epsilon": False,
-                        "weighted_accepted": False, "acceptance_rule": acceptance_rule,
-                    }
-            else:
-                dist_metrics = {
-                    "pattern_matches": 0, "pattern_total": 0,
-                    "abc_distance": 1.0, "weighted_abc_distance": 1.0,
-                    "epsilon": 0.0, "accepted_by_epsilon": False,
-                    "weighted_accepted": False, "acceptance_rule": acceptance_rule,
-                }
-            _grad_eval_cols: dict = {}  # gradient IS the main eval; no separate tracking needed
-
-            # Per-population trait value columns for gradient visualization
-            _outputs_by_pop = payload.get("outputs_by_pop", {})
-            _grad_trait_cols = _gradient_columns(_outputs_by_pop, abm=_is_abm)
-
-            run_id = f"{param_set.get('parameter_set_id', '')}_{structure.name}_{backend}"
-            row = {
-                "run_id": run_id,
-                "parameter_set_id": param_set.get("parameter_set_id"),
-                "preset_name": preset_name,
-                "backend": backend,
-                "causal_hypothesis": structure.name,
-                "structure": structure.name,
-                **dist_metrics,
-                "admissible_by_epsilon": dist_metrics["accepted_by_epsilon"],
-                "generations": generations if backend == "stochastic_abm" else None,
-                "population_size": population_size if backend == "stochastic_abm" else None,
-                "replicates": replicates if backend == "stochastic_abm" else None,
-                **{p: param_set.get(p) for p in LATENT_PARAMS},
-                "guide_tradeoff_class": param_set.get("guide_tradeoff_class", ""),
-                "selfing_tradeoff_class": param_set.get("selfing_tradeoff_class", ""),
-                "guide_net_benefit": param_set.get("guide_net_benefit", ""),
-                "selfing_net_benefit": param_set.get("selfing_net_benefit", ""),
-                **_grad_eval_cols,
-                **_grad_trait_cols,
-            }
-            all_runs.append(row)
-
-            # --- progress callback ---
-            done_steps += 1
-            if progress_callback is not None:
-                elapsed = _time.monotonic() - t_start
-                avg_s = elapsed / done_steps
-                remain = avg_s * (total_steps - done_steps)
-                admissible_so_far = sum(1 for r in all_runs if r.get("admissible_by_epsilon"))
-                progress_callback(
-                    done_steps, total_steps,
-                    f"param {param_index+1}/{len(constraint_passed)} · "
-                    f"{structure.name} · "
-                    f"admissible so far: {admissible_so_far} · "
-                    f"elapsed {elapsed:.0f}s · "
-                    f"ETA {remain:.0f}s"
-                )
-
-            for final_row in payload.get("final_values", []):
-                final_values.append({
-                    "run_id": run_id, "causal_hypothesis": structure.name,
-                    "structure": structure.name, "backend": backend, **final_row,
-                })
-            if backend == "stochastic_abm":
-                for gen_row in payload.get("generation_rows", []):
-                    generation_rows.append({"run_id": run_id, **gen_row})
-
-    admissible_runs = [r for r in all_runs if r.get("admissible_by_epsilon")]
-    compatible_ranges = summarize_parameter_ranges(admissible_runs, LATENT_PARAMS)
-    df_runs = pd.DataFrame(all_runs)
-
-    if df_runs.empty:
-        df_summary = pd.DataFrame(columns=[
-            "causal_hypothesis", "total_runs", "admissible_runs",
-            "admissibility_rate", "mean_matches", "mean_abc_distance",
-            "mean_weighted_abc_distance",
-        ])
-    else:
-        df_summary = (
-            df_runs.groupby("causal_hypothesis")
-            .agg(
-                total_runs=("pattern_matches", "count"),
-                admissible_runs=("admissible_by_epsilon", "sum"),
-                mean_matches=("pattern_matches", "mean"),
-                mean_abc_distance=("abc_distance", "mean"),
-                mean_weighted_abc_distance=("weighted_abc_distance", "mean"),
-            )
-            .reset_index()
-        )
-        df_summary["admissibility_rate"] = (
-            df_summary["admissible_runs"] / df_summary["total_runs"]
-        ).round(3)
-        df_summary["mean_matches"] = df_summary["mean_matches"].round(3)
-        df_summary["mean_abc_distance"] = df_summary["mean_abc_distance"].round(3)
-        df_summary["mean_weighted_abc_distance"] = (
-            df_summary["mean_weighted_abc_distance"].round(3)
-        )
-        df_summary = df_summary.sort_values(
-            ["admissibility_rate", "mean_matches"], ascending=False
-        )
-
-    return {
-        "constraint_passed_params": pd.DataFrame(constraint_passed),
-        "rejected_params": pd.DataFrame(rejected_params),
-        "all_runs": df_runs,
-        "admissible_runs": pd.DataFrame(admissible_runs),
-        "compatible_ranges": pd.DataFrame(compatible_ranges),
-        "hypothesis_summary": df_summary,
-        "final_values": pd.DataFrame(final_values),
-        "generation_rows": pd.DataFrame(generation_rows),
-    }
-
-
-# ---------------------------------------------------------------------------
-# Chart helpers
-# ---------------------------------------------------------------------------
-
-# ============================================================================
-# UI
-# ============================================================================
-
-# ---------------------------------------------------------------------------
-# Navigation steps
-# ---------------------------------------------------------------------------
-_STEPS = [
-    "① RACH Inference",
-    "② CA_j",
-    "③ D · R",
-    "④ OC_k",
-    "⑤ NOV",
-    "⑥ Parameter A_ε",
-    "⑦ Downloads",
-    "⑧ Generality",
-]
-
-_STEP_SUBTITLES = {
-    "① RACH Inference":  "Run A_ε sampling (ABM backend)",
-    "② CA_j":            "Causal admissibility P(s_j=1 | A_ε)",
-    "③ D · R":           "Degeneracy & resolvability",
-    "④ OC_k":            "Observation contribution (LOO)",
-    "⑤ NOV":             "Next-observation value",
-    "⑥ Parameter A_ε":   "Accepted (θ,s) in parameter space",
-    "⑦ Downloads":       "Export all tables as CSV / ZIP",
-    "⑧ Generality":      "Model-selection-vs-RACH confound demo (Campanula / synthetic)",
-}
-
-if "nav_step" not in st.session_state:
-    # Land on the primary analysis (① RACH Inference). The pre-specified
-    # strict_all rule is the reported result (MEE framing); there is no
-    # ensemble rule-selection step.
-    st.session_state["nav_step"] = _STEPS[0]
-
-# ---------------------------------------------------------------------------
-# Page header (always shown)
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Page header
+# ===========================================================================
 st.title("RACH — Causal Admissibility & Degeneracy Framework")
 st.caption(
-    "**RACH** (*Restricted Admissible Causal Hypotheses*) — "
-    "estimates the admissible causal region A_ε and quantifies "
-    "CA_j, D, R, OC_k, NOV.  "
-    "Worked example: Izu Islands *Campanula microdonta* system "
-    "(older literature may refer to the broader *C. punctata* complex)."
+    "Post-publication customization tool for "
+    "*Methods in Ecology and Evolution* (2026). "
+    "Run the Tier-A worked examples from the paper, or enter your own system."
 )
+
 with st.expander("RACH formal definition", expanded=False):
     st.markdown(r"""
 **Core RACH object — admissible causal region:**
 
 ```
-A_ε(y_obs, x_obs) = { (θ, s) ∈ Θ × S :  G(θ)=1,  d(P_sim(f(x_obs; θ, s)), P_obs(y_obs)) ≤ ε }
+A_ε(y_obs, x_obs) = { (θ, s) ∈ Θ × S :  G(θ)=1,  d(P_sim(f(x_obs; θ,s)), P_obs(y_obs)) ≤ ε }
 ```
 
-| Symbol | Name | This example |
-|--------|------|-------------|
-| x_obs | Fixed ecological context | island distance, island area, observed Bombus frequency |
-| θ | Latent parameters | guide_cost, selfing_benefit, Ne_isolation_slope, … |
-| s | Causal switch state {0,1}^K | S1 guide→Bombus, S2 selfing syndrome, S3 common cause, S5 small pollinator |
-| G(θ) | Constraint grammar | biological feasibility constraints C1–C5 |
-| f | Generative dynamics | Wright-Fisher drift + selection + stochastic ABM |
-| y_obs | Independent observations | Inoue-series gradients: flower_size decreases with isolation (Inoue & Amano 1986) + selfing/outcrossing shifts with isolation (Inoue 1990). Fis is excluded until independently source-confirmed; nectar_guide is planned own-field data; herkogamy is latent dichogamy. |
+| Symbol | Name | Meaning |
+|--------|------|---------|
+| x_obs | Fixed ecological context | gradient environment, Bombus frequency, latitude … |
+| θ | Latent parameters | effect magnitudes (randomised in Tier-A) |
+| s | Mechanism switch state {0,1}^K | which candidate mechanisms are active |
+| G(θ) | Feasibility constraint | biological plausibility filter |
+| f | Generative map | structural forward propagation |
+| y_obs | Observed ordinal pattern | directional gradients accepted as facts |
 
 **Five core RACH quantities:**
 
 | Quantity | Symbol | Meaning |
 |----------|--------|---------|
-| Causal admissibility | CA_j = P(s_j=1 \| A_ε) | Prob. mechanism j is active in admissible region |
-| Causal degeneracy | D = H(S \| A_ε) | Remaining entropy of mechanism combinations (bits) |
-| Causal resolvability | R = 1 − D/K | Fraction of causal uncertainty resolved (0→1) |
-| Observation contribution | OC_k = R(O) − R(O\\{k}) | How much pattern k adds to resolvability |
-| Next-observation value | NOV(q) = E[R(O∪q)−R(O)] | Expected resolvability gain from q (constructive EVSI for quantitative obs; heuristic for ordinal) |
+| Causal admissibility | CA_j = P(s_j=1 \| A_ε) | Probability mechanism j is active in A_ε |
+| Causal degeneracy | D = H(S \| A_ε) | Remaining mechanism entropy (bits) |
+| Causal resolvability | R = 1 − D/K | Fraction of causal uncertainty resolved |
+| Observation contribution | OC_k = R(O) − R(O∖{k}) | Resolvability added by pattern k |
+| Next-observation value | NOV(q) = E[R(O∪q) − R(O)] | Expected ΔR from candidate observation q |
+
+**Two-tier evidence policy:**
+* **Tier A (VALIDATED)** — randomised-coefficient generic f; conclusions are about the *confound logic*, not assumed magnitudes. ✅ Safe to report as validation of the *method*.
+* **Tier B (ILLUSTRATIVE)** — hand-coded phenomenological f; posteriors reflect encoded assumptions. ⚠ Conditional on the encoded f only.
 """)
 
-# --- Worked example context panel ----------------------------------------
-with st.expander("Worked example — シマホタルブクロ / Izu Islands context", expanded=False):
-    col_yobs, col_xobs = st.columns(2)
-    with col_yobs:
-        st.markdown("**y_obs — independent observations used for ABC acceptance**")
-        _rtp = response_target_patterns()
-        _yobs_rows = [
+# ===========================================================================
+# Top-level navigation
+# ===========================================================================
+tab_examples, tab_custom, tab_about = st.tabs(
+    ["① Tier-A Worked Examples", "② Custom RACH Analysis", "ℹ About"]
+)
+
+
+# ===========================================================================
+# Helpers
+# ===========================================================================
+
+def _ca_bar(ca: dict[str, float], title: str = "") -> None:
+    """Display CA_j as a bar chart + colour-coded metric row."""
+    if title:
+        st.markdown(f"#### {title}")
+    names = list(ca.keys())
+    vals  = list(ca.values())
+    df = pd.DataFrame({"mechanism": names, "CA_j": vals})
+    st.bar_chart(df.set_index("mechanism"))
+    cols = st.columns(len(names))
+    for i, (n, v) in enumerate(ca.items()):
+        label = ("✅ ON" if v > 0.67 else ("❌ OFF" if v < 0.33 else "⚠ ambiguous"))
+        cols[i].metric(n[:20], f"CA={v:.3f}", delta=label, delta_color="normal")
+
+
+def _dr_metrics(D: float, R: float, K: int, n: int) -> None:
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("D — degeneracy", f"{D:.3f} bits")
+    c2.metric("K — max entropy", f"{K} bits")
+    c3.metric("R — resolvability", f"{R:.3f}")
+    c4.metric("|A_ε| accepted", n)
+
+
+def _confound_table(acc: list[dict], switches: list[BiologicalSwitch]) -> None:
+    """Show confounding edges from mechanism_equivalence_structure."""
+    struct = mechanism_equivalence_structure(acc, switches)
+    if struct.edges:
+        rows = [
             {
-                "pattern": r["pattern"],
-                "observed relation": r.get("relation", ""),
-                "weight": r.get("weight", ""),
-                "source": r.get("source", ""),
+                "confounding edge": e.describe(),
+                "MI (bits)": round(e.mutual_information, 3),
+                "ϕ correlation": round(e.phi, 3),
+                "relation": e.relation,
             }
-            for r in _rtp
+            for e in struct.edges
         ]
-        if _yobs_rows:
-            stretch_df(pd.DataFrame(_yobs_rows), hide_index=True)
-        st.caption(
-            "Rows shown above are the only patterns used as y_obs in ABC acceptance. "
-            "input_context, hypothesis_prediction, excluded_from_ABC, diagnostic_only, "
-            "and planned/pending rows are excluded."
-        )
-        st.warning(
-            "Current empirical y_obs contains only 2 source-confirmed directional gradients: "
-            "selfing_distance and flower_size_distance. Causal resolution is expected to be "
-            "low until future observations are measured. This is a preliminary worked example, "
-            "not an empirical resolution of the C. microdonta causal history."
-        )
-    with col_xobs:
-        st.markdown("**x_obs — fixed empirical context fed into f(x_obs; θ, s)**")
-        _xobs_rows = [
-            {"variable": "island_distance", "role": "input_context", "notes": "normalised isolation index (0=mainland, 1=Hachijo)"},
-            {"variable": "primary_pollinator_frequency", "role": "input_context", "notes": "Bombus ardens presence/frequency per island (Inoue-series context)"},
-            {"variable": "island_area", "role": "input_context", "notes": "km² (approximate, affects Ne prior)"},
-        ]
-        stretch_df(pd.DataFrame(_xobs_rows), hide_index=True)
-        st.caption(
-            "x_obs is injected into f as fixed empirical context. "
-            "It is not part of θ (not inferred) and not part of y_obs (not an ABC target)."
-        )
-
-# --- Workflow steps -------------------------------------------------------
-with st.expander("RACH inference workflow", expanded=False):
-    stretch_df(pd.DataFrame(WORKFLOW_STEPS), hide_index=True)
-
-
-# ---------------------------------------------------------------------------
-# Sidebar
-# ---------------------------------------------------------------------------
-with st.sidebar:
-    st.header("⚙ 設定")
-
-    # ── Shared inference settings ──────────────────────────────────────────
-    presets = predefined_tradeoff_presets()
-    _preset_keys = list(presets.keys())
-    preset_name = st.selectbox(
-        "θ prior preset",
-        _preset_keys,
-        index=_preset_keys.index("literature_grounded") if "literature_grounded" in _preset_keys else 0,
-        format_func=lambda k: {
-            "literature_grounded": "literature_grounded  (empirical — primary)",
-            "broad_prior":         "broad_prior  (sensitivity sweep)",
-        }.get(k, k),
-    )
-    _rules = available_rules()
-    acceptance_rule = st.selectbox(
-        "ε (ABC acceptance rule)",
-        _rules,
-        index=_rules.index("strict_all") if "strict_all" in _rules else 0,
-        format_func=lambda r: {
-            "strict_all":      "strict_all — every current y_obs gradient must match  ← pre-specified primary",
-            "weighted_strict": "weighted_strict — weighted match = 1.0  (sensitivity)",
-            "weighted_lax":    "weighted_lax — weighted match ≥ 0.80  (sensitivity)",
-            "relaxed_0.83":    "relaxed_0.83 — weighted match ≥ 0.83  (sensitivity)",
-            "relaxed_0.67":    "relaxed_0.67 — weighted match ≥ 0.67  (sensitivity)",
-        }.get(r, r),
-    )
-    from causal_model.switch_inference import GRADIENT_N_PATTERNS as _N_PAT
-    _thresh_display = GRADIENT_THRESH_MAP.get(acceptance_rule, 1.0)
-    st.caption(
-        f"y_obs: {_N_PAT} ordinal gradients · threshold ≥ {_thresh_display:.3f}. "
-        "strict_all is the pre-specified primary rule; the others are sensitivity "
-        "settings (RACH is reported across them, not at the rule that maximises R)."
-    )
-    st.caption(
-        "Current empirical y_obs contains only two source-confirmed directional "
-        "gradients: selfing_distance and flower_size_distance. Causal resolution "
-        "is expected to be low until future observations are measured."
-    )
-    seed = st.number_input("Random seed", 0, 999999, 42, 1)
-
-    with st.expander("Advanced RACH options (optional)", expanded=False):
-        distance_mode = st.selectbox("distance_mode", ["match_rate", "standardized", "hybrid"], index=0)
-        epsilon_mode = st.selectbox("epsilon_mode", ["fixed", "adaptive_percentile"], index=0)
-        adaptive_percentile = st.number_input("adaptive_percentile", 0.1, 50.0, 5.0, 0.5)
-        min_accepted_adaptive = st.number_input("min_accepted", 1, 500, 20, 1, key="adaptive_min_accepted")
-        structure_prior_lambda = st.number_input("structure_prior_lambda", 0.0, 5.0, 0.0, 0.1)
-        show_distance_components = st.checkbox("show_distance_components", value=False)
-        st.caption(
-            "Optional sensitivity controls only. Unmeasured guide, herkogamy, Fis, "
-            "seed set, and visitation remain NOV/future observations, not current y_obs."
-        )
-
-    # ── ABM settings ───────────────────────────────────────────────────────
-    with st.expander("ABM 設定 (① で使用)", expanded=False):
-        sp_n_attempts = st.slider(
-            "Joint prior draws (θ,s)", 50, 1000, 200, 50, key="sp_n_abm",
-        )
-        sp_abm_generations = st.slider("ABM generations", 10, 80, 30, 10, key="sp_gen")
-        sp_abm_popsize     = st.slider("ABM population size", 50, 300, 100, 50, key="sp_pop")
-        sp_abm_replicates  = st.slider("ABM replicates / island", 1, 5, 3, 1, key="sp_rep")
-        _est_sec = int(sp_n_attempts * 0.30 * sp_abm_replicates / 3)
-        st.caption(f"推定実行時間: ~{_est_sec}s")
-
-    st.divider()
-
-    # ── Step navigation ────────────────────────────────────────────────────
-    st.subheader("分析ステップ")
-
-    _has_inf = "sp_result" in st.session_state
-
-    def _nav_icon(i: int) -> str:
-        if i == 0:                    # ① RACH Inference — the entry point
-            return "✅" if _has_inf else "▶"
-        if i == len(_STEPS) - 1:      # ⑧ Generality — self-contained, always open
-            return "🔬"
-        return "🟢" if _has_inf else "🔒"
-
-    _nav_labels = [f"{_nav_icon(i)}  {s}" for i, s in enumerate(_STEPS)]
-    _cur_idx    = _STEPS.index(st.session_state.get("nav_step", _STEPS[0]))
-
-    _sel_label = st.radio(
-        "ステップ選択",
-        _nav_labels,
-        index=_cur_idx,
-        label_visibility="collapsed",
-    )
-    for _i, _lbl in enumerate(_nav_labels):
-        if _sel_label == _lbl:
-            st.session_state["nav_step"] = _STEPS[_i]
-            break
-
-    st.divider()
-
-    # ── θ prior ranges ─────────────────────────────────────────────────────
-    _preset_obj = presets[preset_name]
-    with st.expander(f"θ prior ranges — {preset_name}", expanded=False):
-        st.caption(_preset_obj.description)
-        _lit_map   = {src.parameter: src for src in LITERATURE_SOURCES}
-        _prior_rows = []
-        for key, (lo, hi) in _preset_obj.ranges.items():
-            src = _lit_map.get(key)
-            _prior_rows.append({
-                "Parameter": key, "Lower": lo, "Upper": hi,
-                "Empirical basis": src.empirical_range if src else "broad",
-                "Source": src.citation if src else "n/a",
-            })
-        st.dataframe(pd.DataFrame(_prior_rows), width="stretch", hide_index=True)
-
-    # ── Supplementary: M1-M5 ──────────────────────────────────────────────
-    with st.expander("補足: M1-M5 構造比較", expanded=False):
-        _m5_backend = "stochastic_abm"
-        _m5_n       = st.slider("Prior draws", 20, 500, 80, 20, key="n_attempts_abm")
-        _m5_gen     = st.slider("ABM generations", 10, 100, 40, 10, key="m5_gen")
-        _m5_pop     = st.slider("ABM population size", 50, 500, 150, 50, key="m5_pop")
-        _m5_rep     = st.slider("ABM replicates / island", 1, 5, 1, 1, key="m5_rep")
-        run_button  = st.button("Run structure comparison", width="stretch")
-
-# ---------------------------------------------------------------------------
-# M1-M5 supplementary run (sidebar button)
-# ---------------------------------------------------------------------------
-if run_button:
-    _m5_bar  = st.progress(0.0, text="M1-M5: starting…")
-    _m5_stat = st.empty()
-
-    def _m5_cb(done, total, status):
-        _m5_bar.progress(done / total if total > 0 else 0.0,
-                         text=f"M1-M5: {done}/{total} ({100*done//max(total,1)}%)")
-        _m5_stat.caption(status)
-
-    _m5_result = run_research_mode(
-        preset_name=preset_name, n_attempts=_m5_n, seed=int(seed),
-        acceptance_rule=acceptance_rule, backend=_m5_backend,
-        generations=_m5_gen, population_size=_m5_pop, replicates=_m5_rep,
-        progress_callback=_m5_cb,
-    )
-    _m5_bar.progress(1.0, text="Done ✓")
-    _m5_stat.empty()
-    st.session_state["research_result"] = _m5_result
-    st.session_state["research_settings"] = {
-        "preset_name": preset_name, "n_attempts": _m5_n,
-        "seed": int(seed), "acceptance_rule": acceptance_rule,
-        "backend": _m5_backend,
-        "generations": _m5_gen, "population_size": _m5_pop, "replicates": _m5_rep,
-    }
-
-if "research_result" in st.session_state:
-    _m5r = st.session_state["research_result"]
-    with st.expander("補足結果: M1-M5 構造比較", expanded=False):
-        _m5_df_sum = _m5r["hypothesis_summary"]
-        if not _m5_df_sum.empty:
-            st.bar_chart(_m5_df_sum.set_index("causal_hypothesis")[["admissibility_rate"]],
-                         width="stretch")
-            stretch_df(_m5_df_sum, hide_index=True)
-        else:
-            st.warning("No admissible runs.")
-
-# ===========================================================================
-# Main step content (vertical navigation)
-# ===========================================================================
-_current_step = st.session_state.get("nav_step", _STEPS[0])
-_step_idx     = _STEPS.index(_current_step)
-_has_inf      = "sp_result" in st.session_state
-
-st.divider()
-st.subheader(_current_step)
-st.caption(_STEP_SUBTITLES.get(_current_step, ""))
-
-
-def _next_btn(label: str, next_step: str) -> None:
-    if st.button(label, type="primary", width="stretch"):
-        st.session_state["nav_step"] = next_step
-        st.rerun()
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    else:
+        st.success("No significant confounding edges detected in A_ε.")
+    if struct.pinned_on:
+        st.info(f"Pinned ON (CA_j ≥ 0.8): {', '.join(struct.pinned_on)}")
+    if struct.pinned_off:
+        st.info(f"Pinned OFF (CA_j ≤ 0.2): {', '.join(struct.pinned_off)}")
 
 
 # ===========================================================================
-# ① RACH Inference
+# ① Worked Examples
 # ===========================================================================
-if _step_idx == 0:
-    st.info(
-        "**Primary analysis.** Runs the pre-specified rule (strict_all over the "
-        "current ordinal y_obs) — *not* a setting chosen to maximise R_RACH. This "
-        "is the reported RACH result; there is no separate rule-selection step."
-    )
-
+with tab_examples:
     st.markdown(
-        f"**現在の設定:** `{preset_name}` + `{acceptance_rule}` · threshold ≥ {_thresh_display:.3f}  \n"
-        f"ABM: {st.session_state.get('sp_n_abm', 200)} draws · "
-        f"{st.session_state.get('sp_gen', 30)} gen · "
-        f"{st.session_state.get('sp_pop', 100)} pop · "
-        f"{st.session_state.get('sp_rep', 3)} rep"
+        "All three examples use the **Tier-A (VALIDATED)** simulator: "
+        "only directional signs are asserted; every effect magnitude is drawn "
+        "fresh and integrated out. Results reflect the *confound logic*, not "
+        "hand-tuned coefficients."
     )
 
-    if st.button("▶ Run Recommended RACH", type="primary", width="stretch"):
-        _sp_bar  = st.progress(0.0, text="Switch Posterior: starting…")
-        _sp_stat = st.empty()
-
-        def _sp_progress(done: int, total: int, status: str) -> None:
-            _sp_bar.progress(done / total if total > 0 else 0.0,
-                             text=f"Switch Posterior: {done}/{total} ({100*done//max(total,1)}%)")
-            _sp_stat.caption(status)
-
-        sp_result = run_switch_posterior_inference_abm(
-            preset_name=preset_name,
-            n_attempts=int(st.session_state.get("sp_n_abm", 200)),
-            acceptance_rule=acceptance_rule,
-            seed=int(seed) + 1,
-            generations=st.session_state.get("sp_gen", 30),
-            population_size=st.session_state.get("sp_pop", 100),
-            replicates=st.session_state.get("sp_rep", 3),
-            distance_mode=distance_mode,
-            epsilon_mode=epsilon_mode,
-            adaptive_percentile=float(adaptive_percentile),
-            min_accept=int(min_accepted_adaptive),
-            structure_prior_lambda=float(structure_prior_lambda),
-            progress_callback=_sp_progress,
-        )
-        _sp_bar.progress(1.0, text="Switch Posterior: Done ✓")
-        _sp_stat.empty()
-        st.session_state["sp_result"]   = sp_result
-        st.session_state["sp_settings"] = {
-            "preset_name": preset_name, "seed": int(seed) + 1,
-            "acceptance_rule": acceptance_rule, "backend": "stochastic_abm",
-            "distance_mode": distance_mode,
-            "epsilon_mode": epsilon_mode,
-            "adaptive_percentile": float(adaptive_percentile),
-            "min_accept": int(min_accepted_adaptive),
-            "structure_prior_lambda": float(structure_prior_lambda),
-        }
-        # Auto-advance to ② CA_j
-        st.session_state["nav_step"] = _STEPS[1]
-        st.rerun()
-
-    if _has_inf:
-        _sp = st.session_state["sp_result"]
-        st.success(
-            f"✅ 推論完了 — |A_ε| = {len(_sp.accepted_rows)} accepted  "
-            f"(acceptance rate {_sp.acceptance_rate:.1%})"
-        )
-        if len(_sp.accepted_rows) < 30:
-            st.warning(f"accepted = {len(_sp.accepted_rows)} < 30 → 推定不安定。draws を増やすか ε を緩めてください。")
-        _next_btn("② CA_j で結果を見る →", _STEPS[1])
-
-
-# ===========================================================================
-# Steps ②–⑦ require inference results
-# ===========================================================================
-elif _step_idx >= 1 and not _has_inf:
-    st.info("① RACH Inference を先に実行してください。")
-    _next_btn("① RACH Inference へ", _STEPS[0])
-
-# ===========================================================================
-# ② CA_j
-# ===========================================================================
-elif _step_idx == 1:
-    sp = st.session_state["sp_result"]
-    _sp_settings = st.session_state.get("sp_settings", {})
-    _thresh_sp   = GRADIENT_THRESH_MAP.get(_sp_settings.get("acceptance_rule", acceptance_rule), 1.0)
-
-    _mc1, _mc2, _mc3, _mc4 = st.columns(4)
-    _mc1.metric("|A_ε| accepted", len(sp.accepted_rows))
-    _mc2.metric("Total draws", sp.n_attempts)
-    _mc3.metric("Acceptance rate", f"{sp.acceptance_rate:.1%}")
-    _mc4.metric("K (switches)", len(CAMPANULA_SWITCHES))
-    st.caption(
-        f"distance_mode={_sp_settings.get('distance_mode', 'match_rate')} · "
-        f"epsilon_mode={_sp_settings.get('epsilon_mode', 'fixed')} · "
-        f"structure_prior_lambda={_sp_settings.get('structure_prior_lambda', 0.0)}"
+    ex_choice = st.radio(
+        "Select worked example",
+        [
+            "Structure Discovery (§4.1) — mechanism-free path inference",
+            "Campanula isolation cline (§4.2) — S2/S3 confound",
+            "Bergmann's rule (§4.3) — heat conservation vs. fasting endurance",
+        ],
+        horizontal=False,
     )
-    if show_distance_components and sp.accepted_rows:
-        _dc_rows = []
-        for _r in sp.accepted_rows[:10]:
-            for _pat, (_dist, _w) in _r.get("per_pattern_distance", {}).items():
-                _dc_rows.append({
-                    "sample_id": str(_r.get("sample_id", ""))[:8],
-                    "pattern": _pat,
-                    "distance": _dist,
-                    "weight": _w,
-                })
-        if _dc_rows:
-            stretch_df(pd.DataFrame(_dc_rows), hide_index=True)
 
-    if len(sp.accepted_rows) < 30:
-        st.warning(f"Only {len(sp.accepted_rows)} accepted — estimates unstable.")
-
-    if not sp.accepted_rows:
-        st.error("No accepted samples. Use a more relaxed ε or increase draws.")
+    col_n, col_s, col_truth = st.columns(3)
+    ex_n    = col_n.slider("ABC draws", 1000, 8000, 3000, 500, key="ex_n")
+    ex_seed = col_s.number_input("Seed", value=1, step=1, key="ex_seed")
+    if "Bergmann" in ex_choice:
+        ex_truth = col_truth.selectbox(
+            "Assumed truth (for resolution panel)",
+            ["fasting_endurance", "heat_conservation", "both"],
+            key="ex_truth_berg",
+        )
+    elif "Campanula" in ex_choice:
+        ex_truth = col_truth.selectbox(
+            "Assumed truth (for resolution panel)",
+            ["S3", "S2"],
+            key="ex_truth_camp",
+        )
     else:
-        try:
-            _n_acc = len(sp.accepted_rows)
-            _ca_now = {
-                sw.name: round(sum(1 for r in sp.accepted_rows if r.get(sw.name)) / _n_acc, 3)
-                for sw in CAMPANULA_SWITCHES
-            }
-            with st.expander("**Robust Conclusions** (A_ε サマリー)", expanded=True):
-                _rc_cols = st.columns(len(CAMPANULA_SWITCHES))
-                for _i, sw in enumerate(CAMPANULA_SWITCHES):
-                    _cv  = _ca_now.get(sw.name, 0.5)
-                    _verd = "✅ ON" if _cv > 2/3 else ("❌ OFF" if _cv < 1/3 else "〜 不定")
-                    _rc_cols[_i].metric(sw.name[:18], f"CA={_cv:.2f}",
-                                        delta=_verd, delta_color="normal")
-                _undet = [sw.name for sw in CAMPANULA_SWITCHES
-                          if 1/3 <= _ca_now.get(sw.name, 0.5) <= 2/3]
-                if _undet:
-                    st.warning(
-                        "**未解決スイッチ** (CA_j ≈ 0.5、A_ε では分離できていない): "
-                        f"{', '.join(_undet)}  \n→ ⑤ NOV で追加観測計画を。"
-                    )
-        except Exception:
-            pass
+        ex_truth = None
 
-        st.markdown("### CA_j = P(s_j = 1 | A_ε)")
-        st.caption(
-            "Prior = 0.5 (Bernoulli). **BF > 3** → admissible (CA_j > 0.75). **BF < 1/3** → inadmissible (CA_j < 0.25)."
-        )
-        st.info(
-            "**Known-truth benchmark 知見 (S3 注意):**  \n"
-            "S3 (island_isolation_common_cause) が S1 (guide_attracts_bombus) と部分的に混同します。  \n"
-            "S3 の guide 係数 (0.13) は S1=OFF+S3=ON の描出が S1=ON と競合します。S3 の CA_j は S1 と同時に確認してください。"
-        )
+    if st.button("▶ Run worked example", type="primary", width="stretch"):
 
-        df_post = pd.DataFrame(sp.posterior_table)
-        if not df_post.empty:
-            st.bar_chart(df_post.set_index("switch")[["P_prior_ON", "P_posterior_ON"]], width="stretch")
-            st.caption("左バー = 事前 P(ON) = 0.5.  右バー = CA_j = P(ON | A_ε).")
-            stretch_df(df_post[[
-                "switch", "biological_question", "P_prior_ON",
-                "P_posterior_ON", "Bayes_factor", "interpretation", "n_ON", "n_accepted",
-            ]], hide_index=True)
-            st.markdown("#### Biological interpretation")
-            for _row in sp.posterior_table:
-                _interp = str(_row.get("interpretation", ""))
-                _icon = (
-                    "✅ supported"        if _interp.startswith("supported") else
-                    "〜 weakly supported" if _interp.startswith("weakly s") else
-                    "❌ opposed"          if _interp.startswith("opposed") else
-                    "— uninformative"
+        # ── Structure Discovery ──────────────────────────────────────────────
+        if "Structure" in ex_choice:
+            with st.spinner("Running structure discovery…"):
+                from causal_model.structure_discovery import run_structure_discovery
+                res = run_structure_discovery(n_attempts=ex_n, seed=int(ex_seed))
+            obs_str = ", ".join(
+                f"{t}{'↓' if d < 0 else '↑'}" for t, d in res.observed.items()
+            )
+            st.success(
+                f"|A_ε| = {res.n_accepted} accepted from {res.n_attempts} draws  "
+                f"(observed cline: {obs_str}; "
+                f"tier: {evidence_tier('causal_model.structure_discovery')})"
+            )
+
+            st.markdown("### Edge posterior — P(edge present | A_ε)")
+            st.caption(
+                "Each candidate directed edge (X→Ma, X→Mb, Ma→Mb, Ma→T1, …) "
+                "is a random object; this is how often it is present in the "
+                "admissible region given the observed cline."
+            )
+            ep = res.edge_posterior
+            df_ep = pd.DataFrame(
+                {"edge": list(ep.keys()), "P(present | A_ε)": list(ep.values())}
+            )
+            st.bar_chart(df_ep.set_index("edge"))
+            st.dataframe(df_ep, hide_index=True, width="stretch")
+
+            st.markdown("### Path support per target trait")
+            st.caption(
+                "For each target, how often the cline reaches it directly vs. "
+                "via mediator Ma / Mb. High direct + low via = the trait responds "
+                "to the cline without a mediator."
+            )
+            path_rows = []
+            for trait, ps in res.path_support.items():
+                row = {"target": trait}
+                row.update({k: round(v, 3) for k, v in ps.items()})
+                path_rows.append(row)
+            st.dataframe(pd.DataFrame(path_rows), hide_index=True, width="stretch")
+
+            st.markdown("### Structural degeneracy")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("D structural (bits)", f"{res.D_structural:.3f}")
+            c2.metric("R structural", f"{res.R_structural:.3f}")
+            c3.metric("|A_ε|", res.n_accepted)
+
+            if res.confounded_edges:
+                st.markdown("### Confounded edge pairs")
+                for e in res.confounded_edges:
+                    st.caption(f"• {e}")
+
+            if res.nov:
+                st.markdown("### NOV — which mediator to measure")
+                st.caption(
+                    "Expected structural-degeneracy reduction from measuring each "
+                    "mediator's own cline response."
                 )
-                _bf    = _row.get("Bayes_factor")
-                _bfstr = f"BF={_bf:.2f}" if _bf is not None else "BF=n/a"
-                st.markdown(
-                    f"**{_icon} · {_row['switch']}** CA_j={_row['P_posterior_ON']:.3f} ({_bfstr})  \n"
-                    f"*{_row.get('biological_question', '')[:100]}*"
+                nov_rows = [
+                    {"rank": i + 1, "measure mediator": name,
+                     "NOV (ΔD_structural bits)": round(val, 4)}
+                    for i, (name, val) in enumerate(res.nov)
+                ]
+                st.dataframe(pd.DataFrame(nov_rows), hide_index=True, width="stretch")
+
+            if res.path_support_after:
+                st.markdown("### Path support after measuring the top-NOV mediator")
+                st.caption(
+                    "Conditioning on the top-NOV mediator being silent rules out "
+                    "paths routed through it, separating direct from mediated effects."
                 )
+                pa_rows = []
+                for trait, ps in res.path_support_after.items():
+                    row = {"target": trait}
+                    row.update({k: round(v, 3) for k, v in ps.items()})
+                    pa_rows.append(row)
+                st.dataframe(pd.DataFrame(pa_rows), hide_index=True, width="stretch")
 
-        with st.expander("Switch co-activation P(A ON ∩ B ON | A_ε)", expanded=False):
-            _coact = compute_coactivation_table(sp.accepted_rows)
-            if _coact:
-                _df_coact = pd.DataFrame(_coact)
-                stretch_df(_df_coact, hide_index=True)
-                try:
-                    _piv = _df_coact.pivot(index="switch_A", columns="switch_B", values="P_both_ON")
-                    st.dataframe(_piv.round(3), width="stretch")
-                except Exception:
-                    pass
-            else:
-                st.info("Not enough accepted samples.")
+        # ── Campanula structural ─────────────────────────────────────────────
+        elif "Campanula" in ex_choice:
+            with st.spinner("Running Campanula Tier-A structural example…"):
+                from causal_model.campanula_structural import (
+                    run_campanula_structural, CampanulaResult
+                )
+                res = run_campanula_structural(
+                    truth=ex_truth, n_attempts=ex_n, seed=int(ex_seed)
+                )
+            st.success(
+                f"|A_ε| = {res.n_accepted} accepted from {ex_n} draws  "
+                f"(tier: {evidence_tier('causal_model.campanula_structural')})"
+            )
 
-        st.divider()
-        _next_btn("③ D · R へ →", _STEPS[2])
+            st.markdown("### CA_j on published ordinal pattern (selfing↑, flower↓)")
+            _ca_bar(res.ca_j, "Before distinguishing observation")
+            _dr_metrics(res.D_RACH, res.R_RACH, len(res.ca_j), res.n_accepted)
+
+            st.markdown("### Confound structure")
+            st.caption(res.confound_edge)
+
+            if res.nov_ranking:
+                st.markdown("### NOV — top candidate observations")
+                nov_rows = [
+                    {"rank": i + 1, "observation": name, "NOV (ΔR)": round(val, 4)}
+                    for i, (name, val) in enumerate(res.nov_ranking)
+                ]
+                st.dataframe(pd.DataFrame(nov_rows), hide_index=True, width="stretch")
+
+            if res.ca_j_after:
+                st.markdown(f"### Resolution after adding distinguishing observation (truth = {ex_truth})")
+                _ca_bar(res.ca_j_after, "After distinguishing observation")
+                c1, c2 = st.columns(2)
+                c1.metric("R before", f"{res.R_RACH:.3f}")
+                c2.metric("R after", f"{res.R_after:.3f}")
+
+        # ── Bergmann ─────────────────────────────────────────────────────────
+        else:
+            with st.spinner("Running Bergmann's rule example…"):
+                from causal_model.bergmann_worked_example import (
+                    run_bergmann_demo, BergmannResult
+                )
+                res = run_bergmann_demo(
+                    truth=ex_truth, n_attempts=ex_n, seed=int(ex_seed)
+                )
+            st.success(
+                f"|A_ε| = {res.n_accepted} accepted from {ex_n} draws  "
+                f"(tier: {evidence_tier('causal_model.bergmann_worked_example')})"
+            )
+            st.info(
+                "**Note:** `--truth` is an *illustrative assumed latent truth* used to "
+                "demonstrate resolution. The Bergmann mechanism is genuinely unresolved "
+                "in the literature (Meiri & Dayan 2003)."
+            )
+
+            st.markdown("### CA_j on published body-size cline (size↑ with latitude)")
+            _ca_bar(res.ca_j, "Before mechanism-specific assay")
+            _dr_metrics(res.D_RACH, res.R_RACH, len(res.ca_j), res.n_accepted)
+
+            st.markdown(f"### Confound structure")
+            st.caption(res.confound_edge)
+            st.info(f"NOV-recommended next observation: **{res.nov_recommended}**")
+
+            if res.ca_j_after:
+                st.markdown(f"### Resolution after mechanism-specific assays (truth = {ex_truth})")
+                _ca_bar(res.ca_j_after, "After assays")
+                c1, c2 = st.columns(2)
+                c1.metric("R before", f"{res.R_RACH:.3f}")
+                c2.metric("R after", f"{res.R_after:.3f}")
+
+            with st.expander("RACH-SEQ trace"):
+                st.text(res.seq_trace)
 
 
 # ===========================================================================
-# ③ D · R
+# ② Custom RACH Analysis
 # ===========================================================================
-elif _step_idx == 2:
-    sp = st.session_state["sp_result"]
-
-    try:
-        from causal_model.causal_admissibility import (
-            rach_summary as _rach_summary_fn,
-            causal_degeneracy as _cd_fn,
-            causal_resolvability as _cr_fn,
-        )
-        from causal_model.identifiability import compute_rach_theory_metrics as _rach_metrics_fn
-        _rs           = _rach_summary_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
-        _rach_metrics = _rach_metrics_fn(sp.accepted_rows, CAMPANULA_SWITCHES)
-        _dr_ok = True
-    except Exception as _e:
-        _dr_ok = False
-        _dr_err = str(_e)
-
-    st.markdown("### D = H(S | A_ε) · R = 1 − D/K")
+with tab_custom:
+    st.markdown(
+        "Define your own biological system — candidate mechanisms, their directional "
+        "effects on observable traits, and the ordinal pattern you have observed. "
+        "RACH will compute CA_j, D, R, and identify which future observation has the "
+        "highest NOV (expected resolvability gain)."
+    )
     st.info(
-        "**Known-truth benchmark 知見:** 複合スイッチ状態 (S1+S2, S1+S3 など) では "
-        "R_RACH ≈ 0.19–0.24 が典型的。これは観測データ不足による縮退で、失敗ではなく発見です。"
+        "**Tier-A engine**: every active mechanism's effect magnitude is drawn "
+        "uniformly at random and integrated out. Only the *signs* you specify are "
+        "asserted — magnitudes are never hard-coded."
     )
 
-    if _dr_ok:
-        _dm1, _dm2, _dm3, _dm4, _dm5 = st.columns(5)
-        _dm1.metric("R — resolvability",  f"{_rs.causal_resolvability:.3f}")
-        _dm2.metric("D — degeneracy",     f"{_rs.causal_degeneracy:.3f} bits")
-        _dm3.metric("K — max entropy",    f"{_rs.max_degeneracy:.0f} bits")
-        _dm4.metric("|A_ε|",              f"{_rs.n_accepted}")
-        _dm5.metric("Total I_j",          f"{_rach_metrics.total_identifiability:.3f} bits")
-
-        st.divider()
-        st.markdown("#### ε 感度 — D と R の ε 依存性")
-        _thresh_map2 = {
-            "weighted_lax (≥0.800)":    0.800,
-            "relaxed_0.83 (≥0.833)":    5/6,
-            "weighted_strict (=1.000)": 1.000,
-            "relaxed_0.67 (≥0.667)":    4/6,
-        }
-        _sens_rows2 = []
-        for _lbl, _thr in _thresh_map2.items():
-            _filt = [r for r in sp.accepted_rows if r.get("weighted_match_rate", 0.0) >= _thr - 1e-9]
-            _n    = len(_filt)
-            if _n >= 3:
-                _sens_rows2.append({
-                    "ε rule": _lbl, "|A_ε|": _n,
-                    "D (bits)": round(_cd_fn(_filt, CAMPANULA_SWITCHES), 3),
-                    "R":        round(_cr_fn(_filt, CAMPANULA_SWITCHES), 3),
-                    "total I_j": round(_rach_metrics_fn(_filt, CAMPANULA_SWITCHES).total_identifiability, 3),
-                })
-            else:
-                _sens_rows2.append({"ε rule": _lbl, "|A_ε|": _n,
-                                    "D (bits)": float("nan"), "R": float("nan"), "total I_j": float("nan")})
-        stretch_df(pd.DataFrame(_sens_rows2), hide_index=True)
-
-        st.divider()
-        st.markdown("#### Per-switch identifiability I_j")
-        if hasattr(_rach_metrics, "identifiability_table") and _rach_metrics.identifiability_table:
-            _df_ij = pd.DataFrame(_rach_metrics.identifiability_table)
-            if not _df_ij.empty and "switch" in _df_ij.columns:
-                _ijcol = [c for c in _df_ij.columns if "identifiability" in c.lower() or c == "I_j"]
-                if _ijcol:
-                    st.bar_chart(_df_ij.set_index("switch")[[_ijcol[0]]], width="stretch")
-                stretch_df(_df_ij, hide_index=True)
-    else:
-        st.error(f"RACH modules failed: {_dr_err}")
-
-    st.divider()
-    _next_btn("④ OC_k へ →", _STEPS[3])
-
-
-# ===========================================================================
-# ④ OC_k
-# ===========================================================================
-elif _step_idx == 3:
-    sp = st.session_state["sp_result"]
-
-    try:
-        from causal_model.causal_admissibility import observation_contribution as _oc_fn
-        _oc_source  = getattr(sp, "evaluated_rows", None) or sp.accepted_rows
-        _thresh_sp2 = GRADIENT_THRESH_MAP.get(
-            st.session_state.get("sp_settings", {}).get("acceptance_rule", acceptance_rule), 1.0)
-        _oc_results = _oc_fn(_oc_source, CAMPANULA_SWITCHES, threshold=_thresh_sp2)
-        _oc_ok = True
-    except Exception as _e:
-        _oc_ok = False
-        _oc_err = str(_e)
-
-    st.markdown("### OC_k = R(O) − R(O \\ {k})")
-    st.caption("LOO: パターン k を除いたときの R_RACH の低下量。OC_k > 0 → k は resolvability に貢献。")
+    # ── Step 1: Define traits ────────────────────────────────────────────────
+    st.markdown("### Step 1 — Name your observable traits")
     st.caption(
-        "**OC_k は pattern-level**（switch 別ではありません）。R_RACH はスイッチ結合 "
-        "s ∈ {0,1}^K の*同時*分解能なので、OC_k はパターン k がメカニズム結合全体の "
-        "分解能をどれだけ変えるかを表し、パターンごとに 1 値です。"
+        "Comma-separated list of traits that are observable along your gradient "
+        "(e.g. `selfing_rate, flower_size, guide_intensity, body_mass`)."
+    )
+    trait_str = st.text_input(
+        "Trait names",
+        value="selfing_rate, flower_size, nectar_guide",
+        key="cust_traits",
+    )
+    traits = [t.strip() for t in trait_str.split(",") if t.strip()]
+
+    # ── Step 2: Define mechanisms ────────────────────────────────────────────
+    st.markdown("### Step 2 — Define candidate mechanisms")
+    st.caption(
+        "Each line: `mechanism_name: trait1+, trait2-, trait3+`  \n"
+        "Use `+` for a positive effect (trait increases with gradient) "
+        "and `-` for negative. Omit a trait if a mechanism has no direct effect on it."
+    )
+    default_mechs = (
+        "selfing_syndrome: selfing_rate+, flower_size-\n"
+        "island_common_cause: selfing_rate+, flower_size-, nectar_guide-\n"
+        "guide_attracts_bombus: nectar_guide-"
+    )
+    mech_text = st.text_area(
+        "Mechanisms (one per line)",
+        value=default_mechs,
+        height=160,
+        key="cust_mechs",
     )
 
-    if _oc_ok:
-        if _oc_results:
-            _df_oc = pd.DataFrame([
-                {"pattern": r.pattern, "level": r.level, "OC_k": round(r.OC_k, 4),
-                 "R_full": round(r.R_full, 4), "R_loo": round(r.R_loo, 4),
-                 "n_loo": r.n_loo, "n_switches": r.n_switches}
-                for r in _oc_results
-            ])
-            _df_oc_nz = _df_oc[_df_oc["OC_k"].abs() > 0.0001].sort_values("OC_k", ascending=False)
-            if not _df_oc_nz.empty:
+    # Parse mechanisms
+    def _parse_mechs(text: str) -> list[dict]:
+        mechs = []
+        for line in text.strip().splitlines():
+            line = line.strip()
+            if not line or ":" not in line:
+                continue
+            name, rest = line.split(":", 1)
+            name = name.strip()
+            effects: dict[str, int] = {}
+            for part in rest.split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                if part.endswith("+"):
+                    effects[part[:-1].strip()] = +1
+                elif part.endswith("-"):
+                    effects[part[:-1].strip()] = -1
+            if name and effects:
+                mechs.append({"name": name, "effects": effects})
+        return mechs
+
+    parsed_mechs = _parse_mechs(mech_text)
+
+    if parsed_mechs:
+        st.markdown("**Parsed mechanism–trait sign table:**")
+        all_mech_traits = sorted({t for m in parsed_mechs for t in m["effects"]})
+        tbl = []
+        for m in parsed_mechs:
+            row = {"mechanism": m["name"]}
+            for t in all_mech_traits:
+                v = m["effects"].get(t, 0)
+                row[t] = ("↑" if v > 0 else ("↓" if v < 0 else "—"))
+            tbl.append(row)
+        st.dataframe(pd.DataFrame(tbl), hide_index=True, width="stretch")
+    else:
+        st.warning("No mechanisms parsed. Check the format (name: trait+, trait-).")
+
+    # ── Step 3: Define y_obs ─────────────────────────────────────────────────
+    st.markdown("### Step 3 — Define your observed ordinal pattern (y_obs)")
+    st.caption(
+        "Select the direction of each trait along your gradient. "
+        "Only the constrained traits participate in ABC acceptance."
+    )
+    all_traits_union = sorted(
+        {t for m in parsed_mechs for t in m["effects"]} | set(traits)
+    )
+    y_obs: dict[str, int] = {}
+    cols_yobs = st.columns(min(len(all_traits_union), 4))
+    for i, trait in enumerate(all_traits_union):
+        col = cols_yobs[i % len(cols_yobs)]
+        direction = col.selectbox(
+            trait, ["— (not constrained)", "↑ increases", "↓ decreases"],
+            key=f"yobs_{trait}",
+        )
+        if direction == "↑ increases":
+            y_obs[trait] = +1
+        elif direction == "↓ decreases":
+            y_obs[trait] = -1
+
+    if y_obs:
+        st.caption(
+            "y_obs: " + ", ".join(f"{t}{'↑' if d > 0 else '↓'}" for t, d in y_obs.items())
+        )
+    else:
+        st.warning("No ordinal constraints set. Set at least one trait direction.")
+
+    # ── Step 4: Settings & run ───────────────────────────────────────────────
+    st.markdown("### Step 4 — Run RACH")
+    c_n, c_s = st.columns(2)
+    cust_n    = c_n.slider("ABC draws", 500, 10000, 3000, 500, key="cust_n")
+    cust_seed = c_s.number_input("Seed", value=42, step=1, key="cust_seed")
+
+    run_custom = st.button(
+        "▶ Run Custom RACH", type="primary", width="stretch",
+        disabled=(not parsed_mechs or not y_obs),
+    )
+
+    # ── ABC engine ────────────────────────────────────────────────────────────
+
+    def _custom_abc(
+        mechanisms: list[dict],
+        y_obs_constraints: dict[str, int],
+        n_attempts: int,
+        seed: int,
+    ) -> list[dict]:
+        """Tier-A ABC for a user-defined mechanism system.
+
+        Samples mechanism presence (Bernoulli 0.5) and random magnitudes
+        [0.3, 0.8] per active edge, accepts rows whose net trait slopes
+        satisfy all y_obs ordinal constraints.
+        """
+        rng = random.Random(seed)
+        accepted = []
+        for _ in range(n_attempts):
+            s = {m["name"]: (rng.random() < 0.5) for m in mechanisms}
+            slopes: dict[str, float] = {}
+            for m in mechanisms:
+                if not s[m["name"]]:
+                    continue
+                mag = rng.uniform(0.3, 0.8)
+                for trait, sign in m["effects"].items():
+                    slopes[trait] = slopes.get(trait, 0.0) + sign * mag
+
+            ok = True
+            for trait, direction in y_obs_constraints.items():
+                net = slopes.get(trait, 0.0)
+                if direction > 0 and net <= 0:
+                    ok = False
+                    break
+                if direction < 0 and net >= 0:
+                    ok = False
+                    break
+            if ok:
+                row = {k: v for k, v in s.items()}
+                for t, v in slopes.items():
+                    row[f"slope_{t}"] = round(v, 4)
+                accepted.append(row)
+        return accepted
+
+    def _nov_hints(
+        acc: list[dict],
+        mechanisms: list[dict],
+        y_obs_constraints: dict[str, int],
+    ) -> list[dict]:
+        """Heuristic NOV: for each unobserved trait, estimate expected ΔR if added.
+
+        A trait helps resolve the confound if it is driven differently
+        (opposite signs or one drives / other doesn't) by the confounded pair.
+        We estimate ΔR as the fraction of A_ε rows that would be filtered out
+        by conditioning on the most-informative outcome of adding that trait.
+        """
+        if len(acc) < 5:
+            return []
+        mnames = [m["name"] for m in mechanisms]
+        all_traits = {t for m in mechanisms for t in m["effects"]}
+        candidate_traits = all_traits - set(y_obs_constraints.keys())
+
+        # Compute switches for causal_resolvability
+        switches = [
+            BiologicalSwitch(
+                name=m["name"], pathway_key=m["name"],
+                biological_question=m["name"], description=m["name"],
+            )
+            for m in mechanisms
+        ]
+        R0 = causal_resolvability(acc, switches)
+        hints = []
+        for trait in sorted(candidate_traits):
+            # Condition on trait > 0 (increases)
+            pos_rows = [r for r in acc if r.get(f"slope_{trait}", 0.0) > 0]
+            neg_rows = [r for r in acc if r.get(f"slope_{trait}", 0.0) <= 0]
+            R_pos = causal_resolvability(pos_rows, switches) if len(pos_rows) >= 5 else R0
+            R_neg = causal_resolvability(neg_rows, switches) if len(neg_rows) >= 5 else R0
+            # Expected ΔR: weighted by how often each outcome occurs
+            p_pos = len(pos_rows) / len(acc)
+            p_neg = len(neg_rows) / len(acc)
+            delta_R = p_pos * (R_pos - R0) + p_neg * (R_neg - R0)
+            # What sign does each mechanism predict for this trait?
+            mech_preds = {
+                m["name"]: m["effects"].get(trait, 0)
+                for m in mechanisms
+            }
+            hints.append({
+                "observation": f"measure {trait} gradient",
+                "NOV ΔR (expected)": round(delta_R, 4),
+                "mechanism predictions": "  |  ".join(
+                    f"{n}: {'↑' if v > 0 else ('↓' if v < 0 else '—')}"
+                    for n, v in mech_preds.items()
+                ),
+                "p(increases)": round(p_pos, 3),
+                "p(decreases)": round(p_neg, 3),
+            })
+        hints.sort(key=lambda x: x["NOV ΔR (expected)"], reverse=True)
+        return hints
+
+    if run_custom:
+        with st.spinner("Running Tier-A ABC…"):
+            acc = _custom_abc(parsed_mechs, y_obs, cust_n, int(cust_seed))
+
+        if not acc:
+            st.error(
+                f"A_ε is empty — no draws satisfied y_obs after {cust_n} attempts. "
+                "Check that your mechanism sign table is compatible with the observed pattern, "
+                "or relax the constraints."
+            )
+        else:
+            switches = [
+                BiologicalSwitch(
+                    name=m["name"], pathway_key=m["name"],
+                    biological_question=m["name"], description=m["name"],
+                )
+                for m in parsed_mechs
+            ]
+            K   = len(switches)
+            D   = causal_degeneracy(acc, switches)
+            R   = causal_resolvability(acc, switches)
+            n   = len(acc)
+            ca  = {
+                sw.name: round(sum(1 for r in acc if r.get(sw.name)) / n, 4)
+                for sw in switches
+            }
+
+            st.session_state["_cust_acc"]      = acc
+            st.session_state["_cust_ca"]       = ca
+            st.session_state["_cust_D"]        = D
+            st.session_state["_cust_R"]        = R
+            st.session_state["_cust_K"]        = K
+            st.session_state["_cust_switches"] = switches
+            st.session_state["_cust_mechs"]    = parsed_mechs
+            st.session_state["_cust_yobs"]     = y_obs
+
+    # ── Results ───────────────────────────────────────────────────────────────
+    if "_cust_acc" in st.session_state:
+        acc      = st.session_state["_cust_acc"]
+        ca       = st.session_state["_cust_ca"]
+        D        = st.session_state["_cust_D"]
+        R        = st.session_state["_cust_R"]
+        K        = st.session_state["_cust_K"]
+        switches = st.session_state["_cust_switches"]
+        mechs    = st.session_state["_cust_mechs"]
+        _yobs    = st.session_state["_cust_yobs"]
+
+        st.divider()
+        st.success(f"|A_ε| = {len(acc)} accepted from {cust_n} draws")
+
+        st.markdown("### CA_j — Causal admissibility")
+        _ca_bar(ca)
+        _dr_metrics(D, R, K, len(acc))
+
+        with st.expander("Confound structure", expanded=True):
+            _confound_table(acc, switches)
+
+        with st.expander("NOV — next-observation value (heuristic)", expanded=True):
+            nov_h = _nov_hints(acc, mechs, _yobs)
+            if nov_h:
+                df_nov = pd.DataFrame(nov_h)
                 st.bar_chart(
-                    _df_oc_nz.set_index("pattern")[["OC_k"]],
+                    df_nov.set_index("observation")[["NOV ΔR (expected)"]],
                     width="stretch",
                 )
-                stretch_df(_df_oc_nz, hide_index=True)
-            else:
-                st.info("All OC_k ≈ 0. パターン間が相関しているか |A_ε| が小さい場合に起こります。")
-            stretch_df(_df_oc, hide_index=True)
-        else:
-            st.info("OC_k データなし。推論を再実行してください。")
-    else:
-        st.error(f"OC_k computation failed: {_oc_err}")
-
-    st.divider()
-    _next_btn("⑤ NOV へ →", _STEPS[4])
-
-
-# ===========================================================================
-# ⑤ NOV
-# ===========================================================================
-elif _step_idx == 4:
-    sp = st.session_state["sp_result"]
-
-    # NOV ranks candidate future observations directly from A_ε; no ensemble
-    # pre-pass is used to flag "sensitive" switches.
-    _sensitive_sw_names: list[str] = []
-
-    st.markdown("### NOV(q) = E[ R(O ∪ q) − R(O) ]")
-    st.caption(
-        "Next-observation value: the expected gain in causal resolvability from a "
-        "future observation q. For quantitative observations this is a constructive "
-        "preposterior EVSI on resolvability (see docs/rach_mathematical_foundations.md, "
-        "Prop 6′); for ordinal candidates without an outcome model it is a heuristic "
-        "priority score."
-    )
-
-    try:
-        from causal_model.causal_admissibility import (
-            next_observation_value as _nov_fn,
-            rach_summary as _rach_summary_fn2,
-        )
-        _rs2         = _rach_summary_fn2(sp.accepted_rows, CAMPANULA_SWITCHES)
-        _nov_results = _nov_fn(sp.accepted_rows, CAMPANULA_SWITCHES,
-                               sensitive_switches=_sensitive_sw_names)
-        _nov_ok = True
-    except Exception as _e:
-        _nov_ok = False
-        _nov_err = str(_e)
-
-    _nov_mode = st.radio(
-        "NOV estimation method", ["Heuristic (instant)", "Simulation (accurate)"],
-        horizontal=True,
-    )
-
-    if _nov_mode == "Heuristic (instant)":
-        if _nov_ok and _nov_results:
-            _df_nov = pd.DataFrame([
-                {"priority": r.priority, "candidate": r.candidate,
-                 "→ sensitive": "⚠ " + ", ".join(r.sensitive_targets)
-                                if r.targets_sensitive_switch else "",
-                 "ΔR (approx)": round(r.expected_resolvability_gain, 4),
-                 "target switches": ", ".join(r.target_switches),
-                 "rationale": r.rationale[:120]}
-                for r in _nov_results
-            ])
-            st.bar_chart(_df_nov.set_index("candidate")[["ΔR (approx)"]], width="stretch")
-            st.caption(f"Current R = {_rs2.causal_resolvability:.3f}.")
-            stretch_df(_df_nov, hide_index=True)
-        elif not _nov_ok:
-            st.error(f"NOV computation failed: {_nov_err}")
-        else:
-            st.info("No candidate observations configured.")
-
-    else:
-        _thresh_sp3 = GRADIENT_THRESH_MAP.get(
-            st.session_state.get("sp_settings", {}).get("acceptance_rule", acceptance_rule), 1.0)
-        _nov_backend_sel2 = st.radio(
-            "Outcome backend", ["proxy (fast)", "abm (slow, high-fidelity)"],
-            index=0, horizontal=True,
-        )
-        _nov_backend_key2 = "proxy" if _nov_backend_sel2.startswith("proxy") else "abm"
-        _nov_n2  = st.slider("Draws / outcome", 50, 500, 200 if _nov_backend_key2 == "proxy" else 50, 50)
-        _nov_seed2 = st.number_input("Seed", value=42, step=1, key="nov_seed2")
-
-        if st.button("▶ Run Simulation NOV", type="primary"):
-            from causal_model.causal_admissibility import next_observation_value_simulation
-            _nov_prog2  = st.progress(0.0, text="Starting NOV simulation…")
-            _nov_stat2  = st.empty()
-
-            def _nov_cb2(cand_name, outcome_name, done, total):
-                _nov_prog2.progress(done / max(total, 1),
-                                    text=f"{cand_name} / {outcome_name} ({done}/{total})")
-                _nov_stat2.caption(f"Running: {cand_name} → {outcome_name}")
-
-            with st.spinner("NOV simulation 実行中…"):
-                _nov_sim = next_observation_value_simulation(
-                    switches=CAMPANULA_SWITCHES, n_attempts=_nov_n2,
-                    preset_name=preset_name, acceptance_rule=acceptance_rule,
-                    seed=int(_nov_seed2), threshold=_thresh_sp3,
-                    progress_callback=_nov_cb2,
-                    current_accepted_rows=sp.accepted_rows,
-                    nov_backend=_nov_backend_key2,
+                st.dataframe(df_nov, hide_index=True, width="stretch")
+                st.caption(
+                    "NOV is heuristic: expected ΔR from conditioning A_ε on each "
+                    "unobserved trait's direction. The highest-NOV trait is the one "
+                    "whose gradient measurement would most reduce causal degeneracy."
                 )
-            _nov_prog2.progress(1.0, text="Done")
-            _nov_stat2.empty()
-            st.session_state["_nov_sim_results"] = _nov_sim
-
-        if "_nov_sim_results" in st.session_state:
-            _sim_res2 = st.session_state["_nov_sim_results"]
-            _df_nov_sim = pd.DataFrame([
-                {"priority": r.priority, "candidate": r.candidate,
-                 "NOV (ΔR)": round(r.expected_resolvability_gain, 4),
-                 "R_current": round(r.current_R, 4),
-                 "R_expected": round(r.current_R + r.expected_resolvability_gain, 4),
-                 "target switches": ", ".join(r.target_switches)}
-                for r in _sim_res2
-            ])
-            st.bar_chart(_df_nov_sim.set_index("candidate")[["NOV (ΔR)"]], width="stretch")
-            stretch_df(_df_nov_sim, hide_index=True)
-            with st.expander("Outcome details"):
-                for _r2 in _sim_res2:
-                    st.markdown(f"**{_r2.candidate}** (p={_r2.priority}): {_r2.rationale[:300]}")
-
-    st.divider()
-    _next_btn("⑥ Parameter A_ε へ →", _STEPS[5])
-
-
-# ===========================================================================
-# ⑥ Parameter A_ε
-# ===========================================================================
-elif _step_idx == 5:
-    sp = st.session_state["sp_result"]
-
-    st.markdown("### 受容された (θ, s) の分布")
-    _df_sp = pd.DataFrame(sp.accepted_rows)
-    _sw_names2 = [sw.name for sw in CAMPANULA_SWITCHES]
-    _avail = [p for p in [
-        "guide_cost", "outcrossing_benefit", "selfing_benefit",
-        "inbreeding_depression", "drift_strength",
-        "Ne_isolation_slope", "migration_decay_rate", "pollinator_loss_slope",
-    ] if p in _df_sp.columns]
-
-    if len(_avail) >= 2:
-        _sc1, _sc2, _sc3 = st.columns(3)
-        with _sc1:
-            _color_sw = st.selectbox(
-                "Colour by switch", [s for s in _sw_names2 if s in _df_sp.columns], key="sp_color",
-            )
-        with _sc2:
-            _xp = st.selectbox("X axis (θ)", _avail, key="sp_x")
-        with _sc3:
-            _yp = st.selectbox("Y axis (θ)", _avail, index=min(1, len(_avail)-1), key="sp_y")
-        _pdf = _df_sp[[_xp, _yp, _color_sw]].dropna().copy()
-        _pdf[_color_sw] = _pdf[_color_sw].map({True: "ON", False: "OFF"})
-        st.scatter_chart(_pdf, x=_xp, y=_yp, color=_color_sw, size=40)
-    else:
-        st.info("No parameter columns in accepted rows.")
-
-    if "nearest_structure" in _df_sp.columns:
-        with st.expander("Nearest M-structure distribution", expanded=False):
-            st.bar_chart(_df_sp["nearest_structure"].value_counts(), width="stretch")
-
-    st.divider()
-    _next_btn("⑦ Downloads へ →", _STEPS[6])
-
-
-# ===========================================================================
-# ⑦ Downloads
-# ===========================================================================
-elif _step_idx == 6:
-    import json as _json
-    sp = st.session_state["sp_result"]
-    _sp_settings = st.session_state.get("sp_settings", {})
-    _sp_tag = _run_tag(_sp_settings)
-
-    def _ser(rows):
-        out = []
-        for r in rows:
-            row = dict(r)
-            ppm = row.get("per_pattern_matched")
-            if isinstance(ppm, dict):
-                row["per_pattern_matched"] = _json.dumps(
-                    {k: [bool(v[0]), float(v[1])] for k, v in ppm.items()}
-                )
-            out.append(row)
-        return out
-
-    _df_accepted  = pd.DataFrame(_ser(sp.accepted_rows))
-    _df_posterior = pd.DataFrame(sp.posterior_table)
-    _evaluated    = getattr(sp, "evaluated_rows", None) or sp.accepted_rows
-    _df_evaluated = pd.DataFrame(_ser(_evaluated))
-
-    try:
-        from causal_model.causal_admissibility import (
-            observation_contribution as _oc_dl,
-            next_observation_value   as _nov_dl,
-            rach_summary             as _rs_dl,
-        )
-        from causal_model.identifiability import compute_rach_theory_metrics as _rm_dl
-        _thresh_dl = GRADIENT_THRESH_MAP.get(_sp_settings.get("acceptance_rule", acceptance_rule), 1.0)
-        _oc_dl_res  = _oc_dl(getattr(sp, "evaluated_rows", None) or sp.accepted_rows,
-                             CAMPANULA_SWITCHES, threshold=_thresh_dl)
-        _nov_dl_res = _nov_dl(sp.accepted_rows, CAMPANULA_SWITCHES,
-                              sensitive_switches=[])
-        _rs_dl_res  = _rs_dl(sp.accepted_rows, CAMPANULA_SWITCHES)
-        _rm_dl_res  = _rm_dl(sp.accepted_rows, CAMPANULA_SWITCHES)
-        _df_oc_dl = pd.DataFrame([
-            {"pattern": r.pattern, "level": r.level, "n_switches": r.n_switches,
-             "OC_k": round(r.OC_k, 4), "R_full": round(r.R_full, 4),
-             "R_loo": round(r.R_loo, 4), "n_full": r.n_full, "n_loo": r.n_loo}
-            for r in _oc_dl_res
-        ]) if _oc_dl_res else pd.DataFrame()
-        _df_nov_dl = pd.DataFrame([
-            {"priority": r.priority, "candidate": r.candidate,
-             "NOV_delta_R": round(r.expected_resolvability_gain, 4),
-             "R_current": round(r.current_R, 4),
-             "target_switches": ", ".join(r.target_switches),
-             "targets_sensitive_switch": r.targets_sensitive_switch,
-             "sensitive_targets": ", ".join(r.sensitive_targets),
-             "rationale": r.rationale[:300]}
-            for r in _nov_dl_res
-        ]) if _nov_dl_res else pd.DataFrame()
-        _df_summary_dl = pd.DataFrame([{
-            "n_switches": _rs_dl_res.n_switches, "n_accepted": _rs_dl_res.n_accepted,
-            "D_RACH": round(_rs_dl_res.causal_degeneracy, 4),
-            "K_max": round(_rs_dl_res.max_degeneracy, 4),
-            "R_RACH": round(_rs_dl_res.causal_resolvability, 4),
-            "total_Ij": round(_rm_dl_res.total_identifiability, 4),
-            "threshold": _thresh_dl,
-            "acceptance_rule": _sp_settings.get("acceptance_rule", ""),
-            "preset": _sp_settings.get("preset_name", ""),
-            "seed": _sp_settings.get("seed", ""),
-        }])
-    except Exception:
-        _df_oc_dl = pd.DataFrame()
-        _df_nov_dl = pd.DataFrame()
-        _df_summary_dl = pd.DataFrame()
-
-    _zip_contents = {
-        f"{_sp_tag}_accepted_rows":            _df_accepted,
-        f"{_sp_tag}_evaluated_rows":           _df_evaluated,
-        f"{_sp_tag}_posterior_table":          _df_posterior,
-        f"{_sp_tag}_observation_contribution": _df_oc_dl,
-        f"{_sp_tag}_nov_table":                _df_nov_dl,
-        f"{_sp_tag}_rach_summary":             _df_summary_dl,
-    }
-
-    st.download_button(
-        "⬇ Download ALL RACH inference tables as ZIP",
-        _build_zip(_zip_contents),
-        f"{_sp_tag}_rach_inference.zip",
-        "application/zip",
-        width="stretch", type="primary",
-    )
-    st.caption(
-        "ZIP: accepted_rows · evaluated_rows · posterior_table · "
-        "observation_contribution · nov_table · rach_summary"
-    )
-    st.divider()
-
-    _dl1, _dl2, _dl3 = st.columns(3)
-    with _dl1:
-        st.download_button("accepted_rows.csv",
-            _df_accepted.to_csv(index=False).encode("utf-8"),
-            f"{_sp_tag}_accepted_rows.csv", "text/csv")
-        st.download_button("evaluated_rows.csv",
-            _df_evaluated.to_csv(index=False).encode("utf-8"),
-            f"{_sp_tag}_evaluated_rows.csv", "text/csv")
-    with _dl2:
-        st.download_button("posterior_table.csv",
-            _df_posterior.to_csv(index=False).encode("utf-8"),
-            f"{_sp_tag}_posterior_table.csv", "text/csv")
-        if not _df_oc_dl.empty:
-            st.download_button("observation_contribution.csv",
-                _df_oc_dl.to_csv(index=False).encode("utf-8"),
-                f"{_sp_tag}_observation_contribution.csv", "text/csv")
-    with _dl3:
-        if not _df_nov_dl.empty:
-            st.download_button("nov_table.csv",
-                _df_nov_dl.to_csv(index=False).encode("utf-8"),
-                f"{_sp_tag}_nov_table.csv", "text/csv")
-        if not _df_summary_dl.empty:
-            st.download_button("rach_summary.csv",
-                _df_summary_dl.to_csv(index=False).encode("utf-8"),
-                f"{_sp_tag}_rach_summary.csv", "text/csv")
-
-
-
-# ===========================================================================
-# ⑧ Generality — model-selection-vs-RACH confound demo (paper Figs 1–2)
-# ===========================================================================
-elif _step_idx == 7:
-    st.markdown(
-        "**Reproduces the worked-example figures from the manuscript.** The same "
-        "RACH inference layer (degeneracy → NOV → resolution) is run on a chosen "
-        "system. `Campanula` reproduces the money figure (model selection picks an "
-        "arbitrary best model while RACH reports the S2/S3 confound and the "
-        "observation that resolves it). `Synthetic` shows the *identical* workflow "
-        "on a generic, non-Campanula switch system — i.e. the contribution is the "
-        "method, not the Campanula ABM."
-    )
-    _gc1, _gc2, _gc3 = st.columns([2, 1, 1])
-    with _gc1:
-        _gen_system = st.radio(
-            "System", ["Campanula (worked example)", "Synthetic (generality)"],
-            horizontal=True,
-        )
-    with _gc2:
-        _gen_n = st.slider("draws", 200, 4000, 800, 100)
-    with _gc3:
-        _gen_seed = st.number_input("seed", value=7, step=1, key="gen_seed")
-
-    if st.button("▶ Run demo", type="primary", width="stretch"):
-        import tempfile, os
-        _fig_path = os.path.join(tempfile.gettempdir(), "rach_generality_demo.png")
-        with st.spinner("Running demo…"):
-            if _gen_system.startswith("Campanula"):
-                from causal_model.confound_demo import run_confound_demo, make_figure as _cf_fig
-                _gres = run_confound_demo(backend="proxy", n_attempts=int(_gen_n),
-                                          acceptance_rule="strict_all", seed=int(_gen_seed))
-                _cf_fig(_gres, _fig_path)
-                st.session_state["_gen_kind"] = "campanula"
             else:
-                from causal_model.synthetic_demo import run_synthetic_demo, make_figure as _sy_fig
-                _gres = run_synthetic_demo(n_attempts=int(_gen_n) * 4, seed=int(_gen_seed))
-                _sy_fig(_gres, _fig_path)
-                st.session_state["_gen_kind"] = "synthetic"
-        st.session_state["_gen_result"] = _gres
-        st.session_state["_gen_fig"] = _fig_path
+                st.info(
+                    "All traits in y_obs are already constrained, or too few "
+                    "accepted rows. Add more traits to the mechanism definitions "
+                    "beyond those in y_obs to see NOV suggestions."
+                )
 
-    if "_gen_fig" in st.session_state and os.path.exists(st.session_state["_gen_fig"]):
-        _g = st.session_state["_gen_result"]
-        st.image(st.session_state["_gen_fig"], width="stretch")
-        if st.session_state.get("_gen_kind") == "campanula":
-            st.markdown(
-                f"- **ABC model choice** MAP model `{_g.map_model}` has only "
-                f"P={_g.map_prob:.3f} — reporting a single best model is overconfident.\n"
-                f"- **RACH** D_RACH={_g.D_RACH}/4, R={_g.R_RACH}; "
-                f"CA(S2)={_g.ca_j['selfing_syndrome_active']} ≈ "
-                f"CA(S3)={_g.ca_j['island_isolation_common_cause']} → confound reported.\n"
-                + (f"- **Resolution** (add nectar-guide magnitude): "
-                   f"CA(S3) {_g.ca_j['island_isolation_common_cause']}→{_g.ca_j_after['island_isolation_common_cause']} (↑), "
-                   f"CA(S2) {_g.ca_j['selfing_syndrome_active']}→{_g.ca_j_after['selfing_syndrome_active']} (↓), "
-                   f"D {_g.D_RACH}→{_g.D_after}." if _g.ca_j_after else "")
+        with st.expander("Download accepted A_ε rows (CSV)"):
+            df_acc = pd.DataFrame(acc)
+            st.download_button(
+                "⬇ accepted_rows.csv",
+                df_acc.to_csv(index=False).encode("utf-8"),
+                "rach_custom_accepted_rows.csv",
+                "text/csv",
+                width="stretch",
             )
-        else:
-            st.markdown(
-                f"- **RACH** D_RACH={_g.D_RACH}/4, R={_g.R_RACH}; "
-                f"CA(B)={_g.ca_j['B']} ≈ CA(C)={_g.ca_j['C']} → ordinal confound.\n"
-                f"- **Resolution** (add quantitative magnitude): "
-                f"CA(C) {_g.ca_j['C']}→{_g.ca_j_after.get('C')} (↑), "
-                f"CA(B) {_g.ca_j['B']}→{_g.ca_j_after.get('B')} (↓), D {_g.D_RACH}→{_g.D_after}.\n"
-                "- Same signatures as Campanula → the workflow is simulator-agnostic."
+            df_ca = pd.DataFrame(
+                [{"mechanism": k, "CA_j": v} for k, v in ca.items()]
+                + [{"mechanism": "D_bits", "CA_j": round(D, 4)},
+                   {"mechanism": "R", "CA_j": round(R, 4)},
+                   {"mechanism": "K", "CA_j": K}]
             )
-        st.caption(
-            "CLI equivalents: `python -m causal_model.confound_demo` / "
-            "`python -m causal_model.synthetic_demo` / `python -m causal_model.nov_calibration`."
-        )
-    else:
-        st.info("Pick a system and click ▶ Run demo.")
+            st.download_button(
+                "⬇ rach_summary.csv",
+                df_ca.to_csv(index=False).encode("utf-8"),
+                "rach_custom_summary.csv",
+                "text/csv",
+                width="stretch",
+            )
+
+
+# ===========================================================================
+# ℹ About
+# ===========================================================================
+with tab_about:
+    st.markdown(r"""
+## About RACH
+
+**RACH** (*Restricted Admissible Causal Hypotheses*) is a simulation-based
+framework for diagnosing and quantifying causal degeneracy — the situation in
+which multiple mechanistic hypotheses each predict the same observed ordinal
+pattern and are therefore indistinguishable from that pattern alone.
+
+### How to cite
+
+> Authors (2026). RACH: A framework for causal admissibility, degeneracy and
+> next-observation value in ecological systems. *Methods in Ecology and
+> Evolution*.
+
+### Worked examples in the paper
+
+| Section | System | Tier | Key finding |
+|---------|--------|------|-------------|
+| §4.1 | Mechanism-free path inference | A | D = 8.10/9 bits from ordinal cline; direct path most supported |
+| §4.2 | *Campanula* isolation cline | A | S2 (selfing syndrome) ≡ S3 (common cause) on selfing↑/flower↓; nectar guide gradient separates them |
+| §4.3 | Bergmann's rule | A | Heat conservation ≡ fasting endurance on size cline; mechanism assay resolves |
+
+### Two-tier evidence policy
+
+| Tier | Simulator f | What the posterior means | Use |
+|------|------------|--------------------------|-----|
+| **A — VALIDATED** | Randomised-coefficient linear f | Confound logic under arbitrary magnitudes | Publication-grade; conclusions about the *method* |
+| **B — ILLUSTRATIVE** | Hand-coded phenomenological f | Researcher's encoded assumptions | Pipeline illustration only; conditional on f |
+
+### Glossary
+
+| Term | Definition |
+|------|-----------|
+| A_ε | Admissible causal region: accepted (θ,s) draws |
+| CA_j | P(s_j=1 ∣ A_ε) — posterior prob. mechanism j active |
+| D | H(S ∣ A_ε) — joint mechanism entropy (bits) |
+| R | 1 − D/K — fraction of causal uncertainty resolved |
+| OC_k | R(O) − R(O∖{k}) — contribution of pattern k |
+| NOV(q) | E[R(O∪q) − R(O)] — expected gain from obs. q |
+| confounding edge | (A,B) pair with high MI in A_ε; data cannot separate A from B |
+| disjunction confound | A ∨ B required; either alone or both together explain y_obs |
+
+### Repository
+
+Source code: [github.com/zuizui0223/microdonta](https://github.com/zuizui0223/microdonta)
+
+CLI equivalents:
+
+```bash
+python -m causal_model.structure_discovery --figure outputs/fig4a.png
+python -m causal_model.campanula_structural --truth S3 --figure outputs/fig4b.png
+python -m causal_model.bergmann_worked_example --truth fasting_endurance
+```
+""")
