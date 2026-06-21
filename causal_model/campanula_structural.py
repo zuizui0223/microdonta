@@ -218,6 +218,11 @@ class CampanulaResult:
     D_after: float = float("nan")
     R_after: float = float("nan")
     seq_trace: str = ""
+    # explanation-level summary (minimal sufficient explanations of the pattern)
+    explanations: list[tuple[frozenset, float]] = field(default_factory=list)
+    R_expl: float = float("nan")
+    explanations_after: list[tuple[frozenset, float]] = field(default_factory=list)
+    R_expl_after: float = float("nan")
 
 
 def run_campanula_structural(truth: str = "S3", n_attempts: int = 4000,
@@ -241,9 +246,14 @@ def run_campanula_structural(truth: str = "S3", n_attempts: int = 4000,
     nov = sorted(((c.name, expected_edge_cuts(c, acc, switches, struct, min_sub_size=10))
                   for c in cands), key=lambda x: -x[1])
 
+    from causal_model.minimal_explanations import minimal_explanations
+    dec = minimal_explanations(acc, switches)
+
     res = CampanulaResult(
         switch_names=names, truth=truth, n_accepted=len(acc), ca_j=ca,
         D_RACH=D0, R_RACH=R0, confound_edge=edge, nov_ranking=nov,
+        explanations=[(e.mechanisms, e.mass) for e in dec.explanations],
+        R_expl=dec.R_expl,
     )
 
     # RACH-SEQ greedy loop
@@ -263,6 +273,9 @@ def run_campanula_structural(truth: str = "S3", n_attempts: int = 4000,
         res.ca_j_after = {r.switch_name: round(r.CA_j, 4) for r in summ2.causal_admissibility}
         res.D_after = round(summ2.causal_degeneracy, 4)
         res.R_after = round(causal_resolvability(rows, switches), 4)
+        dec_after = minimal_explanations(rows, switches)
+        res.explanations_after = [(e.mechanisms, e.mass) for e in dec_after.explanations]
+        res.R_expl_after = dec_after.R_expl
     return res
 
 

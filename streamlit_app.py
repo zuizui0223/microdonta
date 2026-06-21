@@ -46,6 +46,7 @@ from causal_model.causal_admissibility import (
     rach_summary,
 )
 from causal_model.mechanism_equivalence import mechanism_equivalence_structure
+from causal_model.minimal_explanations import minimal_explanations
 from causal_model.switch_inference import BiologicalSwitch
 from causal_model.simulator import TIER_VALIDATED, evidence_tier
 
@@ -132,6 +133,46 @@ def _dr_metrics(D: float, R: float, K: int, n: int) -> None:
     c2.metric("K — max entropy", f"{K} bits")
     c3.metric("R — resolvability", f"{R:.3f}")
     c4.metric("|A_ε| accepted", n)
+
+
+def _explanation_panel(acc: list[dict], switches: list[BiologicalSwitch]) -> None:
+    """Show the minimal-sufficient-explanation summary of A_ε.
+
+    This is the headline summary: it states which inclusion-minimal sets of
+    mechanisms reproduce the pattern, and how the posterior mass splits among
+    them — far more legible than per-switch marginals when the mechanisms form
+    a disjunction confound.
+    """
+    dec = minimal_explanations(acc, switches)
+    if not dec.explanations:
+        st.warning("A_ε is empty — minimal explanations are non-estimable.")
+        return
+    rows = [
+        {
+            "minimal explanation": ("{" + ", ".join(sorted(e.mechanisms)) + "}"
+                                    if e.mechanisms else "{∅ no mechanism}"),
+            "posterior mass": round(e.mass, 3),
+        }
+        for e in dec.explanations
+    ]
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("R_expl (explanation-level)", f"{dec.R_expl:.3f}")
+    c2.metric("D_expl", f"{dec.D_expl:.3f} bits")
+    c3.metric("# minimal explanations", len(dec.explanations))
+    if len(dec.explanations) > 1 and dec.R_expl < 0.5:
+        st.info(
+            "**Reading:** the pattern is explained by *either* of the minimal sets "
+            "above — they are confounded. The per-switch CA_j look ambiguous (~0.5–0.7) "
+            "precisely because each mechanism is one option in this disjunction, not "
+            "because nothing was learned. R_expl reports how concentrated the posterior "
+            "is on a *single* explanation."
+        )
+    elif dec.R_expl >= 0.99:
+        st.success(
+            "**Reading:** a single minimal explanation carries (almost) all the "
+            "posterior mass — the mechanism question is resolved at the explanation level."
+        )
 
 
 def _confound_table(acc: list[dict], switches: list[BiologicalSwitch]) -> None:
@@ -288,6 +329,23 @@ with tab_examples:
                 f"(tier: {evidence_tier('causal_model.campanula_structural')})"
             )
 
+            def _expl_table(expl):
+                return pd.DataFrame([
+                    {"minimal explanation": ("{" + ", ".join(sorted(m)) + "}"
+                                             if m else "{∅}"),
+                     "posterior mass": round(mass, 3)}
+                    for m, mass in expl
+                ])
+
+            st.markdown("### Minimal sufficient explanations (headline)")
+            st.caption(
+                "The pattern (selfing↑, flower↓) is reproduced by *either* of these "
+                "minimal mechanism sets — that disjunction is the real finding, not "
+                "the ~0.7 per-switch marginals below."
+            )
+            st.dataframe(_expl_table(res.explanations), hide_index=True, width="stretch")
+            st.metric("R_expl (explanation-level)", f"{res.R_expl:.3f}")
+
             st.markdown("### CA_j on published ordinal pattern (selfing↑, flower↓)")
             _ca_bar(res.ca_j, "Before distinguishing observation")
             _dr_metrics(res.D_RACH, res.R_RACH, len(res.ca_j), res.n_accepted)
@@ -305,10 +363,18 @@ with tab_examples:
 
             if res.ca_j_after:
                 st.markdown(f"### Resolution after adding distinguishing observation (truth = {ex_truth})")
+                if res.explanations_after:
+                    st.caption(
+                        "Explanation-level resolution: the minimal explanation collapses "
+                        "to a single set, so R_expl → 1 — using only the observable cline, "
+                        "without any idealised switch-readout assay."
+                    )
+                    st.dataframe(_expl_table(res.explanations_after), hide_index=True, width="stretch")
                 _ca_bar(res.ca_j_after, "After distinguishing observation")
-                c1, c2 = st.columns(2)
+                c1, c2, c3 = st.columns(3)
                 c1.metric("R before", f"{res.R_RACH:.3f}")
                 c2.metric("R after", f"{res.R_after:.3f}")
+                c3.metric("R_expl after", f"{res.R_expl_after:.3f}")
 
         # ── Bergmann ─────────────────────────────────────────────────────────
         else:
@@ -621,6 +687,14 @@ with tab_custom:
 
         st.divider()
         st.success(f"|A_ε| = {len(acc)} accepted from {cust_n} draws")
+
+        st.markdown("### Minimal sufficient explanations (headline)")
+        st.caption(
+            "Which inclusion-minimal sets of mechanisms reproduce your pattern, "
+            "and how the posterior mass splits among them. Read this *before* the "
+            "per-switch CA_j."
+        )
+        _explanation_panel(acc, switches)
 
         st.markdown("### CA_j — Causal admissibility")
         _ca_bar(ca)
