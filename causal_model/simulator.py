@@ -71,6 +71,7 @@ VALIDATED_SIMULATOR_MODULES = (
     "causal_model.structure_discovery",
     "causal_model.bergmann_worked_example",
     "causal_model.ecological_rules_validation",
+    "causal_model.campanula_structural",
 )
 
 #: Modules whose accepted regions come from a Tier-B (illustrative) simulator.
