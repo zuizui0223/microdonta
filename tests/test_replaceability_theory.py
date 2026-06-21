@@ -28,6 +28,15 @@ from causal_model.replaceability_theory import (
     corroborate,
     info_term_from_ca,
     info_term_is_monotone,
+    resolution_indicator,
+    marginal_on_probability,
+    synthetic_synergy_model,
+    greedy_value_driven,
+    optimal_set_resolves,
+    submodularity_violated,
+    verify_theorem_C_family,
+    find_greedy_failures,
+    _add_nulls,
 )
 
 
@@ -194,3 +203,66 @@ def test_constraints_can_reorder_equal_posterior_mechanisms():
     crc_a2 = causal_replaceability_cost("a", rows, [cons[0]])
     crc_b2 = causal_replaceability_cost("b", rows, [cons[0]])
     assert crc_a2 != crc_b2, "a single asymmetric constraint must split equal-CA mechanisms"
+
+
+# ---------------------------------------------------------------------------
+# Theorem C: synergy of elimination; greedy myopic design provably fails
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("n", [2, 3, 4, 5, 6])
+def test_theorem_C_holds_on_the_canonical_synergy_family(n):
+    assert verify_theorem_C_family(n).holds
+
+
+def test_every_single_elimination_is_worthless_but_the_set_resolves():
+    """The crux of Theorem C, stated plainly for n=3."""
+    model, baseline, cands, j = synthetic_synergy_model(3)
+    # each single null observation resolves nothing
+    for c in cands:
+        assert resolution_indicator(model, _add_nulls(baseline, [c]), j) == 0
+    # any pair still resolves nothing (one competitor remains)
+    assert resolution_indicator(model, _add_nulls(baseline, cands[:2]), j) == 0
+    # only the full set of eliminations resolves
+    assert resolution_indicator(model, _add_nulls(baseline, cands), j) == 1
+
+
+def test_greedy_fails_where_an_optimal_set_succeeds():
+    model, baseline, cands, j = synthetic_synergy_model(3)
+    greedy_ok, chosen = greedy_value_driven(model, baseline, cands, j)
+    opt_ok, combo = optimal_set_resolves(model, baseline, cands, j)
+    assert opt_ok and len(combo) == 3        # the full elimination set resolves
+    assert not greedy_ok                      # greedy makes no progress
+    assert chosen == []                       # it never found a positive-gain step
+
+
+def test_resolution_objective_is_not_submodular():
+    """For n=2 the pair-witness directly exhibits increasing returns."""
+    model, baseline, cands, j = synthetic_synergy_model(2)
+    assert submodularity_violated(model, baseline, cands, j)
+
+
+def test_continuous_marginal_returns_are_increasing():
+    """h_j gain of the last elimination exceeds that of the first (supermodular)."""
+    model, baseline, cands, j = synthetic_synergy_model(3)
+    first = (marginal_on_probability(model, _add_nulls(baseline, [cands[0]]), j)
+             - marginal_on_probability(model, baseline, j))
+    before_last = _add_nulls(baseline, cands[:-1])
+    last = (marginal_on_probability(model, _add_nulls(before_last, [cands[-1]]), j)
+            - marginal_on_probability(model, before_last, j))
+    assert last > first
+
+
+def test_greedy_failures_occur_in_random_models():
+    """Theorem C is not a contrived corner case: greedy fails on a positive
+    fraction of resolvable random structural models."""
+    rng = random.Random(0)
+    out = find_greedy_failures(rng, 3000)
+    assert out["resolvable_cases"] > 50
+    assert out["greedy_failures"] > 0
+    assert out["example"] is not None
+
+
+def test_corroborate_includes_theorem_C():
+    summary = corroborate(n_trials=3000, seed=1)
+    assert summary["theorem_C_family"] == "verified"
+    assert summary["greedy_failures_found"] > 0
