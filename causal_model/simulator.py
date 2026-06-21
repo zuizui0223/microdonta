@@ -77,6 +77,7 @@ VALIDATED_SIMULATOR_MODULES = (
     "causal_model.converse_bergmann",
     "causal_model.neutral_adaptive",
     "causal_model.campanula_real_data",
+    "causal_model.worked_examples.generic_mediation_replacement",
 )
 
 #: Modules whose accepted regions come from a Tier-B (illustrative) simulator.
