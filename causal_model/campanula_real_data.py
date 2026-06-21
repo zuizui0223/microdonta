@@ -77,6 +77,20 @@ class CampanulaRealResult:
     explanations: list[tuple[frozenset, float]]
     confound_edge: str
     study_design: list[dict] = field(default_factory=list)
+    # Causal Replaceability Cost (CRC) read of the same admissible region.
+    crc_published: dict[str, float] = field(default_factory=dict)
+    crc_after_guide_declines: dict[str, float] = field(default_factory=dict)
+    crc_after_guide_flat: dict[str, float] = field(default_factory=dict)
+    replaceability_nov: list[dict] = field(default_factory=list)
+
+
+def _crc_str(v: float) -> float | str:
+    """Render a CRC value, mapping ∞ to the string '∞' for readable reports."""
+    if v == float("inf"):
+        return "∞"
+    if v != v:                     # NaN
+        return float("nan")
+    return round(v, 4)
 
 
 def _real_y_obs() -> list[dict]:
@@ -127,6 +141,42 @@ def run_campanula_real(n_attempts: int = 6000, seed: int = 1) -> CampanulaRealRe
         R_expl=dec.R_expl,
         explanations=[(e.mechanisms, e.mass) for e in dec.explanations],
         confound_edge=edge,
+    )
+
+    # ---- Causal Replaceability read of the published admissible region ----
+    # On the published gradients S2 and S3 are *mutually replaceable*: each can
+    # reproduce selfing↑/flower↓ when the other is ablated, so CRC(S2)≈CRC(S3),
+    # both finite. The deliverable is what observation makes one IRREPLACEABLE.
+    from causal_model.causal_replaceability import crc_profile
+    from causal_model.replaceability_nov import replaceability_nov_total
+    from causal_model.rach_seq import filter_by_outcome
+
+    res.crc_published = {k: _crc_str(v) for k, v in crc_profile(acc, switches).items()}
+
+    # Counterfactual: what if the nectar-guide gradient were observed? Only S3
+    # (and S1) drive the guide, so "guide declines" pins S3 → CRC(S3)→∞, while
+    # "guide flat" pins S2 → CRC(S2)→∞. This is the CRC form of the confound's
+    # resolution and the reason the guide gradient tops the study-design ranking.
+    guide_cand = next((c for c in _candidate_observations()
+                       if c.name == "nectar_guide_gradient"), None)
+    if guide_cand is not None:
+        for outcome in guide_cand.outcomes:
+            sub = filter_by_outcome(acc, outcome.extra_pattern_rows)
+            prof = {k: _crc_str(v) for k, v in crc_profile(sub, switches).items()} if sub else {}
+            if outcome.name == "guide_declines":
+                res.crc_after_guide_declines = prof
+            elif outcome.name == "guide_flat":
+                res.crc_after_guide_flat = prof
+
+    # Replaceability-aware NOV: expected total ΔCRC over all switches per candidate.
+    for cand in _candidate_observations():
+        res.replaceability_nov.append({
+            "candidate": cand.name,
+            "NOV_CRC_total": replaceability_nov_total(cand, acc, switches),
+        })
+    res.replaceability_nov.sort(
+        key=lambda r: (r["NOV_CRC_total"] if r["NOV_CRC_total"] == r["NOV_CRC_total"] else -1),
+        reverse=True,
     )
 
     # Study design: EVSI on R_expl per candidate, combined with real design cost/feasibility.
@@ -186,6 +236,26 @@ def print_report(res: CampanulaRealResult) -> None:
     top = res.study_design[0]
     print(f"\n    → highest resolution-per-effort: {top['real_experiment']} "
           f"(targets {top['targets']}).")
+
+    print("\n(C) Causal Replaceability Cost (CRC) — which mechanism is load-bearing")
+    def _fmt_crc(d):
+        return "  ".join(f"{k.split('_')[0]}:{('∞' if v=='∞' else f'{v:.2f}')}"
+                         for k, v in d.items())
+    print(f"    published gradients   : {_fmt_crc(res.crc_published)}")
+    print("      → S2 (selfing_syndrome) and S3 (island_common_cause) are MUTUALLY")
+    print("        replaceable: each finite CRC means the other can stand in.")
+    if res.crc_after_guide_declines:
+        print(f"    if guide DECLINES     : {_fmt_crc(res.crc_after_guide_declines)}")
+        print("      → CRC(S3) RISES but stays finite: a declining guide can be driven")
+        print("        by S1 (Bombus loss) OR S3, so it raises—but does not prove—S3.")
+    if res.crc_after_guide_flat:
+        print(f"    if guide FLAT         : {_fmt_crc(res.crc_after_guide_flat)}")
+        print("      → CRC(S2)→∞: S2 becomes irreplaceable. A flat guide rules out the")
+        print("        common cause (S3 forces guide↓), so only the syndrome (S2) fits.")
+    print("\n    Replaceability-NOV (expected total ΔCRC if the observation is taken):")
+    for r in res.replaceability_nov:
+        v = r["NOV_CRC_total"]
+        print(f"      {r['candidate']:28s} NOV_CRC = {v:.3f}")
 
 
 def make_figure(res: CampanulaRealResult, path: str) -> str | None:

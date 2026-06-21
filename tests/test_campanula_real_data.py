@@ -80,3 +80,51 @@ def test_every_candidate_has_a_nov_score():
     for r in res.study_design:
         assert r["NOV_EVSI_Rexpl"] is not None
         assert r["NOV_EVSI_Rexpl"] >= 0.0
+
+
+# ---------------------------------------------------------------------------
+# Causal Replaceability read of the same published admissible region
+# ---------------------------------------------------------------------------
+
+def test_published_record_makes_S2_S3_mutually_replaceable():
+    """On the published gradients, S2 and S3 each have finite, similar CRC:
+    each can stand in for the other (the disjunction confound in CRC terms)."""
+    res = run_campanula_real(n_attempts=8000, seed=1)
+    crc_s2 = res.crc_published["selfing_syndrome"]
+    crc_s3 = res.crc_published["island_common_cause"]
+    # both finite (neither indispensable) and close (mutually replaceable)
+    assert crc_s2 != "∞" and crc_s3 != "∞"
+    assert abs(crc_s2 - crc_s3) < 0.3, (
+        f"S2/S3 should be mutually replaceable: CRC(S2)={crc_s2}, CRC(S3)={crc_s3}"
+    )
+
+
+def test_flat_guide_makes_selfing_syndrome_irreplaceable():
+    """A flat nectar guide rules out the common cause (S3 forces guide↓),
+    so the selfing syndrome S2 becomes irreplaceable: CRC(S2)→∞."""
+    res = run_campanula_real(n_attempts=8000, seed=1)
+    assert res.crc_after_guide_flat.get("selfing_syndrome") == "∞"
+    # and the common cause becomes freely droppable
+    assert res.crc_after_guide_flat.get("island_common_cause") == 0.0
+
+
+def test_declining_guide_raises_but_does_not_pin_the_common_cause():
+    """A declining guide is consistent with S1 (Bombus loss) OR S3, so CRC(S3)
+    rises above its published value but stays finite (honest non-resolution)."""
+    res = run_campanula_real(n_attempts=8000, seed=1)
+    crc_s3_pub = res.crc_published["island_common_cause"]
+    crc_s3_dec = res.crc_after_guide_declines["island_common_cause"]
+    assert crc_s3_dec != "∞", "a declining guide should NOT prove S3 (S1 can drive it too)"
+    assert crc_s3_dec > crc_s3_pub, "a declining guide should still raise suspicion on S3"
+
+
+def test_replaceability_nov_ranks_every_candidate():
+    res = run_campanula_real(n_attempts=8000, seed=1)
+    assert len(res.replaceability_nov) >= 3
+    vals = [r["NOV_CRC_total"] for r in res.replaceability_nov]
+    # sorted descending
+    assert vals == sorted(vals, reverse=True)
+    # the neutral-diversity gradient (isolates S3 cleanly) is a top-value observation
+    assert res.replaceability_nov[0]["candidate"] in (
+        "neutral_diversity_gradient", "bagging_RA_assay"
+    )
