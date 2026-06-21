@@ -202,7 +202,7 @@ def _confound_table(acc: list[dict], switches: list[BiologicalSwitch]) -> None:
 # ===========================================================================
 with tab_examples:
     st.markdown(
-        "All three examples use the **Tier-A (VALIDATED)** simulator: "
+        "All examples use the **Tier-A (VALIDATED)** simulator: "
         "only directional signs are asserted; every effect magnitude is drawn "
         "fresh and integrated out. Results reflect the *confound logic*, not "
         "hand-tuned coefficients."
@@ -211,6 +211,7 @@ with tab_examples:
     ex_choice = st.radio(
         "Select worked example",
         [
+            "Adaptation vs. plasticity — common-garden confound (recommended)",
             "Structure Discovery (§4.1) — mechanism-free path inference",
             "Campanula isolation cline (§4.2) — S2/S3 confound",
             "Bergmann's rule (§4.3) — heat conservation vs. fasting endurance",
@@ -233,13 +234,87 @@ with tab_examples:
             ["S3", "S2"],
             key="ex_truth_camp",
         )
+    elif "Adaptation" in ex_choice:
+        ex_truth = col_truth.selectbox(
+            "Assumed truth (for resolution panel)",
+            ["genetic", "plastic", "maternal"],
+            key="ex_truth_adapt",
+        )
     else:
         ex_truth = None
 
     if st.button("▶ Run worked example", type="primary", width="stretch"):
 
+        # ── Adaptation vs. plasticity (recommended lead example) ──────────────
+        if "Adaptation" in ex_choice:
+            with st.spinner("Running adaptation-vs-plasticity example…"):
+                from causal_model.adaptation_plasticity import run_adaptation_plasticity
+                res = run_adaptation_plasticity(truth=ex_truth, n_attempts=ex_n, seed=int(ex_seed))
+            st.success(
+                f"|A_ε| = {res.n_accepted} accepted from {ex_n} draws  "
+                f"(tier: {evidence_tier('causal_model.adaptation_plasticity')})"
+            )
+            st.markdown(
+                "**Constraint = sign structure** (which process moves which observable, "
+                "and in what direction). **Trade-off = the benign-site cost**: genetic "
+                "adaptation raises tolerance *and* lowers benign-site performance. No "
+                "magnitude is tuned."
+            )
+
+            def _expl_df(expl):
+                return pd.DataFrame([
+                    {"minimal explanation": ("{" + ", ".join(sorted(m)) + "}" if m else "{∅}"),
+                     "posterior mass": round(mass, 3)}
+                    for m, mass in expl
+                ])
+
+            st.markdown("### Field cline alone — the confound (headline)")
+            st.caption(
+                "The wild cline (the only y_obs) is reproduced by genetic adaptation, "
+                "phenotypic plasticity, *or* maternal effects — a three-way confound."
+            )
+            st.dataframe(_expl_df(res.explanations), hide_index=True, width="stretch")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("R_expl (explanation-level)", f"{res.R_expl:.3f}")
+            c2.metric("switch-level R", f"{res.R_RACH:.3f}")
+            c3.metric("|A_ε|", res.n_accepted)
+
+            st.markdown("### NOV — exact EVSI on explanation resolvability")
+            st.caption(
+                "Note RACH's non-obvious finding: a *single-generation* common garden "
+                "ranks below the second-generation garden and the cost assay, because an "
+                "F1 garden alone cannot separate genetic adaptation from maternal effects "
+                "(both persist in F1)."
+            )
+            st.dataframe(
+                pd.DataFrame([
+                    {"rank": i + 1, "observation": name, "NOV (EVSI on R_expl)": round(val, 4)}
+                    for i, (name, val) in enumerate(res.nov_ranking)
+                ]),
+                hide_index=True, width="stretch",
+            )
+
+            st.markdown(f"### Sequential resolution in NOV order (truth = {ex_truth})")
+            st.caption(
+                "Each row adds the next observation (cheap A_ε filter) and shows the "
+                "surviving minimal explanations. R_expl → 1 using only observables — "
+                "no idealised switch-readout assay."
+            )
+            seq_rows = [{"step cline only": "—", "R_expl": res.R_expl,
+                         "explanations": "  ".join(
+                             ("{" + ", ".join(sorted(m)) + "}") + f"={mass:.2f}"
+                             for m, mass in res.explanations)}]
+            for cand_name, expl, r in res.seq_steps:
+                seq_rows.append({
+                    "step cline only": f"+ {cand_name}",
+                    "R_expl": round(r, 3),
+                    "explanations": "  ".join(
+                        ("{" + ", ".join(sorted(m)) + "}") + f"={mass:.2f}" for m, mass in expl),
+                })
+            st.dataframe(pd.DataFrame(seq_rows), hide_index=True, width="stretch")
+
         # ── Structure Discovery ──────────────────────────────────────────────
-        if "Structure" in ex_choice:
+        elif "Structure" in ex_choice:
             with st.spinner("Running structure discovery…"):
                 from causal_model.structure_discovery import run_structure_discovery
                 res = run_structure_discovery(n_attempts=ex_n, seed=int(ex_seed))
