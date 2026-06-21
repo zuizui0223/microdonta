@@ -314,23 +314,34 @@ directions, and attributions encoded for each rule are provisional transcription
 to be verified against the primary literature before publication; the validated
 contribution is the method, not the specific directional values.
 
-### 3.6 Discovering the path structure without enumerating mechanisms (Fig. 6)
+## 4. Worked examples
+
+Our **lead** worked example (§4.1) removes the strongest assumption of all — that
+the analyst can name the candidate mechanisms — and infers the causal path,
+including indirect mediated routes, from the pattern itself. The other two run the
+named-mechanism workflow on the authors' own system (§4.2) and on a published
+animal rule (§4.3). All three use a **Tier-A (validated) simulator**: only the
+directional structure is asserted and every effect magnitude is randomised and
+marginalised, so each conclusion rests on the confound logic, not on tuned
+coefficients (§5; `causal_model.simulator`).
+
+### 4.1 Discovering the path from the pattern, without enumerating mechanisms (Fig. 6)
 
 *(`python -m causal_model.structure_discovery --figure …`; seed 1,
-n_attempts = 20000, |A_ε| = 2774)*  Sections 3.1–3.5 and both worked examples
-take a **hand-enumerated** set of named mechanism switches as input. The deeper
-question a cline poses is whether the candidate causal paths *themselves* —
-including indirect, mediated ones — can be inferred from the pattern when the
-mechanisms are not known in advance and when fitness and cost (the selective
-economics) are unmeasurable. This experiment makes the **causal structure itself
-the random object**: over a minimal vocabulary of an exogenous cline driver `X`,
-two latent unmeasured mediators (`Ma`, `Mb`), and the two observed traits
-(`T1`, `T2`), it treats each of the nine candidate directed edges (`X→T` direct,
-`X→Ma→T` mediated, …) as a Bernoulli switch and gives each present edge a random
-sign and magnitude — the last step marginalising the unmeasurable economics. ABC
-keeps the structures whose forward-propagated trait directions reproduce the
-observed cline, and the entire RACH apparatus (CA, D, NOV) is then applied to the
-**edge space** rather than a named-mechanism space.
+n_attempts = 20000, |A_ε| = 2774)*  Every other use of RACH takes a
+**hand-enumerated** set of named mechanism switches as input. The deeper question
+a cline poses is whether the candidate causal paths *themselves* — including
+indirect, mediated ones — can be inferred from the pattern when the mechanisms are
+not known in advance and when fitness and cost (the selective economics) are
+unmeasurable. This lead example makes the **causal structure itself the random
+object**: over a minimal vocabulary of an exogenous cline driver `X`, two latent
+unmeasured mediators (`Ma`, `Mb`), and the two observed traits (`T1`, `T2`), it
+treats each of the nine candidate directed edges (`X→T` direct, `X→Ma→T`
+mediated, …) as a Bernoulli switch and gives each present edge a random sign and
+magnitude — the last step marginalising the unmeasurable economics. ABC keeps the
+structures whose forward-propagated trait directions reproduce the observed cline,
+and the entire RACH apparatus (CA, D, NOV) is then applied to the **edge space**
+rather than a named-mechanism space.
 
 The honest and expected result is high **structural** degeneracy. From the
 ordinal cline alone (both traits decline) `D_structural = 8.10 of 9` bits
@@ -349,58 +360,36 @@ vocabulary and the admissible edges — a far weaker assumption than enumerating
 named mechanisms — and reports the resulting structural ambiguity rather than
 concealing it.
 
-## 4. Worked examples
+### 4.2 The authors' own system: *Campanula microdonta* in the Izu Islands (Fig. 7)
 
-### 4.1 A published ecological rule: Bergmann's rule
+*(`python -m causal_model.campanula_structural --figure …`; seed 1, n = 4000,
+|A_ε| = 2398)*  Island populations along an isolation gradient lose bumblebee
+pollinators and shift toward selfing with reduced flower size (Inoue & Amano 1986;
+Inoue 1990). We give this system the same **Tier-A structural** treatment as §4.1:
+we assert only the *directional* structure of four named hypotheses — `S1`
+(guide ← Bombus loss), `S2` (reproductive-assurance selfing syndrome:
+selfing↑, flower↓, herkogamy↓), `S3` (island isolation as a single common cause:
+all traits, including the guide and neutral diversity), and `S5` (halictid
+substitution, suppressing selfing) — and randomise/marginalise every magnitude,
+so no hand-tuned coefficient enters. `y_obs` is **only the two source-confirmed
+ordinal gradients** (selfing↑, flower size↓); pollinator availability is `x_obs`;
+nectar guide, neutral diversity, Fis, herkogamy and seed set are **future/NOV
+candidates**, not current targets.
 
-*(`python -m causal_model.bergmann_worked_example --truth fasting_endurance
---figure …`; seed 1, n = 4000, |A_ε| = 2994; Fig. 4)*  To show RACH on a system
-with no plant, mating-system or island content, we apply it to **Bergmann's
-rule** — the increase of endotherm body size with latitude / colder climate.
-The pattern is uncontested; its mechanism is a textbook case of acknowledged
-degeneracy. We encode four mechanism switches — `heat_conservation`
-(thermoregulatory surface-area-to-volume, Bergmann's original) and
-`fasting_endurance` (larger reserves survive seasonal food shortage), both of
-which drive the cline, plus `resource_productivity` and `dispersal_gradient` as
-inert controls. `y_obs` is **only the published ordinal cline** (body size
-increases with latitude) — the kind of directional statement a comparative study
-or natural-history note reports; the mechanism-specific assays (thermal
-conductance / Allen's-rule scaling; overwinter fasting endurance) are *not* in
-`y_obs` but are NOV candidates.
-
-On the cline alone the two driving mechanisms are confounded exactly as in the
-Campanula case: `CA(heat_conservation) = 0.66 ≈ CA(fasting_endurance) = 0.66`,
-`D = 3.58 of 4` (R = 0.10), with an explicit disjunction confounding edge
-("at least one of heat conservation, fasting endurance"; φ = −0.52, MI = 0.27
-bits), while the two control mechanisms sit at CA ≈ 0.50 and are correctly left
-free. ABC model choice instead returns a single MAP switch-combination with
-P = 0.09 — a near-arbitrary winner. RACH-SEQ then resolves the confound: taking
-an *illustrative* assumed latent truth (fasting endurance — the literature does
-not attribute one), the mechanism-specific assays cut the confounding edge in a
-single observation and, with both assays measured, pin
-`CA(fasting_endurance) → 1.00` and `CA(heat_conservation) → 0.00`,
-`D 3.58 → 1.99`, `R 0.10 → 0.50` (Fig. 4). The point is not which mechanism is
-true — the Bergmann mechanism is genuinely contested (Meiri & Dayan 2003) — but
-that RACH names the assay that *would* resolve it and recovers whichever
-mechanism the assay confirms. The identical workflow, the identical code, on a
-completely different biological rule: the contribution is the method, not the
-Campanula system.
-
-### 4.2 An own-field system in progress: *Campanula microdonta* in the Izu Islands
-
-Island populations along an isolation gradient lose bumblebee pollinators and
-shift toward selfing with reduced flower size (Inoue & Amano 1986; Inoue 1990).
-We use only the two **source-confirmed ordinal gradients** as `y_obs`
-(`selfing_distance`, `flower_size_distance`); pollinator availability is `x_obs`;
-Oshima–Hachijo pairwise summaries are diagnostic-only; nectar guide, herkogamy,
-Fis, seed set and visitation are explicitly **future/NOV candidates**, not current
-targets (the species is protandrous, so static herkogamy is not the operative
-trait). With two correlated gradients, `A_ε` is broad and causal resolution is
-**low** — RACH reports this honestly rather than over-claiming a resolved causal
-history. NOV identifies nectar-guide quantification as the highest-value next
-observation, and the confound demonstration (§3.2) confirms it would resolve the
-central S2/S3 confound. This is a preliminary example whose value is to *motivate*
-observation design, not a definitive empirical resolution.
+On the published pattern alone `S2` and `S3` are jointly admissible — a
+disjunction confound (`CA(S2) = 0.72 ≈ CA(S3) = 0.71`, `D = 3.49 of 4`, R = 0.13;
+edge "at least one of S2, S3"; φ = −0.40, MI = 0.17 bits) — while `S1` is
+correctly left free at CA ≈ 0.50, because the published pattern does not include
+the guide. NOV ranks the **neutral-diversity** and **nectar-guide** cline surveys
+highest, precisely because only `S3` (and, for the guide, `S1`) drives those
+traits while `S2` does not — so measuring them separates the syndrome from the
+common cause. Supplying the realised gradients resolves the confound symmetrically
+(illustrative truth `S3`: `CA(S3) → 1.00`, `CA(S2) → 0.00`, `D 3.49 → 1.88`,
+`R 0.13 → 0.53`; truth `S2`: the mirror image) (Fig. 7). Crucially, this
+conclusion depends only on the directional structure a field biologist can defend
+qualitatively — **no field magnitudes are required** — which is what makes it a
+publication-grade worked example now, before the authors' own quantitative data
+exist. Those data then *upgrade* the ordinal `y_obs` to quantitative targets:
 
 **Field data that would replace the current ordinal y_obs with quantitative
 targets.** The following measurements, across ≥3 Izu Island populations
@@ -424,6 +413,38 @@ without a corresponding reproductive-assurance change, while S2 predicts both
 declining together. These two outcomes are not distinguishable by the current
 ordinal gradients alone.
 
+### 4.3 Transfer to a published animal rule: Bergmann's rule (Fig. 4)
+
+*(`python -m causal_model.bergmann_worked_example --figure …`; seed 1, n = 4000,
+|A_ε| = 2994)*  To show the same workflow on a system with no plant, mating-system
+or island content, we apply it to **Bergmann's rule** — the increase of endotherm
+body size with latitude / colder climate. The pattern is uncontested; its
+mechanism is a textbook case of acknowledged degeneracy. We encode four mechanism
+switches — `heat_conservation` (thermoregulatory surface-area-to-volume, Bergmann's
+original) and `fasting_endurance` (larger reserves survive seasonal food shortage),
+both of which drive the cline, plus `resource_productivity` and `dispersal_gradient`
+as inert controls. `y_obs` is **only the published ordinal cline** (body size
+increases with latitude); the mechanism-specific assays (thermal conductance;
+overwinter fasting endurance) are *not* in `y_obs` but are NOV candidates.
+
+On the cline alone the two driving mechanisms are confounded exactly as in the
+Campanula case: `CA(heat_conservation) = 0.66 ≈ CA(fasting_endurance) = 0.66`,
+`D = 3.58 of 4` (R = 0.10), with an explicit disjunction confounding edge
+("at least one of heat conservation, fasting endurance"; φ = −0.52, MI = 0.27
+bits), while the two control mechanisms sit at CA ≈ 0.50 and are correctly left
+free. ABC model choice instead returns a single MAP switch-combination with
+P = 0.09 — a near-arbitrary winner. RACH-SEQ then resolves the confound: taking
+an *illustrative* assumed latent truth (fasting endurance — the literature does
+not attribute one), the mechanism-specific assays cut the confounding edge in a
+single observation and, with both assays measured, pin
+`CA(fasting_endurance) → 1.00` and `CA(heat_conservation) → 0.00`,
+`D 3.58 → 1.99`, `R 0.10 → 0.50` (Fig. 4). The point is not which mechanism is
+true — the Bergmann mechanism is genuinely contested (Meiri & Dayan 2003) — but
+that RACH names the assay that *would* resolve it and recovers whichever
+mechanism the assay confirms. The identical workflow, the identical code, on a
+completely different biological rule: the contribution is the method, not the
+Campanula system.
+
 ## 5. Software
 
 An open-source Python package implements the framework, with a Streamlit
@@ -434,7 +455,7 @@ in this paper is produced by a single command-line call to the corresponding mod
 
 **Applying RACH to other systems from published pattern data.** The inference
 layer imposes no taxon, trait, or simulator constraint. The Bergmann's-rule
-worked example (§4.1) is built entirely from a published ordinal pattern: any
+worked example (§4.3) is built entirely from a published ordinal pattern: any
 study that documents directional patterns along an environmental gradient —
 body-size clines along latitudinal or island gradients (Bergmann's and Foster's
 rules), immune-function or life-history trade-offs across resource gradients,
@@ -484,10 +505,10 @@ explicitly and exposed to sensitivity analysis. Separating direct selection from
 correlated response ultimately needs manipulative or selection-gradient data,
 which RACH prioritises through NOV but does not replace.
 
-**Beyond enumerated mechanisms.** The core framework requires the analyst to
-name the candidate mechanisms. The structure-discovery experiment (§3.6) shows
-the same machinery applies one level up — treating the causal *structure* (the
-edges of a small DAG, including indirect mediated paths) as the random object and
+**Beyond enumerated mechanisms.** The named-mechanism workflow requires the
+analyst to name the candidate mechanisms. The lead worked example (§4.1) shows the
+same machinery applies one level up — treating the causal *structure* (the edges
+of a small DAG, including indirect mediated paths) as the random object and
 inferring path support from the pattern alone. This trades the strong commitment
 of enumerating named mechanisms for the weaker one of fixing a variable
 vocabulary, and surfaces the direct-versus-mediated ambiguity as measurable
@@ -574,6 +595,21 @@ and raises the direct route (0.65 → 0.74). The direct-versus-mediated question
 thus *discovered* from random structures, not hand-coded. Seed 1,
 n_attempts = 20000, |A_ε| = 2774. Generated by
 `causal_model/structure_discovery.py --figure`.
+
+**Figure 7. The Campanula isolation cline (Tier-A, magnitude-free).**
+The authors' own system run with a validated simulator that asserts only the
+directional structure of four named hypotheses (S1 guide ← Bombus; S2 selfing
+syndrome; S3 island common cause; S5 halictid substitution) and randomises/
+marginalises every effect magnitude. (A) On the published ordinal pattern alone
+(selfing ↑, flower size ↓) S2 and S3 are jointly admissible — a disjunction
+confound (CA(S2) = 0.72 ≈ CA(S3) = 0.71, D = 3.49 of 4, R = 0.13), with S1 left
+free at CA ≈ 0.50 because the guide is not in y_obs. (B) The neutral-diversity and
+nectar-guide cline surveys (top NOV) separate the syndrome from the common cause,
+because only S3 (and, for the guide, S1) drives those traits; resolution is
+symmetric (illustrative truth S3: CA(S3) → 1.00, CA(S2) → 0.00, D 3.49 → 1.88,
+R 0.13 → 0.53). The conclusion rests on directional structure, not field
+magnitudes. Seed 1, n = 4000, |A_ε| = 2398. Generated by
+`causal_model/campanula_structural.py --figure`.
 
 **Figure S1. Known-truth recovery (self-consistency).**
 (A) Mean per-switch recovery (accuracy, F1) as a function of injected
