@@ -100,16 +100,50 @@ connectivity to other patches
 The simulator does **not** prescribe whether the focal trait should increase or decrease. It specifies only constraints and local processes:
 
 ```text
-local interaction = trait match × distance decay × density modulation
-reproduction      = interaction success + mate availability + resources − trait cost
-offspring         = inheritance + mutation
-dispersal         = patch connectivity and distance
-population change = births, deaths, movement, local extinction
+relationship service = (own trait investment) × local availability, gated by the relationship
+mate success         = trait match × distance decay (a compatible, nearby partner)
+reproduction         = fecundity floor + relationship service + mate + resources − trait cost,
+                       then logistic in local density (finite resources)
+survival             = age- and density-dependent, reduced by a survival trade-off
+offspring            = inheritance + mutation
+dispersal            = patch connectivity and distance
+population change     = births, deaths, movement, local extinction
 ```
 
-Trait evolution is therefore an emergent outcome of individual interactions, local demography, patch structure, and physical or allocation trade-offs.
+Because the relationship *service* rewards the trait investment and is gated by the
+relationship being intact, losing the relationship removes the support for the
+costly trait — so trait space can contract. Trait evolution is an emergent outcome
+of individual interactions, local demography, patch structure, and trade-offs; no
+trait direction is ever supplied.
 
 ---
+
+## Relationship-change interventions and the viable trait set `Ω_inv`
+
+The spatial backend studies trait space through a controlled **intervention**, not a
+single run. An intervention is a paired *before*/*after* `Regime` run from the
+**same** resident community and the same RNG structure, so the only difference is
+the relationship change. Three are provided:
+
+```text
+pollination_loss   the mutualistic service that rewards the trait collapses
+predation_loss     the trait-supporting relationship is lost and top-down control relaxes
+dispersal_loss     the trait-supporting relationship is lost and dispersal pathways are cut
+```
+
+Trait space is summarised not by a mean but by the **viable trait set**
+
+```text
+Ω_inv(Z*) = { z' : λ(z' | Z*) > 0 }
+```
+
+where `λ` is the long-term invasion growth rate of a rare, bred-true mutant `z'`
+introduced into the quasi-stationary resident community `Z*` (measured in the full
+spatial dynamics with mutation off). The change in `Ω_inv` before vs after the
+intervention is classified as **contraction / fragmentation / shift / collapse**.
+Resident communities are first screened for **stationarity** (stationary /
+not_converged / extinct / oscillating); non-stationary residents are bucketed
+separately and never accepted.
 
 ## Pattern-oriented modelling (POM)
 
@@ -117,23 +151,38 @@ Every ABM run is converted to a multi-component summary statistic before accepta
 
 ```text
 P_sim = (
-  interaction_connectivity,
-  patch_persistence,
-  inbreeding_proxy,
-  trait_investment,
-  trait_space_state
+  interaction_network,     realised relationship service (gated by the relationship)
+  patch_occupancy,         fraction of patches occupied / local extinction
+  persistence_ne,          census × diversity (Ne / persistence proxy)
+  trait_moments,           trait variance + |cov(trait, genotype)|
+  omega_inv_state          qualitative Ω_inv verdict (contracted / fragmented / …)
 )
 ```
-
-These components represent changes in interaction structure, occupied patches, within-patch diversity, mean focal investment, and the qualitative state of occupied trait space.
 
 The same acceptance rule is used throughout RACH:
 
 ```text
-d(P_sim, P_obs) ≤ ε
+d(P_sim, P_obs) ≤ ε   and   the viable set actually contracted
 ```
 
-This matters because RACH does not accept a model merely because one hand-picked trait changed in the desired direction. A program must reproduce the specified multivariate ecological pattern.
+This matters because RACH does not accept a model merely because one hand-picked trait changed in the desired direction. A program must reproduce the specified multivariate ecological pattern, and the focal claim (trait-space contraction) must hold.
+
+A **random ecosystem ensemble** randomises interaction strength, patch
+size/connectivity, resources, trade-offs, mutation, and dispersal — always
+honouring finite resources, positive trait cost, finite patches, local
+interaction, and bounded traits (the trait *direction* is never an input). Under
+this regime trait-space contraction follows the relationship loss **robustly**;
+a **compensated counterexample** ensemble (low trait cost, ample dispersal, large
+connected patches, *sufficient* compensation) does **not** contract, so the
+pipeline correctly reports non-contraction and `no_common_rule` where they hold.
+
+Run the worked demonstration:
+
+```bash
+python -m examples.spatial_metapopulation_demo   # spatial IBM → robust/fragile → invariants
+```
+
+Tests: `pytest tests/test_spatial_metapopulation_abm.py -q`.
 
 ---
 
@@ -181,13 +230,15 @@ relationship change
 → occupied or viable trait space
 ```
 
-The spatial backend currently reports an occupied trait-space proxy through trait variance and persistence. A future extension can estimate an invasion-based viable trait set:
+The spatial backend reports the invasion-based **viable trait set**
 
 ```text
 Ω_inv(Z*) = { z' : λ(z' | Z*) > 0 }
 ```
 
-where `λ` is the long-term growth rate of a rare introduced phenotype in a resident ecological state `Z*`.
+where `λ` is the long-term growth rate of a rare introduced phenotype in the
+resident ecological state `Z*`, and tracks whether `Ω_inv` **contracts, fragments,
+or shifts** across a relationship change.
 
 ---
 
