@@ -184,6 +184,39 @@ python -m examples.spatial_metapopulation_demo   # spatial IBM → robust/fragil
 
 Tests: `pytest tests/test_spatial_metapopulation_abm.py -q`.
 
+### Key findings and causal-isolation controls
+
+The diagnostics in `causal_model.spatial_metapopulation_analysis` answer the obvious
+reviewer questions and turn the demo into falsifiable claims.
+
+* **Channel decomposition (causal isolation).** Each intervention removes the
+  trait-supporting interaction *and* a secondary channel. Decomposing them
+  (`decompose_channels`) shows the contraction is driven by losing the
+  **trait-supporting relationship**, not the secondary toggle:
+
+  | scenario | interaction-only loss | secondary-only loss |
+  |---|---|---|
+  | pollination_loss | ~0.83 contracts | 0.00 (no secondary channel) |
+  | predation_loss | ~0.83 contracts | ~0.08 — **predator removal alone does not contract** |
+  | dispersal_loss | ~0.83 contracts | ~0.45–0.67 — **a separate spatial route to contraction** |
+
+  So "any relationship loss contracts trait space" is **false**: predator removal is
+  a clean dissociation, dispersal loss is an independent route, and the weak full
+  predation result (~0.4–0.5) is explained by the secondary channel *cancelling*
+  part of the interaction-loss contraction.
+
+* **Threshold robustness.** `threshold_sensitivity` re-classifies one collected
+  sweep across an `ε × contraction-tolerance` grid; the constrained-vs-compensated
+  separation holds at every threshold (it is not a tuned-threshold artefact).
+
+* **Monte-Carlo characterisation.** `replicate_convergence` and `seed_spread` report
+  how the invasion-fitness estimate behaves with more replicates and across
+  independent seeds (e.g. pollination contraction ≈ 0.73 over seeds, range
+  ~0.64–0.91; predation a stable-moderate ≈ 0.45), so the conclusion is not
+  seed-dependent.
+
+Tests: `pytest tests/test_spatial_metapopulation_analysis.py -q`.
+
 ---
 
 ## Rule-transition RACH

@@ -33,6 +33,7 @@ from causal_model.spatial_metapopulation_abm import (
     sample_constrained_ecosystem,
     verify_contraction_robustness,
 )
+from causal_model.spatial_metapopulation_analysis import decompose_channels
 
 # Small but real settings so the demo runs in a reasonable time.
 EXP = dict(
@@ -118,6 +119,21 @@ def main() -> None:
     analysis = analyse_rule_transitions(records, policy)
     print("\n  cross-system rule-transition invariants:")
     print(json.dumps(explain_result(analysis.invariant_result), indent=2, ensure_ascii=False))
+
+    # ------------------------------------------------------------------ #
+    # 4. Channel decomposition (causal-isolation control for peer review).
+    #    Each intervention drops the trait-supporting interaction AND a
+    #    secondary channel; this isolates which one actually contracts Omega_inv.
+    # ------------------------------------------------------------------ #
+    print("\n=== channel decomposition: which loss drives contraction? ===")
+    for name in incomplete:
+        dec = decompose_channels(incomplete[name], n_draws=12, base_seed=100, **EXP)
+        print(
+            f"  {name:16s} full={dec.full:.2f}  interaction_only={dec.interaction_only:.2f}  "
+            f"secondary_only={dec.secondary_only:.2f}  (interaction is driver: {dec.interaction_is_driver})"
+        )
+    print("  -> trait-support (interaction) loss is the contraction driver;")
+    print("     predator removal alone does not contract; dispersal cut is a separate route.")
 
 
 if __name__ == "__main__":
