@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from random import Random
 from typing import Iterable
 
+from causal_model.abc_distance import accepted_by_epsilon, pattern_distance
 from causal_model.abm_family_adapter import SweepRecord
 
 
@@ -166,8 +167,90 @@ def simulate_rule_transition(
 
 
 def ordinal_trait_decline(before: EcologicalRuleState, after: EcologicalRuleState, *, tolerance: float = 0.08) -> bool:
-    """Target qualitative pattern used by the MVP: sustained trait decline."""
+    """Whether trait investment declined (one component of the POM pattern)."""
     return after.trait_investment < before.trait_investment - tolerance
+
+
+# ---------------------------------------------------------------------------
+# Pattern-Oriented Modelling (POM): the multi-component summary statistic P_sim
+# ---------------------------------------------------------------------------
+
+#: The ordered components of the POM pattern extracted from each ABM run. These
+#: are the summary statistics compared, as a vector, against the observed P_obs.
+POM_PATTERN_NAMES: tuple[str, ...] = (
+    "interaction",        # interaction-opportunity trajectory (relation channel)
+    "persistence",        # demographic / population-persistence trajectory
+    "alternative_route",  # reproduction / alternative-route trajectory
+    "trait_investment",   # focal trait-investment trajectory
+    "trait_space_state",  # qualitative state of the admissible trait space
+)
+
+
+def _ordinal(delta: float, tolerance: float) -> str:
+    """Ordinal direction of a change, with a dead-band tolerance."""
+    if delta > tolerance:
+        return "increase"
+    if delta < -tolerance:
+        return "decrease"
+    return "stable"
+
+
+def extract_pom_pattern(
+    before: EcologicalRuleState,
+    after: EcologicalRuleState,
+    *,
+    tolerance: float = 0.08,
+) -> dict[str, str]:
+    """Extract the multi-component POM pattern ``P_sim`` from one ABM run.
+
+    Returns ordinal directions for the interaction, persistence,
+    alternative-route and trait-investment trajectories, plus the qualitative
+    trait-space state (``reconfigured`` when investment shifts beyond tolerance,
+    else ``conserved``). This is the RACH summary statistic for one run.
+    """
+    return {
+        "interaction": _ordinal(after.interaction_opportunity - before.interaction_opportunity, tolerance),
+        "persistence": _ordinal(after.population_persistence - before.population_persistence, tolerance),
+        "alternative_route": _ordinal(after.alternative_route - before.alternative_route, tolerance),
+        "trait_investment": _ordinal(after.trait_investment - before.trait_investment, tolerance),
+        "trait_space_state": (
+            "reconfigured"
+            if abs(after.trait_investment - before.trait_investment) > tolerance
+            else "conserved"
+        ),
+    }
+
+
+def default_observed_pattern() -> dict[str, str]:
+    """The focal observed POM pattern ``P_obs`` for the rule-transition demo.
+
+    The focal observation is the *shared* signature of a lost interaction
+    relationship: the interaction channel declines, the population persists, the
+    focal trait investment declines, and the trait space is reconfigured. The
+    program-specific mechanism channels (persistence collapse, alternative-route
+    emergence) are not part of the focal observation, so a relaxed epsilon admits
+    every program that reproduces the shared focal pattern — that admissibility
+    confound is exactly what the meta-inference layer then resolves.
+    """
+    return {
+        "interaction": "decrease",
+        "persistence": "stable",
+        "alternative_route": "stable",
+        "trait_investment": "decrease",
+        "trait_space_state": "reconfigured",
+    }
+
+
+#: Default acceptance tolerance for d(P_sim, P_obs) over the 5 POM components
+#: (relaxed: at most two of five components may mismatch — 2/5 = 0.4).
+DEFAULT_EPSILON: float = 0.4
+
+
+def pom_distance(simulated: dict[str, str], observed: dict[str, str]) -> float:
+    """ABC distance d(P_sim, P_obs): fraction of observed components unmatched."""
+    total = len(observed)
+    matches = sum(1 for name, rel in observed.items() if simulated.get(name) == rel)
+    return pattern_distance(matches, total)
 
 
 def generate_sweep_records(
@@ -175,40 +258,62 @@ def generate_sweep_records(
     program_ids: Iterable[str],
     parameter_draws: Iterable[EcologicalRuleParameters],
     *,
+    observed_pattern: dict[str, str] | None = None,
+    epsilon: float = DEFAULT_EPSILON,
+    tolerance: float = 0.08,
+    seeds: Iterable[int] = (0,),
     region_prefix: str = "draw",
     steps: int = 40,
 ) -> tuple[SweepRecord, ...]:
-    """Generate RACH-compatible records from an abstract parameter sweep.
+    """Generate RACH-compatible records via POM pattern extraction + acceptance.
 
-    Each draw is treated as a distinct declared region (``region_id``) with its
-    own ``seed``, and any program-level fragility (e.g. exact cancellation) is
-    attached as ``fragile_flags`` so the adapter can record *why* a match would
-    be fragile.
+    For every (program, parameter draw = region, seed) the ABM is run, its
+    multi-component POM pattern ``P_sim`` is extracted, and the run is accepted
+    into the admissible region A_epsilon iff ``d(P_sim, P_obs) <= epsilon`` — the
+    same ordinal-mismatch distance and acceptance rule the README RACH uses.
+    ``pattern_matched`` therefore means *admissible run*, not a bare trait
+    decline. Each draw is a distinct declared region and each seed a replicate,
+    so the downstream layer can require recurrence across regions and seeds; any
+    program-level fragility (e.g. exact cancellation) is attached as
+    ``fragile_flags``.
     """
+    observed = observed_pattern if observed_pattern is not None else default_observed_pattern()
     records: list[SweepRecord] = []
     draws = tuple(parameter_draws)
+    seed_list = tuple(seeds)
     for program_id in program_ids:
         fragile_flags = _PROGRAM_FRAGILITY.get(program_id, frozenset())
         for index, params in enumerate(draws):
-            before, after, motifs = simulate_rule_transition(program_id, params, steps=steps, seed=index)
             region_id = f"{region_prefix}_{index}"
-            records.append(SweepRecord(
-                scenario=scenario,
-                program_id=program_id,
-                motifs=motifs,
-                pattern_matched=ordinal_trait_decline(before, after),
-                parameters={
-                    "interaction_benefit": params.interaction_benefit,
-                    "alternative_route_strength": params.alternative_route_strength,
-                    "demographic_pressure": params.demographic_pressure,
-                    "trait_cost": params.trait_cost,
-                    "adaptation_rate": params.adaptation_rate,
-                    "noise_scale": params.noise_scale,
-                },
-                initial_state={"trait_investment": before.trait_investment},
-                metadata={"region_id": region_id},
-                region_id=region_id,
-                seed=index,
-                fragile_flags=fragile_flags,
-            ))
+            for seed in seed_list:
+                before, after, motifs = simulate_rule_transition(program_id, params, steps=steps, seed=seed)
+                p_sim = extract_pom_pattern(before, after, tolerance=tolerance)
+                distance = pom_distance(p_sim, observed)
+                accepted = accepted_by_epsilon(distance, epsilon)
+                records.append(SweepRecord(
+                    scenario=scenario,
+                    program_id=program_id,
+                    motifs=motifs,
+                    pattern_matched=accepted,
+                    parameters={
+                        "interaction_benefit": params.interaction_benefit,
+                        "alternative_route_strength": params.alternative_route_strength,
+                        "demographic_pressure": params.demographic_pressure,
+                        "trait_cost": params.trait_cost,
+                        "adaptation_rate": params.adaptation_rate,
+                        "noise_scale": params.noise_scale,
+                    },
+                    initial_state={"trait_investment": before.trait_investment},
+                    metadata={
+                        "region_id": region_id,
+                        "P_sim": p_sim,
+                        "P_obs": dict(observed),
+                        "abc_distance": round(distance, 4),
+                        "epsilon": epsilon,
+                        "accepted": accepted,
+                    },
+                    region_id=region_id,
+                    seed=seed,
+                    fragile_flags=fragile_flags,
+                ))
     return tuple(records)

@@ -50,7 +50,23 @@ def main() -> None:
     records = build_records()
     policy = RobustnessPolicy(min_replicates=4, min_match_fraction=0.2, fragile_max_fraction=0.05)
 
-    print("=== sweep classification (robust / fragile / rejected / insufficient) ===")
+    # Stage 1-3: ABM -> POM pattern extraction -> distance / acceptance (A_epsilon).
+    # Each run is admissible iff d(P_sim, P_obs) <= epsilon over the 5 POM components.
+    print("=== POM acceptance per run: d(P_sim, P_obs) <= epsilon  (A_epsilon) ===")
+    seen: set[tuple[str, str]] = set()
+    for rec in records:
+        key = (rec.scenario, rec.program_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        md = rec.metadata
+        print(
+            f"  {rec.scenario:14s} {rec.program_id:26s} "
+            f"d={md['abc_distance']:.2f} eps={md['epsilon']:.2f} "
+            f"accepted={md['accepted']}  P_sim={md['P_sim']}"
+        )
+
+    print("\n=== sweep classification (robust / fragile / rejected / insufficient) ===")
     for summary in summarise_sweep(records, policy):
         reasons = ", ".join(sorted(summary.fragility_reasons)) or "-"
         print(
