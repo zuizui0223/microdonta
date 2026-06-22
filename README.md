@@ -217,6 +217,27 @@ reviewer questions and turn the demo into falsifiable claims.
 
 Tests: `pytest tests/test_spatial_metapopulation_analysis.py -q`.
 
+### Theorem: why relationship loss contracts trait space
+
+The simulation result is underwritten by a comparative-statics theorem on invasion
+fitness — see [`docs/trait_space_contraction_theorem.md`](docs/trait_space_contraction_theorem.md).
+With a viable set `Ω(I,R) = { z : I·B(z) − C(z) + K + R ≥ 0 }` (relationship benefit
+`B↑`, trait cost `C↑`, baseline `K ≥ 0`, compensation `R`), the proven results are:
+
+* **T1** pure relationship loss contracts the viable set (`Ω(0,0) ⊆ Ω(1,0)`);
+* **T2** incomplete compensation still contracts it;
+* **T3** an exact **compensation threshold** `R* = B(z_max)`: trait loss occurs *iff*
+  the alternative route returns less than the lost benefit at the trait it supported;
+* **T4** under diminishing benefit / accelerating cost the loss only **recedes the
+  upper edge** (contraction/shift) — **fragmentation** is the signature of the
+  separate spatial-isolation route (Proposition S1).
+
+All four are machine-verified over thousands of random monotone benefit/cost models
+(`causal_model/trait_space_theory.py`, `pytest tests/test_trait_space_theory.py -q`),
+and the spatial-ABM rare-invader fitness reduces to the theorem's structure (its
+viable upper edge recedes under loss in ~94% of random ecosystems; the secondary
+mate-matching term is the documented exception).
+
 ---
 
 ## Rule-transition RACH
