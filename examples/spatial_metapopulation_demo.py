@@ -38,6 +38,12 @@ from causal_model.spatial_metapopulation_analysis import (
     decompose_channels,
     verify_persistent_contraction,
 )
+from causal_model.defense_metapopulation_abm import (
+    defense_program_motifs,
+    generate_defense_sweep_records,
+    make_defense_intervention,
+    sample_constrained_defense,
+)
 
 # Small but real settings so the demo runs in a reasonable time.
 EXP = dict(
@@ -164,6 +170,32 @@ def main() -> None:
     print(f"     fraction = {rep['contracts_when']['instantaneous_contraction_fraction']:.2f}")
     print(f"  does NOT contract when ({rep['does_not_contract_when']['regime']}):")
     print(f"     fraction = {rep['does_not_contract_when']['instantaneous_contraction_fraction']:.2f}")
+
+    # ------------------------------------------------------------------ #
+    # 6. Cross-system invariant across TWO structurally independent backends:
+    #    fecundity-rewarded (pollination) vs survival-rewarded (defense).
+    #    The method prevents over-generalising "contraction": the robust
+    #    cross-system rule is RECONFIGURATION; the geometry is mechanism-specific.
+    # ------------------------------------------------------------------ #
+    print("\n=== cross-system invariant: pollination (fecundity) + defense (survival) ===")
+    xkw = dict(equilibration_steps=40, outcome_steps=10, grid_points=7,
+               invasion_steps=5, invasion_cohort=10, invasion_replicates=2)
+    xrecords = []
+    piv = incomplete["pollination_loss"]
+    xrecords += generate_sweep_records(
+        piv, program_id="fecundity_reward", program_motifs=constraint_program_motifs(piv),
+        ecosystem_sampler=sample_constrained_ecosystem, n_regions=6, seeds=(0, 1), base_seed=5, **xkw)
+    div = make_defense_intervention(compensation=0.08)
+    xrecords += generate_defense_sweep_records(
+        div, program_id="survival_reward", program_motifs=defense_program_motifs(div),
+        ecosystem_sampler=sample_constrained_defense, n_regions=6, seeds=(0, 1), base_seed=5, **xkw)
+    xpolicy = RobustnessPolicy(min_replicates=6, min_match_fraction=0.35, fragile_max_fraction=0.15)
+    for s in summarise_sweep(xrecords, xpolicy):
+        print(f"    {s.scenario:24s} {s.program_id:16s} {s.classification:11s} match={s.match_fraction:.2f}")
+    xr = analyse_rule_transitions(xrecords, xpolicy).invariant_result
+    print("  cross-system common motifs:", sorted(xr.cross_system_common_motifs))
+    print("  -> reconfiguration + physical constraints are cross-system;")
+    print("     contraction (pollination) and shift (defense) are NOT — geometry is mechanism-specific.")
 
 
 if __name__ == "__main__":

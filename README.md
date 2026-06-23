@@ -268,6 +268,34 @@ explicit counterexamples, channel decomposition, and threshold/seed sensitivity*
 and returns only the rule transitions that survive — together with the conditions and
 the regimes where they fail.
 
+### A second, mechanistically independent ecosystem (and what is *really* cross-system)
+
+The strongest guard against mistaking one model for a general law is a **structurally
+different** model. `causal_model.defense_metapopulation_abm` is a second backend in
+which the focal trait is an **anti-predator defense rewarded through *survival*** (gated
+by predator presence) and paid through *fecundity* — the opposite vital-rate wiring of
+the pollination model, sharing only neutral scaffolding, never the reward dynamics. Its
+relationship-loss intervention is **predator loss**.
+
+Run as a combined sweep through the *same* pipeline, the two backends reveal what is and
+is not general:
+
+* Both backends are **robust** — relationship loss reliably reconfigures the viable set.
+* But the **geometry differs by mechanism**: fecundity-gated loss (pollination)
+  **contracts** the viable set (a fully-rewarded high trait becomes non-viable), whereas
+  survival-gated loss (defense) **shifts** it toward low investment (a fully-defended
+  individual survives equally with or without the predator, so loss raises the
+  *undefended* type's survival and moves the optimum rather than collapsing the edge).
+* Therefore the **cross-system invariant is `trait_space_reconfiguration` under
+  `relation_change`, finite resources, positive trait cost, local interaction, and
+  incomplete compensation — and *not* `trait_space_contraction` nor `trait_space_shift`**,
+  which the pipeline correctly reports as model-specific.
+
+This is the central methodological result: a single ABM would have licensed "relationship
+loss contracts trait space"; the cross-system analysis shows the robust rule is the
+weaker *reconfiguration*, with contraction conditional on a fecundity-mediated reward.
+(`pytest tests/test_defense_metapopulation_abm.py -q`.)
+
 ---
 
 ## Rule-transition RACH
