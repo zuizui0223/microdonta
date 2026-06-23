@@ -44,6 +44,12 @@ from causal_model.defense_metapopulation_abm import (
     make_defense_intervention,
     sample_constrained_defense,
 )
+from causal_model.colonization_metapopulation_abm import (
+    colonization_program_motifs,
+    generate_colonization_sweep_records,
+    make_colonization_intervention,
+    sample_constrained_colonization,
+)
 
 # Small but real settings so the demo runs in a reasonable time.
 EXP = dict(
@@ -189,13 +195,17 @@ def main() -> None:
     xrecords += generate_defense_sweep_records(
         div, program_id="survival_reward", program_motifs=defense_program_motifs(div),
         ecosystem_sampler=sample_constrained_defense, n_regions=6, seeds=(0, 1), base_seed=5, **xkw)
+    civ = make_colonization_intervention(loss_level=0.0, compensation=0.06)
+    xrecords += generate_colonization_sweep_records(
+        civ, program_id="establishment_reward", program_motifs=colonization_program_motifs(civ),
+        ecosystem_sampler=sample_constrained_colonization, n_regions=6, seeds=(0, 1), base_seed=5, **xkw)
     xpolicy = RobustnessPolicy(min_replicates=6, min_match_fraction=0.35, fragile_max_fraction=0.15)
     for s in summarise_sweep(xrecords, xpolicy):
-        print(f"    {s.scenario:24s} {s.program_id:16s} {s.classification:11s} match={s.match_fraction:.2f}")
+        print(f"    {s.scenario:32s} {s.program_id:20s} {s.classification:11s} match={s.match_fraction:.2f}")
     xr = analyse_rule_transitions(xrecords, xpolicy).invariant_result
     print("  cross-system common motifs:", sorted(xr.cross_system_common_motifs))
-    print("  -> reconfiguration + physical constraints are cross-system;")
-    print("     contraction (pollination) and shift (defense) are NOT — geometry is mechanism-specific.")
+    print("  -> reconfiguration + physical constraints are cross-system across all THREE ecosystems;")
+    print("     contraction (pollination, colonization) and shift (defense) are NOT — geometry is mechanism-specific.")
 
 
 if __name__ == "__main__":

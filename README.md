@@ -268,33 +268,40 @@ explicit counterexamples, channel decomposition, and threshold/seed sensitivity*
 and returns only the rule transitions that survive — together with the conditions and
 the regimes where they fail.
 
-### A second, mechanistically independent ecosystem (and what is *really* cross-system)
+### Three mechanistically independent ecosystems (and what is *really* cross-system)
 
-The strongest guard against mistaking one model for a general law is a **structurally
-different** model. `causal_model.defense_metapopulation_abm` is a second backend in
-which the focal trait is an **anti-predator defense rewarded through *survival*** (gated
-by predator presence) and paid through *fecundity* — the opposite vital-rate wiring of
-the pollination model, sharing only neutral scaffolding, never the reward dynamics. Its
-relationship-loss intervention is **predator loss**.
+The strongest guard against mistaking one model for a general law is **structurally
+different** models. The repository ships three backends in which the focal trait is
+rewarded through a *different vital rate*, sharing only neutral scaffolding (data
+classes, viable-set geometry, stationarity test, POM ordinals), never the reward
+dynamics:
 
-Run as a combined sweep through the *same* pipeline, the two backends reveal what is and
-is not general:
+| backend | trait | reward (vital rate) | relationship loss | viable-set geometry |
+|---|---|---|---|---|
+| `spatial_metapopulation_abm` | display / attraction | **fecundity** (pollinator service) | pollinator loss | **contraction** |
+| `defense_metapopulation_abm` | anti-predator defense | **survival** (gated by predator) | predator loss | **shift** |
+| `colonization_metapopulation_abm` | dispersal investment | **offspring establishment** (gated by connectivity) | corridor loss | **contraction** |
 
-* Both backends are **robust** — relationship loss reliably reconfigures the viable set.
-* But the **geometry differs by mechanism**: fecundity-gated loss (pollination)
+Run as a combined sweep through the *same*
+`d(P_sim,P_obs) <= ε -> robust/fragile -> rule-transition invariant` pipeline, the three
+backends reveal what is and is not general:
+
+* All three are **robust** — relationship loss reliably **reconfigures** the viable set.
+* But the **geometry differs by mechanism**: a fecundity- or establishment-gated loss
   **contracts** the viable set (a fully-rewarded high trait becomes non-viable), whereas
-  survival-gated loss (defense) **shifts** it toward low investment (a fully-defended
-  individual survives equally with or without the predator, so loss raises the
-  *undefended* type's survival and moves the optimum rather than collapsing the edge).
+  a survival-gated loss **shifts** it (a fully-defended individual survives equally with
+  or without the predator, so loss raises the *undefended* type's survival and moves the
+  optimum rather than collapsing the edge).
 * Therefore the **cross-system invariant is `trait_space_reconfiguration` under
-  `relation_change`, finite resources, positive trait cost, local interaction, and
-  incomplete compensation — and *not* `trait_space_contraction` nor `trait_space_shift`**,
-  which the pipeline correctly reports as model-specific.
+  `relation_change`, finite resources, finite patches, positive trait cost, local
+  interaction, and incomplete compensation — and *neither* `trait_space_contraction`
+  *nor* `trait_space_shift`**, which the pipeline correctly reports as model-specific.
 
 This is the central methodological result: a single ABM would have licensed "relationship
-loss contracts trait space"; the cross-system analysis shows the robust rule is the
-weaker *reconfiguration*, with contraction conditional on a fecundity-mediated reward.
-(`pytest tests/test_defense_metapopulation_abm.py -q`.)
+loss contracts trait space"; the three-ecosystem analysis shows the robust cross-system
+rule is the weaker *reconfiguration*, with the specific geometry conditional on which
+vital rate the relationship rewarded.
+(`pytest tests/test_defense_metapopulation_abm.py tests/test_colonization_metapopulation_abm.py -q`.)
 
 ---
 
