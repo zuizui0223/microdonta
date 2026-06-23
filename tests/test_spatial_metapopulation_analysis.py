@@ -78,3 +78,88 @@ def test_contraction_is_stable_across_seeds():
     ss = seed_spread(iv["pollination_loss"], base_seeds=(11, 42, 100), n_draws=10, **KW)
     assert ss.lo >= 0.35          # consistently contracting on every seed
     assert ss.mean >= 0.5
+
+
+# ---------------------------------------------------------------------------
+# (2) Persistence after resident re-equilibration (circularity defence)
+# ---------------------------------------------------------------------------
+
+REEQ = dict(
+    equilibration_steps=40, reequilibration_steps=55, grid_points=5,
+    invasion_steps=4, invasion_cohort=8, invasion_replicates=1,
+)
+
+
+def _aggregate_persistence(intervention, sampler, base_seeds, n_draws=10):
+    from causal_model.spatial_metapopulation_analysis import verify_persistent_contraction
+    persist = reeq = destab = total = 0
+    for bs in base_seeds:
+        r = verify_persistent_contraction(intervention, ecosystem_sampler=sampler,
+                                          n_draws=n_draws, base_seed=bs, **REEQ)
+        persist += r.n_persistent_contraction
+        reeq += r.n_reequilibrated
+        destab += r.n_destabilised
+        total += r.n_total
+    cond = persist / reeq if reeq else 0.0
+    destab_frac = destab / total if total else 0.0
+    return cond, destab_frac, reeq
+
+
+def test_contraction_persists_after_reequilibration():
+    """Among systems that re-stabilise, contraction persists far more under
+    incomplete compensation than under sufficient compensation."""
+    from causal_model.spatial_metapopulation_abm import (
+        make_interventions, sample_constrained_ecosystem, sample_compensated_ecosystem,
+    )
+    iv = make_interventions(compensation=0.08)["pollination_loss"]
+    ivc = make_interventions(compensation=0.55)["pollination_loss"]
+    con_cond, _, con_reeq = _aggregate_persistence(iv, sample_constrained_ecosystem, (100, 250, 400))
+    comp_cond, _, comp_reeq = _aggregate_persistence(ivc, sample_compensated_ecosystem, (100, 250, 400))
+    assert con_reeq >= 3 and comp_reeq >= 3            # enough re-stabilised systems to compare
+    assert con_cond >= 0.55                            # persistent contraction is the dominant endpoint
+    assert con_cond > comp_cond + 0.2                  # and far exceeds the compensated counterexample
+
+
+def test_relationship_loss_destabilises_only_under_incomplete_compensation():
+    """Sufficient compensation keeps the post-loss system stable; incomplete
+    compensation makes the loss destabilising (extinction / non-convergence)."""
+    from causal_model.spatial_metapopulation_abm import (
+        make_interventions, sample_constrained_ecosystem, sample_compensated_ecosystem,
+    )
+    iv = make_interventions(compensation=0.08)["pollination_loss"]
+    ivc = make_interventions(compensation=0.55)["pollination_loss"]
+    _, con_destab, _ = _aggregate_persistence(iv, sample_constrained_ecosystem, (100, 250, 400))
+    _, comp_destab, _ = _aggregate_persistence(ivc, sample_compensated_ecosystem, (100, 250, 400))
+    assert comp_destab <= 0.1                           # sufficient compensation -> stable
+    assert con_destab > comp_destab                     # incomplete compensation -> destabilising
+
+
+# ---------------------------------------------------------------------------
+# (4) Benefit-form robustness and (5) contraction conditions
+# ---------------------------------------------------------------------------
+
+INST = dict(
+    equilibration_steps=34, outcome_steps=10, grid_points=7,
+    invasion_steps=5, invasion_cohort=10, invasion_replicates=2,
+)
+
+
+def test_contraction_is_robust_to_benefit_shape_but_needs_a_load_bearing_relationship():
+    from causal_model.spatial_metapopulation_abm import make_interventions
+    from causal_model.spatial_metapopulation_analysis import benefit_form_sweep
+    iv = make_interventions(compensation=0.08)["pollination_loss"]
+    bf = benefit_form_sweep(iv, n_draws=12, base_seed=100, **INST)
+    # not an artefact of linear benefit: saturating benefit still contracts
+    assert bf["robust_to_shape"]
+    # but a weak (non-load-bearing) relationship does not contract
+    mag = bf["contraction_by_benefit_magnitude"]
+    assert mag[0.1] < mag[1.0]
+    assert mag[0.1] <= 0.4
+
+
+def test_conditions_report_separates_contraction_from_no_contraction():
+    from causal_model.spatial_metapopulation_analysis import contraction_conditions_report
+    rep = contraction_conditions_report(n_draws=12, base_seed=100, **INST)
+    c = rep["contracts_when"]["instantaneous_contraction_fraction"]
+    nc = rep["does_not_contract_when"]["instantaneous_contraction_fraction"]
+    assert c > nc + 0.3

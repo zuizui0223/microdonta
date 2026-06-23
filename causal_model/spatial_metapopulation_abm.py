@@ -117,6 +117,8 @@ class MetapopParameters:
     predation_pressure: float       # density-dependent top-down mortality
     base_survival: float = 0.85
     max_age: int = 8
+    benefit_saturation: float = 0.0  # 0 = benefit linear in trait; >0 = saturating
+                                     # (half-saturation constant; smaller = saturates earlier)
 
 
 @dataclass(frozen=True)
@@ -181,6 +183,19 @@ def _clip(v: float) -> float:
     return max(0.0, min(1.0, v))
 
 
+def benefit_shape(trait: float, saturation: float) -> float:
+    """Benefit-vs-investment response B(z)/b, normalised so B(1)=1 in both forms.
+
+    ``saturation <= 0`` is the linear response ``z``. ``saturation > 0`` is a
+    saturating (Holling-II-like) response ``z*(1+h)/(h+z)`` with half-saturation
+    ``h``: steep early, flat for large ``z`` — so high investment buys little extra
+    benefit. Smaller ``h`` saturates earlier (weaker support for large traits).
+    """
+    if saturation <= 0.0:
+        return trait
+    return trait * (1.0 + saturation) / (saturation + trait)
+
+
 def _relationship_service(
     ind: Individual,
     density: float,
@@ -190,14 +205,15 @@ def _relationship_service(
     """Reproductive benefit the *interaction relationship* confers on this individual.
 
     The service (e.g. pollinator visitation) rewards the individual's own trait
-    **investment**, moderated mildly by local density (a shared, locally limited
-    service that never falls below a floor). It is gated by ``interaction_scale``:
-    when the relationship is lost the whole term vanishes, so the costly trait
-    loses its support. This is the load-bearing channel whose loss contracts
-    trait space.
+    **investment** through :func:`benefit_shape` (linear or saturating), moderated
+    mildly by local density (a shared, locally limited service that never falls
+    below a floor). It is gated by ``interaction_scale``: when the relationship is
+    lost the whole term vanishes, so the costly trait loses its support. This is
+    the load-bearing channel whose loss contracts trait space.
     """
     local_availability = max(0.55, 1.0 - 0.5 * density / max(params.density_threshold, 1e-6))
-    return interaction_scale * params.interaction_benefit * ind.trait * local_availability
+    shaped = benefit_shape(ind.trait, params.benefit_saturation)
+    return interaction_scale * params.interaction_benefit * shaped * local_availability
 
 
 def _mate_success(
@@ -1091,6 +1107,166 @@ def run_intervention_experiment(
         trait_space_change=ts_change,
         p_sim=p_sim, p_obs=dict(observed), distance=distance, accepted=accepted,
         motifs=frozenset(motifs), diagnostics=diagnostics,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Resident re-equilibration: does the trait-space change PERSIST after re-evolution?
+# ---------------------------------------------------------------------------
+
+def _trait_quantile(values: tuple[float, ...], q: float) -> float:
+    if not values:
+        return 0.0
+    s = sorted(values)
+    idx = min(len(s) - 1, max(0, int(round(q * (len(s) - 1)))))
+    return s[idx]
+
+
+@dataclass(frozen=True)
+class ReequilibrationResult:
+    """Before vs *re-equilibrated*-after comparison (eco-evolutionary endpoint).
+
+    Unlike :class:`InterventionResult` (instantaneous invasibility against the
+    *same* resident), this lets the resident re-evolve under the post-loss regime
+    to a new quasi-stationary state and asks whether the trait-space change
+    persists. ``persistent_contraction`` requires the post-loss system to be
+    stationary again AND its realised occupied trait set (and viable set) to remain
+    contracted relative to before.
+    """
+
+    intervention: str
+    stationarity_before: str
+    stationarity_after: str
+    # realised occupied trait set (the population itself, not invasion)
+    upper_edge_before: float           # 90th percentile trait before loss
+    upper_edge_after: float            # 90th percentile trait at the new equilibrium
+    breadth_before: float              # q90 - q10
+    breadth_after: float
+    mean_before: float
+    mean_after: float
+    # invasion-based viable set Omega_inv at EACH regime's OWN re-equilibrated resident
+    omega_measure_before: float
+    omega_measure_after: float
+    omega_upper_before: float
+    omega_upper_after: float
+    persistent_contraction: bool
+    diagnostics: dict
+
+
+def run_reequilibration_experiment(
+    params: MetapopParameters,
+    patches: dict,
+    intervention: Intervention,
+    *,
+    equilibration_steps: int = 40,
+    reequilibration_steps: int = 60,
+    grid_points: int = 9,
+    invasion_steps: int = 6,
+    invasion_cohort: int = 12,
+    invasion_replicates: int = 2,
+    upper_quantile: float = 0.9,
+    lower_quantile: float = 0.1,
+    contraction_tol: float = 0.06,
+    seed: int = 0,
+) -> ReequilibrationResult:
+    """Run a before / re-equilibrated-after intervention from one shared seed.
+
+    1. Equilibrate the resident under the BEFORE regime (must be stationary).
+    2. From that identical community, switch to the AFTER regime and run a long
+       re-equilibration, checking it reaches a new quasi-stationary state.
+    3. Compare the realised occupied trait set and the invasion-based Omega_inv,
+       each evaluated at its OWN re-equilibrated resident — the eco-evolutionary
+       endpoint, not transient invasibility.
+    """
+    resident_b, states_b, report_b = equilibrate(
+        patches, params, steps=equilibration_steps, seed=seed, regime=intervention.before,
+    )
+
+    def _metrics(state: PopulationState) -> tuple[float, float, float, float]:
+        vals = state.trait_values()
+        ue = _trait_quantile(vals, upper_quantile)
+        le = _trait_quantile(vals, lower_quantile)
+        return ue, ue - le, state.mean_trait(), state.n_total
+
+    ue_b, br_b, mean_b, n_b = _metrics(resident_b)
+
+    if report_b.status != "stationary" or resident_b.n_total == 0:
+        return ReequilibrationResult(
+            intervention=intervention.name,
+            stationarity_before=report_b.status, stationarity_after="not_run",
+            upper_edge_before=ue_b, upper_edge_after=0.0,
+            breadth_before=br_b, breadth_after=0.0,
+            mean_before=mean_b, mean_after=0.0,
+            omega_measure_before=0.0, omega_measure_after=0.0,
+            omega_upper_before=0.0, omega_upper_after=0.0,
+            persistent_contraction=False,
+            diagnostics={"reason": f"resident_before_{report_b.status}"},
+        )
+
+    omega_b = estimate_omega_inv(
+        resident_b, states_b, patches, params, intervention.before,
+        grid_points=grid_points, invasion_steps=invasion_steps,
+        cohort=invasion_cohort, replicates=invasion_replicates, seed=seed * 5 + 3,
+    )
+
+    # --- re-equilibrate under the AFTER regime from the SAME community ---
+    rng = Random(seed * 9 + 7)
+    inds = [replace(i) for i in resident_b.individuals]
+    states_a = {pid: PatchState(ps.resources) for pid, ps in states_b.items()}
+    n_patches = len(patches)
+    n_series: list[int] = []
+    mt_series: list[float] = []
+    occ_series: list[int] = []
+    var_series: list[float] = []
+    rec_window = 12
+    for step in range(reequilibration_steps):
+        inds = advance(inds, patches, states_a, params, rng, intervention.after, steps=1)
+        if step >= reequilibration_steps - rec_window - 1:
+            n, mt, occ, var = _series_summary(inds, n_patches)
+            n_series.append(n); mt_series.append(mt); occ_series.append(occ); var_series.append(var)
+        if not inds:
+            n_series.append(0); mt_series.append(0.0); occ_series.append(0); var_series.append(0.0)
+            break
+    # a post-perturbation system settles more slowly than a virgin one, so the
+    # re-equilibration phase gets a slightly more permissive stationarity tolerance.
+    report_a = assess_stationarity(n_series, mt_series, occ_series, var_series, window=rec_window, tol=0.14)
+    resident_a = PopulationState(tuple(inds), {pid: ps.resources for pid, ps in states_a.items()})
+    ue_a, br_a, mean_a, n_a = _metrics(resident_a)
+
+    if resident_a.n_total > 0 and report_a.status == "stationary":
+        omega_a = estimate_omega_inv(
+            resident_a, states_a, patches, params, intervention.after,
+            grid_points=grid_points, invasion_steps=invasion_steps,
+            cohort=invasion_cohort, replicates=invasion_replicates, seed=seed * 5 + 4,
+        )
+        om_meas_a, om_up_a = omega_a.measure, (max(omega_a.viable_values) if omega_a.viable_values else 0.0)
+    else:
+        om_meas_a, om_up_a = 0.0, 0.0
+
+    om_up_b = max(omega_b.viable_values) if omega_b.viable_values else 0.0
+
+    # persistent contraction: the post-loss system is stationary again AND the
+    # realised occupied upper edge receded and stayed receded.
+    persistent = (
+        report_a.status == "stationary"
+        and resident_a.n_total > 0
+        and ue_a < ue_b - contraction_tol
+    )
+
+    return ReequilibrationResult(
+        intervention=intervention.name,
+        stationarity_before=report_b.status, stationarity_after=report_a.status,
+        upper_edge_before=ue_b, upper_edge_after=ue_a,
+        breadth_before=br_b, breadth_after=br_a,
+        mean_before=mean_b, mean_after=mean_a,
+        omega_measure_before=omega_b.measure, omega_measure_after=om_meas_a,
+        omega_upper_before=om_up_b, omega_upper_after=om_up_a,
+        persistent_contraction=persistent,
+        diagnostics={
+            "n_before": n_b, "n_after": n_a,
+            "upper_edge_delta": round(ue_a - ue_b, 4),
+            "mean_delta": round(mean_a - mean_b, 4),
+        },
     )
 
 

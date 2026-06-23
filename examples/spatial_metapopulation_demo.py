@@ -33,7 +33,11 @@ from causal_model.spatial_metapopulation_abm import (
     sample_constrained_ecosystem,
     verify_contraction_robustness,
 )
-from causal_model.spatial_metapopulation_analysis import decompose_channels
+from causal_model.spatial_metapopulation_analysis import (
+    contraction_conditions_report,
+    decompose_channels,
+    verify_persistent_contraction,
+)
 
 # Small but real settings so the demo runs in a reasonable time.
 EXP = dict(
@@ -134,6 +138,32 @@ def main() -> None:
         )
     print("  -> trait-support (interaction) loss is the contraction driver;")
     print("     predator removal alone does not contract; dispersal cut is a separate route.")
+
+    # ------------------------------------------------------------------ #
+    # 5. Persistence after resident RE-EQUILIBRATION (not transient invasibility)
+    #    and the conditions / compensation boundary.
+    # ------------------------------------------------------------------ #
+    print("\n=== does the contraction persist after the resident re-evolves? ===")
+    reeq = dict(equilibration_steps=40, reequilibration_steps=55, grid_points=5,
+                invasion_steps=4, invasion_cohort=8, invasion_replicates=1)
+    pc = verify_persistent_contraction(
+        incomplete["pollination_loss"], ecosystem_sampler=sample_constrained_ecosystem,
+        n_draws=14, base_seed=400, **reeq)
+    pk = verify_persistent_contraction(
+        sufficient["pollination_loss"], ecosystem_sampler=sample_compensated_ecosystem,
+        n_draws=14, base_seed=400, **reeq)
+    print(f"  incomplete compensation: among re-stabilised systems contraction persists "
+          f"{pc.conditional_contraction:.2f}; destabilised {pc.destabilisation_fraction:.2f} "
+          f"(cats={pc.after_categories})")
+    print(f"  sufficient compensation: contraction {pk.conditional_contraction:.2f}; "
+          f"destabilised {pk.destabilisation_fraction:.2f}  <- stable, no contraction")
+
+    print("\n=== contraction CONDITIONS (not a universal law) ===")
+    rep = contraction_conditions_report(n_draws=14, base_seed=100, **EXP)
+    print(f"  contracts when ({rep['contracts_when']['regime']}):")
+    print(f"     fraction = {rep['contracts_when']['instantaneous_contraction_fraction']:.2f}")
+    print(f"  does NOT contract when ({rep['does_not_contract_when']['regime']}):")
+    print(f"     fraction = {rep['does_not_contract_when']['instantaneous_contraction_fraction']:.2f}")
 
 
 if __name__ == "__main__":

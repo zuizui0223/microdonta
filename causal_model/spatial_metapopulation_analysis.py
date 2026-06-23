@@ -25,7 +25,7 @@ All of these reuse :func:`run_intervention_experiment` and re-classify its store
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from random import Random
 from typing import Callable
 
@@ -39,6 +39,7 @@ from causal_model.spatial_metapopulation_abm import (
     classify_trait_space_change,
     make_interventions,
     run_intervention_experiment,
+    run_reequilibration_experiment,
     sample_compensated_ecosystem,
     sample_constrained_ecosystem,
 )
@@ -339,3 +340,175 @@ def run_peer_review_panel(**experiment_kwargs) -> dict:
         ss = seed_spread(incomplete[name], base_seeds=(11, 42, 100), n_draws=12, **experiment_kwargs)
         panel["seed_spread"][name] = {"mean": ss.mean, "lo": ss.lo, "hi": ss.hi}
     return panel
+
+
+# ---------------------------------------------------------------------------
+# (2) Persistence after resident RE-EQUILIBRATION (the key circularity defence)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class PersistentContractionResult:
+    """Whether trait-space contraction survives resident re-equilibration.
+
+    The relationship loss is not just probed for instantaneous invasibility: the
+    resident is allowed to re-evolve to a new quasi-stationary state. Outcomes are
+    bucketed — ``reequilibrated`` (a new stationary state), ``destabilised``
+    (extinct / not_converged / oscillating). The headline is the *conditional*
+    fraction: among systems that re-stabilise, how many keep a contracted occupied
+    trait set. Relationship loss that fails to re-stabilise is reported separately,
+    not hidden.
+    """
+
+    n_total: int
+    n_reequilibrated: int
+    n_destabilised: int
+    after_categories: dict
+    n_persistent_contraction: int
+    conditional_contraction: float     # persistent / reequilibrated
+    destabilisation_fraction: float    # destabilised / total
+
+
+def verify_persistent_contraction(
+    intervention: Intervention,
+    *,
+    ecosystem_sampler: EcosystemSampler | None = None,
+    n_draws: int = 14,
+    base_seed: int = 100,
+    **experiment_kwargs,
+) -> PersistentContractionResult:
+    """Re-equilibrate after the loss and report persistent-contraction statistics."""
+    sampler = ecosystem_sampler or sample_constrained_ecosystem
+    after_categories: dict = {}
+    n_total = 0
+    n_reeq = 0
+    n_destab = 0
+    n_persist = 0
+    for i in range(n_draws):
+        rng = Random(base_seed + i)
+        params, patches = sampler(rng)
+        res = run_reequilibration_experiment(
+            params, patches, intervention, seed=base_seed + i, **experiment_kwargs,
+        )
+        if res.stationarity_before != "stationary":
+            continue
+        n_total += 1
+        cat = res.stationarity_after
+        after_categories[cat] = after_categories.get(cat, 0) + 1
+        if cat == "stationary":
+            n_reeq += 1
+            if res.persistent_contraction:
+                n_persist += 1
+        else:
+            n_destab += 1
+    return PersistentContractionResult(
+        n_total=n_total,
+        n_reequilibrated=n_reeq,
+        n_destabilised=n_destab,
+        after_categories=after_categories,
+        n_persistent_contraction=n_persist,
+        conditional_contraction=(n_persist / n_reeq) if n_reeq else 0.0,
+        destabilisation_fraction=(n_destab / n_total) if n_total else 0.0,
+    )
+
+
+# ---------------------------------------------------------------------------
+# (4) Benefit-form robustness: does the result depend on benefit linearity?
+# ---------------------------------------------------------------------------
+
+def _with(params: MetapopParameters, **changes) -> MetapopParameters:
+    return replace(params, **changes)
+
+
+def benefit_form_sweep(
+    intervention: Intervention,
+    *,
+    saturations: tuple[float, ...] = (0.0, 0.3, 1.0, 3.0),
+    benefit_scales: tuple[float, ...] = (1.0, 0.5, 0.25, 0.1),
+    n_draws: int = 16,
+    base_seed: int = 100,
+    **experiment_kwargs,
+) -> dict:
+    """Contraction fraction across benefit *shape* (saturation) and *magnitude*.
+
+    Shows the result is **not** an artefact of a linear benefit (it holds for
+    saturating benefit too, because loss gates off the whole benefit term), and
+    that the genuine boundary is the relationship's *load-bearingness*: contraction
+    fails when the benefit magnitude is small relative to cost and baseline.
+    """
+    from causal_model.spatial_metapopulation_abm import verify_contraction_robustness
+
+    def sampler(scale: float, sat: float) -> EcosystemSampler:
+        def s(rng: Random):
+            p, patches = sample_constrained_ecosystem(rng)
+            return _with(p, interaction_benefit=p.interaction_benefit * scale,
+                         benefit_saturation=sat), patches
+        return s
+
+    by_saturation = {}
+    for sat in saturations:
+        r = verify_contraction_robustness(
+            intervention, ecosystem_sampler=sampler(1.0, sat),
+            n_draws=n_draws, base_seed=base_seed, **experiment_kwargs,
+        )
+        by_saturation[sat] = r.contraction_fraction
+    by_magnitude = {}
+    for scale in benefit_scales:
+        r = verify_contraction_robustness(
+            intervention, ecosystem_sampler=sampler(scale, 0.0),
+            n_draws=n_draws, base_seed=base_seed, **experiment_kwargs,
+        )
+        by_magnitude[scale] = r.contraction_fraction
+    return {
+        "contraction_by_saturation": by_saturation,
+        "contraction_by_benefit_magnitude": by_magnitude,
+        "robust_to_shape": min(by_saturation.values()) >= 0.5,
+        "magnitude_dependent": (max(by_magnitude.values()) - min(by_magnitude.values())) >= 0.3,
+    }
+
+
+# ---------------------------------------------------------------------------
+# (5) Conditions report: WHEN does contraction occur, and what compensates it?
+# ---------------------------------------------------------------------------
+
+def contraction_conditions_report(
+    intervention_name: str = "pollination_loss",
+    *,
+    n_draws: int = 14,
+    base_seed: int = 100,
+    **experiment_kwargs,
+) -> dict:
+    """Return the *conditions* under which relationship loss contracts trait space.
+
+    Not "relationship loss always contracts", but: contracts under the
+    physical-constraint regime with incomplete compensation; does NOT contract
+    under sufficient compensation / ample dispersal / large connected patches; and
+    only when the relationship is load-bearing. Bundles the instantaneous and
+    re-equilibrated (persistent) evidence plus the benefit-form boundary.
+    """
+    incomplete = make_interventions(compensation=0.08)[intervention_name]
+    sufficient = make_interventions(compensation=0.55)[intervention_name]
+
+    from causal_model.spatial_metapopulation_abm import verify_contraction_robustness
+
+    inst_con = verify_contraction_robustness(
+        incomplete, ecosystem_sampler=sample_constrained_ecosystem,
+        n_draws=n_draws, base_seed=base_seed, **experiment_kwargs,
+    )
+    inst_comp = verify_contraction_robustness(
+        sufficient, ecosystem_sampler=sample_compensated_ecosystem,
+        n_draws=n_draws, base_seed=base_seed, **experiment_kwargs,
+    )
+    return {
+        "contracts_when": {
+            "regime": "finite resources, positive trait cost, finite patches, "
+                      "local interaction, incomplete compensation, load-bearing relationship",
+            "instantaneous_contraction_fraction": inst_con.contraction_fraction,
+            "classification": inst_con.classification,
+        },
+        "does_not_contract_when": {
+            "regime": "sufficient compensation, ample dispersal, large connected "
+                      "patches, low trait cost (relationship not load-bearing)",
+            "instantaneous_contraction_fraction": inst_comp.contraction_fraction,
+            "classification": inst_comp.classification,
+        },
+    }

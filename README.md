@@ -238,6 +238,36 @@ and the spatial-ABM rare-invader fitness reduces to the theorem's structure (its
 viable upper edge recedes under loss in ~94% of random ecosystems; the secondary
 mate-matching term is the documented exception).
 
+### Persistence after re-equilibration, and the conditions for contraction
+
+The contraction is **not** a transient invasibility artefact. `run_reequilibration_experiment`
+lets the resident *re-evolve* under the post-loss regime to a new quasi-stationary
+state and compares the realised occupied trait set at that eco-evolutionary endpoint.
+`verify_persistent_contraction` reports the outcome honestly:
+
+* under **incomplete** compensation, relationship loss is **destabilising** — a
+  substantial fraction of populations go extinct or fail to re-converge — and
+  *among those that re-stabilise*, the contracted trait set **persists** (conditional
+  contraction ≈ 0.6–0.9 across seeds);
+* under **sufficient** compensation the system stays stable (≈ 0 destabilisation)
+  and does **not** contract (conditional ≈ 0.2).
+
+The framework therefore returns **conditions**, not a universal law
+(`contraction_conditions_report`): contraction follows relationship loss *when* the
+relationship is load-bearing and compensation is incomplete, and **not** under
+sufficient compensation, ample dispersal, large connected patches, or low trait cost.
+A benefit-form sweep (`benefit_form_sweep`) further shows the result is **not an
+artefact of a linear benefit** — it holds for saturating (Holling-II) benefit too,
+because loss gates off the whole benefit term — while the genuine boundary is the
+relationship's *magnitude* (contraction vanishes once the benefit is too small to be
+load-bearing).
+
+This is the methodological point: rather than reporting one ABM's contraction as a
+general rule, the pipeline subjects it to **re-equilibration, randomised ensembles,
+explicit counterexamples, channel decomposition, and threshold/seed sensitivity**,
+and returns only the rule transitions that survive — together with the conditions and
+the regimes where they fail.
+
 ---
 
 ## Rule-transition RACH
