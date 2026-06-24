@@ -8,11 +8,11 @@ from causal_model.colonization_recruitment_factorization import (
 )
 
 
-def _params() -> ColonizationParameters:
+def _params(*, extinction_rate: float = 0.0) -> ColonizationParameters:
     return ColonizationParameters(
         dispersal_cost=0.2,
         fecundity=0.45,
-        extinction_rate=0.0,
+        extinction_rate=extinction_rate,
         density_threshold=0.8,
         mutation_rate=0.01,
         mutation_std=0.05,
@@ -44,11 +44,12 @@ def test_one_step_expected_recruitment_is_exact_product_of_declared_factors():
     expected_survival = 0.9 * (1.0 - 0.6 * (2.0 / 8.0) ** 2)
     # conception = 0.45 + .20*.6 + .30*.5 - .2*.6
     expected_conception = 0.45 + 0.20 * 0.6 + 0.30 * 0.5 - 0.2 * 0.6
-    # linear benefit_shape gives d=z=.6
+    # linear benefit_shape gives d=z=.6; extinction rate is zero in this case.
     expected_settlement = 0.6 * 1.0 * 0.8 + 0.4 * 0.6
 
     assert factors.survival_probability == pytest.approx(expected_survival)
     assert factors.conception_probability == pytest.approx(expected_conception)
+    assert factors.patch_persistence_probability == 1.0
     assert factors.settlement_factor == pytest.approx(expected_settlement)
     assert factors.local_reproductive_factor == pytest.approx(
         expected_survival * expected_conception
@@ -58,6 +59,19 @@ def test_one_step_expected_recruitment_is_exact_product_of_declared_factors():
     )
     assert factors.factorisation_residual == pytest.approx(0.0)
     assert require_theorem_interior(factors) is factors
+
+
+def test_patch_extinction_multiplies_end_of_step_settlement_expectation():
+    context = _context()
+    no_extinction = one_step_recruitment_factors(context, _params(extinction_rate=0.0), ColonizationRegime())
+    with_extinction = one_step_recruitment_factors(context, _params(extinction_rate=0.25), ColonizationRegime())
+
+    assert with_extinction.patch_persistence_probability == pytest.approx(0.75)
+    assert with_extinction.local_reproductive_factor == pytest.approx(no_extinction.local_reproductive_factor)
+    assert with_extinction.settlement_factor == pytest.approx(0.75 * no_extinction.settlement_factor)
+    assert with_extinction.expected_juvenile_recruitment == pytest.approx(
+        0.75 * no_extinction.expected_juvenile_recruitment
+    )
 
 
 def test_corridor_loss_changes_settlement_factor_without_changing_local_reproductive_factor():
