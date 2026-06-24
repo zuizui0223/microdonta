@@ -1,8 +1,17 @@
+from math import isclose
+
 from causal_model.channel_identifiability_theory import VitalRateState, identify_from_channel_resolved_rates
 from causal_model.proxy_calibration_theory import (
     construct_time_varying_proxy_symmetry,
     identify_from_net_and_stable_proxy,
 )
+
+
+def _allclose(left: tuple[float, ...], right: tuple[float, ...], tolerance: float = 1e-12) -> bool:
+    return len(left) == len(right) and all(
+        isclose(a, b, rel_tol=tolerance, abs_tol=tolerance)
+        for a, b in zip(left, right)
+    )
 
 
 def _state_before() -> VitalRateState:
@@ -40,8 +49,8 @@ def test_unknown_but_stable_trait_dependent_proxy_identifies_channel_ratios():
     direct = identify_from_channel_resolved_rates(before, after)
 
     assert inferred.conclusion == "fecundity_only"
-    assert inferred.fecundity_ratio == direct.fecundity_ratio
-    assert inferred.establishment_ratio == direct.establishment_ratio
+    assert _allclose(inferred.fecundity_ratio, direct.fecundity_ratio)
+    assert _allclose(inferred.establishment_ratio, direct.establishment_ratio)
 
 
 def test_stable_proxy_is_symmetric_for_an_establishment_proxy():
@@ -60,11 +69,11 @@ def test_stable_proxy_is_symmetric_for_an_establishment_proxy():
     )
 
     assert inferred.conclusion == "fecundity_only"
-    assert inferred.establishment_ratio == (1.0,) * len(before.grid)
+    assert _allclose(inferred.establishment_ratio, (1.0,) * len(before.grid))
 
 
 def test_time_varying_proxy_calibration_restores_nonidentifiability():
-    # W and X are both unchanged.  A stable proxy map says unchanged; an unknown
+    # W and X are both unchanged. A stable proxy map says unchanged; an unknown
     # time-varying proxy map says fecundity fell and establishment rose.
     result = construct_time_varying_proxy_symmetry(
         net_before=(1.0, 1.0, 1.0, 1.0),
@@ -80,8 +89,8 @@ def test_time_varying_proxy_calibration_restores_nonidentifiability():
     assert result.ratios_b.conclusion == "mixed_or_unidentified"
     assert result.ratios_a.fecundity_ratio == (1.0, 1.0, 1.0, 1.0)
     assert result.ratios_a.establishment_ratio == (1.0, 1.0, 1.0, 1.0)
-    assert result.ratios_b.fecundity_ratio == (2.0, 4.0 / 3.0, 0.8, 0.5)
-    assert result.ratios_b.establishment_ratio == (0.5, 0.75, 1.25, 2.0)
+    assert _allclose(result.ratios_b.fecundity_ratio, (2.0, 4.0 / 3.0, 0.8, 0.5))
+    assert _allclose(result.ratios_b.establishment_ratio, (0.5, 0.75, 1.25, 2.0))
 
 
 def test_no_calibration_shift_recovers_stable_proxy_result():
