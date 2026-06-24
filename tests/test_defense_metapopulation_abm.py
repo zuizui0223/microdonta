@@ -23,7 +23,6 @@ from causal_model.defense_metapopulation_abm import (
     verify_defense_contraction,
 )
 
-# Post-loss resident endpoints require more time than the old 10-step transient.
 DEF_KW = dict(
     equilibration_steps=36,
     outcome_steps=10,
@@ -102,15 +101,15 @@ def test_defense_compensated_counterexample_accepts_less():
 
 
 def test_cross_system_invariant_is_reconfiguration_not_geometry():
-    kw = dict(
+    spatial_kw = dict(
         equilibration_steps=40,
         outcome_steps=10,
-        reequilibration_steps=60,
         grid_points=7,
         invasion_steps=5,
         invasion_cohort=10,
         invasion_replicates=2,
     )
+    defense_kw = dict(spatial_kw, reequilibration_steps=60)
     records = []
     pollination = make_interventions(compensation=0.08)["pollination_loss"]
     records += generate_sweep_records(
@@ -121,7 +120,7 @@ def test_cross_system_invariant_is_reconfiguration_not_geometry():
         n_regions=6,
         seeds=(0, 1),
         base_seed=5,
-        **kw,
+        **spatial_kw,
     )
     defense = make_defense_intervention(compensation=0.08)
     records += generate_defense_sweep_records(
@@ -132,7 +131,7 @@ def test_cross_system_invariant_is_reconfiguration_not_geometry():
         n_regions=6,
         seeds=(0, 1),
         base_seed=5,
-        **kw,
+        **defense_kw,
     )
 
     policy = RobustnessPolicy(min_replicates=6, min_match_fraction=0.35, fragile_max_fraction=0.15)
