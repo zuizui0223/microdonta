@@ -8,14 +8,15 @@ positive product required by N1--N4.
 
 This module therefore does something narrower and exact. For one initial adult,
 in one specified local context, it calculates the expectation of **juvenile
-recruits produced in the next step**. It mirrors the actual order of events in
-`_colonization_step`:
+recruits retained at the end of the next step**. It mirrors the actual order of
+events in `_colonization_step`:
 
 ```text
 survive
 -> conceive
 -> disperse through a corridor and settle
-   OR remain local and settle.
+   OR remain local and settle
+-> retained patch survives the end-of-step extinction draw.
 ```
 
 Let:
@@ -26,22 +27,23 @@ C(z)  = probability of conception after survival
 D(z)  = dispersal-investment probability, benefit_shape(z)
 L     = local settlement room
 T     = expected settlement room in a uniformly selected reachable target
-c     = corridor connectivity probability.
+c     = corridor connectivity probability
+p     = end-of-step patch persistence probability = 1-extinction_rate.
 ```
 
-Then the expected juvenile recruitment is
+Then expected retained juvenile recruitment is
 
 ```text
 W_recruit(z)
 = [S(z) C(z)]
-  [D(z)cT + {1-D(z)}L].
+  p [D(z)cT + {1-D(z)}L].
 ```
 
 We name the two factors:
 
 ```text
 F_local(z) = S(z)C(z)
-E_settlement(z) = D(z)cT + {1-D(z)}L.
+E_settlement(z) = p[D(z)cT + {1-D(z)}L].
 ```
 
 Thus
@@ -70,7 +72,9 @@ with probability 1-D(z):
 ```
 
 A failed dispersal attempt does not fall back to local settlement in the current
-IBM. Hence the two branch expectations add exactly as above.
+IBM. Hence the two branch expectations add. The patch-level extinction draw occurs
+after offspring are added and is independent of trait and destination in the
+current model, so it multiplies their retained expectation by `p`.
 
 ---
 
@@ -84,9 +88,10 @@ F_local(z) > 0
 E_settlement(z) > 0.
 ```
 
-At zero survival, zero conception, or zero settlement, the biology is still
-valid, but division-based recovery and proxy-ratio theorems are not defined. The
-function `require_theorem_interior()` makes this exclusion explicit.
+At zero survival, zero conception, zero settlement, or certain patch extinction,
+the biology is still valid, but division-based recovery and proxy-ratio theorems
+are not defined. The function `require_theorem_interior()` makes this exclusion
+explicit.
 
 Within the positive interior, the channel-identifiability results apply to
 `W_recruit`, `F_local`, and `E_settlement`:
@@ -101,6 +106,26 @@ W_recruit + F_local
 W_recruit + a stable proxy for F_local
     -> identifies relative F_local and E_settlement changes
 ```
+
+The direct corridor-loss corollary is especially clear. For fixed local context,
+corridor loss changes `E_settlement` from `E_0(z)` to `E_1(z)`. In the positive
+interior define
+
+```text
+a(z) = E_1(z) / E_0(z).
+```
+
+Then
+
+```text
+F_local(z) E_1(z)
+= [a(z)F_local(z)] E_0(z).
+```
+
+So one-step recruitment alone is exactly unable to distinguish the actual
+settlement/corridor change from a local reproductive attenuation of the same
+trait-dependent magnitude. This is theorem N1 instantiated in the colonization
+life cycle.
 
 ---
 
