@@ -11,6 +11,7 @@ from random import Random
 
 from causal_model.abm_family_adapter import RobustnessPolicy, summarise_sweep
 from causal_model.rule_transition_pipeline import analyse_rule_transitions
+from causal_model.rule_transition_protocol import OUTCOME_MOTIFS
 from causal_model.spatial_metapopulation_abm import (
     PopulationState,
     constraint_program_motifs,
@@ -47,8 +48,7 @@ COL_KW = dict(
 
 
 def test_colonization_traits_bounded_and_intervention_is_connectivity_loss():
-    rng = Random(3)
-    params, patches = sample_constrained_colonization(rng)
+    params, patches = sample_constrained_colonization(Random(3))
     state, _, _ = equilibrate_colonization(patches, params, steps=36, seed=1)
     assert isinstance(state, PopulationState)
     for individual in state.individuals:
@@ -82,8 +82,6 @@ def test_complete_corridor_loss_is_not_forced_into_a_stationary_endpoint_claim()
         base_seed=300,
         **COL_KW,
     )
-    # The summary reports the realised endpoint sample. It must not silently turn
-    # a lack of post-loss stationarity into a robust contraction claim.
     assert summary.n_runs == 14
     assert sum(summary.primary_counts.values()) == summary.n_stationary
     assert 0.0 <= summary.accept_fraction <= 1.0
@@ -97,11 +95,11 @@ def test_partial_connectivity_loss_is_the_counterexample():
     assert constrained >= compensated
 
 
-def test_colonization_motifs_assert_contraction():
-    intervention = make_colonization_intervention()
-    motifs = colonization_program_motifs(intervention)
-    assert "trait_space_contraction" in motifs
-    assert "trait_space_shift" not in motifs
+def test_colonization_program_motifs_are_assumptions_only():
+    motifs = colonization_program_motifs(make_colonization_intervention())
+    assert not (motifs & OUTCOME_MOTIFS)
+    assert "dispersal_corridor_relationship_loss" in motifs
+    assert "positive_trait_cost" in motifs
 
 
 def test_colonization_is_not_counted_as_third_endpoint_support_without_stationarity():
@@ -114,9 +112,10 @@ def test_colonization_is_not_counted_as_third_endpoint_support_without_stationar
         invasion_replicates=2,
     )
     endpoint_kw = dict(spatial_kw, reequilibration_steps=60)
-    records = []
     pollination = make_interventions(compensation=0.08)["pollination_loss"]
-    records += generate_sweep_records(
+    defense = make_defense_intervention(compensation=0.08)
+    colonization = make_colonization_intervention(loss_level=0.0, compensation=0.06)
+    records = list(generate_sweep_records(
         pollination,
         program_id="fecundity_reward",
         program_motifs=constraint_program_motifs(pollination),
@@ -125,8 +124,7 @@ def test_colonization_is_not_counted_as_third_endpoint_support_without_stationar
         seeds=(0, 1),
         base_seed=5,
         **spatial_kw,
-    )
-    defense = make_defense_intervention(compensation=0.08)
+    ))
     records += generate_defense_sweep_records(
         defense,
         program_id="survival_reward",
@@ -137,7 +135,6 @@ def test_colonization_is_not_counted_as_third_endpoint_support_without_stationar
         base_seed=5,
         **endpoint_kw,
     )
-    colonization = make_colonization_intervention(loss_level=0.0, compensation=0.06)
     records += generate_colonization_sweep_records(
         colonization,
         program_id="establishment_reward",
@@ -155,8 +152,6 @@ def test_colonization_is_not_counted_as_third_endpoint_support_without_stationar
     assert summaries[("predator_loss_defense", "survival_reward")].classification == "robust"
     assert summaries[("connectivity_loss_colonization", "establishment_reward")].classification != "robust"
 
-    # The invariant remains supported only by the two systems with identifiable
-    # endpoint residents; colonization cannot be represented as a third support.
     motifs = analyse_rule_transitions(records, policy).invariant_result.cross_system_common_motifs
     for motif in (
         "relation_change",
