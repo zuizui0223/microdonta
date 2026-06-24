@@ -2,193 +2,408 @@
 
 [![CI](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml/badge.svg)](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml)
 
-**RACH** stands for **Restricted Admissible Causal Hypotheses**.
+**RACH** means **Restricted Admissible Causal Hypotheses**.
 
-RACH is a **causal admissibility and degeneracy framework** for ecological systems. It estimates which latent causal mechanisms remain admissible under biological constraints and independent observations, and quantifies whether the available observations are sufficient to resolve competing mechanisms.
+RACH is not a best-model selector. It is a simulator-agnostic inference framework for asking:
 
+```text
+Which causal explanations remain compatible with biological constraints and observed patterns?
+Which explanations are still indistinguishable?
+Which additional observation would separate them?
+```
 
-> RACH defines the admissible causal region and quantifies causal admissibility, causal degeneracy, and causal resolvability under biological constraints. It does not select the best model. It estimates which mechanisms remain admissible and how degenerate the causal explanation is.
+The repository now has two connected layers:
 
+```text
+individual / patch ABM
+→ POM pattern extraction
+→ admissible causal region A_ε
+→ robust vs fragile causal-program families
+→ rule-transition invariants
+```
 
-**RACH is not a combination of ABM, ABC, and POM.** ABM, ABC, and POM are computational components used to approximate the admissible causal region A_ε. The framework is defined by its inferential objects: causal admissibility (CA_j), causal degeneracy (D_RACH), causal resolvability (R_RACH), observation contribution (OC_k), and next-observation value (NOV).
-
-This repository implements a worked example using the Izu Islands *Campanula microdonta* system (シマホタルブクロ). Older literature may refer to the broader *C. punctata* complex; here シマホタルブクロ is treated as *Campanula microdonta*, with mainland ホタルブクロ / *C. punctata* used only as a related comparison context. The Campanula model is an example, not the definition of RACH.
-
-**Worked-example provenance (important).** Only quantities actually measured in the Inoue series are used as independent ABC observations (`observed_target`): the **flower-size isolation gradient** (Inoue & Amano 1986) and the **breeding-system / selfing-outcrossing isolation gradient** (Inoue 1990). Legacy Oshima-vs-Hachijo pairwise summaries are retained only as diagnostics so the same evidence is not counted twice. **Pollinator (Bombus) availability** is fixed context `x_obs`. **Nectar guide** is a *planned own-field observation* (no per-population Inoue measurement exists) and is tracked as a NOV candidate for S1 until collected. **Herkogamy** is treated as a latent dichogamy / delayed-selfing mechanism (this species is protandrous with secondary pollen presentation, so static anther–stigma herkogamy is not the operative trait), not an independent observation. **Fis** remains excluded until an independent genetic estimate is source-confirmed, because the current simulator's Fis proxy is partly generated from selfing rate and would otherwise double-count selfing evidence. Numeric endpoint values are pending transcription from the primary PDFs; directional gradient relations are used in the meantime.
-
-**Current inference status.** The canonical current `y_obs` has only two source-confirmed directional gradients: `selfing_distance` and `flower_size_distance`. Therefore A_ε is expected to be broad and causal resolvability low; this is a preliminary worked example, not an empirical resolution of the *C. microdonta* causal history. Pending guide, herkogamy, Fis/He, seed-set, and visitation data are stored as future/NOV candidates, not current `observed_target` rows. Optional sensitivity tools are available for later measured data: `absolute_observations.csv`, `absolute_summary` pattern rows, standardized multi-component distance, adaptive ε, and an optional parsimony structure prior `P(s) ∝ exp(-λ |s|)`.
-
-**Falsification-first next observations.** The Campanula NOV list includes explicit falsification candidates for each causal switch: S1 guide-masked Bombus choice, S2 autonomous-selfing/bagging tests, S3 neutral-marker isolation structure, and S5 halictid substitution/exclusion tests. These are candidate future `observed_target` rows only after measurement; until then they prioritise non-circular data collection.
-
-**Mathematical foundations:** see [`docs/rach_mathematical_foundations.md`](docs/rach_mathematical_foundations.md) for the well-definedness, metric-bound, and Monte Carlo consistency proof. The theorem proves admissibility well-posedness, not causal truth.
-
-**Literature comparison and novelty:** see [`docs/literature_comparison.md`](docs/literature_comparison.md) for how RACH relates to Pattern-Oriented Modeling, ABC, ABC model choice, ABM/IBM, structural causal models, and Value of Information, and for defensible novelty and limitation claims.
+The Campanula system is a worked example, not the definition of RACH.
 
 ---
 
-## Installation & reproducibility
+## Core RACH object
 
-```bash
-pip install -e ".[dev]"     # runtime + matplotlib + pytest
-# or:  pip install -r requirements.txt -r requirements-dev.txt
-pytest -q                   # full test suite (80 tests)
-```
-
-Every figure in the paper is regenerated by one command with a fixed seed:
-
-```bash
-python -m causal_model.confound_demo   --figure outputs/mee/confound_demo.png      # Fig 1 (seed 7, n=600)
-python -m causal_model.synthetic_demo  --figure outputs/mee/synthetic_demo.png     # Fig 2 (seed 1, n=4000)
-python -m causal_model.nov_calibration --figure outputs/mee/nov_calibration.png    # Fig 3 (seed 7, n=1000)
-```
-
-New to RACH? Start with the **[5-minute tutorial](docs/tutorial.md)** — run the
-worked example, read the outputs, and adapt the simulator-agnostic inference
-layer to your own system.
-
-### Archiving a citable snapshot (Zenodo DOI)
-
-The Zenodo archive is a **snapshot of the tagged tree**, so it contains only the
-files present at that tag — no repository history. To mint a DOI:
-
-1. Optionally add an ORCID in `.zenodo.json` / `CITATION.cff` so the DOI metadata
-   is complete (author and affiliation are already set).
-2. Enable this repository in Zenodo (https://zenodo.org/account/settings/github/),
-   then create a GitHub **Release** from the `v0.1.0` tag.
-3. Zenodo archives the release and returns a DOI; paste it back into
-   `CITATION.cff`, `.zenodo.json` and the manuscript's Data Accessibility section.
-
----
-
-## Formal definition
-
-The core RACH object is the **admissible causal region**:
+The lower-level object is the admissible causal region:
 
 ```text
 A_ε(y_obs, x_obs)
 =
 {(θ, s) ∈ Θ × S :
-  G(θ)=1,
+  G(θ) = 1,
   d(P_sim(f(x_obs; θ, s)), P_obs(y_obs)) ≤ ε }
 ```
 
 where:
 
 ```text
-x_obs  = fixed empirical context used as simulator input
-θ      = latent ecological parameters to infer or marginalise over
-s      = causal switch state, s ∈ {0,1}^K
-G(θ)   = ecological constraint grammar
-f      = generative ecological dynamics
-P_sim  = pattern extractor for simulated output
-P_obs  = pattern extractor for empirical observations
-y_obs  = independent empirical observations used for ABC/RACH acceptance
-d      = distance between simulated and observed pattern spaces
-ε      = tolerance threshold
+x_obs  fixed empirical context used as simulator input
+θ      latent parameters sampled over biologically admissible ranges
+s      causal program or switch state
+G(θ)   ecological, physical, and biological constraints
+f      generative simulator or ABM
+P_sim  pattern summary extracted from a simulation
+P_obs  corresponding empirical or synthetic target pattern
+d      distance between pattern summaries
+ε      acceptance tolerance
 ```
 
-The key inference is not a best-model label, but the admissible region and its information structure.
+A run enters `A_ε` only when it is both biologically admissible and sufficiently close to the target pattern. The output is a set of surviving explanations, not a single winner.
 
 ---
 
-## Core workflow
+## What is distinctive in RACH
+
+RACH turns the accepted region into causal objects:
 
 ```text
-1. Define biological axioms and ecological constraint grammar
-2. Define fixed empirical context x_obs
-3. Sample latent parameters θ within biologically admissible ranges
-4. Sample causal switch states s ∈ {0,1}^K
-5. Run generative simulation f(x_obs; θ, s)
-6. Extract comparable patterns P_sim and P_obs
-7. Accept samples whose distance to independent y_obs is ≤ ε
-8. Estimate CA_j, D_RACH, R_RACH, OC_k, and NOV(q)
+CA_j       causal admissibility of mechanism j
+D_RACH     causal degeneracy: how many explanations remain
+R_RACH     causal resolvability: uncertainty removed by observations
+OC_k       contribution of observation k
+NOV(q)     expected value of the next observation q
 ```
 
-RACH is **not** manual parameter tuning. The goal is to identify the subset of latent parameter–mechanism space that is both biologically coherent and compatible with independent observations.
+It also represents mechanism equivalence explicitly: substitution, disjunction, exclusion, and unresolved paths can remain visible instead of being hidden behind a MAP model.
+
+The sequential layer (`RACH-SEQ`) uses NOV to choose observations that reduce unresolved causal equivalence classes.
 
 ---
 
-## Known-truth recovery benchmark
+## Spatial metapopulation ABM backend
 
-The benchmark tests whether RACH ABC inference recovers a **known** causal switch state when synthetic observations are generated by the same proxy model under that state.
+`causal_model.spatial_metapopulation_abm` is the individual-based, patch-based backend for rule-transition RACH.
 
-**Epistemic note:** This is a *specified-simulator recovery benchmark*, not a causal proof.  A high recovery score means RACH is self-consistent under synthetic data — it does not mean the recovered switch state is the true ecological mechanism.
+Each individual has:
 
-### Run
-
-```bash
-# Default: 8 true states × 3 noise levels × 200 draws
-python -m causal_model.known_truth_benchmark
-
-# Fast smoke test
-python -m causal_model.known_truth_benchmark --n-attempts 50 --noise-rates 0.0 --cases all_off,S1_only
-
-# Full sweep including n_attempts convergence
-python -m causal_model.known_truth_benchmark \
-    --n-attempts 200 \
-    --noise-rates 0.0,0.1,0.2 \
-    --n-attempts-sweep 50,100,200,500 \
-    --output-dir outputs/known_truth_benchmark
+```text
+trait investment
+heritable genotype
+age
+patch identity
+within-patch location
 ```
 
-### Output files (`outputs/known_truth_benchmark/`)
+Each patch has:
 
-| File | Content |
-|---|---|
-| `known_truth_cases.csv` | One row per (case × switch): CA_j, predicted_on, true_on, correct, backend metadata |
-| `known_truth_summary.csv` | One row per case: accuracy, precision, recall, F1, mean_abs_CA_error, D_RACH, R_RACH, backend metadata |
-| `recovery_by_noise.csv` | Metrics averaged by noise_rate |
-| `recovery_by_n_attempts.csv` | Metrics averaged by n_attempts (for convergence sweep) |
-| `recovery_by_backend_pair.csv` | Metrics averaged by generator→inference backend pair |
-
-### Cross-backend recovery (simulator robustness)
-
-The benchmark can vary the **generator** backend (how synthetic `y_obs` is
-produced) and the **inference** backend (which simulator runs RACH inference):
-
-```bash
-# proxy -> proxy: self-consistency (same simulator generates and infers)
-python -m causal_model.known_truth_benchmark --generator-backend proxy --inference-backend proxy
-
-# abm -> proxy: simulator robustness — data from the stochastic IBM, proxy inference
-python -m causal_model.known_truth_benchmark --generator-backend abm --inference-backend proxy \
-    --abm-generations 30 --abm-population-size 120 --abm-replicates 2
-
-# abm -> abm: high-fidelity generation and inference (slowest)
-python -m causal_model.known_truth_benchmark --generator-backend abm --inference-backend abm
+```text
+area
+carrying capacity
+resource state
+connectivity to other patches
 ```
 
-**Interpretation.** `proxy→proxy` is a *self-consistency* check: if the data
-were exactly the proxy model, can RACH recover the known switch state?
-`abm→proxy` and `abm→abm` are stronger *simulator-robustness* tests: if the data
-come from a higher-fidelity stochastic ABM, does the pipeline still recover the
-known state under model misspecification? **This remains a specified-simulator
-recovery benchmark, not proof of real-world causal truth.**
+The simulator does **not** prescribe whether the focal trait should increase or decrease. It specifies only constraints and local processes:
 
-## Report generation (manuscript artifacts)
-
-Turn benchmark and ensemble outputs into stable summary documents and figures:
-
-```bash
-# One command — auto-runs a quick benchmark/ensemble if their CSVs are missing
-python -m causal_model.report_results
-
-# Use existing benchmark outputs, regenerate the ensemble scan
-python -m causal_model.report_results --run-ensemble \
-    --benchmark-dir outputs/known_truth_benchmark \
-    --ensemble-dir outputs/ensemble \
-    --output-dir outputs/reports
+```text
+relationship service = (own trait investment) × local availability, gated by the relationship
+mate success         = trait match × distance decay (a compatible, nearby partner)
+reproduction         = fecundity floor + relationship service + mate + resources − trait cost,
+                       then logistic in local density (finite resources)
+survival             = age- and density-dependent, reduced by a survival trade-off
+offspring            = inheritance + mutation
+dispersal            = patch connectivity and distance
+population change     = births, deaths, movement, local extinction
 ```
 
-Outputs under `outputs/reports/`: `benchmark_summary.md`, `ensemble_summary.md`,
-`results_summary.md`, and `figures/*.png`. Reports are manuscript-safe — they
-distinguish synthetic known-truth recovery from empirical admissibility
-inference and never claim real-world causal truth. (Figures require
-`matplotlib`; they are skipped with a notice if it is unavailable.)
+Because the relationship *service* rewards the trait investment and is gated by the
+relationship being intact, losing the relationship removes the support for the
+costly trait — so trait space can contract. Trait evolution is an emergent outcome
+of individual interactions, local demography, patch structure, and trade-offs; no
+trait direction is ever supplied.
 
-### Tests
+---
+
+## Relationship-change interventions and the viable trait set `Ω_inv`
+
+The spatial backend studies trait space through a controlled **intervention**, not a
+single run. An intervention is a paired *before*/*after* `Regime` run from the
+**same** resident community and the same RNG structure, so the only difference is
+the relationship change. Three are provided:
+
+```text
+pollination_loss   the mutualistic service that rewards the trait collapses
+predation_loss     the trait-supporting relationship is lost and top-down control relaxes
+dispersal_loss     the trait-supporting relationship is lost and dispersal pathways are cut
+```
+
+Trait space is summarised not by a mean but by the **viable trait set**
+
+```text
+Ω_inv(Z*) = { z' : λ(z' | Z*) > 0 }
+```
+
+where `λ` is the long-term invasion growth rate of a rare, bred-true mutant `z'`
+introduced into the quasi-stationary resident community `Z*` (measured in the full
+spatial dynamics with mutation off). The change in `Ω_inv` before vs after the
+intervention is classified as **contraction / fragmentation / shift / collapse**.
+Resident communities are first screened for **stationarity** (stationary /
+not_converged / extinct / oscillating); non-stationary residents are bucketed
+separately and never accepted.
+
+## Pattern-oriented modelling (POM)
+
+Every ABM run is converted to a multi-component summary statistic before acceptance. For the spatial backend:
+
+```text
+P_sim = (
+  interaction_network,     realised relationship service (gated by the relationship)
+  patch_occupancy,         fraction of patches occupied / local extinction
+  persistence_ne,          census × diversity (Ne / persistence proxy)
+  trait_moments,           trait variance + |cov(trait, genotype)|
+  omega_inv_state          qualitative Ω_inv verdict (contracted / fragmented / …)
+)
+```
+
+The same acceptance rule is used throughout RACH:
+
+```text
+d(P_sim, P_obs) ≤ ε   and   the viable set actually contracted
+```
+
+This matters because RACH does not accept a model merely because one hand-picked trait changed in the desired direction. A program must reproduce the specified multivariate ecological pattern, and the focal claim (trait-space contraction) must hold.
+
+A **random ecosystem ensemble** randomises interaction strength, patch
+size/connectivity, resources, trade-offs, mutation, and dispersal — always
+honouring finite resources, positive trait cost, finite patches, local
+interaction, and bounded traits (the trait *direction* is never an input). Under
+this regime trait-space contraction follows the relationship loss **robustly**;
+a **compensated counterexample** ensemble (low trait cost, ample dispersal, large
+connected patches, *sufficient* compensation) does **not** contract, so the
+pipeline correctly reports non-contraction and `no_common_rule` where they hold.
+
+Run the worked demonstration:
 
 ```bash
-pytest tests/test_known_truth_benchmark.py tests/test_cross_backend_benchmark.py \
-       tests/test_ensemble_robustness.py tests/test_report_results.py -v
+python -m examples.spatial_metapopulation_demo   # spatial IBM → robust/fragile → invariants
 ```
+
+Tests: `pytest tests/test_spatial_metapopulation_abm.py -q`.
+
+### Key findings and causal-isolation controls
+
+The diagnostics in `causal_model.spatial_metapopulation_analysis` answer the obvious
+reviewer questions and turn the demo into falsifiable claims.
+
+* **Channel decomposition (causal isolation).** Each intervention removes the
+  trait-supporting interaction *and* a secondary channel. Decomposing them
+  (`decompose_channels`) shows the contraction is driven by losing the
+  **trait-supporting relationship**, not the secondary toggle:
+
+  | scenario | interaction-only loss | secondary-only loss |
+  |---|---|---|
+  | pollination_loss | ~0.83 contracts | 0.00 (no secondary channel) |
+  | predation_loss | ~0.83 contracts | ~0.08 — **predator removal alone does not contract** |
+  | dispersal_loss | ~0.83 contracts | ~0.45–0.67 — **a separate spatial route to contraction** |
+
+  So "any relationship loss contracts trait space" is **false**: predator removal is
+  a clean dissociation, dispersal loss is an independent route, and the weak full
+  predation result (~0.4–0.5) is explained by the secondary channel *cancelling*
+  part of the interaction-loss contraction.
+
+* **Threshold robustness.** `threshold_sensitivity` re-classifies one collected
+  sweep across an `ε × contraction-tolerance` grid; the constrained-vs-compensated
+  separation holds at every threshold (it is not a tuned-threshold artefact).
+
+* **Monte-Carlo characterisation.** `replicate_convergence` and `seed_spread` report
+  how the invasion-fitness estimate behaves with more replicates and across
+  independent seeds (e.g. pollination contraction ≈ 0.73 over seeds, range
+  ~0.64–0.91; predation a stable-moderate ≈ 0.45), so the conclusion is not
+  seed-dependent.
+
+Tests: `pytest tests/test_spatial_metapopulation_analysis.py -q`.
+
+### Theorem: why relationship loss contracts trait space
+
+The simulation result is underwritten by a comparative-statics theorem on invasion
+fitness — see [`docs/trait_space_contraction_theorem.md`](docs/trait_space_contraction_theorem.md).
+With a viable set `Ω(I,R) = { z : I·B(z) − C(z) + K + R ≥ 0 }` (relationship benefit
+`B↑`, trait cost `C↑`, baseline `K ≥ 0`, compensation `R`), the proven results are:
+
+* **T1** pure relationship loss contracts the viable set (`Ω(0,0) ⊆ Ω(1,0)`);
+* **T2** incomplete compensation still contracts it;
+* **T3** an exact **compensation threshold** `R* = B(z_max)`: trait loss occurs *iff*
+  the alternative route returns less than the lost benefit at the trait it supported;
+* **T4** under diminishing benefit / accelerating cost the loss only **recedes the
+  upper edge** (contraction/shift) — **fragmentation** is the signature of the
+  separate spatial-isolation route (Proposition S1).
+
+All four are machine-verified over thousands of random monotone benefit/cost models
+(`causal_model/trait_space_theory.py`, `pytest tests/test_trait_space_theory.py -q`),
+and the spatial-ABM rare-invader fitness reduces to the theorem's structure (its
+viable upper edge recedes under loss in ~94% of random ecosystems; the secondary
+mate-matching term is the documented exception).
+
+### Persistence after re-equilibration, and the conditions for contraction
+
+The contraction is **not** a transient invasibility artefact. `run_reequilibration_experiment`
+lets the resident *re-evolve* under the post-loss regime to a new quasi-stationary
+state and compares the realised occupied trait set at that eco-evolutionary endpoint.
+`verify_persistent_contraction` reports the outcome honestly:
+
+* under **incomplete** compensation, relationship loss is **destabilising** — a
+  substantial fraction of populations go extinct or fail to re-converge — and
+  *among those that re-stabilise*, the contracted trait set **persists** (conditional
+  contraction ≈ 0.6–0.9 across seeds);
+* under **sufficient** compensation the system stays stable (≈ 0 destabilisation)
+  and does **not** contract (conditional ≈ 0.2).
+
+The framework therefore returns **conditions**, not a universal law
+(`contraction_conditions_report`): contraction follows relationship loss *when* the
+relationship is load-bearing and compensation is incomplete, and **not** under
+sufficient compensation, ample dispersal, large connected patches, or low trait cost.
+A benefit-form sweep (`benefit_form_sweep`) further shows the result is **not an
+artefact of a linear benefit** — it holds for saturating (Holling-II) benefit too,
+because loss gates off the whole benefit term — while the genuine boundary is the
+relationship's *magnitude* (contraction vanishes once the benefit is too small to be
+load-bearing).
+
+This is the methodological point: rather than reporting one ABM's contraction as a
+general rule, the pipeline subjects it to **re-equilibration, randomised ensembles,
+explicit counterexamples, channel decomposition, and threshold/seed sensitivity**,
+and returns only the rule transitions that survive — together with the conditions and
+the regimes where they fail.
+
+### Three mechanistically independent ecosystems (and what is *really* cross-system)
+
+The strongest guard against mistaking one model for a general law is **structurally
+different** models. The repository ships three backends in which the focal trait is
+rewarded through a *different vital rate*, sharing only neutral scaffolding (data
+classes, viable-set geometry, stationarity test, POM ordinals), never the reward
+dynamics:
+
+| backend | trait | reward (vital rate) | relationship loss | viable-set geometry |
+|---|---|---|---|---|
+| `spatial_metapopulation_abm` | display / attraction | **fecundity** (pollinator service) | pollinator loss | **contraction** |
+| `defense_metapopulation_abm` | anti-predator defense | **survival** (gated by predator) | predator loss | **shift** |
+| `colonization_metapopulation_abm` | dispersal investment | **offspring establishment** (gated by connectivity) | corridor loss | **contraction** |
+
+Run as a combined sweep through the *same*
+`d(P_sim,P_obs) <= ε -> robust/fragile -> rule-transition invariant` pipeline, the three
+backends reveal what is and is not general:
+
+* All three are **robust** — relationship loss reliably **reconfigures** the viable set.
+* But the **geometry differs by mechanism**: a fecundity- or establishment-gated loss
+  **contracts** the viable set (a fully-rewarded high trait becomes non-viable), whereas
+  a survival-gated loss **shifts** it (a fully-defended individual survives equally with
+  or without the predator, so loss raises the *undefended* type's survival and moves the
+  optimum rather than collapsing the edge).
+* Therefore the **cross-system invariant is `trait_space_reconfiguration` under
+  `relation_change`, finite resources, finite patches, positive trait cost, local
+  interaction, and incomplete compensation — and *neither* `trait_space_contraction`
+  *nor* `trait_space_shift`**, which the pipeline correctly reports as model-specific.
+
+This is the central methodological result: a single ABM would have licensed "relationship
+loss contracts trait space"; the three-ecosystem analysis shows the robust cross-system
+rule is the weaker *reconfiguration*, with the specific geometry conditional on which
+vital rate the relationship rewarded.
+(`pytest tests/test_defense_metapopulation_abm.py tests/test_colonization_metapopulation_abm.py -q`.)
+
+---
+
+## Rule-transition RACH
+
+The upper layer compares **families of admissible programs**, not one tuned parameterisation.
+
+```text
+ABM run
+→ POM pattern
+→ A_ε acceptance
+→ recurrence across parameter regions and random seeds
+→ robust / fragile / rejected / insufficient classification
+→ invariant extraction across robust programs
+```
+
+A program is robust only when it repeatedly enters `A_ε` across declared parameter regions and seeds. Runs that work only through cancellation, boundary values, one seed, or one small parameter region are retained as fragile, but are not promoted as robust explanations.
+
+For every robust program `g`, let `M(g)` be its set of rule-transition motifs. RACH reports:
+
+```text
+necessary motifs
+minimal OR clauses
+cross-system invariants
+no_common_rule when no shared motif exists
+```
+
+The central output is conditional:
+
+> Within the specified model family, constraints, and observed pattern, no robust admissible program reproduces the pattern without the reported rule transition.
+
+This is not a claim that the same rule is automatically true in nature.
+
+---
+
+## Ecological interpretation
+
+The intended ecological question is not only whether a mean trait rises or falls. It is whether a change in relationships restructures the set of traits that can persist.
+
+```text
+relationship change
+→ individual interaction network
+→ patch demography and connectivity
+→ mating, dispersal, drift, and selection
+→ occupied or viable trait space
+```
+
+The spatial backend reports the invasion-based **viable trait set**
+
+```text
+Ω_inv(Z*) = { z' : λ(z' | Z*) > 0 }
+```
+
+where `λ` is the long-term growth rate of a rare introduced phenotype in the
+resident ecological state `Z*`, and tracks whether `Ω_inv` **contracts, fragments,
+or shifts** across a relationship change.
+
+---
+
+## Installation
+
+```bash
+pip install -e ".[dev]"
+pytest -q
+```
+
+---
+
+## Main modules
+
+```text
+causal_model/abc_distance.py
+    Common pattern-distance and A_ε acceptance utilities.
+
+causal_model/simulator.py
+    Simulator protocol and evidence-tier policy.
+
+causal_model/spatial_metapopulation_abm.py
+    Individual- and patch-based spatial metapopulation backend.
+
+causal_model/ecological_rule_abm.py
+    Lightweight abstract rule-transition backend for fast demonstrations.
+
+causal_model/abm_family_adapter.py
+    Converts parameter sweeps into robust / fragile / rejected / insufficient families.
+
+causal_model/rule_transition_invariants.py
+    Extracts necessary motifs, OR clauses, and cross-system invariants.
+
+causal_model/mechanism_equivalence.py
+    Represents unresolved substitution, disjunction, exclusion, and equivalence structure.
+```
+
+---
+
+## Scope and limits
+
+- RACH can establish admissibility, degeneracy, and conditional necessity within a specified model family.
+- It does not establish causal truth from simulation alone.
+- Synthetic recovery benchmarks test pipeline behavior under specified simulators; they are not empirical proof.
+- Empirical use requires independently measured `P_obs` and explicit ecological constraints.
+- The broadest ecological claim must be tested against alternative ABM families and counterexamples, not inferred from a single simulator.
+
+For mathematical foundations, see `docs/rach_mathematical_foundations.md`.
+For literature positioning, see `docs/literature_comparison.md`.

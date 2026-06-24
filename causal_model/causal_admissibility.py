@@ -213,6 +213,13 @@ class RACHSummary:
     causal_resolvability: float
     n_accepted: int
     n_switches: int
+    # explanation-level summary (primary headline; see minimal_explanations).
+    # D_expl / R_expl describe how concentrated the posterior is on a *single*
+    # minimal sufficient explanation, which is what the reader actually wants —
+    # the per-switch D/R above are kept for backward compatibility.
+    explanation_degeneracy: float = float("nan")     # D_expl (bits over explanations)
+    explanation_resolvability: float = float("nan")  # R_expl ∈ [0, 1]
+    n_minimal_explanations: int = 0
 
     def summary_dict(self) -> dict:
         return {
@@ -221,6 +228,9 @@ class RACHSummary:
             "causal_degeneracy_D": round(self.causal_degeneracy, 4),
             "max_degeneracy_K":    round(self.max_degeneracy, 4),
             "causal_resolvability_R": round(self.causal_resolvability, 4),
+            "explanation_degeneracy_Dexpl":   round(self.explanation_degeneracy, 4) if self.explanation_degeneracy == self.explanation_degeneracy else float("nan"),
+            "explanation_resolvability_Rexpl": round(self.explanation_resolvability, 4) if self.explanation_resolvability == self.explanation_resolvability else float("nan"),
+            "n_minimal_explanations":         self.n_minimal_explanations,
         }
 
 
@@ -1452,10 +1462,13 @@ def rach_summary(
     RACHSummary
         Contains CA_j, D, R, and convenience methods.
     """
+    from causal_model.minimal_explanations import minimal_explanations
+
     K = len(list(switches))
     D = causal_degeneracy(accepted_rows, switches)
     R = causal_resolvability(accepted_rows, switches)
     CA = causal_admissibility(accepted_rows, switches)
+    dec = minimal_explanations(accepted_rows, switches)
 
     return RACHSummary(
         causal_admissibility=CA,
@@ -1464,6 +1477,9 @@ def rach_summary(
         causal_resolvability=R,
         n_accepted=len(accepted_rows),
         n_switches=K,
+        explanation_degeneracy=dec.D_expl,
+        explanation_resolvability=dec.R_expl,
+        n_minimal_explanations=len(dec.explanations),
     )
 
 
