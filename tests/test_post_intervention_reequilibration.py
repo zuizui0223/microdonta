@@ -72,3 +72,17 @@ def test_nonstationary_after_resident_is_not_accepted(monkeypatch):
     assert len(calls) == 1
     assert not result.accepted
     assert result.diagnostics["omega_after_resident"] == "not_stationary"
+
+
+def test_colonization_without_after_resident_is_not_counted_as_endpoint_support(monkeypatch):
+    import causal_model.colonization_metapopulation_abm as colonization
+
+    before = _resident(3)
+    monkeypatch.setattr(colonization, "equilibrate_colonization", lambda *args, **kwargs: (before, {}, SimpleNamespace(status="stationary")))
+    monkeypatch.setattr(colonization, "reequilibrate_colonization", lambda *_args, **_kwargs: (_resident(0), {}, SimpleNamespace(status="extinct")))
+    calls = []
+    monkeypatch.setattr(colonization, "estimate_colonization_omega_inv", lambda *_args, **_kwargs: calls.append(True) or _omega((True, True)))
+    result = colonization.run_colonization_intervention(object(), {}, colonization.make_colonization_intervention(), epsilon=1.0)
+    assert len(calls) == 1
+    assert not result.accepted
+    assert result.diagnostics["omega_after_resident"] == "not_stationary"
