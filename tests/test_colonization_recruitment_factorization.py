@@ -69,6 +69,15 @@ def test_corridor_loss_changes_settlement_factor_without_changing_local_reproduc
     assert after.settlement_factor < before.settlement_factor
     assert after.expected_juvenile_recruitment < before.expected_juvenile_recruitment
 
+    # N1 instantiated in this life cycle: the E attenuation caused by corridor loss
+    # is observationally equivalent in W_recruit to the same attenuation applied
+    # to F_local while keeping the pre-loss settlement factor.
+    attenuation = after.settlement_factor / before.settlement_factor
+    equivalent_local_reproduction = attenuation * before.local_reproductive_factor
+    assert after.expected_juvenile_recruitment == pytest.approx(
+        equivalent_local_reproduction * before.settlement_factor
+    )
+
 
 def test_unavailable_corridor_matches_zero_connectivity_branch_without_local_fallback():
     params = _params()
