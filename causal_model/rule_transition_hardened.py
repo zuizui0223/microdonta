@@ -3,13 +3,14 @@
 This module protects the invariant layer from a legacy failure mode: an outcome
 label such as ``trait_space_contraction`` may appear in a caller-supplied program
 motif set, but it is never treated as evidence. Trait-space outcomes are derived
-only from the actual ``trait_space_primary`` metadata emitted by each simulator.
+only from actual simulator metadata: a ``trait_space_primary`` classification or a
+POM trait-space summary.
 """
 from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from causal_model.abm_family_adapter import (
     ProgramSweepSummary,
@@ -26,6 +27,13 @@ RECONFIGURING_PRIMARIES = frozenset({"contraction", "fragmentation", "shift", "c
 OUTCOME_MOTIFS = frozenset({f"trait_space_{name}" for name in OUTCOME_PRIMARIES} | {
     "trait_space_reconfiguration",
 })
+POM_STATE_TO_PRIMARY = {
+    "contracted": "contraction",
+    "fragmented": "fragmentation",
+    "shifted": "shift",
+    "expanded": "expansion",
+    "conserved": "conserved",
+}
 
 
 @dataclass(frozen=True)
@@ -42,6 +50,25 @@ def outcome_motifs_from_primary(primary: object) -> frozenset[str]:
     if primary in RECONFIGURING_PRIMARIES:
         motifs.add("trait_space_reconfiguration")
     return frozenset(motifs)
+
+
+def outcome_motifs_from_record(record: SweepRecord) -> frozenset[str]:
+    """Extract an outcome from simulator output, never from ``record.motifs``.
+
+    Spatial backends provide ``trait_space_primary``. The older abstract backend
+    supplies its directly simulated POM state instead, where ``reconfigured`` is a
+    valid shared outcome but does not license any more specific geometry.
+    """
+    direct = outcome_motifs_from_primary(record.metadata.get("trait_space_primary"))
+    if direct:
+        return direct
+    p_sim = record.metadata.get("P_sim")
+    if not isinstance(p_sim, Mapping):
+        return frozenset()
+    state = p_sim.get("trait_space_state") or p_sim.get("omega_inv_state")
+    if state == "reconfigured":
+        return frozenset({"trait_space_reconfiguration"})
+    return outcome_motifs_from_primary(POM_STATE_TO_PRIMARY.get(state))
 
 
 def _record_key(record: SweepRecord) -> tuple[str, str, frozenset[str]]:
@@ -75,10 +102,7 @@ def program_runs_from_observed_sweep(
             continue
         key = (summary.scenario, summary.program_id, summary.motifs)
         matching = [row for row in grouped[key] if row.pattern_matched]
-        per_record_outcomes = [
-            outcome_motifs_from_primary(row.metadata.get("trait_space_primary"))
-            for row in matching
-        ]
+        per_record_outcomes = [outcome_motifs_from_record(row) for row in matching]
         observed_outcomes = (
             frozenset.intersection(*per_record_outcomes)
             if per_record_outcomes and all(per_record_outcomes)
@@ -88,6 +112,12 @@ def program_runs_from_observed_sweep(
             str(row.metadata.get("trait_space_primary"))
             for row in matching
             if row.metadata.get("trait_space_primary") in OUTCOME_PRIMARIES
+        )
+        pom_state_counts = Counter(
+            str(row.metadata.get("P_sim", {}).get("trait_space_state"))
+            for row in matching
+            if isinstance(row.metadata.get("P_sim"), Mapping)
+            and row.metadata.get("P_sim", {}).get("trait_space_state") is not None
         )
         runs.append(ProgramRun(
             scenario=summary.scenario,
@@ -101,8 +131,9 @@ def program_runs_from_observed_sweep(
                 "match_fraction": summary.match_fraction,
                 "classification": summary.classification,
                 "fragility_reasons": sorted(summary.fragility_reasons),
-                "observed_outcome_counts": dict(sorted(primary_counts.items())),
-                "outcome_provenance": "matching_simulation_metadata.trait_space_primary",
+                "observed_primary_counts": dict(sorted(primary_counts.items())),
+                "observed_pom_trait_space_state_counts": dict(sorted(pom_state_counts.items())),
+                "outcome_provenance": "matching_simulator_metadata",
                 "robustness_policy": {
                     "min_replicates": policy.min_replicates,
                     "min_match_fraction": policy.min_match_fraction,
