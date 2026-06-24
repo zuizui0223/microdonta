@@ -1,8 +1,8 @@
-"""RACH rule-transition invariant discovery.
+"""Rule-transition invariant discovery with assumptions separated from outcomes.
 
-This module takes qualitative runs from ecological model families and extracts
-rule-transition motifs that remain necessary across robust explanations.
-A fragile run reproduces a pattern only through special tuning.
+The invariant is conditional on the declared ABM family. Structural assumptions
+and simulated trait-space outcomes are stored separately so an outcome cannot be
+"discovered" merely because it was placed in a program motif set.
 """
 from __future__ import annotations
 
@@ -15,9 +15,10 @@ from typing import FrozenSet, Iterable, Mapping, Sequence
 class ProgramRun:
     scenario: str
     program_id: str
-    motifs: FrozenSet[str]
+    motifs: FrozenSet[str]  # assumptions / structural conditions only
     robust: bool
     metadata: Mapping[str, object] = field(default_factory=dict)
+    outcome_motifs: FrozenSet[str] = frozenset()  # derived from simulated records
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,8 @@ class ScenarioResult:
     necessary_motifs: FrozenSet[str]
     disjunctive_necessary_clauses: tuple[FrozenSet[str], ...]
     no_common_rule: bool
+    necessary_assumption_motifs: FrozenSet[str] = frozenset()
+    necessary_outcome_motifs: FrozenSet[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -36,10 +39,12 @@ class CrossSystemResult:
     cross_system_common_motifs: FrozenSet[str]
     cross_system_common_clauses: tuple[FrozenSet[str], ...]
     no_cross_system_common_rule: bool
+    cross_system_common_assumption_motifs: FrozenSet[str] = frozenset()
+    cross_system_common_outcome_motifs: FrozenSet[str] = frozenset()
 
 
 def _minimal_hitting_sets(program_motifs: Sequence[FrozenSet[str]]) -> tuple[FrozenSet[str], ...]:
-    """Minimal clauses that intersect every robust program's motif set."""
+    """Minimal clauses that intersect every robust program's assumption set."""
     if not program_motifs:
         return ()
     universe = sorted(set().union(*program_motifs))
@@ -65,12 +70,16 @@ def _intersect_clauses(clause_sets: Iterable[tuple[FrozenSet[str], ...]]) -> tup
     return tuple(sorted(common, key=lambda c: (len(c), tuple(sorted(c)))))
 
 
-def infer_rule_transition_invariants(runs: Iterable[ProgramRun]) -> CrossSystemResult:
-    """Infer motifs and disjunctive clauses necessary across robust runs.
+def _intersection(sets: Sequence[FrozenSet[str]]) -> FrozenSet[str]:
+    return frozenset.intersection(*sets) if sets else frozenset()
 
-    The returned claim is conditional: no robust admissible program in the
-    specified model family reproduces the supplied pattern without the motif or
-    clause. It is not a claim of universal truth in nature.
+
+def infer_rule_transition_invariants(runs: Iterable[ProgramRun]) -> CrossSystemResult:
+    """Infer conditional necessities from robust runs.
+
+    ``motifs`` are assumptions; ``outcome_motifs`` must come from simulated
+    outcomes. The legacy combined fields are retained for callers, while the
+    separate fields make the provenance of every claim inspectable.
     """
     grouped: dict[str, list[ProgramRun]] = {}
     for run in runs:
@@ -79,41 +88,50 @@ def infer_rule_transition_invariants(runs: Iterable[ProgramRun]) -> CrossSystemR
         raise ValueError("At least one ProgramRun is required.")
 
     by_scenario: dict[str, ScenarioResult] = {}
-    scenario_necessary: list[FrozenSet[str]] = []
+    scenario_assumptions: list[FrozenSet[str]] = []
+    scenario_outcomes: list[FrozenSet[str]] = []
     scenario_clauses: list[tuple[FrozenSet[str], ...]] = []
     for scenario, scenario_runs in sorted(grouped.items()):
         robust_runs = [run for run in scenario_runs if run.robust]
         fragile_runs = [run for run in scenario_runs if not run.robust]
-        if robust_runs:
-            necessary = frozenset.intersection(*(run.motifs for run in robust_runs))
-            clauses = _minimal_hitting_sets([run.motifs for run in robust_runs])
-        else:
-            necessary, clauses = frozenset(), ()
+        assumptions = _intersection([run.motifs for run in robust_runs])
+        outcomes = _intersection([run.outcome_motifs for run in robust_runs])
+        clauses = _minimal_hitting_sets([run.motifs for run in robust_runs]) if robust_runs else ()
+        combined = frozenset(assumptions | outcomes)
         summary = ScenarioResult(
             scenario=scenario,
             robust_program_ids=tuple(sorted(run.program_id for run in robust_runs)),
             fragile_program_ids=tuple(sorted(run.program_id for run in fragile_runs)),
-            necessary_motifs=necessary,
+            necessary_motifs=combined,
             disjunctive_necessary_clauses=clauses,
-            no_common_rule=not bool(necessary or clauses),
+            no_common_rule=not bool(combined or clauses),
+            necessary_assumption_motifs=assumptions,
+            necessary_outcome_motifs=outcomes,
         )
         by_scenario[scenario] = summary
-        scenario_necessary.append(necessary)
+        scenario_assumptions.append(assumptions)
+        scenario_outcomes.append(outcomes)
         scenario_clauses.append(clauses)
 
-    common_motifs = frozenset.intersection(*scenario_necessary)
+    common_assumptions = _intersection(scenario_assumptions)
+    common_outcomes = _intersection(scenario_outcomes)
     common_clauses = _intersect_clauses(scenario_clauses)
+    common = frozenset(common_assumptions | common_outcomes)
     return CrossSystemResult(
         by_scenario=by_scenario,
-        cross_system_common_motifs=common_motifs,
+        cross_system_common_motifs=common,
         cross_system_common_clauses=common_clauses,
-        no_cross_system_common_rule=not bool(common_motifs or common_clauses),
+        no_cross_system_common_rule=not bool(common or common_clauses),
+        cross_system_common_assumption_motifs=common_assumptions,
+        cross_system_common_outcome_motifs=common_outcomes,
     )
 
 
 def explain_result(result: CrossSystemResult) -> dict[str, object]:
     return {
         "cross_system_common_motifs": sorted(result.cross_system_common_motifs),
+        "cross_system_common_assumption_motifs": sorted(result.cross_system_common_assumption_motifs),
+        "cross_system_common_outcome_motifs": sorted(result.cross_system_common_outcome_motifs),
         "cross_system_common_clauses": [sorted(c) for c in result.cross_system_common_clauses],
         "no_cross_system_common_rule": result.no_cross_system_common_rule,
         "scenarios": {
@@ -121,6 +139,8 @@ def explain_result(result: CrossSystemResult) -> dict[str, object]:
                 "robust_program_ids": list(summary.robust_program_ids),
                 "fragile_program_ids": list(summary.fragile_program_ids),
                 "necessary_motifs": sorted(summary.necessary_motifs),
+                "necessary_assumption_motifs": sorted(summary.necessary_assumption_motifs),
+                "necessary_outcome_motifs": sorted(summary.necessary_outcome_motifs),
                 "disjunctive_necessary_clauses": [sorted(c) for c in summary.disjunctive_necessary_clauses],
                 "no_common_rule": summary.no_common_rule,
             }
