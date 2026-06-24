@@ -1,10 +1,13 @@
+from math import isclose
 from random import Random
 
 from causal_model.channel_identifiability_theory import (
     VitalRateState,
     construct_channel_loss_symmetry,
     identify_from_channel_resolved_rates,
+    identify_from_net_and_one_channel,
     net_performance_equal,
+    reconstruct_from_net_and_one_channel,
     support_geometry,
 )
 
@@ -97,6 +100,55 @@ def test_channel_resolved_rates_identify_an_exclusive_establishment_change():
     assert result.conclusion == "establishment_only"
     assert all(ratio == 1.0 for ratio in result.fecundity_ratio)
     assert any(ratio != 1.0 for ratio in result.establishment_ratio)
+
+
+def test_one_observed_channel_plus_net_reconstructs_the_missing_channel():
+    baseline = _baseline()
+    after = construct_channel_loss_symmetry(
+        baseline,
+        attenuation=(1.0, 0.9, 0.8, 0.7, 0.6, 0.5),
+    ).fecundity_loss
+
+    reconstructed = reconstruct_from_net_and_one_channel(
+        grid=after.grid,
+        net_performance=after.net_performance,
+        observed_channel_values=after.fecundity,
+        observed_channel="fecundity",
+    )
+    assert net_performance_equal(reconstructed, after)
+    assert reconstructed.fecundity == after.fecundity
+    assert all(
+        isclose(left, right, rel_tol=1e-12, abs_tol=1e-12)
+        for left, right in zip(reconstructed.establishment, after.establishment)
+    )
+
+
+def test_one_observed_channel_plus_net_identifies_both_exclusive_channel_changes():
+    baseline = _baseline()
+    symmetry = construct_channel_loss_symmetry(
+        baseline,
+        attenuation=(1.0, 0.9, 0.8, 0.7, 0.6, 0.5),
+    )
+
+    # Observing F together with W distinguishes the two states that had identical W.
+    f_loss = identify_from_net_and_one_channel(
+        grid=baseline.grid,
+        net_before=baseline.net_performance,
+        net_after=symmetry.fecundity_loss.net_performance,
+        observed_before=baseline.fecundity,
+        observed_after=symmetry.fecundity_loss.fecundity,
+        observed_channel="fecundity",
+    )
+    e_loss = identify_from_net_and_one_channel(
+        grid=baseline.grid,
+        net_before=baseline.net_performance,
+        net_after=symmetry.establishment_loss.net_performance,
+        observed_before=baseline.fecundity,
+        observed_after=symmetry.establishment_loss.fecundity,
+        observed_channel="fecundity",
+    )
+    assert f_loss.conclusion == "fecundity_only"
+    assert e_loss.conclusion == "establishment_only"
 
 
 def test_channel_resolved_rule_retains_mixed_and_unchanged_cases():

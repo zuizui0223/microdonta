@@ -13,11 +13,12 @@ N1 -- Net-performance non-identifiability.
     of W -- including every thresholded viable set and every geometry derived from
     those sets -- cannot identify which channel changed.
 
-N2 -- Conditional channel identification.
-    If F and E are separately observed before and after, and the model class
-    restricts change to exactly one channel, the pointwise ratios identify the
-    changed channel. Mixed and unchanged cases are explicitly retained rather
-    than forced into a single-channel explanation.
+N2 -- One-channel-plus-net identification.
+    Given W and either positive factor F or E, the other factor is uniquely
+    reconstructed by division. Thus W observed before/after plus one separately
+    observed channel before/after identifies both channel changes; mixed and
+    unchanged cases remain explicit rather than forced into a single-channel
+    explanation.
 
 The proofs are documented in ``docs/channel_identifiability_theorem.md``. The
 code and tests are finite-grid regression checks of those algebraic statements.
@@ -100,7 +101,7 @@ class ChannelSymmetryResult:
 
 @dataclass(frozen=True)
 class ChannelResolvedResult:
-    """Result of the conditional single-channel identification rule."""
+    """Channel-change classification after the two factors have been resolved."""
 
     conclusion: ChannelConclusion
     fecundity_ratio: tuple[float, ...]
@@ -114,6 +115,15 @@ def _validate_attenuation(state: VitalRateState, attenuation: Sequence[float]) -
     if any(value <= 0 for value in values):
         raise ValueError("attenuation must be strictly positive")
     return values
+
+
+def _positive_values(values: Sequence[float], *, name: str) -> tuple[float, ...]:
+    result = tuple(float(value) for value in values)
+    if not result:
+        raise ValueError(f"{name} must be nonempty")
+    if any(value <= 0 for value in result):
+        raise ValueError(f"{name} must be strictly positive")
+    return result
 
 
 def apply_multiplicative_change(
@@ -238,6 +248,38 @@ def construct_channel_loss_symmetry(
     )
 
 
+def reconstruct_from_net_and_one_channel(
+    *,
+    grid: Sequence[float],
+    net_performance: Sequence[float],
+    observed_channel_values: Sequence[float],
+    observed_channel: Channel,
+) -> VitalRateState:
+    """Reconstruct both channels from W and one positive observed factor.
+
+    When F is observed, E is uniquely ``W / F``. When E is observed, F is uniquely
+    ``W / E``. This is the constructive content of theorem N2.
+    """
+    grid_values = tuple(float(value) for value in grid)
+    net_values = _positive_values(net_performance, name="net_performance")
+    observed = _positive_values(observed_channel_values, name="observed_channel_values")
+    if not (len(grid_values) == len(net_values) == len(observed)):
+        raise ValueError("grid, net_performance, and observed channel must share a length")
+    if observed_channel == "fecundity":
+        return VitalRateState(
+            grid=grid_values,
+            fecundity=observed,
+            establishment=tuple(w / f for w, f in zip(net_values, observed)),
+        )
+    if observed_channel == "establishment":
+        return VitalRateState(
+            grid=grid_values,
+            fecundity=tuple(w / e for w, e in zip(net_values, observed)),
+            establishment=observed,
+        )
+    raise ValueError(f"unknown channel: {observed_channel}")
+
+
 def _ratio(after: Sequence[float], before: Sequence[float]) -> tuple[float, ...]:
     return tuple(a / b for a, b in zip(after, before))
 
@@ -252,12 +294,10 @@ def identify_from_channel_resolved_rates(
     *,
     tolerance: float = 1e-10,
 ) -> ChannelResolvedResult:
-    """Identify an exclusive changed channel from separately observed vital rates.
+    """Classify channel change after both factors are resolved.
 
-    This is the positive theorem's decision rule. It is conditional on comparing
-    the same trait grid and on a model class where an exclusive-channel conclusion
-    is scientifically meaningful. When both channels changed, the result remains
-    ``mixed_or_unidentified`` rather than inventing an exclusive cause.
+    Mixed and unchanged cases remain explicit rather than being forced into a
+    single-channel explanation.
     """
     if before.grid != after.grid:
         raise ValueError("before and after states must share the same trait grid")
@@ -280,3 +320,35 @@ def identify_from_channel_resolved_rates(
         fecundity_ratio=fecundity_ratio,
         establishment_ratio=establishment_ratio,
     )
+
+
+def identify_from_net_and_one_channel(
+    *,
+    grid: Sequence[float],
+    net_before: Sequence[float],
+    net_after: Sequence[float],
+    observed_before: Sequence[float],
+    observed_after: Sequence[float],
+    observed_channel: Channel,
+    tolerance: float = 1e-10,
+) -> ChannelResolvedResult:
+    """Identify channel change from net performance plus one observed channel.
+
+    This is equivalent to separately observing both channels in the positive
+    two-factor model, because the missing factor is reconstructed by division.
+    No exclusive-change assumption is needed to detect a mixed change; the
+    exclusive labels merely describe the reconstructed result.
+    """
+    before = reconstruct_from_net_and_one_channel(
+        grid=grid,
+        net_performance=net_before,
+        observed_channel_values=observed_before,
+        observed_channel=observed_channel,
+    )
+    after = reconstruct_from_net_and_one_channel(
+        grid=grid,
+        net_performance=net_after,
+        observed_channel_values=observed_after,
+        observed_channel=observed_channel,
+    )
+    return identify_from_channel_resolved_rates(before, after, tolerance=tolerance)

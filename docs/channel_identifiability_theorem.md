@@ -17,8 +17,9 @@ where:
 
 Can a before/after trait-space geometry identify **which** channel changed?
 
-The answer is negative for observations based only on `W`, and positive only
-under explicit extra observations and restrictions.
+The answer is no for observations based only on `W`. But in this positive
+two-factor model, observing `W` plus either one of the factors is sufficient to
+reconstruct the other and hence identify the channel changes.
 
 The executable finite-grid form is
 `causal_model.channel_identifiability_theory`.
@@ -27,8 +28,8 @@ The executable finite-grid form is
 
 ## 1. Observation class
 
-Let the trait domain be any set `Z`, and let an observation be a deterministic
-function of net performance alone:
+Let the trait domain be any set `Z`, and let a net-only observation be a
+deterministic function of total performance:
 
 ```text
 O = Phi(W).
@@ -50,11 +51,11 @@ number of connected components
 all thresholded trait-space geometries
 ```
 
-It can also include any other statistic that sees only the product `F E`.
+It also includes any other summary that sees only the product `F E`.
 
 ---
 
-## 2. Theorem N1 — exact channel non-identifiability
+## 2. Theorem N1 — exact channel non-identifiability from net-only observations
 
 Let a baseline system have positive channels `F_0(z)` and `E_0(z)`. Let
 `a(z) > 0` be any trait-dependent multiplier. Consider two distinct causal
@@ -83,7 +84,7 @@ Therefore
 Phi(W_F,1) = Phi(W_E,1)
 ```
 
-for every net-performance-only observation operator `Phi`.
+for every net-only observation operator `Phi`.
 
 ### Consequence
 
@@ -103,8 +104,8 @@ Because `W_F,1 = W_E,1` pointwise, for every threshold `t`,
 Omega_t(F-loss) = Omega_t(E-loss).
 ```
 
-Thus even complete knowledge of the viable trait-space geometry at all
-thresholds cannot identify the changed channel in this model class.
+Thus even complete knowledge of viable trait-space geometry at all thresholds
+cannot identify the changed channel in this model class.
 
 This is stronger than the earlier toy result that two examples happened to share
 an upper-edge contraction. The equivalence holds for **any** positive baseline
@@ -112,42 +113,63 @@ functions and **any** trait-dependent attenuation `a(z)`.
 
 ---
 
-## 3. Theorem N2 — conditional identification with channel-resolved observations
+## 3. Theorem N2 — one channel plus net performance is sufficient
 
-Now observe both channels separately before and after the transition, and define
-pointwise ratios
+Observe total performance and one positive channel before and after a transition.
+For example, suppose `W_0`, `W_1`, `F_0`, and `F_1` are observed. Then the
+unobserved establishment channel is uniquely recovered pointwise:
 
 ```text
-rho_F(z) = F_1(z) / F_0(z)
-rho_E(z) = E_1(z) / E_0(z).
+E_0(z) = W_0(z) / F_0(z)
+E_1(z) = W_1(z) / F_1(z).
 ```
 
-Under an explicit exclusive-channel model class:
+Symmetrically, observing `W` and `E` yields
 
 ```text
-exactly one channel changed,
-all rates are observed on the same trait domain,
-measurement error is absent or bounded by a declared tolerance,
-```
-
-the decision rule is:
-
-```text
-rho_F != 1 somewhere and rho_E = 1 everywhere  -> fecundity-only change
-rho_E != 1 somewhere and rho_F = 1 everywhere  -> establishment-only change
-both differ from 1                              -> mixed; no exclusive conclusion
-neither differs from 1                           -> unchanged
+F_i(z) = W_i(z) / E_i(z),  i in {0, 1}.
 ```
 
 ### Proof
 
-If `rho_E = 1` pointwise, then `E_1 = E_0`; if `rho_F` differs from one at at
-least one trait, the only changed channel is `F`. The converse case is symmetric.
-If both differ, the exclusive-channel assumption is violated. If neither differs,
-there is no observed change. ∎
+All factors are strictly positive, so division is defined. Substitution into
+`W_i = F_i E_i` gives the stated recovery formula and uniqueness: any candidate
+factor compatible with the observed product and observed positive factor must
+equal the quotient. ∎
 
-This is deliberately conditional. It does **not** identify a causal channel when
-both channels can change and only imperfect proxies are observed.
+Thus the ratios
+
+```text
+rho_F(z) = F_1(z) / F_0(z)
+rho_E(z) = E_1(z) / E_0(z)
+```
+
+are identified from **net performance plus one resolved channel**. They may then
+be classified without falsely forcing a single channel:
+
+```text
+rho_F != 1 somewhere and rho_E = 1 everywhere  -> fecundity-only change
+rho_E != 1 somewhere and rho_F = 1 everywhere  -> establishment-only change
+both differ from 1                              -> mixed change
+neither differs from 1                           -> unchanged
+```
+
+No exclusive-change assumption is needed to detect a mixed result. An exclusive
+causal interpretation is warranted only after the reconstructed ratios show that
+one channel is invariant.
+
+### Observation-design contrast
+
+Within this positive two-factor model:
+
+```text
+W only                 -> structurally insufficient (N1)
+W + F, or W + E        -> sufficient to recover both channels (N2)
+```
+
+This is the useful mathematical boundary for field or simulation design. It does
+not say that a particular assay measures an exact mathematical factor; that
+mapping must be justified in the biological model.
 
 ---
 
@@ -167,19 +189,22 @@ population persistence
 
 None can, by itself, separate a loss of pollinator-mediated fecundity from a
 trait-correlated loss of reachability or recruitment, when both act through the
-same net performance multiplier.
+same net-performance multiplier.
 
-To break the symmetry, observation must resolve channels. A study therefore needs
-some direct information corresponding to each factor:
+Theorem N2 says that a study need not measure every channel independently. It
+needs total performance plus at least one factor that can be given a defensible
+channel interpretation:
 
-| mathematical channel | ecological measurements that could inform it |
+| mathematical quantity | ecological measurements that could inform it |
 |---|---|
-| `F(z)` | visitation, pollen deposition, pollen limitation, hand-pollination response, fruit/seed set conditional on local establishment |
+| `W(z)` | trait-specific lifetime performance or a declared demographic-growth proxy |
+| `F(z)` | visitation, pollen deposition, pollen limitation, hand-pollination response, fruit/seed set before recruitment limitation |
 | `E(z)` | seed or pollen movement, dispersal/colonisation, patch reachability, recruitment conditional on seed production, landscape connectivity |
 
-The theorem does not prescribe a single field assay. It says what sort of
-measurement is mathematically necessary: something that does not collapse the
-two channels back into their product.
+For example, if `W` and a defensible pollination/fecundity factor `F` are
+measured, the model implies an inferred establishment term `E=W/F`. Whether that
+inference is biologically valid depends on whether the factorisation itself is
+valid for the system.
 
 ---
 
@@ -191,8 +216,8 @@ RACH's role is now clearer:
 2. Trait-space geometry can sometimes reduce that set in a restricted simulator
    family, but theorem N1 shows it cannot generally identify the channel when the
    observation depends only on `W=FE`.
-3. Channel-resolved observations provide the next-observation design implied by
-   theorem N2.
+3. A next-observation design should add one channel-resolved measurement to the
+   net-performance POM, as formalised by theorem N2.
 4. ABMs should test robustness after adding density dependence, stochasticity,
    frequency dependence, and spatial state -- not serve as proof of N1 or N2.
 
@@ -201,7 +226,7 @@ RACH's role is now clearer:
 ## 6. Scope
 
 - The factorisation is multiplicative and all channel values are positive.
-- The result applies to any trait domain; the one-dimensional geometry is only a
+- The result applies to any trait domain; one-dimensional geometry is only a
   convenient representation.
 - Other model structures may introduce additional information, but then that
   information must be stated explicitly rather than attributed to geometry alone.
