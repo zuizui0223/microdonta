@@ -1,0 +1,47 @@
+name: Endpoint sensitivity report
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Sensitivity profile"
+        required: true
+        default: "quick"
+        type: choice
+        options:
+          - quick
+          - standard
+          - full
+      backend:
+        description: "Backend or backends to run"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - spatial
+          - defense
+
+jobs:
+  endpoint-sensitivity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Run endpoint sensitivity
+        run: >-
+          python -m examples.endpoint_sensitivity_report
+          --profile "${{ inputs.profile }}"
+          --backend "${{ inputs.backend }}"
+          --output "outputs/endpoint_sensitivity_${{ inputs.backend }}_${{ inputs.profile }}.json"
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: endpoint-sensitivity-${{ inputs.backend }}-${{ inputs.profile }}
+          path: outputs/endpoint_sensitivity_*.json
+          if-no-files-found: error
