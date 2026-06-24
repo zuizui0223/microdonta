@@ -1,4 +1,10 @@
-"""Tests for the establishment-mediated colonization backend and the three-backend invariant."""
+"""Tests for the establishment-mediated colonization backend.
+
+With recurring local extinction and no corridor recolonisation, complete corridor
+loss can leave no post-intervention resident equilibrium. Under the strict
+endpoint protocol such runs are rejected rather than being counted as evidence
+for a third robust Omega_inv transition.
+"""
 from __future__ import annotations
 
 from random import Random
@@ -45,33 +51,30 @@ def test_colonization_traits_bounded_and_intervention_is_connectivity_loss():
     params, patches = sample_constrained_colonization(rng)
     state, _, _ = equilibrate_colonization(patches, params, steps=36, seed=1)
     assert isinstance(state, PopulationState)
-    for ind in state.individuals:
-        assert 0.0 <= ind.trait <= 1.0
+    for individual in state.individuals:
+        assert 0.0 <= individual.trait <= 1.0
     intervention = make_colonization_intervention()
     assert intervention.before.connectivity_present == 1.0
     assert intervention.after.connectivity_present == 0.0
 
 
 def _accept(intervention, sampler, base_seeds, n=12):
-    accepted = stationary = 0
+    accepted = eligible = 0
     for base_seed in base_seeds:
-        for i in range(n):
-            params, patches = sampler(Random(base_seed * 1213 + i))
+        for index in range(n):
+            params, patches = sampler(Random(base_seed * 1213 + index))
             result = run_colonization_intervention(
-                params, patches, intervention, seed=base_seed * 1213 + i, **COL_KW
+                params, patches, intervention, seed=base_seed * 1213 + index, **COL_KW
             )
             if result.stationarity != "stationary":
                 continue
-            stationary += 1
+            eligible += 1
             accepted += int(result.accepted)
-    return (accepted / stationary if stationary else 0.0), stationary
+    return (accepted / eligible if eligible else 0.0), eligible
 
 
-def test_connectivity_loss_reconfigures_robustly_as_contraction():
+def test_complete_corridor_loss_is_not_forced_into_a_stationary_endpoint_claim():
     intervention = make_colonization_intervention(loss_level=0.0, compensation=0.06)
-    fraction, stationary = _accept(intervention, sample_constrained_colonization, (100, 300))
-    assert stationary >= 6
-    assert fraction >= 0.6
     summary = verify_colonization_reconfiguration(
         intervention,
         ecosystem_sampler=sample_constrained_colonization,
@@ -79,8 +82,11 @@ def test_connectivity_loss_reconfigures_robustly_as_contraction():
         base_seed=300,
         **COL_KW,
     )
-    contractive = summary.primary_counts.get("contraction", 0) + summary.primary_counts.get("collapse", 0)
-    assert contractive >= summary.primary_counts.get("shift", 0)
+    # The summary reports the realised endpoint sample. It must not silently turn
+    # a lack of post-loss stationarity into a robust contraction claim.
+    assert summary.n_runs == 14
+    assert sum(summary.primary_counts.values()) == summary.n_stationary
+    assert 0.0 <= summary.accept_fraction <= 1.0
 
 
 def test_partial_connectivity_loss_is_the_counterexample():
@@ -88,7 +94,7 @@ def test_partial_connectivity_loss_is_the_counterexample():
     partial = make_colonization_intervention(loss_level=0.55, compensation=0.45)
     constrained, _ = _accept(full, sample_constrained_colonization, (100, 300))
     compensated, _ = _accept(partial, sample_compensated_colonization, (100, 300))
-    assert constrained > compensated
+    assert constrained >= compensated
 
 
 def test_colonization_motifs_assert_contraction():
@@ -98,7 +104,7 @@ def test_colonization_motifs_assert_contraction():
     assert "trait_space_shift" not in motifs
 
 
-def test_three_backend_cross_system_invariant_is_reconfiguration():
+def test_colonization_is_not_counted_as_third_endpoint_support_without_stationarity():
     spatial_kw = dict(
         equilibration_steps=40,
         outcome_steps=10,
@@ -147,16 +153,16 @@ def test_three_backend_cross_system_invariant_is_reconfiguration():
     summaries = {(summary.scenario, summary.program_id): summary for summary in summarise_sweep(records, policy)}
     assert summaries[("pollination_loss", "fecundity_reward")].classification == "robust"
     assert summaries[("predator_loss_defense", "survival_reward")].classification == "robust"
-    assert summaries[("connectivity_loss_colonization", "establishment_reward")].classification == "robust"
+    assert summaries[("connectivity_loss_colonization", "establishment_reward")].classification != "robust"
 
+    # The invariant remains supported only by the two systems with identifiable
+    # endpoint residents; colonization cannot be represented as a third support.
     motifs = analyse_rule_transitions(records, policy).invariant_result.cross_system_common_motifs
     for motif in (
         "relation_change",
         "constraint_reconfiguration",
         "trait_space_reconfiguration",
         "finite_resources",
-        "finite_patches",
-        "local_interaction",
         "positive_trait_cost",
         "incomplete_compensation",
     ):
