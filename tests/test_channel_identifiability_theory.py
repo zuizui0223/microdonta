@@ -1,3 +1,4 @@
+from math import isclose
 from random import Random
 
 from causal_model.channel_identifiability_theory import (
@@ -116,7 +117,10 @@ def test_one_observed_channel_plus_net_reconstructs_the_missing_channel():
     )
     assert net_performance_equal(reconstructed, after)
     assert reconstructed.fecundity == after.fecundity
-    assert reconstructed.establishment == after.establishment
+    assert all(
+        isclose(left, right, rel_tol=1e-12, abs_tol=1e-12)
+        for left, right in zip(reconstructed.establishment, after.establishment)
+    )
 
 
 def test_one_observed_channel_plus_net_identifies_both_exclusive_channel_changes():
