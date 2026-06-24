@@ -5,6 +5,7 @@ from random import Random
 
 from causal_model.abm_family_adapter import RobustnessPolicy, summarise_sweep
 from causal_model.rule_transition_pipeline import analyse_rule_transitions
+from causal_model.rule_transition_protocol import OUTCOME_MOTIFS
 from causal_model.spatial_metapopulation_abm import (
     PopulationState,
     constraint_program_motifs,
@@ -35,29 +36,28 @@ DEF_KW = dict(
 
 
 def test_defense_equilibrium_traits_are_bounded():
-    rng = Random(3)
-    params, patches = sample_constrained_defense(rng)
+    params, patches = sample_constrained_defense(Random(3))
     state, _, report = equilibrate_defense(patches, params, steps=36, seed=1)
     assert isinstance(state, PopulationState)
     assert report.status in {"stationary", "not_converged", "extinct", "oscillating"}
-    for ind in state.individuals:
-        assert 0.0 <= ind.trait <= 1.0
+    for individual in state.individuals:
+        assert 0.0 <= individual.trait <= 1.0
 
 
 def test_defense_intervention_is_predator_loss():
-    iv = make_defense_intervention()
-    assert iv.before.predator_present == 1.0
-    assert iv.after.predator_present == 0.0
-    assert iv.channel_motif == "antipredator_relationship_loss"
+    intervention = make_defense_intervention()
+    assert intervention.before.predator_present == 1.0
+    assert intervention.after.predator_present == 0.0
+    assert intervention.channel_motif == "antipredator_relationship_loss"
 
 
 def _accept_fraction(intervention, sampler, base_seeds, n=12):
     accepted = stationary = 0
     for base_seed in base_seeds:
-        for i in range(n):
-            params, patches = sampler(Random(base_seed * 1213 + i))
+        for index in range(n):
+            params, patches = sampler(Random(base_seed * 1213 + index))
             result = run_defense_intervention(
-                params, patches, intervention, seed=base_seed * 1213 + i, **DEF_KW
+                params, patches, intervention, seed=base_seed * 1213 + index, **DEF_KW
             )
             if result.stationarity != "stationary":
                 continue
@@ -67,36 +67,30 @@ def _accept_fraction(intervention, sampler, base_seeds, n=12):
 
 
 def test_predator_loss_reconfigures_defense_robustly():
-    iv = make_defense_intervention(compensation=0.08)
-    fraction, stationary = _accept_fraction(iv, sample_constrained_defense, (100, 300))
+    intervention = make_defense_intervention(compensation=0.08)
+    fraction, stationary = _accept_fraction(intervention, sample_constrained_defense, (100, 300))
     assert stationary >= 6
     assert fraction >= 0.6
 
 
 def test_defense_geometry_is_shift_not_contraction():
-    iv = make_defense_intervention(compensation=0.08)
+    intervention = make_defense_intervention(compensation=0.08)
     summary = verify_defense_contraction(
-        iv,
+        intervention,
         ecosystem_sampler=sample_constrained_defense,
         n_draws=14,
         base_seed=300,
         **DEF_KW,
     )
     assert summary.contraction_fraction <= 0.4
-    assert summary.primary_counts.get("shift", 0) >= max(
-        summary.primary_counts.get("contraction", 0), 1
-    )
+    assert summary.primary_counts.get("shift", 0) >= max(summary.primary_counts.get("contraction", 0), 1)
 
 
 def test_defense_compensated_counterexample_accepts_less():
     constrained = make_defense_intervention(compensation=0.08)
     compensated = make_defense_intervention(compensation=0.55)
-    constrained_fraction, _ = _accept_fraction(
-        constrained, sample_constrained_defense, (100, 300)
-    )
-    compensated_fraction, _ = _accept_fraction(
-        compensated, sample_compensated_defense, (100, 300)
-    )
+    constrained_fraction, _ = _accept_fraction(constrained, sample_constrained_defense, (100, 300))
+    compensated_fraction, _ = _accept_fraction(compensated, sample_compensated_defense, (100, 300))
     assert constrained_fraction > compensated_fraction
 
 
@@ -110,9 +104,9 @@ def test_cross_system_invariant_is_reconfiguration_not_geometry():
         invasion_replicates=2,
     )
     defense_kw = dict(spatial_kw, reequilibration_steps=60)
-    records = []
     pollination = make_interventions(compensation=0.08)["pollination_loss"]
-    records += generate_sweep_records(
+    defense = make_defense_intervention(compensation=0.08)
+    records = list(generate_sweep_records(
         pollination,
         program_id="fecundity_reward",
         program_motifs=constraint_program_motifs(pollination),
@@ -121,8 +115,7 @@ def test_cross_system_invariant_is_reconfiguration_not_geometry():
         seeds=(0, 1),
         base_seed=5,
         **spatial_kw,
-    )
-    defense = make_defense_intervention(compensation=0.08)
+    ))
     records += generate_defense_sweep_records(
         defense,
         program_id="survival_reward",
@@ -153,8 +146,8 @@ def test_cross_system_invariant_is_reconfiguration_not_geometry():
     assert "trait_space_shift" not in motifs
 
 
-def test_defense_motifs_assert_shift_not_contraction():
-    intervention = make_defense_intervention()
-    motifs = defense_program_motifs(intervention)
-    assert "trait_space_shift" in motifs
-    assert "trait_space_contraction" not in motifs
+def test_defense_program_motifs_are_assumptions_only():
+    motifs = defense_program_motifs(make_defense_intervention())
+    assert not (motifs & OUTCOME_MOTIFS)
+    assert "antipredator_relationship_loss" in motifs
+    assert "positive_trait_cost" in motifs
