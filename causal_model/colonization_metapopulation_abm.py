@@ -1,21 +1,9 @@
-"""Colonization metapopulation ABM — a *establishment-mediated* third backend.
+"""Colonization metapopulation ABM — establishment-mediated trait rewards.
 
-A third mechanistically INDEPENDENT generative model, to take the cross-system
-generality test from N=2 to N=3 structurally different ecosystems.
-
-Here the focal trait is **dispersal investment**. Its reward is neither fecundity
-(pollination backend) nor survival (defense backend) but **offspring
-establishment**: a disperser escapes local competition by settling in another
-patch, but only while dispersal corridors exist. The reward is therefore gated by
-**connectivity** (the relationship). Dispersal is a *committed* investment — a
-high-trait parent allocates offspring to dispersal — so when connectivity is lost
-those dispersing offspring die in transit, and high dispersal becomes pure cost
-plus offspring loss (the island-syndrome selection against dispersal).
-
-Relationship-change intervention: **connectivity loss** (corridors cut). It feeds
-the same ``d(P_sim,P_obs) <= epsilon -> robust/fragile -> rule-transition invariant``
-pipeline, so a combined sweep over {pollination, defense, colonization} yields a
-cross-system invariant over three structurally different ecosystems.
+The standard intervention path evaluates Omega_inv against the resident before
+corridor loss and against a resident re-equilibrated under the isolated regime.
+It therefore reports a post-loss eco-evolutionary endpoint rather than
+instantaneous invasion against the pre-loss resident.
 """
 from __future__ import annotations
 
@@ -48,22 +36,22 @@ from causal_model.spatial_metapopulation_abm import (
 )
 from causal_model.spatial_metapopulation_abm import _OMEGA_STATE
 
-_CHAIN_MOTIFS: frozenset = frozenset(
+_CHAIN_MOTIFS: frozenset[str] = frozenset(
     {"relation_change", "constraint_reconfiguration", "trait_space_reconfiguration"}
 )
 
 
 @dataclass(frozen=True)
 class ColonizationParameters:
-    """Physical constraints/trade-offs for one colonization ecosystem.
+    """Constraints for a dispersal-investment trait.
 
-    The trait is dispersal investment, rewarded through escaping local competition
-    (establishment in another patch) and paid through a fecundity cost.
+    The trait is rewarded through establishment in other patches while corridors
+    exist. It pays a fecundity cost and has no imposed evolutionary direction.
     """
 
-    dispersal_cost: float           # > 0: fecundity cost per unit dispersal investment
-    fecundity: float                # baseline reproductive probability scale
-    extinction_rate: float          # per-patch local extinction probability per step
+    dispersal_cost: float
+    fecundity: float
+    extinction_rate: float
     density_threshold: float
     mutation_rate: float
     mutation_std: float
@@ -76,9 +64,9 @@ class ColonizationParameters:
 
 @dataclass(frozen=True)
 class ColonizationRegime:
-    """Connectivity (the relationship) and any alternative compensation."""
+    """Connectivity is the relationship; compensation is an independent channel."""
 
-    connectivity_present: float = 1.0   # 1 = corridors intact, 0 = isolated
+    connectivity_present: float = 1.0
     repro_baseline: float = 0.0
 
 
@@ -90,11 +78,17 @@ class ColonizationIntervention:
     channel_motif: str
 
 
-def make_colonization_intervention(loss_level: float = 0.0, compensation: float = 0.06) -> ColonizationIntervention:
+def make_colonization_intervention(
+    loss_level: float = 0.0,
+    compensation: float = 0.06,
+) -> ColonizationIntervention:
+    """Remove only corridor connectivity; compensation is an independent route."""
     return ColonizationIntervention(
         name="connectivity_loss_colonization",
         before=ColonizationRegime(connectivity_present=1.0),
-        after=ColonizationRegime(connectivity_present=loss_level, repro_baseline=compensation),
+        after=ColonizationRegime(
+            connectivity_present=loss_level, repro_baseline=compensation
+        ),
         channel_motif="dispersal_corridor_relationship_loss",
     )
 
@@ -109,17 +103,15 @@ def _colonization_step(
     *,
     mutation_override: float | None = None,
 ) -> list[Individual]:
-    """One IBM step. Dispersers escape local competition (establish elsewhere) only
-    while connectivity holds; otherwise they die in transit. Non-dispersers face
-    local logistic competition. Dispersal investment carries a fecundity cost.
-    """
+    """One IBM step with establishment-rewarded dispersal."""
     mutation_rate = params.mutation_rate if mutation_override is None else mutation_override
     n_per_patch: dict = {}
     for ind in individuals:
         n_per_patch[ind.patch_id] = n_per_patch.get(ind.patch_id, 0) + 1
-    # patch density at the start of the step (used for establishment success): a
-    # freshly emptied patch is a colonisation opportunity for dispersers.
-    patch_density = {pid: n_per_patch.get(pid, 0) / max(patches[pid].carrying_capacity, 1) for pid in patches}
+    density_start = {
+        pid: n_per_patch.get(pid, 0) / max(patches[pid].carrying_capacity, 1)
+        for pid in patches
+    }
     for pid, ps in patch_states.items():
         n = n_per_patch.get(pid, 0)
         patch = patches[pid]
@@ -132,22 +124,16 @@ def _colonization_step(
 
     survivors: list[Individual] = []
     offspring: list[Individual] = []
-
     for pid, local in by_patch.items():
         patch = patches[pid]
         ps = patch_states[pid]
-        n = len(local)
-        k = max(patch.carrying_capacity, 1)
-        density = n / k
-        local_room = max(0.0, 1.0 - density)
-
+        local_room = max(0.0, 1.0 - len(local) / max(patch.carrying_capacity, 1))
         for ind in local:
             age_term = (ind.age / max(params.max_age, 1)) ** 2
             survival_p = _clip(params.base_survival * (1.0 - 0.6 * age_term))
             if ind.age >= params.max_age or rng.random() > survival_p:
                 continue
             survivors.append(replace(ind, age=ind.age + 1))
-
             mate = _mate_success(ind, local, params, rng)
             conceive_p = _clip(
                 params.fecundity
@@ -158,150 +144,316 @@ def _colonization_step(
             )
             if rng.random() >= conceive_p:
                 continue
-            new_trait = ind.trait
-            new_geno = ind.genotype
+            new_trait, new_geno = ind.trait, ind.genotype
             if rng.random() < mutation_rate:
                 new_trait = _clip(new_trait + rng.gauss(0.0, params.mutation_std))
                 new_geno = _clip(new_geno + rng.gauss(0.0, params.mutation_std * 0.5))
-
-            disperse_p = benefit_shape(ind.trait, params.benefit_saturation)  # committed investment
+            disperse_p = benefit_shape(ind.trait, params.benefit_saturation)
             if rng.random() < disperse_p:
-                # disperser: reaches a patch only if a corridor exists, then
-                # establishes with success set by the TARGET's available room (an
-                # emptied patch is easy to colonise — the rescue/colonisation reward).
                 if rng.random() < regime.connectivity_present and patch.connectivity:
                     target = rng.choice(list(patch.connectivity))
-                    if rng.random() < max(0.0, 1.0 - patch_density.get(target, 1.0)):
-                        offspring.append(Individual(new_trait, new_geno, 0, target,
-                                                    (rng.random(), rng.random()), ind.lineage))
-                # else: dispersed into the void / failed to establish -> dies
-            else:
-                # non-disperser: subject to local competition (logistic)
-                if rng.random() < local_room:
-                    offspring.append(Individual(new_trait, new_geno, 0, pid,
-                                                (rng.random(), rng.random()), ind.lineage))
+                    if rng.random() < max(0.0, 1.0 - density_start.get(target, 1.0)):
+                        offspring.append(
+                            Individual(
+                                new_trait,
+                                new_geno,
+                                0,
+                                target,
+                                (rng.random(), rng.random()),
+                                ind.lineage,
+                            )
+                        )
+            elif rng.random() < local_room:
+                offspring.append(
+                    Individual(
+                        new_trait,
+                        new_geno,
+                        0,
+                        pid,
+                        (rng.random(), rng.random()),
+                        ind.lineage,
+                    )
+                )
 
-    next_gen = survivors + offspring
-    # local extinction: each patch is wiped with probability extinction_rate,
-    # creating empty patches that only dispersers (with connectivity) can recolonise.
-    if params.extinction_rate > 0.0 and next_gen:
-        doomed = {pid for pid in patches if rng.random() < params.extinction_rate}
+    next_generation = survivors + offspring
+    if params.extinction_rate > 0.0 and next_generation:
+        doomed = {
+            pid for pid in patches if rng.random() < params.extinction_rate
+        }
         if doomed:
-            next_gen = [i for i in next_gen if i.patch_id not in doomed]
-    return next_gen
+            next_generation = [
+                ind for ind in next_generation if ind.patch_id not in doomed
+            ]
+    return next_generation
 
 
-def advance_colonization(individuals, patches, patch_states, params, rng,
-                         regime: ColonizationRegime = ColonizationRegime(), *,
-                         steps: int = 1, mutation_override: float | None = None):
+def advance_colonization(
+    individuals: list[Individual],
+    patches: dict,
+    patch_states: dict,
+    params: ColonizationParameters,
+    rng: Random,
+    regime: ColonizationRegime = ColonizationRegime(),
+    *,
+    steps: int = 1,
+    mutation_override: float | None = None,
+) -> list[Individual]:
     for _ in range(steps):
         if not individuals:
             break
-        individuals = _colonization_step(individuals, patches, patch_states, params, rng, regime,
-                                         mutation_override=mutation_override)
+        individuals = _colonization_step(
+            individuals,
+            patches,
+            patch_states,
+            params,
+            rng,
+            regime,
+            mutation_override=mutation_override,
+        )
     return individuals
 
 
-def equilibrate_colonization(patches, params, *, steps=40, seed=0,
-                             regime: ColonizationRegime = ColonizationRegime(), record_window=10):
-    rng = Random(seed)
-    individuals = seed_population(patches, params, rng)
-    patch_states = init_patch_states(patches, rng)
+def _stationarity_series(
+    individuals: list[Individual],
+    patches: dict,
+    patch_states: dict,
+    params: ColonizationParameters,
+    rng: Random,
+    regime: ColonizationRegime,
+    *,
+    steps: int,
+    record_window: int,
+    stationarity_tol: float | None = None,
+) -> tuple[PopulationState, dict, object]:
+    """Advance an existing resident and assess its terminal quasi-stationarity."""
     n_patches = len(patches)
-    n_s=[]; mt_s=[]; occ_s=[]; var_s=[]
+    n_s: list[int] = []
+    mt_s: list[float] = []
+    occ_s: list[int] = []
+    var_s: list[float] = []
     for step in range(steps):
-        individuals = advance_colonization(individuals, patches, patch_states, params, rng, regime, steps=1)
+        individuals = advance_colonization(
+            individuals, patches, patch_states, params, rng, regime, steps=1
+        )
         if step >= steps - record_window - 1:
             n, mt, occ, var = _series_summary(individuals, n_patches)
-            n_s.append(n); mt_s.append(mt); occ_s.append(occ); var_s.append(var)
+            n_s.append(n)
+            mt_s.append(mt)
+            occ_s.append(occ)
+            var_s.append(var)
         if not individuals:
-            n_s.append(0); mt_s.append(0.0); occ_s.append(0); var_s.append(0.0); break
-    report = assess_stationarity(n_s, mt_s, occ_s, var_s, window=record_window)
-    state = PopulationState(tuple(individuals), {pid: ps.resources for pid, ps in patch_states.items()})
+            n_s.append(0)
+            mt_s.append(0.0)
+            occ_s.append(0)
+            var_s.append(0.0)
+            break
+    if stationarity_tol is None:
+        report = assess_stationarity(n_s, mt_s, occ_s, var_s, window=record_window)
+    else:
+        report = assess_stationarity(
+            n_s, mt_s, occ_s, var_s, window=record_window, tol=stationarity_tol
+        )
+    state = PopulationState(
+        tuple(individuals),
+        {pid: ps.resources for pid, ps in patch_states.items()},
+    )
     return state, patch_states, report
 
 
-def _log_growth(counts):
+def equilibrate_colonization(
+    patches: dict,
+    params: ColonizationParameters,
+    *,
+    steps: int = 40,
+    seed: int = 0,
+    regime: ColonizationRegime = ColonizationRegime(),
+    record_window: int = 10,
+):
+    """Grow a seed population to a quasi-stationary resident."""
+    rng = Random(seed)
+    return _stationarity_series(
+        seed_population(patches, params, rng),
+        patches,
+        init_patch_states(patches, rng),
+        params,
+        rng,
+        regime,
+        steps=steps,
+        record_window=record_window,
+    )
+
+
+def reequilibrate_colonization(
+    resident: PopulationState,
+    resident_states: dict,
+    patches: dict,
+    params: ColonizationParameters,
+    regime: ColonizationRegime,
+    *,
+    steps: int = 40,
+    seed: int = 0,
+    record_window: int = 12,
+    stationarity_tol: float = 0.14,
+):
+    """Continue a BEFORE resident through corridor loss to its new endpoint."""
+    rng = Random(seed)
+    return _stationarity_series(
+        [replace(ind) for ind in resident.individuals],
+        patches,
+        {pid: PatchState(ps.resources) for pid, ps in resident_states.items()},
+        params,
+        rng,
+        regime,
+        steps=steps,
+        record_window=record_window,
+        stationarity_tol=stationarity_tol,
+    )
+
+
+def _log_growth(counts: list[int]) -> float:
     import math
+
     if not counts or counts[0] == 0:
         return 0.0
     if counts[-1] == 0:
         return -5.0
-    steps = len(counts) - 1
-    return (math.log(counts[-1]) - math.log(counts[0])) / steps if steps else 0.0
+    n_steps = len(counts) - 1
+    return (math.log(counts[-1]) - math.log(counts[0])) / n_steps if n_steps else 0.0
 
 
-def colonization_invasion_growth_rate(resident, resident_states, patches, params, regime,
-                                      z_prime, *, steps=6, cohort=12, seed=0):
+def colonization_invasion_growth_rate(
+    resident: PopulationState,
+    resident_states: dict,
+    patches: dict,
+    params: ColonizationParameters,
+    regime: ColonizationRegime,
+    z_prime: float,
+    *,
+    steps: int = 6,
+    cohort: int = 12,
+    seed: int = 0,
+) -> float:
     rng = Random(seed)
-    individuals = [replace(i, lineage=0) for i in resident.individuals]
+    individuals = [replace(ind, lineage=0) for ind in resident.individuals]
     occupied = sorted(resident.occupied_patches()) or list(patches)
     for _ in range(cohort):
         pid = rng.choice(occupied)
-        individuals.append(Individual(_clip(z_prime), _clip(z_prime), 0, pid,
-                                      (rng.random(), rng.random()), 1))
+        individuals.append(
+            Individual(
+                _clip(z_prime),
+                _clip(z_prime),
+                0,
+                pid,
+                (rng.random(), rng.random()),
+                1,
+            )
+        )
     states = {pid: PatchState(ps.resources) for pid, ps in resident_states.items()}
-    counts = [sum(1 for i in individuals if i.lineage == 1)]
+    counts = [sum(ind.lineage == 1 for ind in individuals)]
     for _ in range(steps):
-        individuals = _colonization_step(individuals, patches, states, params, rng, regime, mutation_override=0.0)
-        c = sum(1 for i in individuals if i.lineage == 1)
-        counts.append(c)
-        if c == 0:
+        individuals = _colonization_step(
+            individuals, patches, states, params, rng, regime, mutation_override=0.0
+        )
+        count = sum(ind.lineage == 1 for ind in individuals)
+        counts.append(count)
+        if count == 0:
             break
     return _log_growth(counts)
 
 
-def estimate_colonization_omega_inv(resident, resident_states, patches, params, regime, *,
-                                    grid_points=9, invasion_steps=6, cohort=12, replicates=2,
-                                    threshold=0.0, seed=0):
+def estimate_colonization_omega_inv(
+    resident: PopulationState,
+    resident_states: dict,
+    patches: dict,
+    params: ColonizationParameters,
+    regime: ColonizationRegime,
+    *,
+    grid_points: int = 9,
+    invasion_steps: int = 6,
+    cohort: int = 12,
+    replicates: int = 2,
+    threshold: float = 0.0,
+    seed: int = 0,
+) -> ViableTraitSet:
+    if grid_points < 2:
+        raise ValueError("grid_points must be >= 2")
     grid = tuple(i / (grid_points - 1) for i in range(grid_points))
-    mask=[]; rates=[]
-    for gi, z in enumerate(grid):
-        lam = 0.0
-        for r in range(replicates):
-            lam += colonization_invasion_growth_rate(resident, resident_states, patches, params, regime, z,
-                                                     steps=invasion_steps, cohort=cohort, seed=seed*1000+gi*17+r)
-        lam /= max(replicates, 1)
-        rates.append(lam); mask.append(lam > threshold)
-    return ViableTraitSet(grid=grid, mask=tuple(mask), growth_rates=tuple(rates))
+    mask: list[bool] = []
+    rates: list[float] = []
+    for grid_index, trait in enumerate(grid):
+        rate = 0.0
+        for replicate in range(replicates):
+            rate += colonization_invasion_growth_rate(
+                resident,
+                resident_states,
+                patches,
+                params,
+                regime,
+                trait,
+                steps=invasion_steps,
+                cohort=cohort,
+                seed=seed * 1000 + grid_index * 17 + replicate,
+            )
+        rate /= max(replicates, 1)
+        rates.append(rate)
+        mask.append(rate > threshold)
+    return ViableTraitSet(grid, tuple(mask), tuple(rates))
 
 
-def _mean_colonization_interaction(state: PopulationState, params: ColonizationParameters, connectivity: float) -> float:
+def _mean_colonization_interaction(
+    state: PopulationState,
+    params: ColonizationParameters,
+    connectivity: float,
+) -> float:
     if not state.individuals:
         return 0.0
-    vals = [connectivity * benefit_shape(i.trait, params.benefit_saturation) for i in state.individuals]
-    return sum(vals) / len(vals)
+    return sum(
+        connectivity * benefit_shape(ind.trait, params.benefit_saturation)
+        for ind in state.individuals
+    ) / len(state.individuals)
 
 
 def colonization_observed_pattern() -> dict[str, str]:
-    """Focal P_obs for connectivity loss: dispersal-establishment interaction
-    collapses, isolated patches lose recruitment (occupancy/persistence fall), and
-    the viable set is reconfigured toward low dispersal."""
     return {
         "interaction_network": "decrease",
-        "patch_occupancy": "decrease",   # isolated patches not recolonised
+        "patch_occupancy": "decrease",
         "persistence_ne": "decrease",
         "trait_moments": "stable",
         "omega_inv_state": "shifted",
     }
 
 
-def extract_colonization_pom(before, after, patches, params, ts, *,
-                             connectivity_before, connectivity_after,
-                             tolerance=0.05, interaction_tolerance=0.02):
-    ic_b = _mean_colonization_interaction(before, params, connectivity_before)
-    ic_a = _mean_colonization_interaction(after, params, connectivity_after)
+def extract_colonization_pom(
+    before: PopulationState,
+    after: PopulationState,
+    patches: dict,
+    params: ColonizationParameters,
+    ts: TraitSpaceChange,
+    *,
+    connectivity_before: float,
+    connectivity_after: float,
+    tolerance: float = 0.05,
+    interaction_tolerance: float = 0.02,
+) -> dict[str, str]:
+    interaction_before = _mean_colonization_interaction(
+        before, params, connectivity_before
+    )
+    interaction_after = _mean_colonization_interaction(
+        after, params, connectivity_after
+    )
     n_patches = max(len(patches), 1)
-    occ_b = len(before.occupied_patches()) / n_patches
-    occ_a = len(after.occupied_patches()) / n_patches
-    ne_b, ne_a = _ne_proxy(before), _ne_proxy(after)
-    ne_scale = max(ne_b, ne_a, 1.0)
-    tm_b, tm_a = _trait_moments(before), _trait_moments(after)
+    occupancy_before = len(before.occupied_patches()) / n_patches
+    occupancy_after = len(after.occupied_patches()) / n_patches
+    ne_before, ne_after = _ne_proxy(before), _ne_proxy(after)
+    ne_scale = max(ne_before, ne_after, 1.0)
+    moments_before, moments_after = _trait_moments(before), _trait_moments(after)
     return {
-        "interaction_network": _ordinal(ic_a - ic_b, interaction_tolerance),
-        "patch_occupancy": _ordinal(occ_a - occ_b, tolerance),
-        "persistence_ne": _ordinal((ne_a - ne_b) / ne_scale, tolerance),
-        "trait_moments": _ordinal(tm_a - tm_b, tolerance),
+        "interaction_network": _ordinal(
+            interaction_after - interaction_before, interaction_tolerance
+        ),
+        "patch_occupancy": _ordinal(occupancy_after - occupancy_before, tolerance),
+        "persistence_ne": _ordinal((ne_after - ne_before) / ne_scale, tolerance),
+        "trait_moments": _ordinal(moments_after - moments_before, tolerance),
         "omega_inv_state": _OMEGA_STATE.get(ts.primary, "conserved"),
     }
 
@@ -321,73 +473,203 @@ class ColonizationResult:
     diagnostics: dict
 
 
-def run_colonization_intervention(params, patches, intervention, *, observed_pattern=None,
-                                  epsilon=DEFAULT_EPSILON, equilibration_steps=40, outcome_steps=12,
-                                  grid_points=9, invasion_steps=6, invasion_cohort=12,
-                                  invasion_replicates=2, seed=0) -> ColonizationResult:
-    observed = observed_pattern if observed_pattern is not None else colonization_observed_pattern()
-    resident, states, report = equilibrate_colonization(
-        patches, params, steps=equilibration_steps, seed=seed, regime=intervention.before)
-    base_motifs = {"relation_change", intervention.channel_motif, "finite_resources",
-                   "finite_patches", "local_interaction", "positive_trait_cost"}
-    if report.status != "stationary":
-        empty = ViableTraitSet((), (), ())
-        ts = classify_trait_space_change(ViableTraitSet((0.0,), (False,), (0.0,)),
-                                         ViableTraitSet((0.0,), (False,), (0.0,)))
-        return ColonizationResult(intervention.name, report.status, empty, empty, ts, {},
-                                  dict(observed), 1.0, False,
-                                  frozenset(base_motifs | {f"resident_{report.status}"}),
-                                  {"stationarity": report.status})
+def _empty_viable() -> ViableTraitSet:
+    return ViableTraitSet((), (), ())
+
+
+def _empty_change() -> TraitSpaceChange:
+    return classify_trait_space_change(
+        ViableTraitSet((0.0,), (False,), (0.0,)),
+        ViableTraitSet((0.0,), (False,), (0.0,)),
+    )
+
+
+def run_colonization_intervention(
+    params: ColonizationParameters,
+    patches: dict,
+    intervention: ColonizationIntervention,
+    *,
+    observed_pattern: dict | None = None,
+    epsilon: float = DEFAULT_EPSILON,
+    equilibration_steps: int = 40,
+    outcome_steps: int = 12,
+    reequilibration_steps: int | None = None,
+    grid_points: int = 9,
+    invasion_steps: int = 6,
+    invasion_cohort: int = 12,
+    invasion_replicates: int = 2,
+    seed: int = 0,
+) -> ColonizationResult:
+    """Measure Omega_inv at the before and re-equilibrated after residents."""
+    observed = (
+        observed_pattern if observed_pattern is not None else colonization_observed_pattern()
+    )
+    resident_before, states_before, before_report = equilibrate_colonization(
+        patches,
+        params,
+        steps=equilibration_steps,
+        seed=seed,
+        regime=intervention.before,
+    )
+    base_motifs = {
+        "relation_change",
+        intervention.channel_motif,
+        "finite_resources",
+        "finite_patches",
+        "local_interaction",
+        "positive_trait_cost",
+        "incomplete_compensation",
+    }
+    if before_report.status != "stationary" or resident_before.n_total == 0:
+        return ColonizationResult(
+            intervention.name,
+            before_report.status,
+            _empty_viable(),
+            _empty_viable(),
+            _empty_change(),
+            {},
+            dict(observed),
+            1.0,
+            False,
+            frozenset(base_motifs | {f"resident_before_{before_report.status}"}),
+            {
+                "stationarity_before": before_report.status,
+                "stationarity_after": "not_run",
+                "omega_after_resident": "not_run",
+            },
+        )
+
     omega_seed = seed * 5 + 3
-    ob = estimate_colonization_omega_inv(resident, states, patches, params, intervention.before,
-        grid_points=grid_points, invasion_steps=invasion_steps, cohort=invasion_cohort,
-        replicates=invasion_replicates, seed=omega_seed)
-    oa = estimate_colonization_omega_inv(resident, states, patches, params, intervention.after,
-        grid_points=grid_points, invasion_steps=invasion_steps, cohort=invasion_cohort,
-        replicates=invasion_replicates, seed=omega_seed)
-    ts = classify_trait_space_change(ob, oa)
+    omega_before = estimate_colonization_omega_inv(
+        resident_before,
+        states_before,
+        patches,
+        params,
+        intervention.before,
+        grid_points=grid_points,
+        invasion_steps=invasion_steps,
+        cohort=invasion_cohort,
+        replicates=invasion_replicates,
+        seed=omega_seed,
+    )
+    after_steps = (
+        reequilibration_steps
+        if reequilibration_steps is not None
+        else equilibration_steps
+    )
+    resident_after, states_after, after_report = reequilibrate_colonization(
+        resident_before,
+        states_before,
+        patches,
+        params,
+        intervention.after,
+        steps=max(after_steps, 4),
+        seed=seed * 9 + 7,
+    )
+    if after_report.status != "stationary" or resident_after.n_total == 0:
+        return ColonizationResult(
+            intervention.name,
+            after_report.status,
+            omega_before,
+            _empty_viable(),
+            _empty_change(),
+            {},
+            dict(observed),
+            1.0,
+            False,
+            frozenset(base_motifs | {f"resident_after_{after_report.status}"}),
+            {
+                "stationarity_before": before_report.status,
+                "stationarity_after": after_report.status,
+                "n_resident_before": resident_before.n_total,
+                "n_resident_after": resident_after.n_total,
+                "omega_measure_before": round(omega_before.measure, 4),
+                "omega_after_resident": "not_stationary",
+                "reequilibration_steps": after_steps,
+            },
+        )
 
-    def _outcome(regime, bseed):
-        rng = Random(bseed)
-        inds = [replace(i) for i in resident.individuals]
-        st = {pid: PatchState(ps.resources) for pid, ps in states.items()}
-        inds = advance_colonization(inds, patches, st, params, rng, regime, steps=outcome_steps)
-        return PopulationState(tuple(inds), {pid: ps.resources for pid, ps in st.items()})
-
-    out_b = _outcome(intervention.before, seed * 7 + 1)
-    out_a = _outcome(intervention.after, seed * 7 + 2)
-    p_sim = extract_colonization_pom(out_b, out_a, patches, params, ts,
+    omega_after = estimate_colonization_omega_inv(
+        resident_after,
+        states_after,
+        patches,
+        params,
+        intervention.after,
+        grid_points=grid_points,
+        invasion_steps=invasion_steps,
+        cohort=invasion_cohort,
+        replicates=invasion_replicates,
+        seed=omega_seed + 1,
+    )
+    trait_space_change = classify_trait_space_change(omega_before, omega_after)
+    p_sim = extract_colonization_pom(
+        resident_before,
+        resident_after,
+        patches,
+        params,
+        trait_space_change,
         connectivity_before=intervention.before.connectivity_present,
-        connectivity_after=intervention.after.connectivity_present)
+        connectivity_after=intervention.after.connectivity_present,
+    )
     distance = pom_distance(p_sim, observed)
-    reconfigured = ts.primary in {"shift", "contraction", "fragmentation", "collapse"}
-    accepted = accepted_by_epsilon(distance, epsilon) and reconfigured
-    motifs = set(base_motifs); motifs.add("incomplete_compensation")
-    if ts.contracted: motifs.add("trait_space_contraction")
-    if ts.fragmented: motifs.add("trait_space_fragmentation")
-    if ts.shifted: motifs.add("trait_space_shift")
-    return ColonizationResult(intervention.name, report.status, ob, oa, ts, p_sim, dict(observed),
-                              distance, accepted, frozenset(motifs),
-                              {"stationarity": report.status, "primary": ts.primary,
-                               "omega_measure_before": round(ob.measure, 4),
-                               "omega_measure_after": round(oa.measure, 4)})
+    reconfigured = trait_space_change.primary in {
+        "shift",
+        "contraction",
+        "fragmentation",
+        "collapse",
+    }
+    accepted = (
+        after_report.status == "stationary"
+        and accepted_by_epsilon(distance, epsilon)
+        and reconfigured
+    )
+    return ColonizationResult(
+        intervention.name,
+        "stationary",
+        omega_before,
+        omega_after,
+        trait_space_change,
+        p_sim,
+        dict(observed),
+        distance,
+        accepted,
+        frozenset(base_motifs),
+        {
+            "stationarity_before": before_report.status,
+            "stationarity_after": after_report.status,
+            "n_resident_before": resident_before.n_total,
+            "n_resident_after": resident_after.n_total,
+            "omega_measure_before": round(omega_before.measure, 4),
+            "omega_measure_after": round(omega_after.measure, 4),
+            "omega_components_before": omega_before.n_components,
+            "omega_components_after": omega_after.n_components,
+            "primary": trait_space_change.primary,
+            "omega_after_resident": "post_intervention_reequilibrated",
+            "reequilibration_steps": after_steps,
+            "outcome_steps_deprecated": outcome_steps,
+        },
+    )
 
 
-def _build_patches(n, capacity, *, connectivity, rng):
-    patches = {}
-    for pid in range(n):
-        conn = {o: connectivity for o in range(n) if o != pid}
-        patches[pid] = Patch(pid, rng.uniform(0.8, 1.2), capacity, conn)
-    return patches
+def _build_patches(n: int, capacity: int, *, connectivity: float, rng: Random) -> dict:
+    return {
+        pid: Patch(
+            pid,
+            rng.uniform(0.8, 1.2),
+            capacity,
+            {other: connectivity for other in range(n) if other != pid},
+        )
+        for pid in range(n)
+    }
 
 
-def sample_constrained_colonization(rng):
-    """Crowded, well-structured habitat where dispersal genuinely buys escape from
-    local competition, and is costly."""
+def sample_constrained_colonization(
+    rng: Random,
+) -> tuple[ColonizationParameters, dict]:
     params = ColonizationParameters(
         dispersal_cost=rng.uniform(0.20, 0.40),
-        fecundity=rng.uniform(0.55, 0.75),       # high fecundity -> patches crowd -> dispersal pays
-        extinction_rate=rng.uniform(0.04, 0.10),  # turnover creates empties to colonise
+        fecundity=rng.uniform(0.55, 0.75),
+        extinction_rate=rng.uniform(0.04, 0.10),
         density_threshold=rng.uniform(0.6, 0.95),
         mutation_rate=rng.uniform(0.05, 0.40),
         mutation_std=rng.uniform(0.03, 0.12),
@@ -396,16 +678,21 @@ def sample_constrained_colonization(rng):
         base_survival=rng.uniform(0.86, 0.94),
         max_age=rng.randint(5, 9),
     )
-    return params, _build_patches(rng.randint(3, 4), rng.randint(18, 28), connectivity=0.5, rng=rng)
+    return params, _build_patches(
+        rng.randint(3, 4),
+        rng.randint(18, 28),
+        connectivity=0.5,
+        rng=rng,
+    )
 
 
-def sample_compensated_colonization(rng):
-    """Counterexample: low cost, low crowding, ample compensation -> connectivity
-    loss barely matters."""
+def sample_compensated_colonization(
+    rng: Random,
+) -> tuple[ColonizationParameters, dict]:
     params = ColonizationParameters(
         dispersal_cost=rng.uniform(0.03, 0.12),
         fecundity=rng.uniform(0.40, 0.55),
-        extinction_rate=rng.uniform(0.02, 0.08),   # little turnover -> dispersal barely matters
+        extinction_rate=rng.uniform(0.02, 0.08),
         density_threshold=rng.uniform(0.7, 1.0),
         mutation_rate=rng.uniform(0.05, 0.40),
         mutation_std=rng.uniform(0.03, 0.12),
@@ -414,44 +701,88 @@ def sample_compensated_colonization(rng):
         base_survival=rng.uniform(0.9, 0.97),
         max_age=rng.randint(6, 10),
     )
-    return params, _build_patches(rng.randint(4, 6), rng.randint(45, 65), connectivity=0.9, rng=rng)
+    return params, _build_patches(
+        rng.randint(4, 6),
+        rng.randint(45, 65),
+        connectivity=0.9,
+        rng=rng,
+    )
 
 
-def colonization_program_motifs(intervention: ColonizationIntervention) -> frozenset:
-    """Asserts trait_space_contraction (its characteristic geometry).
-
-    Connectivity loss makes committed dispersal lethal (offspring die in transit),
-    so high dispersal becomes non-viable and the viable set's upper edge collapses
-    — a contraction, like the fecundity-gated pollination model and unlike the
-    survival-gated defense model (which shifts). The shared cross-system motifs are
-    the chain and physical constraints, not this geometry.
-    """
+def colonization_program_motifs(
+    intervention: ColonizationIntervention,
+) -> frozenset[str]:
+    """Legacy program assumptions; hardened analysis ignores the outcome label."""
     return _CHAIN_MOTIFS | {
         intervention.channel_motif,
-        "finite_resources", "finite_patches", "local_interaction",
-        "positive_trait_cost", "incomplete_compensation", "trait_space_contraction",
+        "finite_resources",
+        "finite_patches",
+        "local_interaction",
+        "positive_trait_cost",
+        "incomplete_compensation",
+        "trait_space_contraction",
     }
 
 
-def generate_colonization_sweep_records(intervention, *, program_id, program_motifs,
-                                        ecosystem_sampler, n_regions=6, seeds=(0, 1),
-                                        epsilon=DEFAULT_EPSILON, base_seed=0, **experiment_kwargs):
-    records = []
+def generate_colonization_sweep_records(
+    intervention: ColonizationIntervention,
+    *,
+    program_id: str,
+    program_motifs: frozenset,
+    ecosystem_sampler: Callable[[Random], tuple[ColonizationParameters, dict]],
+    n_regions: int = 6,
+    seeds: Iterable[int] = (0, 1),
+    epsilon: float = DEFAULT_EPSILON,
+    base_seed: int = 0,
+    **experiment_kwargs,
+) -> tuple[SweepRecord, ...]:
+    records: list[SweepRecord] = []
     for region in range(n_regions):
         params, patches = ecosystem_sampler(Random(base_seed * 9973 + region))
         region_id = f"eco_{region}"
-        for s in seeds:
-            res = run_colonization_intervention(params, patches, intervention, epsilon=epsilon,
-                seed=base_seed * 9973 + region * 31 + s, **experiment_kwargs)
-            records.append(SweepRecord(
-                scenario=intervention.name, program_id=program_id, motifs=program_motifs,
-                pattern_matched=res.accepted,
-                parameters={"dispersal_cost": params.dispersal_cost, "fecundity": params.fecundity},
-                initial_state={"omega_measure_before": res.diagnostics.get("omega_measure_before", 0.0)},
-                metadata={"region_id": region_id, "P_sim": res.p_sim, "P_obs": res.p_obs,
-                          "abc_distance": round(res.distance, 4), "epsilon": epsilon,
-                          "accepted": res.accepted, "trait_space_primary": res.trait_space_change.primary},
-                region_id=region_id, seed=s, fragile_flags=frozenset()))
+        for replicate_seed in seeds:
+            result = run_colonization_intervention(
+                params,
+                patches,
+                intervention,
+                epsilon=epsilon,
+                seed=base_seed * 9973 + region * 31 + replicate_seed,
+                **experiment_kwargs,
+            )
+            records.append(
+                SweepRecord(
+                    scenario=intervention.name,
+                    program_id=program_id,
+                    motifs=program_motifs,
+                    pattern_matched=result.accepted,
+                    parameters={
+                        "dispersal_cost": params.dispersal_cost,
+                        "fecundity": params.fecundity,
+                    },
+                    initial_state={
+                        "omega_measure_before": result.diagnostics.get(
+                            "omega_measure_before", 0.0
+                        )
+                    },
+                    metadata={
+                        "region_id": region_id,
+                        "P_sim": result.p_sim,
+                        "P_obs": result.p_obs,
+                        "abc_distance": round(result.distance, 4),
+                        "epsilon": epsilon,
+                        "accepted": result.accepted,
+                        "trait_space_primary": result.trait_space_change.primary,
+                        "stationarity_before": result.diagnostics.get("stationarity_before"),
+                        "stationarity_after": result.diagnostics.get("stationarity_after"),
+                        "omega_after_resident": result.diagnostics.get(
+                            "omega_after_resident"
+                        ),
+                    },
+                    region_id=region_id,
+                    seed=replicate_seed,
+                    fragile_flags=frozenset(),
+                )
+            )
     return tuple(records)
 
 
@@ -464,16 +795,37 @@ class ColonizationSummary:
     primary_counts: dict = field(default_factory=dict)
 
 
-def verify_colonization_reconfiguration(intervention, *, ecosystem_sampler=None, n_draws=14,
-                                        base_seed=0, **experiment_kwargs) -> ColonizationSummary:
+def verify_colonization_reconfiguration(
+    intervention: ColonizationIntervention,
+    *,
+    ecosystem_sampler: Callable[[Random], tuple[ColonizationParameters, dict]] | None = None,
+    n_draws: int = 14,
+    base_seed: int = 0,
+    **experiment_kwargs,
+) -> ColonizationSummary:
     sampler = ecosystem_sampler or sample_constrained_colonization
-    n_stat = 0; n_acc = 0; primary = {}
-    for i in range(n_draws):
-        params, patches = sampler(Random(base_seed * 1213 + i))
-        res = run_colonization_intervention(params, patches, intervention, seed=base_seed * 1213 + i, **experiment_kwargs)
-        if res.stationarity != "stationary":
+    n_stationary = 0
+    n_accepted = 0
+    primary_counts: dict[str, int] = {}
+    for index in range(n_draws):
+        params, patches = sampler(Random(base_seed * 1213 + index))
+        result = run_colonization_intervention(
+            params,
+            patches,
+            intervention,
+            seed=base_seed * 1213 + index,
+            **experiment_kwargs,
+        )
+        if result.stationarity != "stationary":
             continue
-        n_stat += 1
-        primary[res.trait_space_change.primary] = primary.get(res.trait_space_change.primary, 0) + 1
-        n_acc += int(res.accepted)
-    return ColonizationSummary(n_draws, n_stat, n_acc, n_acc / n_stat if n_stat else 0.0, primary)
+        n_stationary += 1
+        primary = result.trait_space_change.primary
+        primary_counts[primary] = primary_counts.get(primary, 0) + 1
+        n_accepted += int(result.accepted)
+    return ColonizationSummary(
+        n_draws,
+        n_stationary,
+        n_accepted,
+        n_accepted / n_stationary if n_stationary else 0.0,
+        primary_counts,
+    )
