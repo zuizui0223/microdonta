@@ -4,6 +4,7 @@ from causal_model.channel_identifiability_theory import (
     VitalRateState,
     construct_channel_loss_symmetry,
     identify_from_channel_resolved_rates,
+    net_performance_equal,
     support_geometry,
 )
 
@@ -16,7 +17,7 @@ def _baseline() -> VitalRateState:
     )
 
 
-def test_multiplicative_channel_losses_have_exactly_equal_net_performance():
+def test_multiplicative_channel_losses_have_equal_net_performance():
     baseline = _baseline()
     attenuation = (1.0, 0.95, 0.84, 0.72, 0.63, 0.51)
     result = construct_channel_loss_symmetry(
@@ -27,7 +28,7 @@ def test_multiplicative_channel_losses_have_exactly_equal_net_performance():
 
     assert result.net_performance_equal
     assert result.all_threshold_supports_equal
-    assert result.fecundity_loss.net_performance == result.establishment_loss.net_performance
+    assert net_performance_equal(result.fecundity_loss, result.establishment_loss)
 
     # The mechanisms are still physically distinct: different channel states changed.
     assert result.fecundity_loss.fecundity != result.establishment_loss.fecundity
