@@ -1,14 +1,14 @@
 """Auditable ledger for projecting identifiability theorems onto repository models.
 
 Theorems N1--N4 are exact only for a declared positive factorisation
-``W(z)=F(z)E(z)`` and declared observation map.  This module prevents a common
+``W(z)=F(z)E(z)`` and declared observation map. This module prevents a common
 category error: treating an ABM's total invasion growth rate or an empirical trait
 pattern as though it already supplied those factors.
 
 Every target is assigned one status:
 
 ``exact``
-    The target *is* the theorem's mathematical model.
+    The target supplies the theorem's factorisation and required observation map.
 ``requires_factorization_extension``
     The target contains relevant biological channels but does not currently emit
     a declared trait-level W=F*E decomposition or the observations needed by the
@@ -66,6 +66,33 @@ _PROJECTIONS: tuple[TheoremProjection, ...] = (
         next_outputs=(),
     ),
     TheoremProjection(
+        key="colonization_one_step_recruitment_submodel",
+        target="Colonization life cycle: one-step expected juvenile recruitment",
+        status="exact",
+        theorem_ids=("N1", "N2", "N3", "N4"),
+        current_output=(
+            "For a declared local context, expected juvenile recruitment W_recruit(z), "
+            "local reproductive factor F_local(z), and settlement factor E_settlement(z)."
+        ),
+        current_factorisation=(
+            "Exact conditional expectation: W_recruit=[survival*conception] "
+            "*[dispersal*connectivity*target-room+(1-dispersal)*local-room]."
+        ),
+        permitted_conclusion=(
+            "N1--N4 apply to positive one-step juvenile recruitment factors in the declared "
+            "local context; corridor loss is an E_settlement intervention in that submodel."
+        ),
+        prohibited_conclusion=(
+            "The one-step theorem result is identical to long-run invasion lambda, population "
+            "persistence, or the full colonization ABM endpoint."
+        ),
+        missing_requirements=(),
+        next_outputs=(
+            "comparison_with_multistep_invasion_lambda",
+            "trait_grid_factor_outputs_from_resident_contexts",
+        ),
+    ),
+    TheoremProjection(
         key="spatial_pollination_abm",
         target="Spatial metapopulation ABM: pollination-loss backend",
         status="requires_factorization_extension",
@@ -107,31 +134,30 @@ _PROJECTIONS: tuple[TheoremProjection, ...] = (
         status="requires_factorization_extension",
         theorem_ids=(),
         current_output=(
-            "A stochastic multi-step invasion log growth rate. Individual transitions include survival, "
-            "conception, dispersal investment, corridor connectivity, and target-patch density."
+            "A stochastic multi-step invasion log growth rate. A separate exact one-step juvenile "
+            "recruitment submodel is now available, but lambda is still the full multi-step outcome."
         ),
         current_factorisation=(
-            "The biological ingredients suggest local offspring production and establishment channels, "
-            "but the current lambda is not emitted as a declared trait-level W=F*E product."
+            "One-step expected juvenile recruitment has an exact F_local*E_settlement product; "
+            "the current multi-step lambda has not been factorised through density, extinction, "
+            "resource feedback, and changing resident composition."
         ),
         permitted_conclusion=(
-            "The backend can test whether connectivity loss changes its simulated invasion and endpoint patterns; "
-            "it cannot yet apply N1--N4 as an exact channel-identification result."
+            "The backend can use the one-step submodel for exact N1--N4 statements about juvenile "
+            "recruitment and can separately test whether those statements remain informative for simulated lambda."
         ),
         prohibited_conclusion=(
-            "A connectivity-associated trait-space geometry uniquely establishes an E-channel change "
-            "relative to all local reproductive alternatives."
+            "A theorem result for W_recruit automatically establishes a result for multistep lambda, "
+            "Omega_inv, or endpoint trait-space geometry."
         ),
         missing_requirements=(
-            "A one-generation or otherwise declared decomposition of lineage performance.",
-            "Trait-specific local offspring factor F and establishment factor E.",
-            "A documented treatment of density, extinction, and multi-step feedback in the factorisation.",
+            "A documented bridge from one-step factor outputs to the multi-step lambda comparison.",
+            "A treatment of density, extinction, and resident feedback in any proposed lambda factorisation.",
         ),
         next_outputs=(
-            "trait_specific_local_offspring_factor",
-            "trait_specific_dispersal_settlement_factor",
-            "trait_specific_net_performance",
-            "factorisation_residual",
+            "trait_grid_one_step_factor_outputs",
+            "one_step_to_lambda_discrepancy",
+            "multistep_factorisation_residual_or_rejection",
         ),
     ),
     TheoremProjection(
@@ -157,8 +183,7 @@ _PROJECTIONS: tuple[TheoremProjection, ...] = (
             "Declared W=F*E factorisation for the chosen trait-performance quantity.",
             "Channel-resolved observations on a common trait domain.",
         ),
-        next_outputs=(
-            "declared_trait_performance_factorisation",),
+        next_outputs=("declared_trait_performance_factorisation",),
     ),
     TheoremProjection(
         key="campanula_published_record",
