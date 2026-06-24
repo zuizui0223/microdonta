@@ -10,6 +10,18 @@ from dataclasses import dataclass, field
 from itertools import combinations
 from typing import FrozenSet, Iterable, Mapping, Sequence
 
+# These labels can describe a simulated outcome, never a structural condition.  The
+# invariant boundary strips them from legacy ``ProgramRun.motifs`` defensively.
+OUTCOME_MOTIFS: FrozenSet[str] = frozenset({
+    "trait_space_contraction",
+    "trait_space_fragmentation",
+    "trait_space_shift",
+    "trait_space_expansion",
+    "trait_space_collapse",
+    "trait_space_conserved",
+    "trait_space_reconfiguration",
+})
+
 
 @dataclass(frozen=True)
 class ProgramRun:
@@ -41,6 +53,11 @@ class CrossSystemResult:
     no_cross_system_common_rule: bool
     cross_system_common_assumption_motifs: FrozenSet[str] = frozenset()
     cross_system_common_outcome_motifs: FrozenSet[str] = frozenset()
+
+
+def _assumptions(motifs: FrozenSet[str]) -> FrozenSet[str]:
+    """Discard outcome labels accidentally supplied through a legacy API."""
+    return frozenset(motif for motif in motifs if motif not in OUTCOME_MOTIFS)
 
 
 def _minimal_hitting_sets(program_motifs: Sequence[FrozenSet[str]]) -> tuple[FrozenSet[str], ...]:
@@ -77,9 +94,10 @@ def _intersection(sets: Sequence[FrozenSet[str]]) -> FrozenSet[str]:
 def infer_rule_transition_invariants(runs: Iterable[ProgramRun]) -> CrossSystemResult:
     """Infer conditional necessities from robust runs.
 
-    ``motifs`` are assumptions; ``outcome_motifs`` must come from simulated
-    outcomes. The legacy combined fields are retained for callers, while the
-    separate fields make the provenance of every claim inspectable.
+    ``motifs`` are assumptions and are sanitized at this public boundary.
+    ``outcome_motifs`` are reported separately and must be derived from simulation
+    records by the outcome-aware pipeline. The combined legacy fields are retained
+    for callers, but every claim's provenance remains inspectable.
     """
     grouped: dict[str, list[ProgramRun]] = {}
     for run in runs:
@@ -94,9 +112,10 @@ def infer_rule_transition_invariants(runs: Iterable[ProgramRun]) -> CrossSystemR
     for scenario, scenario_runs in sorted(grouped.items()):
         robust_runs = [run for run in scenario_runs if run.robust]
         fragile_runs = [run for run in scenario_runs if not run.robust]
-        assumptions = _intersection([run.motifs for run in robust_runs])
+        assumption_sets = [_assumptions(run.motifs) for run in robust_runs]
+        assumptions = _intersection(assumption_sets)
         outcomes = _intersection([run.outcome_motifs for run in robust_runs])
-        clauses = _minimal_hitting_sets([run.motifs for run in robust_runs]) if robust_runs else ()
+        clauses = _minimal_hitting_sets(assumption_sets) if robust_runs else ()
         combined = frozenset(assumptions | outcomes)
         summary = ScenarioResult(
             scenario=scenario,
