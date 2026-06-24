@@ -1,6 +1,6 @@
 """Public contracts for non-circular rule-transition experiments.
 
-The original ABM modules pre-date the hardened inference layer.  This module
+The original ABM modules pre-date the hardened inference layer. This module
 centralises two contracts that must hold regardless of backend:
 
 * an intervention changes exactly one ecological mechanism channel; optional
@@ -13,6 +13,7 @@ these contracts without changing their simulation equations.
 """
 from __future__ import annotations
 
+from importlib import import_module
 from typing import Callable, Iterable
 
 OUTCOME_MOTIFS = frozenset({
@@ -51,36 +52,35 @@ def make_decoupled_spatial_interventions(
 ) -> dict[str, object]:
     """Create isolated spatial interventions.
 
-    ``loss_level`` affects only the named channel.  ``compensation`` is applied
+    ``loss_level`` affects only the named channel. ``compensation`` is applied
     through ``repro_baseline`` and can be varied independently in a sensitivity
     sweep; it never rescales a second biological channel.
     """
-    from causal_model.spatial_metapopulation_abm import Intervention, Regime
-
-    before = Regime()
+    spatial = import_module("causal_model.spatial_metapopulation_abm")
+    before = spatial.Regime()
     return {
-        "pollination_loss": Intervention(
+        "pollination_loss": spatial.Intervention(
             "pollination_loss",
             before=before,
-            after=Regime(
+            after=spatial.Regime(
                 interaction_scale=loss_level,
                 repro_baseline=compensation,
             ),
             channel_motif="interaction_relationship_loss",
         ),
-        "predation_loss": Intervention(
+        "predation_loss": spatial.Intervention(
             "predation_loss",
             before=before,
-            after=Regime(
+            after=spatial.Regime(
                 predation_scale=loss_level,
                 repro_baseline=compensation,
             ),
             channel_motif="topdown_control_loss",
         ),
-        "dispersal_loss": Intervention(
+        "dispersal_loss": spatial.Intervention(
             "dispersal_loss",
             before=before,
-            after=Regime(
+            after=spatial.Regime(
                 dispersal_scale=loss_level,
                 repro_baseline=compensation,
             ),
@@ -107,12 +107,11 @@ def install_rule_transition_contracts() -> None:
     The installation is idempotent so package reloads and test collection cannot
     stack wrappers around the same factory.
     """
-    from causal_model import colonization_metapopulation_abm as colonization
-    from causal_model import defense_metapopulation_abm as defense
-    from causal_model import spatial_metapopulation_abm as spatial
-
+    spatial = import_module("causal_model.spatial_metapopulation_abm")
     if getattr(spatial, "_RULE_TRANSITION_PROTOCOL_INSTALLED", False):
         return
+    defense = import_module("causal_model.defense_metapopulation_abm")
+    colonization = import_module("causal_model.colonization_metapopulation_abm")
 
     spatial.make_interventions = make_decoupled_spatial_interventions
     spatial.constraint_program_motifs = _clean_factory(spatial.constraint_program_motifs)
