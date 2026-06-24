@@ -20,6 +20,11 @@ from .generator_bridge import (
     apply_latent_overrides,
     bridge_inputs_for_structure,
 )
+from .rule_transition_protocol import install_rule_transition_contracts
+
+# The three ABM modules retain distinct dynamics, but expose one common public
+# contract: isolated interventions and assumptions-only program motifs.
+install_rule_transition_contracts()
 
 __all__ = [
     "CausalEdge",
