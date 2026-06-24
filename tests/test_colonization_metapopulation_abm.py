@@ -29,7 +29,6 @@ from causal_model.colonization_metapopulation_abm import (
     verify_colonization_reconfiguration,
 )
 
-# Use a post-loss endpoint, not the historical 10-step transient branch.
 COL_KW = dict(
     equilibration_steps=40,
     outcome_steps=10,
@@ -100,15 +99,15 @@ def test_colonization_motifs_assert_contraction():
 
 
 def test_three_backend_cross_system_invariant_is_reconfiguration():
-    kw = dict(
+    spatial_kw = dict(
         equilibration_steps=40,
         outcome_steps=10,
-        reequilibration_steps=60,
         grid_points=7,
         invasion_steps=5,
         invasion_cohort=10,
         invasion_replicates=2,
     )
+    endpoint_kw = dict(spatial_kw, reequilibration_steps=60)
     records = []
     pollination = make_interventions(compensation=0.08)["pollination_loss"]
     records += generate_sweep_records(
@@ -119,7 +118,7 @@ def test_three_backend_cross_system_invariant_is_reconfiguration():
         n_regions=6,
         seeds=(0, 1),
         base_seed=5,
-        **kw,
+        **spatial_kw,
     )
     defense = make_defense_intervention(compensation=0.08)
     records += generate_defense_sweep_records(
@@ -130,7 +129,7 @@ def test_three_backend_cross_system_invariant_is_reconfiguration():
         n_regions=6,
         seeds=(0, 1),
         base_seed=5,
-        **kw,
+        **endpoint_kw,
     )
     colonization = make_colonization_intervention(loss_level=0.0, compensation=0.06)
     records += generate_colonization_sweep_records(
@@ -141,7 +140,7 @@ def test_three_backend_cross_system_invariant_is_reconfiguration():
         n_regions=6,
         seeds=(0, 1),
         base_seed=5,
-        **kw,
+        **endpoint_kw,
     )
 
     policy = RobustnessPolicy(min_replicates=6, min_match_fraction=0.35, fragile_max_fraction=0.15)
