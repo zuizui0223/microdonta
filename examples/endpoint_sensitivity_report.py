@@ -8,7 +8,7 @@ not pooled here because its strict endpoint can be undefined after loss.
 Examples
 --------
     python -m examples.endpoint_sensitivity_report --profile quick
-    python -m examples.endpoint_sensitivity_report --profile standard \\
+    python -m examples.endpoint_sensitivity_report --profile standard \
         --output outputs/endpoint_sensitivity_standard.json
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any
 
-from causal_model.abm_family_adapter import RobustnessPolicy
+from causal_model.abm_family_adapter import RobustnessPolicy, SweepRecord
 from causal_model.defense_metapopulation_abm import (
     defense_observed_pattern,
     defense_program_motifs,
@@ -97,6 +97,32 @@ def _policy(n_replicates: int) -> RobustnessPolicy:
     )
 
 
+def _reference_benchmark(
+    records: tuple[SweepRecord, ...],
+    policy: RobustnessPolicy,
+) -> dict[str, object]:
+    """Build a benchmark if the reference cell supports any admissible program.
+
+    Sensitivity cells with no accepted endpoint are informative counterexamples;
+    they should be reported rather than crashing the report generator.
+    """
+    try:
+        return build_benchmark_report(
+            records,
+            policy=policy,
+            unresolved_limitations=(
+                "Reference benchmark uses only the first declared sensitivity cell; other cells are reported separately.",
+            ),
+        )
+    except ValueError as error:
+        return {
+            "status": "no_admissible_program_at_reference_setting",
+            "reason": str(error),
+            "n_records": len(records),
+            "n_matches": sum(record.pattern_matched for record in records),
+        }
+
+
 def run(profile: str, backend: str, *, base_seed: int) -> dict[str, object]:
     config = _PROFILES[profile]
     settings = endpoint_sensitivity_grid(
@@ -139,13 +165,7 @@ def run(profile: str, backend: str, *, base_seed: int) -> dict[str, object]:
         report["backends"]["spatial_pollination"] = {
             "intervention": intervention.name,
             "reference_setting": asdict(reference.settings),
-            "reference_benchmark": build_benchmark_report(
-                reference.records,
-                policy=policy,
-                unresolved_limitations=(
-                    "Reference benchmark uses only the first declared sensitivity cell; other cells are reported separately.",
-                ),
-            ),
+            "reference_benchmark": _reference_benchmark(reference.records, policy),
             "sensitivity_cells": [_cell_summary(cell) for cell in cells],
         }
 
@@ -166,13 +186,7 @@ def run(profile: str, backend: str, *, base_seed: int) -> dict[str, object]:
         report["backends"]["defense_predator_loss"] = {
             "intervention": intervention.name,
             "reference_setting": asdict(reference.settings),
-            "reference_benchmark": build_benchmark_report(
-                reference.records,
-                policy=policy,
-                unresolved_limitations=(
-                    "Reference benchmark uses only the first declared sensitivity cell; other cells are reported separately.",
-                ),
-            ),
+            "reference_benchmark": _reference_benchmark(reference.records, policy),
             "sensitivity_cells": [_cell_summary(cell) for cell in cells],
         }
     return report
