@@ -45,16 +45,20 @@ def test_one_step_colonization_submodel_is_exact_but_multistep_backend_is_not():
 
     assert multistep.status == "requires_factorization_extension"
     assert multistep.theorem_ids == ()
-    assert "one-step" in multistep.current_factorisation
+    assert "one-step" in multistep.current_factorisation.lower()
     assert "one_step_to_lambda_discrepancy" in multistep.next_outputs
 
 
 def test_spatial_and_defense_backends_cannot_claim_direct_channel_identification():
-    for key in ("spatial_pollination_abm", "defense_metapopulation_abm"):
-        projection = projection_for(key)
+    spatial = projection_for("spatial_pollination_abm")
+    defense = projection_for("defense_metapopulation_abm")
+
+    for projection in (spatial, defense):
         assert projection.status == "requires_factorization_extension"
         assert projection.theorem_ids == ()
-        assert "not" in projection.permitted_conclusion
+
+    assert "cannot" in spatial.permitted_conclusion
+    assert "not an exact instance" in defense.permitted_conclusion
 
 
 def test_published_campanula_record_is_explicitly_not_a_channel_identification_case():
