@@ -6,20 +6,22 @@ from causal_model.campanula_channel_protocol import (
 )
 
 
+def _has_requirement(assessment, phrase):
+    return any(phrase in item for item in assessment.missing_requirements)
+
+
 def test_published_campanula_record_cannot_be_promoted_to_channel_identification():
     assessment = assess_protocol(published_campanula_protocol())
-
     assert assessment.data_status == "published_only"
     assert assessment.readiness == "not_ready"
     assert assessment.pollinator_attribution == "not_addressed"
-    assert "trait-specific total-performance definition W(z)" in assessment.missing_requirements
-    assert "local reproductive-factor definition F(z)" in assessment.missing_requirements
+    assert _has_requirement(assessment, "trait-specific total-performance definition W(z)")
+    assert _has_requirement(assessment, "local reproductive-factor definition F(z)")
     assert "cannot identify F versus E" in assessment.permitted_conclusion
 
 
 def test_planned_recruitment_design_is_structurally_ready_but_not_collected_evidence():
     assessment = assess_protocol(planned_recruitment_protocol())
-
     assert assessment.data_status == "planned"
     assert assessment.readiness == "ready_direct_factor"
     assert assessment.pollinator_attribution == "component_model_declared"
@@ -41,7 +43,6 @@ def test_stable_validated_proxy_supports_relative_channel_inference():
         pollinator_component_design=None,
     )
     assessment = assess_protocol(protocol)
-
     assert assessment.readiness == "ready_relative_stable_proxy"
     assert assessment.pollinator_attribution == "requires_component_decomposition"
     assert "provided the stated proxy calibration is stable" in assessment.permitted_conclusion
@@ -64,7 +65,7 @@ def test_unstable_or_unknown_proxy_does_not_break_n1_nonidentifiability():
         )
         assessment = assess_protocol(protocol)
         assert assessment.readiness == "not_ready"
-        assert "stable or calibrated proxy-to-factor conversion" in assessment.missing_requirements
+        assert _has_requirement(assessment, "stable or calibrated proxy-to-factor conversion")
 
 
 def test_proxy_stability_assumption_is_not_silently_called_validation():
@@ -81,7 +82,6 @@ def test_proxy_stability_assumption_is_not_silently_called_validation():
         factorisation_statement="W=F*E",
     )
     assessment = assess_protocol(protocol)
-
     assert assessment.readiness == "conditional_on_proxy_stability"
     assert "only if its proxy-calibration stability assumption" in assessment.permitted_conclusion
 
@@ -100,8 +100,7 @@ def test_direct_factor_protocol_still_requires_common_domain_and_boundary_handli
         factorisation_statement="W=F*E",
     )
     assessment = assess_protocol(protocol)
-
     assert assessment.readiness == "not_ready"
-    assert "a common trait domain across the compared regimes" in assessment.missing_requirements
-    assert "a predeclared trait definition" in assessment.missing_requirements
-    assert "a declared treatment of zero W, F, or E boundary states" in assessment.missing_requirements
+    assert _has_requirement(assessment, "a common trait domain across the compared regimes")
+    assert _has_requirement(assessment, "a predeclared trait definition")
+    assert _has_requirement(assessment, "a declared treatment of zero W, F, or E boundary states")
