@@ -12,6 +12,7 @@ def test_projection_ledger_is_internally_valid():
     validate_projection_ledger()
     assert tuple(item.key for item in theorem_projections()) == (
         "abstract_positive_two_factor_model",
+        "colonization_one_step_recruitment_submodel",
         "spatial_pollination_abm",
         "colonization_connectivity_abm",
         "defense_metapopulation_abm",
@@ -19,9 +20,12 @@ def test_projection_ledger_is_internally_valid():
     )
 
 
-def test_only_the_abstract_factor_model_is_marked_theorem_exact():
+def test_only_declared_factor_models_are_marked_theorem_exact():
     summary = summary_by_status()
-    assert summary["exact"] == ("abstract_positive_two_factor_model",)
+    assert summary["exact"] == (
+        "abstract_positive_two_factor_model",
+        "colonization_one_step_recruitment_submodel",
+    )
     assert set(summary["requires_factorization_extension"]) == {
         "spatial_pollination_abm",
         "colonization_connectivity_abm",
@@ -30,13 +34,27 @@ def test_only_the_abstract_factor_model_is_marked_theorem_exact():
     assert summary["not_applicable"] == ("campanula_published_record",)
 
 
-def test_spatial_and_colonization_backends_cannot_claim_direct_channel_identification():
-    for key in ("spatial_pollination_abm", "colonization_connectivity_abm"):
+def test_one_step_colonization_submodel_is_exact_but_multistep_backend_is_not():
+    one_step = projection_for("colonization_one_step_recruitment_submodel")
+    multistep = projection_for("colonization_connectivity_abm")
+
+    assert one_step.status == "exact"
+    assert one_step.theorem_ids == ("N1", "N2", "N3", "N4")
+    assert "juvenile recruitment" in one_step.target
+    assert "long-run invasion lambda" in one_step.prohibited_conclusion
+
+    assert multistep.status == "requires_factorization_extension"
+    assert multistep.theorem_ids == ()
+    assert "one-step" in multistep.current_factorisation
+    assert "one_step_to_lambda_discrepancy" in multistep.next_outputs
+
+
+def test_spatial_and_defense_backends_cannot_claim_direct_channel_identification():
+    for key in ("spatial_pollination_abm", "defense_metapopulation_abm"):
         projection = projection_for(key)
         assert projection.status == "requires_factorization_extension"
         assert projection.theorem_ids == ()
-        assert "cannot" in projection.permitted_conclusion
-        assert "factorisation_residual" in projection.next_outputs
+        assert "not" in projection.permitted_conclusion
 
 
 def test_published_campanula_record_is_explicitly_not_a_channel_identification_case():
