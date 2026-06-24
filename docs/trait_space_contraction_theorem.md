@@ -1,219 +1,248 @@
 # Relationship loss and the contraction of viable trait space
 
-**A comparative-statics theorem for the spatial-metapopulation rule-transition backend.**
+**Comparative statics for a relationship-rewarded costly trait.**
 
-This note formalises the headline result of
-`causal_model.spatial_metapopulation_abm`: that losing an ecological relationship
-which *rewards* a costly trait contracts the set of trait values that can invade and
-persist. We give a mean-field invasion-fitness model, prove four comparative-statics
-results, separate a second (spatial) route as a proposition, and state the link to
-the individual-based simulation and the empirical predictions. Every theorem is
-machine-verified in `causal_model/trait_space_theory.py`
-(`tests/test_trait_space_theory.py`), in the spirit of
-`docs/rach_mathematical_foundations.md`.
+This note formalises a restricted claim used by the spatial-metapopulation
+backend: when a relationship contributes a non-negative benefit to a costly
+trait, removing that benefit can reduce the trait values that are viable.
 
-The claims are **conditional and structural**: they say *what must follow from the
-stated trade-off structure*, not that any particular system in nature obeys it.
+The statements below are **conditional algebraic results**. Their proofs are in
+this document. The randomised functions in `causal_model/trait_space_theory.py`
+and `tests/test_trait_space_theory.py` are regression checks for the
+implementation; they do not constitute mathematical proof.
+
+The model does not claim that a particular natural system has this structure, nor
+that a trait-space geometry uniquely reveals the channel through which fitness
+changed. The latter identifiability question is treated separately in the next
+theory stage.
 
 ---
 
 ## 1. Setup
 
-A scalar heritable trait (investment) `z ∈ [0,1]`. A rare mutant `z'` introduced into
-a monomorphic resident at quasi-stationary density has mean-field invasion fitness
+Let a scalar heritable investment trait be `z ∈ [0, 1]`. A rare mutant at a
+quasi-stationary resident has invasion fitness
 
-```
-s(z; I, R) = I · B(z) − C(z) + K + R
+```text
+s(z; I, R) = I · B(z) − C(z) + K + R.
 ```
 
 | symbol | meaning | assumption |
 |---|---|---|
-| `B(z)` | reproductive benefit conferred by the relationship (e.g. pollinator service), increasing in investment | `B` non-decreasing, `B(0)=0` |
-| `C(z)` | cost of the trait (allocation trade-off, to fecundity and/or survival) | `C` non-decreasing, `C(0)=0` |
-| `K` | relationship-independent baseline net fitness (resources, mating, mortality) | `K ≥ 0` |
-| `R` | compensation supplied by an alternative route after the loss | `R ≥ 0` |
-| `I` | relationship state: `1` intact, `0` lost | — |
+| `B(z)` | benefit supplied by the relationship, e.g. pollinator service | non-decreasing; `B(0)=0` |
+| `C(z)` | trait cost to allocation, fecundity, and/or survival | non-decreasing; `C(0)=0` |
+| `K` | relationship-independent baseline net fitness | `K ≥ 0` |
+| `R` | alternative-route compensation after loss | `R ≥ 0` |
+| `I` | relationship state | `1` intact, `0` lost |
 
-The **direction** of trait evolution is never assumed. The only structural input is a
-trade-off: both benefit and cost increase with investment. `K ≥ 0` encodes that a
-zero-investment phenotype persists without the relationship (the organism is not
-obligately dependent on the costly trait).
+The viable trait set is
 
-The **viable trait set** is
-
-```
-Ω(I, R) = { z ∈ [0,1] : s(z; I, R) ≥ 0 } .
+```text
+Ω(I, R) = { z ∈ [0, 1] : s(z; I, R) ≥ 0 }.
 ```
 
-Before the loss: `Ω(1, 0)`. After: `Ω(0, R)`.
+Before loss it is `Ω(1, 0)`; after loss it is `Ω(0, R)`.
+
+The theorem does not assume that evolution has one preferred direction. It
+assumes only a particular cost-benefit structure for an investment trait.
 
 ---
 
-## 2. Theorems
+## 2. Algebraic results
 
-### T1 — Pure relationship loss contracts the viable set
+### T1 — Pure relationship loss weakly contracts the viable set
 
-*If `B, C` are non-decreasing with `B(0)=0` and `K ≥ 0`, then with no compensation*
+If `B(z) ≥ 0` for every `z`, then
 
-```
-Ω(0, 0) ⊆ Ω(1, 0),   and   z_max(0,0) ≤ z_max(1,0),
-```
-
-*where `z_max(·)` is the upper edge of the viable set.*
-
-**Proof.** For every `z`, `s(z;1,0) − s(z;0,0) = B(z) ≥ 0`, so `s(z;0,0) ≥ 0 ⇒
-s(z;1,0) ≥ 0`; hence `Ω(0,0) ⊆ Ω(1,0)`, and the supremum of a subset cannot exceed
-that of the superset. ∎
-
-### T2 — Incomplete compensation still contracts
-
-*Call the relationship-dependent traits `D = { z : C(z) > K }` (the traits that are
-not viable on the baseline alone). If the alternative route is weaker than the
-relationship on every such trait,*
-
-```
-R ≤ B(z)  for all z ∈ D,
+```text
+Ω(0, 0) ⊆ Ω(1, 0),
+z_max(0, 0) ≤ z_max(1, 0).
 ```
 
-*then `Ω(0, R) ⊆ Ω(1, 0)`.*
+**Proof.** For every `z`,
 
-**Proof.** Take `z ∈ Ω(0,R)`, i.e. `R − C(z) + K ≥ 0`. If `z ∉ D` then `C(z) ≤ K`, so
-`s(z;1,0) = B(z) − C(z) + K ≥ B(z) ≥ 0`. If `z ∈ D` then by hypothesis `R ≤ B(z)`, so
-`s(z;1,0) = B(z) − C(z) + K ≥ R − C(z) + K ≥ 0`. Either way `z ∈ Ω(1,0)`. ∎
+```text
+s(z; 1, 0) − s(z; 0, 0) = B(z) ≥ 0.
+```
 
-The condition `R ≤ B(z)` on `D` is the formal meaning of **incomplete compensation**:
-the substitute route does not, for any relationship-dependent trait, exceed the
-benefit it replaces.
+Therefore, `s(z; 0, 0) ≥ 0` implies `s(z; 1, 0) ≥ 0`; hence the first viable
+set is a subset of the second. The upper edge of a subset cannot exceed the
+upper edge of its superset. ∎
 
-### T3 — The compensation threshold
+This is intentionally a weak result. It follows from the stated sign
+assumption; it is not a discovery about all ecological interactions.
 
-*Let the upper edge be `z* = z_max(1,0)` and `R* = B(z*)`. Then:*
+### T2 — Incomplete compensation preserves that inclusion
 
-* *(sufficient compensation) `R ≥ R* ⇒ z_max(0,R) ≥ z_max(1,0)`: the upper edge does
-  not recede — no contraction;*
-* *(strict contraction) if the edge trait is itself relationship-dependent
-  (`C(z*) > K`), then with `R = 0`, `z_max(0,0) < z_max(1,0)` strictly.*
+Let
 
-`R*` is the exact threshold separating "trait loss" from "trait retention".
+```text
+D = { z : C(z) > K }
+```
 
-**Proof.** *(sufficient)* `s(z*;0,R) = R − C(z*) + K ≥ B(z*) − C(z*) + K = s(z*;1,0) ≥ 0`,
-so `z*` stays viable, hence `z_max(0,R) ≥ z*`. *(strict)* `s(z*;0,0) = −C(z*) + K < 0`
-because `C(z*) > K`, so `z*` is no longer viable and the edge moves strictly below
-`z*` (the set is left-anchored at `0`, which is viable since `s(0;·)=K+R≥0`). ∎
+be traits that are not viable on the baseline alone. If
 
-### T4 — Contraction, not fragmentation (a signature)
+```text
+R ≤ B(z)  for every z ∈ D,
+```
 
-*If benefit has diminishing returns and cost is accelerating — `B` concave, `C`
-convex — then `s(·;I,R)` is concave, so `Ω(I,R)` is an interval `[0, z_max]`. The
-relationship route can only recede the upper edge; it can never split the viable
-set.*
+then
 
-**Proof.** `s = I·B − C + (K+R)` is concave (concave minus convex plus constant), and
-`s(0;·) = K+R ≥ 0`. A concave function that is non-negative at `0` has a super-level
-set `{s ≥ 0}` that is an interval containing `0`. ∎
+```text
+Ω(0, R) ⊆ Ω(1, 0).
+```
 
-**Consequence (mechanism signature).** Under the standard trade-off convexity, the
-relationship route produces **contraction or shift of the upper boundary** but never
-**fragmentation**. Observing a *fragmented* viable trait set therefore implicates a
-different mechanism — see Proposition S1.
+**Proof.** Take `z ∈ Ω(0, R)`. If `z ∉ D`, then `C(z) ≤ K`, so
+`B(z) − C(z) + K ≥ B(z) ≥ 0`. If `z ∈ D`, the condition gives
+`B(z) − C(z) + K ≥ R − C(z) + K ≥ 0`. In both cases `z ∈ Ω(1, 0)`. ∎
+
+### T3 — Exact retention threshold for the existing upper-edge trait
+
+Let
+
+```text
+z* = z_max(1, 0)
+```
+
+be the largest pre-loss viable trait. Define
+
+```text
+R_keep = max(0, C(z*) − K).
+```
+
+Then
+
+```text
+R ≥ R_keep  iff  z* ∈ Ω(0, R).
+```
+
+On a fixed ordered trait grid with non-decreasing `C`, this is also the exact
+threshold for preventing the **upper edge** from receding:
+
+```text
+R ≥ R_keep  iff  z_max(0, R) ≥ z_max(1, 0).
+```
+
+**Proof.** After loss,
+
+```text
+s(z*; 0, R) = R − C(z*) + K.
+```
+
+This is non-negative exactly when `R ≥ C(z*) − K`; non-negativity of `R` yields
+`R_keep`. If `R < R_keep`, monotonicity of `C` makes every `z ≥ z*` non-viable
+after loss, so the edge is strictly below `z*`. If `R ≥ R_keep`, `z*` remains
+viable. ∎
+
+The often intuitive quantity
+
+```text
+R_replace = B(z*)
+```
+
+is a **sufficient replacement bound**, not generally the exact threshold. Since
+`z*` was viable before loss,
+
+```text
+C(z*) − K ≤ B(z*),
+```
+
+so `R_replace ≥ R_keep`. Equality occurs only when the pre-loss edge lies on the
+invasion boundary, `s(z*; 1, 0)=0`.
+
+See `docs/theory_corrections.md` for the correction record.
+
+### T4 — Under concavity/convexity, the benefit route cannot fragment support
+
+If `B` is concave and `C` is convex, then
+
+```text
+s(z; I, R) = I·B(z) − C(z) + K + R
+```
+
+is concave. Since `s(0; I, R)=K+R ≥ 0`, its super-level set
+`{z : s(z; I, R) ≥ 0}` is an interval containing zero. Thus within this model
+family, the relationship-benefit route can recede an edge but cannot split a
+connected viable set into multiple components.
+
+This is a statement about this one-dimensional cost-benefit model. It does not
+say that fragmentation is a universal signature of a spatial mechanism.
 
 ---
 
-## 3. Proposition S1 — the spatial route is fitness-independent
+## 3. A separate spatial construction
 
-Realised persistence in a metapopulation needs more than `s(z) ≥ 0`: a lineage must
-**establish** across reachable patches. Let each trait be intrinsically suitable on a
-patch-dependent subset, and let establishment require reaching at least one suitable
-patch from the seeded patch, with reachability increasing in dispersal connectivity.
+The function `spatial_route_contraction` supplies a **numerical construction**
+in which each trait is intrinsically suitable on a subset of patches and
+establishment requires reaching at least one suitable patch. Reducing
+connectivity can then shrink, or sometimes fragment, the realised viable set
+without changing local per-capita invasion fitness.
 
-**Proposition S1.** *Reducing dispersal connectivity (e.g. habitat fragmentation,
-loss of dispersal vectors) shrinks the realised viable set even when per-capita
-invasion fitness `s(z)` is unchanged, and — because suitable patches are scattered in
-trait space — can split it into multiple components.*
-
-This is demonstrated numerically by `spatial_route_contraction`: cutting connectivity
-from high to zero contracts the realised viable set in 200/200 random landscapes and
-fragments it in ~97% of them. It is a **second, independent route** to trait-space
-loss, with a distinct signature (fragmentation) from the relationship route (interval
-contraction, T4).
+That construction shows possibility, not a general theorem about all dispersal
+loss. It is useful precisely because it forces the theory to distinguish
+local-fitness and establishment channels.
 
 ---
 
-## 4. Correspondence with the individual-based simulation
+## 4. Correspondence with the individual-based model
 
-The spatial ABM's rare-invader one-step growth factor (mutation off, age-0 invader
-against a monomorphic resident; `abm_invasion_factor`) is
+The spatial ABM has a rare-invader growth factor of the form
 
-```
+```text
 G(z) = survival(z) · (1 + repro(z)),
-repro(z) ∝ floor + investment_reward · [I · benefit · z · availability]   (= service, increasing, gated by I)
-              + 0.20 · mate(z; resident)                                   (secondary, frequency-dependent)
-              + resources + R(compensation) − trait_cost · z              (cost, increasing)
-survival(z) = base − survival_tradeoff · z − predation .
+
+repro(z) = floor
+         + interaction-gated service(z)
+         + mate matching(z, resident)
+         + resources
+         + compensation
+         − trait cost(z).
 ```
 
-The dominant trait-level structure is exactly `I·B(z) − C(z) + K`: an
-increasing, relationship-gated benefit minus an increasing cost. The simulation adds
-a **secondary mate-matching term** (stabilising selection toward the resident), which
-is the one component the clean theorem omits. Empirically the theorem's prediction —
-the viable upper edge recedes when the relationship is lost under incomplete
-compensation — holds in ~94% of randomly drawn ABM ecosystems
-(`tests/test_trait_space_theory.py::test_abm_upper_edge_recedes_under_loss`); the
-remaining ~6% are cases where the mate term keeps a near-resident high trait viable.
-So the simulation result is, to leading order, an instance of T1–T3, with the mate
-term and demographic stochasticity as the documented second-order departures.
+The interaction-gated service and trait cost share the leading `B(z)-C(z)`
+structure of T1–T3. The ABM additionally includes density dependence, local
+resources, mate matching, demographic stochasticity, and spatial structure.
+Therefore ABM outcomes are **robustness checks under relaxed assumptions**, not
+proofs of T1–T4.
+
+In the current sampled ABM check, upper-edge recession occurs in many but not
+all parameter draws because the mate term and other demographic processes can
+counteract the simple benefit-loss channel. That non-universality is expected.
 
 ---
 
-## 5. Why this is more than a restatement of relaxed selection
+## 5. What this theory does and does not identify
 
-Classical *relaxed-selection* theory (Lahti et al. 2009) predicts that traits decay
-when the selection maintaining them weakens. The results here sharpen that in three
-ways that are testable:
+These results establish conditional comparative statics:
 
-1. **Object.** The prediction is about the *viable set* `Ω_inv` (its volume,
-   connectedness, and upper edge), not a mean trait. T4 makes a falsifiable
-   distinction between **contraction/shift** (relationship route) and
-   **fragmentation** (spatial route) — two mechanisms that a mean-trait analysis
-   conflates.
-2. **Threshold.** T3 gives an explicit **compensation threshold** `R* = B(z_max)`:
-   trait loss occurs *iff* the alternative route is weaker than the lost benefit at
-   the trait it supported. This converts "relaxed selection" into a quantitative
-   condition — e.g. *flowers shrink after pollinator loss only if autonomous selfing
-   returns less than the pollinator did at the current flower size.*
-3. **Dissociation.** The channel-decomposition control
-   (`spatial_metapopulation_analysis.decompose_channels`) shows the prediction is
-   specific: removing a *predator* (with the trait-supporting relationship intact)
-   does **not** contract trait space, whereas removing the trait-supporting
-   relationship does. "Any relationship loss → trait loss" is false.
+```text
+relationship-gated benefit lost
++ costly trait retained by that benefit
++ insufficient compensation
+→ some previously viable trait values may cease to be viable.
+```
 
----
+They do **not** establish the converse:
 
-## 6. Empirical predictions (for testing against data)
+```text
+observed contraction
+→ relationship-benefit loss.
+```
 
-* **Pollinator decline → flower display.** The viable set of display sizes should
-  contract at its *upper* edge (large displays disappear first), not fragment, and
-  only when autonomous selfing / alternative pollinators return less than the lost
-  service at large display (T3). The Izu *Campanula microdonta* gradient (this
-  repository's worked example) is the target system.
-* **Habitat fragmentation → trait space.** Loss of connectivity should *fragment*
-  the realised trait set (S1), a signature distinct from pollinator loss, even where
-  mean trait barely moves.
-* **Predator removal.** Should produce trait-space *shift / expansion*, not the
-  contraction expected from losing a trait-supporting mutualism (dissociation, §5.3).
+A different mechanism can yield the same total trait performance. In particular,
+trait-correlated loss of reachable patches can mimic an upper-edge contraction.
+The next mathematical task is therefore a channel-identifiability theorem:
+which observations are structurally insufficient, and which channel-resolved
+observations break that equivalence.
 
 ---
 
-## 7. Scope and limitations
+## 6. Scope
 
-* Mean-field, monomorphic-resident invasion fitness; `Ω_inv` is the *instantaneously
-  invasible* set against the pre-change resident, not the long-run co-evolutionary
-  endpoint (no evolutionary branching is modelled).
-* Scalar trait; "covariance" in the ABM is `cov(trait, genotype)`, and the trade-off
-  "matrix" is a trait→(fecundity, survival) vector. Multi-trait `Ω_inv` geometry is
-  future work.
-* The benefit-increasing-in-trait assumption is a trade-off structure, not a trait
-  direction, but it is an assumption; saturating or frequency-dependent benefits
-  would modify T3.
-* All statements are conditional on the model family, constraints, and observed
-  pattern — admissibility and conditional necessity, not causal truth in nature.
+- The theory is mean-field, scalar-trait, and invasion-based.
+- `Ω_inv` is a viable/invasible set, not a long-run coevolutionary endpoint.
+- Benefit and cost monotonicity are assumptions, not empirical facts.
+- Frequency dependence, multidimensional traits, and non-monotone compensation
+  can change the geometry.
+- All conclusions are conditional on the stated mathematical model; they are not
+  causal truths about a natural system.
