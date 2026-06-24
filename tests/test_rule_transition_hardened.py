@@ -57,3 +57,17 @@ def test_invariant_boundary_ignores_legacy_outcome_labels_without_simulated_prov
     assert result.cross_system_common_assumption_motifs == frozenset({"relation_change"})
     assert result.cross_system_common_outcome_motifs == frozenset()
     assert "trait_space_contraction" not in result.cross_system_common_motifs
+
+
+def test_abstract_backend_outcome_is_derived_from_pom_not_its_chain_label():
+    policy = RobustnessPolicy(min_replicates=6, min_match_fraction=0.5, fragile_max_fraction=0.1)
+    data = [
+        SweepRecord(
+            "abstract", "program", frozenset({"relation_change", "trait_space_contraction"}), i < 4,
+            metadata={"P_sim": {"trait_space_state": "reconfigured"}},
+        )
+        for i in range(6)
+    ]
+    result = analyse_rule_transitions(data, policy).invariant_result
+    assert result.cross_system_common_outcome_motifs == frozenset({"trait_space_reconfiguration"})
+    assert "trait_space_contraction" not in result.cross_system_common_motifs
