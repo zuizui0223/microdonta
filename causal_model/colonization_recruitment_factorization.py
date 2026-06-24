@@ -1,8 +1,8 @@
 """Exact one-step recruitment factorisation for the colonization life cycle.
 
 This module is a deliberately narrow bridge from the abstract channel theorems
-to the colonization backend.  It does **not** factorise the backend's multi-step,
-stochastic invasion growth rate ``lambda``.  Instead it exposes the expected
+to the colonization backend. It does **not** factorise the backend's multi-step,
+stochastic invasion growth rate ``lambda``. Instead it exposes the expected
 number of juvenile recruits produced by one initial adult in one time step,
 conditional on a declared local context.
 
@@ -24,7 +24,7 @@ where
                    + [1-d(z)] * local_room.
 
 ``d(z)`` is the same ``benefit_shape`` dispersal-investment probability used by
-the colonization IBM.  This is an exact expectation for the specified one-step
+the colonization IBM. This is an exact expectation for the specified one-step
 context, not an approximation to long-run invasion lambda.
 """
 from __future__ import annotations
@@ -107,10 +107,15 @@ def one_step_recruitment_factors(
     The formula follows the order of stochastic events in ``_colonization_step``.
     A dispersing offspring has no fallback to local settlement when the corridor
     attempt fails, so the expected settlement factor is a weighted sum of distinct
-    dispersal and local branches.
+    dispersal and local branches. At ``age >= max_age`` the simulator removes the
+    adult before conception; the matching survival probability is therefore zero.
     """
     age_term = (context.age / max(params.max_age, 1)) ** 2
-    survival_probability = _clip(params.base_survival * (1.0 - 0.6 * age_term))
+    survival_probability = (
+        0.0
+        if context.age >= params.max_age
+        else _clip(params.base_survival * (1.0 - 0.6 * age_term))
+    )
     conception_probability = _clip(
         params.fecundity
         + 0.20 * context.mate_success
@@ -119,7 +124,7 @@ def one_step_recruitment_factors(
         - params.dispersal_cost * context.trait
     )
     dispersal_probability = benefit_shape(context.trait, params.benefit_saturation)
-    connectivity = regime.connectivity_present if context.corridor_available else 0.0
+    connectivity = _clip(regime.connectivity_present) if context.corridor_available else 0.0
     settlement_factor = (
         dispersal_probability * connectivity * context.expected_target_room
         + (1.0 - dispersal_probability) * context.local_room
