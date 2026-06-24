@@ -1,16 +1,11 @@
-"""One-call pipeline from ecological ABM sweeps to RACH rule-transition results."""
+"""One-call, outcome-aware pipeline from ecological ABM sweeps to RACH results."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Iterable
 
-from causal_model.abm_family_adapter import (
-    ProgramSweepSummary,
-    RobustnessPolicy,
-    SweepRecord,
-    program_runs_from_sweep,
-    summarise_sweep,
-)
+from causal_model.abm_family_adapter import ProgramSweepSummary, RobustnessPolicy, SweepRecord
+from causal_model.rule_transition_hardened import program_runs_from_observed_sweep
 from causal_model.rule_transition_invariants import CrossSystemResult, infer_rule_transition_invariants
 
 
@@ -24,17 +19,15 @@ def analyse_rule_transitions(
     records: Iterable[SweepRecord],
     policy: RobustnessPolicy = RobustnessPolicy(),
 ) -> RuleTransitionAnalysis:
-    """Classify ABM families and infer robust cross-system rule transitions.
+    """Classify sweeps and infer conditional invariants from simulated outcomes.
 
-    The result preserves rejected and insufficient families in ``sweep_summary``
-    while only robust/fragile matching families enter the invariant calculation.
+    Legacy caller motifs remain usable as assumption labels, but trait-space outcome
+    labels are stripped and re-derived from each matching simulation's metadata.
     """
-    records = tuple(records)
-    summary = summarise_sweep(records, policy)
-    runs = program_runs_from_sweep(records, policy)
-    if not runs:
+    observed = program_runs_from_observed_sweep(tuple(records), policy)
+    if not observed.program_runs:
         raise ValueError("No robust or fragile program reproduced the focal qualitative pattern.")
     return RuleTransitionAnalysis(
-        sweep_summary=summary,
-        invariant_result=infer_rule_transition_invariants(runs),
+        sweep_summary=observed.sweep_summary,
+        invariant_result=infer_rule_transition_invariants(observed.program_runs),
     )
