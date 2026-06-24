@@ -71,12 +71,12 @@ _PROJECTIONS: tuple[TheoremProjection, ...] = (
         status="exact",
         theorem_ids=("N1", "N2", "N3", "N4"),
         current_output=(
-            "For a declared local context, expected juvenile recruitment W_recruit(z), "
+            "For a declared local context, expected retained juvenile recruitment W_recruit(z), "
             "local reproductive factor F_local(z), and settlement factor E_settlement(z)."
         ),
         current_factorisation=(
             "Exact conditional expectation: W_recruit=[survival*conception] "
-            "*[dispersal*connectivity*target-room+(1-dispersal)*local-room]."
+            "*[(1-extinction-rate){dispersal*connectivity*target-room+(1-dispersal)*local-room}]."
         ),
         permitted_conclusion=(
             "N1--N4 apply to positive one-step juvenile recruitment factors in the declared "
