@@ -5,26 +5,27 @@ The central object is a multiplicative decomposition of total trait performance,
     W(z) = F(z) * E(z),
 
 where ``F`` is a local fecundity/survival channel and ``E`` is an
-establishment/reachability channel.  The module encodes two algebraic results:
+establishment/reachability channel. The module encodes two algebraic results:
 
 N1 -- Net-performance non-identifiability.
     For any trait-dependent attenuation ``a(z)``, applying it to F or to E gives
-    the same post-change W.  Therefore every observation that is a function only
+    the same post-change W. Therefore every observation that is a function only
     of W -- including every thresholded viable set and every geometry derived from
     those sets -- cannot identify which channel changed.
 
 N2 -- Conditional channel identification.
     If F and E are separately observed before and after, and the model class
     restricts change to exactly one channel, the pointwise ratios identify the
-    changed channel.  Mixed and unchanged cases are explicitly retained rather
+    changed channel. Mixed and unchanged cases are explicitly retained rather
     than forced into a single-channel explanation.
 
-The proofs are documented in ``docs/channel_identifiability_theorem.md``.  The
+The proofs are documented in ``docs/channel_identifiability_theorem.md``. The
 code and tests are finite-grid regression checks of those algebraic statements.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isclose
 from typing import Iterable, Literal, Sequence
 
 
@@ -58,10 +59,22 @@ class VitalRateState:
     def net_performance(self) -> tuple[float, ...]:
         return tuple(f * e for f, e in zip(self.fecundity, self.establishment))
 
-    def viable_mask(self, threshold: float = 1.0) -> tuple[bool, ...]:
+    def viable_mask(self, threshold: float = 1.0, *, tolerance: float = 1e-12) -> tuple[bool, ...]:
+        """Threshold net performance with a numerical boundary tolerance.
+
+        In exact arithmetic the two channel-loss constructions in theorem N1 are
+        identical. Floating point multiplication may differ in the final bit, so
+        values numerically indistinguishable from a threshold are treated as lying
+        on that threshold.
+        """
         if threshold <= 0:
             raise ValueError("threshold must be positive")
-        return tuple(value >= threshold for value in self.net_performance)
+        if tolerance < 0:
+            raise ValueError("tolerance must be non-negative")
+        return tuple(
+            value > threshold or isclose(value, threshold, rel_tol=tolerance, abs_tol=tolerance)
+            for value in self.net_performance
+        )
 
 
 @dataclass(frozen=True)
@@ -131,9 +144,31 @@ def apply_multiplicative_change(
     raise ValueError(f"unknown channel: {channel}")
 
 
-def support_geometry(state: VitalRateState, threshold: float = 1.0) -> SupportGeometry:
+def net_performance_equal(
+    left: VitalRateState,
+    right: VitalRateState,
+    *,
+    tolerance: float = 1e-12,
+) -> bool:
+    """Numerically compare net performance, respecting the exact algebraic symmetry."""
+    if left.grid != right.grid:
+        return False
+    if tolerance < 0:
+        raise ValueError("tolerance must be non-negative")
+    return all(
+        isclose(a, b, rel_tol=tolerance, abs_tol=tolerance)
+        for a, b in zip(left.net_performance, right.net_performance)
+    )
+
+
+def support_geometry(
+    state: VitalRateState,
+    threshold: float = 1.0,
+    *,
+    tolerance: float = 1e-12,
+) -> SupportGeometry:
     """Return lower edge, upper edge, breadth, and connected components of ``W >= t``."""
-    mask = state.viable_mask(threshold)
+    mask = state.viable_mask(threshold, tolerance=tolerance)
     values = [z for z, viable in zip(state.grid, mask) if viable]
     components = 0
     previous = False
@@ -155,11 +190,17 @@ def all_threshold_supports_equal(
     left: VitalRateState,
     right: VitalRateState,
     thresholds: Iterable[float],
+    *,
+    tolerance: float = 1e-12,
 ) -> bool:
     """Check equality of thresholded support sets for a supplied threshold family."""
     if left.grid != right.grid:
         return False
-    return all(left.viable_mask(threshold) == right.viable_mask(threshold) for threshold in thresholds)
+    return all(
+        left.viable_mask(threshold, tolerance=tolerance)
+        == right.viable_mask(threshold, tolerance=tolerance)
+        for threshold in thresholds
+    )
 
 
 def construct_channel_loss_symmetry(
@@ -167,6 +208,7 @@ def construct_channel_loss_symmetry(
     attenuation: Sequence[float],
     *,
     thresholds: Iterable[float] = (0.25, 0.5, 1.0, 1.5, 2.0),
+    tolerance: float = 1e-12,
 ) -> ChannelSymmetryResult:
     """Construct the exact observational equivalence in theorem N1.
 
@@ -174,21 +216,25 @@ def construct_channel_loss_symmetry(
 
     ``F_loss = (aF, E)`` and ``E_loss = (F, aE)``.
 
-    Both have net performance ``aFE``. Consequently every thresholded viable
-    support is equal, and so is any one-dimensional geometry computed from it.
+    Both have net performance ``aFE`` in exact arithmetic. Consequently every
+    thresholded viable support is equal, and so is any one-dimensional geometry
+    computed from it. The finite-precision comparison uses ``tolerance`` only to
+    avoid treating multiplication-order roundoff as a mathematical difference.
     """
     values = _validate_attenuation(baseline, attenuation)
     fecundity_loss = apply_multiplicative_change(baseline, values, channel="fecundity")
     establishment_loss = apply_multiplicative_change(baseline, values, channel="establishment")
-    net_equal = fecundity_loss.net_performance == establishment_loss.net_performance
     thresholds = tuple(thresholds)
-    supports_equal = all_threshold_supports_equal(fecundity_loss, establishment_loss, thresholds)
     return ChannelSymmetryResult(
         attenuation=values,
         fecundity_loss=fecundity_loss,
         establishment_loss=establishment_loss,
-        net_performance_equal=net_equal,
-        all_threshold_supports_equal=supports_equal,
+        net_performance_equal=net_performance_equal(
+            fecundity_loss, establishment_loss, tolerance=tolerance
+        ),
+        all_threshold_supports_equal=all_threshold_supports_equal(
+            fecundity_loss, establishment_loss, thresholds, tolerance=tolerance
+        ),
     )
 
 
