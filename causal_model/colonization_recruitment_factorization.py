@@ -3,25 +3,27 @@
 This module is a deliberately narrow bridge from the abstract channel theorems
 to the colonization backend. It does **not** factorise the backend's multi-step,
 stochastic invasion growth rate ``lambda``. Instead it exposes the expected
-number of juvenile recruits produced by one initial adult in one time step,
-conditional on a declared local context.
+number of juvenile recruits retained at the end of one time step per initial
+adult, conditional on a declared local context.
 
 The life-cycle arithmetic mirrors ``_colonization_step``:
 
     adult survives
     -> adult conceives
     -> offspring either disperses and settles through a corridor,
-       or remains local and settles if local room is available.
+       or remains local and settles if local room is available
+    -> occupied patch survives the end-of-step extinction draw.
 
-For a trait z, the expected juvenile recruitment is exactly
+For a trait z, the expected retained juvenile recruitment is exactly
 
     W_recruit(z) = F_local(z) * E_settlement(z),
 
 where
 
     F_local = survival_probability * conception_probability
-    E_settlement = d(z) * connectivity * expected_target_room
-                   + [1-d(z)] * local_room.
+    E_settlement = [1 - extinction_rate]
+                   * {d(z) * connectivity * expected_target_room
+                      + [1-d(z)] * local_room}.
 
 ``d(z)`` is the same ``benefit_shape`` dispersal-investment probability used by
 the colonization IBM. This is an exact expectation for the specified one-step
@@ -76,12 +78,13 @@ class ColonizationRecruitmentContext:
 
 @dataclass(frozen=True)
 class ColonizationRecruitmentFactors:
-    """Declared factors for expected one-step juvenile recruitment."""
+    """Declared factors for expected one-step retained juvenile recruitment."""
 
     trait: float
     survival_probability: float
     conception_probability: float
     dispersal_probability: float
+    patch_persistence_probability: float
     local_reproductive_factor: float
     settlement_factor: float
     expected_juvenile_recruitment: float
@@ -102,13 +105,16 @@ def one_step_recruitment_factors(
     params: ColonizationParameters,
     regime: ColonizationRegime,
 ) -> ColonizationRecruitmentFactors:
-    """Return the exact expected-recruitment factorisation for one adult.
+    """Return the exact end-of-step recruitment factorisation for one adult.
 
-    The formula follows the order of stochastic events in ``_colonization_step``.
+    The formula follows the stochastic-event order in ``_colonization_step``.
     A dispersing offspring has no fallback to local settlement when the corridor
     attempt fails, so the expected settlement factor is a weighted sum of distinct
-    dispersal and local branches. At ``age >= max_age`` the simulator removes the
-    adult before conception; the matching survival probability is therefore zero.
+    dispersal and local branches. The global patch-extinction draw is independent
+    of trait and location in the current IBM, and therefore multiplies the
+    settlement factor by ``1-extinction_rate`` in expectation. At
+    ``age >= max_age`` the simulator removes the adult before conception; the
+    matching survival probability is zero.
     """
     age_term = (context.age / max(params.max_age, 1)) ** 2
     survival_probability = (
@@ -125,10 +131,12 @@ def one_step_recruitment_factors(
     )
     dispersal_probability = benefit_shape(context.trait, params.benefit_saturation)
     connectivity = _clip(regime.connectivity_present) if context.corridor_available else 0.0
-    settlement_factor = (
+    patch_persistence_probability = 1.0 - _clip(params.extinction_rate)
+    pre_extinction_settlement = (
         dispersal_probability * connectivity * context.expected_target_room
         + (1.0 - dispersal_probability) * context.local_room
     )
+    settlement_factor = patch_persistence_probability * pre_extinction_settlement
     local_reproductive_factor = survival_probability * conception_probability
     expected_juvenile_recruitment = local_reproductive_factor * settlement_factor
     return ColonizationRecruitmentFactors(
@@ -136,6 +144,7 @@ def one_step_recruitment_factors(
         survival_probability=survival_probability,
         conception_probability=conception_probability,
         dispersal_probability=dispersal_probability,
+        patch_persistence_probability=patch_persistence_probability,
         local_reproductive_factor=local_reproductive_factor,
         settlement_factor=settlement_factor,
         expected_juvenile_recruitment=expected_juvenile_recruitment,
