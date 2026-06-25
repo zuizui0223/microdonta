@@ -20,6 +20,7 @@ class DynamicsParameters:
     initial_population: tuple[int, ...] = ()
     initial_interaction: tuple[float, ...] = ()
     initial_high_allele_frequency: tuple[float, ...] = ()
+    initial_trait_distribution: tuple[tuple[float, ...], ...] = ()
     density_capacity: float = 40.0
     area_reference: float = 1.0
     interaction_feedback: float = 6.0
@@ -33,6 +34,9 @@ class DynamicsParameters:
     viability_threshold: float = 1.0
     trait_grid_size: int = 101
     high_trait_cutoff: float = 0.7
+    realised_high_trait_threshold: float = 1e-3
+    trait_occupancy_model: str = "viability_selection_local_recruitment"
+    trait_selection_floor: float = 1e-12
     selection_strength: float = 0.5
     baseline_growth: float = 0.3
     interaction_growth: float = 0.4
@@ -72,6 +76,22 @@ class DynamicsParameters:
             raise ValueError("trait_grid_size must be at least 3")
         if not 0.0 <= self.high_trait_cutoff <= 1.0:
             raise ValueError("high_trait_cutoff must lie in [0, 1]")
+        if self.realised_high_trait_threshold < 0.0:
+            raise ValueError("realised_high_trait_threshold must be nonnegative")
+        if self.trait_occupancy_model != "viability_selection_local_recruitment":
+            raise ValueError("unknown trait_occupancy_model")
+        if self.trait_selection_floor <= 0.0:
+            raise ValueError("trait_selection_floor must be positive")
+        if self.initial_trait_distribution:
+            if len(self.initial_trait_distribution) != n:
+                raise ValueError("initial_trait_distribution must be empty or match patch count")
+            for distribution in self.initial_trait_distribution:
+                if len(distribution) != self.trait_grid_size:
+                    raise ValueError("each initial_trait_distribution row must match trait_grid_size")
+                if any(value < 0.0 for value in distribution):
+                    raise ValueError("initial_trait_distribution cannot contain negative values")
+                if sum(distribution) <= 0.0:
+                    raise ValueError("each initial_trait_distribution row must have positive mass")
         if not 0.0 < self.effective_fraction <= 1.0:
             raise ValueError("effective_fraction must lie in (0, 1]")
         if not 0.0 <= self.skew_penalty < 1.0:
@@ -88,6 +108,21 @@ class TraitSpaceSummary:
 
 
 @dataclass(frozen=True)
+class TraitOccupancySummary:
+    """Realised resident trait distribution summary for one patch.
+
+    This is a simulation state, not a theorem. It is separate from the
+    high-allele frequency p_j and from potential viability Omega_tau(q).
+    """
+
+    distribution: tuple[float, ...]
+    high_trait_mass: float
+    realised_high_trait_occupied: bool
+    realised_components: int
+    potential_high_trait_component_present: bool
+
+
+@dataclass(frozen=True)
 class SimulationSnapshot:
     generation: int
     interaction: tuple[float, ...]
@@ -95,6 +130,7 @@ class SimulationSnapshot:
     effective_size: tuple[float, ...]
     high_allele_frequency: tuple[float, ...]
     trait_space: tuple[TraitSpaceSummary, ...]
+    trait_occupancy: tuple[TraitOccupancySummary, ...]
     h_alpha: float
     h_gamma: float
     fst: float | None
@@ -124,9 +160,14 @@ def trait_fitness(z: float, interaction: float, parameters: DynamicsParameters) 
     return low_route + high_route
 
 
+def trait_grid(parameters: DynamicsParameters) -> tuple[float, ...]:
+    """Return the declared trait grid z_k in [0, 1]."""
+    return tuple(index / (parameters.trait_grid_size - 1) for index in range(parameters.trait_grid_size))
+
+
 def trait_space_summary(interaction: float, parameters: DynamicsParameters) -> TraitSpaceSummary:
     """Summarise viable-grid topology and high-investment component presence."""
-    grid = tuple(index / (parameters.trait_grid_size - 1) for index in range(parameters.trait_grid_size))
+    grid = trait_grid(parameters)
     viable = tuple(trait_fitness(z, interaction, parameters) >= parameters.viability_threshold for z in grid)
     components = 0
     in_component = False
@@ -145,6 +186,33 @@ def trait_space_summary(interaction: float, parameters: DynamicsParameters) -> T
         if z >= parameters.high_trait_cutoff
     )
     return TraitSpaceSummary(components, high_present, margin)
+
+
+def trait_occupancy_summary(
+    distribution: Sequence[float],
+    potential: TraitSpaceSummary,
+    parameters: DynamicsParameters,
+) -> TraitOccupancySummary:
+    """Summarise realised trait-bin occupancy independently of potential viability."""
+    normalised = _normalise_distribution(distribution)
+    grid = trait_grid(parameters)
+    occupied = tuple(value > 0.0 for value in normalised)
+    components = 0
+    in_component = False
+    for is_occupied in occupied:
+        if is_occupied and not in_component:
+            components += 1
+            in_component = True
+        if not is_occupied:
+            in_component = False
+    high_mass = sum(value for z, value in zip(grid, normalised) if z >= parameters.high_trait_cutoff)
+    return TraitOccupancySummary(
+        distribution=normalised,
+        high_trait_mass=high_mass,
+        realised_high_trait_occupied=high_mass > parameters.realised_high_trait_threshold,
+        realised_components=components,
+        potential_high_trait_component_present=potential.high_trait_component_present,
+    )
 
 
 def _heterozygosity(p: float) -> float:
@@ -166,14 +234,33 @@ def _binomial(rng: Random, trials: int, probability: float) -> int:
     return sum(rng.random() < probability for _ in range(trials))
 
 
-def _initial_values(parameters: DynamicsParameters) -> tuple[tuple[int, ...], tuple[float, ...], tuple[float, ...]]:
+def _normalise_distribution(distribution: Sequence[float]) -> tuple[float, ...]:
+    total = sum(float(value) for value in distribution)
+    if total <= 0.0:
+        raise ValueError("trait distribution must have positive mass")
+    return tuple(float(value) / total for value in distribution)
+
+
+def _default_trait_distribution(parameters: DynamicsParameters) -> tuple[float, ...]:
+    grid = trait_grid(parameters)
+    weights = tuple(max(parameters.trait_selection_floor, 1.0 - z) for z in grid)
+    return _normalise_distribution(weights)
+
+
+def _initial_values(
+    parameters: DynamicsParameters,
+) -> tuple[tuple[int, ...], tuple[float, ...], tuple[float, ...], tuple[tuple[float, ...], ...]]:
     n = len(parameters.patch_areas)
     population = parameters.initial_population or tuple(
         max(1, round(parameters.density_capacity * area * 0.6)) for area in parameters.patch_areas
     )
     interaction = parameters.initial_interaction or tuple(0.5 for _ in range(n))
     frequency = parameters.initial_high_allele_frequency or tuple(0.5 for _ in range(n))
-    return tuple(population), tuple(interaction), tuple(frequency)
+    if parameters.initial_trait_distribution:
+        trait_distribution = tuple(_normalise_distribution(row) for row in parameters.initial_trait_distribution)
+    else:
+        trait_distribution = tuple(_default_trait_distribution(parameters) for _ in range(n))
+    return tuple(population), tuple(interaction), tuple(frequency), trait_distribution
 
 
 def _effective_size(population: int, interaction: float, parameters: DynamicsParameters) -> float:
@@ -186,21 +273,61 @@ def _snapshot(
     population: tuple[int, ...],
     interaction: tuple[float, ...],
     frequency: tuple[float, ...],
+    trait_distribution: tuple[tuple[float, ...], ...],
     parameters: DynamicsParameters,
 ) -> SimulationSnapshot:
     effective = tuple(_effective_size(n, q, parameters) for n, q in zip(population, interaction))
     trait_spaces = tuple(trait_space_summary(q, parameters) for q in interaction)
+    trait_occupancies = tuple(
+        trait_occupancy_summary(mu, potential, parameters)
+        for mu, potential in zip(trait_distribution, trait_spaces)
+    )
     h_alpha, h_gamma, fst = _diversity(frequency, tuple(float(n) for n in population))
-    return SimulationSnapshot(generation, interaction, population, effective, frequency, trait_spaces, h_alpha, h_gamma, fst)
+    return SimulationSnapshot(
+        generation,
+        interaction,
+        population,
+        effective,
+        frequency,
+        trait_spaces,
+        trait_occupancies,
+        h_alpha,
+        h_gamma,
+        fst,
+    )
+
+
+def update_trait_distribution(
+    distribution: Sequence[float],
+    interaction: float,
+    parameters: DynamicsParameters,
+) -> tuple[float, ...]:
+    """Update resident trait-bin frequencies by the declared simple model.
+
+    Model: viability selection plus local recruitment. Trait-bin mass at z_k is
+    multiplied by max(trait_selection_floor, W(z_k; q_t)) and then normalised.
+    There is no mutation or dispersal across trait bins in this first extension.
+    """
+    grid = trait_grid(parameters)
+    normalised = _normalise_distribution(distribution)
+    weighted = tuple(
+        mass * max(parameters.trait_selection_floor, trait_fitness(z, interaction, parameters))
+        for z, mass in zip(grid, normalised)
+    )
+    return _normalise_distribution(weighted)
 
 
 def simulate(parameters: DynamicsParameters) -> SimulationResult:
     """Run the declared finite-population multi-patch life cycle."""
     rng = Random(parameters.random_seed)
-    population, interaction, frequency = _initial_values(parameters)
-    snapshots = [_snapshot(0, population, interaction, frequency, parameters)]
+    population, interaction, frequency, trait_distribution = _initial_values(parameters)
+    snapshots = [_snapshot(0, population, interaction, frequency, trait_distribution, parameters)]
 
     for generation in range(1, parameters.generations + 1):
+        next_trait_distribution = tuple(
+            update_trait_distribution(mu, q, parameters)
+            for mu, q in zip(trait_distribution, interaction)
+        )
         carrying = tuple(parameters.density_capacity * area for area in parameters.patch_areas)
         density = tuple(min(1.0, n / k) for n, k in zip(population, carrying))
         q_next = tuple(
@@ -245,24 +372,88 @@ def simulate(parameters: DynamicsParameters) -> SimulationResult:
         population = tuple(next_population)
         interaction = q_next
         frequency = tuple(next_frequency)
-        snapshots.append(_snapshot(generation, population, interaction, frequency, parameters))
+        trait_distribution = next_trait_distribution
+        snapshots.append(_snapshot(generation, population, interaction, frequency, trait_distribution, parameters))
 
     return SimulationResult(parameters, tuple(snapshots))
 
 
 def first_high_trait_absence(result: SimulationResult) -> int | None:
-    """Return first generation without high-trait viability in any patch."""
+    """Backward-compatible alias for first_potential_high_trait_absence()."""
+    return first_potential_high_trait_absence(result)
+
+
+def tau_trait_potential(result: SimulationResult) -> int | None:
+    """Return tau_trait_potential: first loss of potential high-trait viability."""
+    return first_potential_high_trait_absence(result)
+
+
+def first_potential_high_trait_absence(result: SimulationResult) -> int | None:
+    """Return first generation without potential high-trait viability in any patch."""
     for snapshot in result.snapshots:
         if not any(summary.high_trait_component_present for summary in snapshot.trait_space):
             return snapshot.generation
     return None
 
 
+def first_realised_high_trait_absence(result: SimulationResult) -> int | None:
+    """Return first generation without realised high-trait occupancy in any patch."""
+    for snapshot in result.snapshots:
+        if not any(summary.realised_high_trait_occupied for summary in snapshot.trait_occupancy):
+            return snapshot.generation
+    return None
+
+
+def tau_trait_realised(result: SimulationResult) -> int | None:
+    """Return tau_trait_realised: first loss of realised high-trait occupancy."""
+    return first_realised_high_trait_absence(result)
+
+
 def first_alpha_warning(result: SimulationResult, warning_threshold: float) -> int | None:
-    """Return first generation where H_alpha is at or below a predeclared boundary."""
+    """Backward-compatible alias for first_h_alpha_warning()."""
+    return first_h_alpha_warning(result, warning_threshold)
+
+
+def first_h_alpha_warning(result: SimulationResult, warning_threshold: float) -> int | None:
+    """Return first generation where census-weighted H_alpha crosses a boundary."""
     if not 0.0 <= warning_threshold <= 1.0:
         raise ValueError("warning_threshold must lie in [0, 1]")
     for snapshot in result.snapshots:
         if snapshot.h_alpha <= warning_threshold:
             return snapshot.generation
     return None
+
+
+def tau_H_alpha(result: SimulationResult, warning_threshold: float) -> int | None:
+    """Return tau_H_alpha: first H_alpha warning-threshold crossing."""
+    return first_h_alpha_warning(result, warning_threshold)
+
+
+def first_h_gamma_warning(result: SimulationResult, warning_threshold: float) -> int | None:
+    """Return first generation where census-weighted H_gamma crosses a boundary."""
+    if not 0.0 <= warning_threshold <= 1.0:
+        raise ValueError("warning_threshold must lie in [0, 1]")
+    for snapshot in result.snapshots:
+        if snapshot.h_gamma <= warning_threshold:
+            return snapshot.generation
+    return None
+
+
+def tau_H_gamma(result: SimulationResult, warning_threshold: float) -> int | None:
+    """Return tau_H_gamma: first H_gamma warning-threshold crossing."""
+    return first_h_gamma_warning(result, warning_threshold)
+
+
+def first_fst_warning(result: SimulationResult, warning_threshold: float) -> int | None:
+    """Return first generation where F_ST reaches or exceeds a boundary."""
+    if not 0.0 <= warning_threshold <= 1.0:
+        raise ValueError("warning_threshold must lie in [0, 1]")
+    for snapshot in result.snapshots:
+        if snapshot.fst is not None and snapshot.fst >= warning_threshold:
+            return snapshot.generation
+    return None
+
+
+def tau_FST(result: SimulationResult, warning_threshold: float) -> int | None:
+    """Return tau_FST: first F_ST warning-threshold crossing."""
+    return first_fst_warning(result, warning_threshold)
