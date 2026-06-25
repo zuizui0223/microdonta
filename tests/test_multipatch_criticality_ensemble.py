@@ -23,6 +23,35 @@ def test_canonical_reduction_matches_declared_logistic_map():
     ) == pytest.approx(expected)
 
 
+def test_simulator_first_update_has_canonical_reduction_when_density_is_one():
+    area = 1.5
+    q = 0.4
+    feedback = 3.0
+    barrier = 0.2
+    density_capacity = 40.0
+    parameters = DynamicsParameters(
+        patch_areas=(area,),
+        initial_population=(round(density_capacity * area),),
+        initial_interaction=(q,),
+        initial_high_allele_frequency=(0.1,),
+        density_capacity=density_capacity,
+        interaction_memory_weight=1.0,
+        interaction_feedback=feedback,
+        interaction_barrier=barrier,
+        generations=1,
+        random_seed=1,
+    )
+    observed = simulate(parameters).snapshots[1].interaction[0]
+    expected = canonical_interaction_update(
+        q,
+        area=area,
+        area_reference=parameters.area_reference,
+        feedback_strength=feedback,
+        barrier=barrier,
+    )
+    assert observed == pytest.approx(expected)
+
+
 def test_ensemble_reports_mean_path_and_lead_probability_separately():
     parameters = DynamicsParameters(
         patch_areas=(1.0, 1.0),
