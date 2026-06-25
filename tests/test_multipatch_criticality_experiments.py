@@ -17,6 +17,7 @@ from causal_model.multipatch_criticality_experiments import (
     standard_profile,
     summarise_replicate,
 )
+from examples.multipatch_phase_diagram_pilot import pilot_spec, render_markdown
 
 
 def _low_trait_distribution(size: int) -> tuple[float, ...]:
@@ -193,3 +194,20 @@ def test_replicate_summary_reports_patch_distributions() -> None:
     assert len(summary.final_effective_size_by_patch) == 2
     assert len(summary.final_p_by_patch) == 2
     assert len(summary.final_high_trait_abundance_by_patch) == 2
+
+
+def test_pilot_report_keeps_math_layer_before_ecosystem_projection() -> None:
+    spec = replace(
+        pilot_spec(),
+        generations=1,
+        replicates=1,
+        area_reference_values=(0.8, 1.0, 1.2),
+        interaction_feedback_values=(3.0, 4.5),
+        interaction_barrier_values=(0.55, 0.75),
+    )
+    report = render_markdown(run_parameter_grid(spec))
+
+    assert "model-specific stochastic pilot" in report
+    assert "not an empirical ecosystem projection" in report
+    assert "Omega_tau^potential != realised N_H > 0 != p > 0 != H_alpha > 0" in report
+    assert "not to map them onto Campanula immediately" in report
