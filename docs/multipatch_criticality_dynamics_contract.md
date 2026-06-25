@@ -23,13 +23,15 @@ N_j,t     census population size
 q_j,t     interaction availability in [0,1]
 p_j,t     frequency of a declared high-investment allele
 mu_j,t(z) resident realised trait-bin distribution on the trait grid
+n_j,t(z)  optional finite realised trait-bin abundance on the trait grid
 N_e,j,t   effective reproductive size proxy
 Omega_j,t potential viable trait set on a fixed continuous trait grid.
 ```
 
 The high-investment trait region is the upper part of the grid. The simulator now
-records both potential high-trait viability in `Omega_tau(q)` and realised
-occupancy in `mu_t(z)`. Neither is inferred from the high-allele frequency alone.
+records potential high-trait viability in `Omega_tau(q)`, realised occupancy in
+`mu_t(z)` or finite `n_t(z)`, and high-allele frequency `p_t`. None is inferred
+directly from another.
 
 ---
 
@@ -38,7 +40,10 @@ occupancy in `mu_t(z)`. Neither is inferred from the high-allele frequency alone
 ### 1. Interaction update
 
 ```text
-q_j,t+1 = sigma{kappa[(A_j/A_ref) D_j,t (alpha q_j,t + (1-alpha)p_j,t)-theta]},
+q_j,t+1 =
+sigma{kappa[(A_j/A_ref) D_j,t
+  (alpha_q q_j,t + beta_trait x_H,j,t + gamma_allele p_j,t)
+  - theta]},
 ```
 
 where
@@ -48,9 +53,12 @@ D_j,t = min(1, N_j,t / K_j),
 K_j = density_capacity * A_j.
 ```
 
-This assumes patch area, local density, current interaction state, and
-high-investment composition jointly support interaction availability. It is not
-the general theorem map, although it retains its positive-feedback character.
+The backward-compatible default uses the older interaction-memory form
+`alpha_q=interaction_memory_weight`, `beta_trait=0`, and
+`gamma_allele=1-interaction_memory_weight`. Explicit feedback parameters expose
+trait-only, allele-proxy, coupled, and canonical-reduction modes. The canonical
+reduction requires density one, `alpha_q=1`, `beta_trait=0`, and
+`gamma_allele=0`; its regression test is not a mathematical proof.
 
 ### 2. Trait-space fitness surface
 
@@ -70,13 +78,41 @@ This deliberately permits a low-investment viable component near z=0 and a
 separate high-investment component near z=1. The model records the high-component
 presence and total connected-component count on the declared grid.
 
-### 3. Realised trait occupancy update
+### 3. Genotype-to-trait recruitment closure
 
-The realised resident trait distribution is a simulation state, not a theorem.
-The first implemented closure is explicitly named:
+The default closure keeps recruit composition resident-trait-only. The optional
+named closure is:
 
 ```text
-trait_occupancy_model = viability_selection_local_recruitment
+genotype_trait_recruitment = two_kernel_recruitment
+```
+
+with:
+
+```text
+K_L(z_k) low-trait recruitment kernel
+K_H(z_k) high-trait recruitment kernel
+rho_j,t(z_k) = (1-p_j,t)K_L(z_k) + p_j,t K_H(z_k)
+```
+
+and:
+
+```text
+preselection recruit composition proportional to
+[(1-inheritance_weight)rho_j,t(z_k)
+ + inheritance_weight mu_j,t(z_k)].
+```
+
+This is not called Mendelian inheritance. It is a declared
+genotype-to-trait recruitment closure.
+
+### 4. Realised trait occupancy update
+
+The realised resident trait distribution is a simulation state, not a theorem.
+The backward-compatible composition mode is:
+
+```text
+trait_occupancy_mode = deterministic_viability_selection
 ```
 
 For each patch and trait bin:
@@ -87,7 +123,38 @@ mu_j,t+1(z_k) proportional to mu_j,t(z_k) * max(epsilon, W(z_k;q_j,t)).
 
 The distribution is then normalised. This is local viability selection plus local
 recruitment. There is no mutation and no dispersal across trait bins in this
-first extension. The realised high-trait occupancy indicator is:
+composition mode. Since `epsilon > 0`, initially positive bins generally remain
+positive; component counts here are composition summaries, not finite extinction
+events.
+
+The finite mode is:
+
+```text
+trait_occupancy_mode = finite_trait_bin_recruitment
+```
+
+It tracks:
+
+```text
+n_j,t(z_k)
+mu_j,t(z_k)=n_j,t(z_k)/sum_l n_j,t(z_l)
+```
+
+Recruitment probabilities are proportional to the declared preselection recruit
+composition times `max(epsilon, W(z_k;q_j,t))`, followed by a multinomial draw
+for the next cohort. This permits true trait-bin extinction. There is still no
+mutation, recolonisation, or across-bin trait dispersal.
+
+The finite realised high-trait summaries are:
+
+```text
+N_H,j,t = sum_{z_k in Z_H} n_j,t(z_k)
+x_H,j,t = N_H,j,t / N_j,t
+realised occupied iff
+N_H,j,t >= realised_high_trait_abundance_threshold.
+```
+
+The deterministic realised high-trait occupancy indicator remains:
 
 ```text
 sum_{z_k in Z_H} mu_j,t(z_k) > realised_high_trait_threshold.
@@ -103,7 +170,7 @@ A high-investment potential component can exist while no resident occupies it,
 and realised high-trait occupancy can persist transiently after potential
 viability is lost.
 
-### 4. Trait-associated allele selection
+### 5. Trait-associated allele selection
 
 The high allele has relative fitness
 
@@ -124,7 +191,7 @@ architecture.
 The high allele `p_j,t` and resident trait distribution `mu_j,t(z)` are separate
 state variables. The simulator does not claim that p_j uniquely determines z.
 
-### 5. Demography and effective reproductive size
+### 6. Demography and effective reproductive size
 
 ```text
 N_j,t+1 = round{N_j,t exp[r0 + r_q q_j,t+1 + r_H p*_j - N_j,t/K_j]},
@@ -135,7 +202,7 @@ The skew penalty is included because interaction can increase reproductive skew.
 The sign of the interaction-to-N_e relation is therefore testable rather than
 hard-wired as a general truth.
 
-### 6. Migration and finite transmission
+### 7. Migration and finite transmission
 
 After selection, island-model migration gives
 
@@ -154,6 +221,28 @@ policy rather than silently assuming perpetual variation.
 
 ---
 
+## Life-cycle order
+
+The simulation life cycle records the timing as:
+
+```text
+1. current q_j,t, N_j,t, p_j,t, and realised trait state n_j,t(z) or mu_j,t(z)
+2. potential fitness W(z; q_j,t) and Omega_tau^potential(q_j,t)
+3. optional genotype-to-trait recruitment kernel rho_j,t(z)
+4. trait-bin recruitment / viability update under the named occupancy mode
+5. realised high-trait abundance N_H,j,t and mass x_H,j,t
+6. q_j,t+1 update using declared q / trait / allele feedback weights
+7. demographic update N_j,t+1
+8. effective breeder size proxy N_e,j,t+1
+9. allele transmission and migration for p_j,t+1
+10. first-passage recording with explicit censoring and aggregation rules.
+```
+
+The implementation preserves backward-compatible defaults while exposing the
+new finite-abundance and feedback closures as named parameters.
+
+---
+
 ## Outputs
 
 At each generation report separately:
@@ -166,6 +255,7 @@ p_j,t
 high-trait viable-component presence
 potential trait-space component count
 realised high-trait occupancy mass
+realised high-trait abundance
 realised high-trait occupancy indicator
 realised trait-space component count
 H_alpha,t
@@ -199,6 +289,7 @@ Predeclare
 ```text
 tau_trait: first generation with no high-investment viable component
 tau_trait_realised: first generation with no realised high-trait occupancy
+tau_allele_loss: first generation with all patches at or below an allele threshold
 tau_H: first generation H_alpha crosses a warning threshold
 tau_H_gamma: first generation H_gamma crosses a warning threshold
 tau_FST: first generation F_ST crosses a warning threshold
@@ -208,6 +299,10 @@ tau_auto: first generation spatial autocorrelation crosses threshold.
 
 A genetic lead means a predeclared inequality such as `tau_H<tau_trait`. It is
 not declared from visually chosen trajectories.
+
+Detailed first-passage event records retain whether the event occurred, the time
+or `None`, censored status, threshold used, and aggregation rule such as
+`all_patch_loss` or `metapopulation_weighted_loss`.
 
 ### H_fragmentation
 
