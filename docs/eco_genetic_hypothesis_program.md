@@ -2,8 +2,6 @@
 
 ## Central causal chain
 
-The long-term research program is organised around the proposed chain
-
 ```text
 patch size
 -> interaction intensity
@@ -12,10 +10,8 @@ patch size
 -> genetic diversity.
 ```
 
-The chain is **not** itself a theorem. It is a scientific hypothesis program.
-Each arrow must be represented by a declared state equation or life-cycle map.
-
-The repository separates four claim types:
+The chain is a scientific hypothesis program, not itself a theorem. Each arrow
+requires a declared state equation or life-cycle map.
 
 ```text
 Type T  mathematical theorem under explicit assumptions
@@ -24,51 +20,55 @@ Type H  substantive dynamic hypothesis about an ecosystem model
 Type S  simulation result for a declared model, not proof of T/C/H.
 ```
 
+The current roadmap is:
+
+```text
+general theorem layer
+-> canonical logistic corollary
+-> potential viability
+-> finite realised trait abundance and occupancy
+-> stochastic genetic first-passage experiments
+-> future mutation/recolonisation model
+```
+
+The standard/full phase-diagram profiles use a declared finite-bin,
+two-kernel, coupled-feedback closure. They are Type S experiments and never
+retroactively strengthen earlier theorem claims. A model-specific phase diagram
+is not a theorem.
+
 ---
 
-## The theorem layer already supplied by PR #48
+## Theorem layer
 
 ### G0 — finite transmission variance
 
-If post-selection transmission is unbiased and has positive conditional variance,
-expected local gene diversity declines relative to the post-selection state:
+For unbiased post-selection transmission with positive conditional variance:
 
 ```text
 E[H(P') | p*] = H(p*) - 2 Var(P'|p*) < H(p*).
 ```
 
-This is Type T. It makes no ecological claim about patch size, pollination, or
-whether a high-interaction patch has a larger effective size.
+This is Type T. It makes no ecological claim about patch size or interaction.
 
 ### P0 — no-bistability certificate
 
-For interaction update
+For
 
 ```text
-q_next = g{kappa(A q - theta)}
+q_next = g{kappa(Aq-theta)}
 ```
 
-with global slope bound `M=sup|g'|`,
+with `M=sup|g'|`,
 
 ```text
-kappa A M < 1
+kappa*A*M < 1
 ```
 
-certifies one fixed point. This is Type T.
-
-Its converse is deliberately not asserted:
-
-```text
-kappa A M >= 1
-```
-
-only means that the global contraction proof no longer establishes uniqueness.
-It is not a proof of bistability.
+certifies one fixed point. Its converse does not prove bistability.
 
 ### P1 — trait-mode lifting
 
-Given two already-established stable interaction states `q_L<q_H`, a declared
-high-trait region `Z_H`, and viability margin
+Given established stable states `q_L<q_H`, high-trait region `Z_H`, and
 
 ```text
 m_H(q) = max_{z in Z_H}[W(z;q)-tau],
@@ -80,144 +80,87 @@ then
 m_H(q_L)<0<m_H(q_H)
 ```
 
-implies that the high-trait mode is branch dependent. This is Type T conditional
-on the existence of those branches and the declared performance map.
+implies branch-dependent potential high-trait viability. This is Type T once the
+branches and performance map are declared.
 
 ### P2 — patchwise non-additivity
 
-If a collective interaction mechanism has a justified patchwise threshold
-`A_j>A_c`, then total area alone cannot guarantee that mechanism. This is Type C:
-the threshold must first be derived or assumed in the ecological model.
+If an ecological mechanism requires `A_j>A_c` in each patch, total area alone
+cannot guarantee it. This is Type C because the patchwise threshold must first
+be derived or supplied by the ecological closure.
 
 ### G1 — conditional eco-genetic ordering
 
-If the life-cycle-derived effective reproductive size `Psi(A,q,xi)` increases
-with `q` and transmission variance decreases with effective size, low interaction
-branches erode expected local diversity faster. This is Type C, not a universal
-claim about interaction systems.
+If `N_e=Psi(A,q,xi)` increases with q and transmission variance decreases with
+N_e, low-q branches erode expected local diversity faster. This is Type C, not a
+universal interaction-system statement.
 
 ---
 
-## Central hypothesis H_critical
+## H_critical
 
-> If individual interactions are positively frequency dependent and interaction
-> intensity depends nonlinearly on patch size, then there can be a critical patch
-> size A_c across which a high-investment trait mode switches discontinuously
-> between present and absent states.
+> Positive frequency-dependent interaction can generate a patch-size transition
+> across which a high-investment trait mode changes discontinuously.
 
-### What would be a theorem
+A theorem for a specified system must establish:
 
-For a specified dynamic system, prove all of the following:
+1. a rigorous branch transition;
+2. high-trait margin sign change across stable branches;
+3. absence/presence of the potential trait component across them.
 
-1. a pair of saddle nodes or another rigorously defined branch transition exists;
-2. the high-trait viability margin changes sign across its stable branches;
-3. the corresponding trait-space component is absent on one branch and present on
-   the other.
+The logistic feedback system is a canonical corollary, not a proof for every
+positive-feedback system.
 
-A logistic feedback model can be a worked corollary. It cannot establish the
-claim for all positive-frequency-dependent systems.
-
-### What the dynamic simulation must test
-
-Simulation targets a phase diagram over at least
-
-```text
-patch size A
-external barrier theta
-feedback strength kappa
-trait-cost / interaction-benefit parameters.
-```
-
-The report must distinguish:
-
-```text
-no transition observed
-smooth transition
-bistable transition under the declared model
-transition sensitive to finite population noise.
-```
-
-A simulation may locate candidate transition regions and counterexamples. It does
-not prove the general theorem.
+The dynamic experiment sweeps patch size, barrier, feedback strength, and trait
+cost/benefit parameters. It distinguishes no transition, smooth transition,
+bistability under the declared model, and noise-sensitive transitions.
 
 ---
 
-## Central hypothesis H_genetic_lag
+## H_genetic_lag
 
-> Under identifiable conditions, genetic indicators associated with a high-trait
-> mode change before that mode disappears from the viable trait space.
+> Under identifiable conditions, genetic indicators can change before the
+> realised high-trait mode disappears.
 
-This is presently Type H, not a theorem and not implied by G0/G1.
+This is Type H. It is not implied by G0/G1 and is not universal.
 
-### Required event definitions
-
-A future dynamic model must predeclare:
+The simulation predeclares:
 
 ```text
-tau_trait  first time the high-trait mode is absent from Omega_tau
-tau_H      first time local diversity metric crosses its warning boundary
-tau_var    first time spatial variance of the high-trait allele crosses boundary
-tau_auto   first time spatial autocorrelation crosses boundary.
+tau_trait_potential
+tau_trait_realised
+tau_allele_loss
+tau_H_alpha
+tau_H_gamma
+tau_FST
 ```
 
-A genetic lead requires a declared inequality such as
+and reports the valid-pair probability of inequalities such as
 
 ```text
-tau_H < tau_trait.
+tau_H_alpha < tau_trait_realised.
 ```
 
-The warning boundary must be externally specified or justified by a dynamical
-criterion; it cannot be chosen after viewing simulation output.
-
-### What must be added before proof is possible
-
-```text
-multi-patch allele transmission
-mutation or standing variation policy
-migration matrix
-trait-genotype map
-selection map W(z;q)
-finite reproductive transmission kernel
-patch extinction / recolonisation rules.
-```
-
-Only then can one ask whether a leading eigenvalue, quasi-stationary variance, or
-other quantity provides a theorem-level early warning condition.
+Events that do not occur are censored, not converted into terminal-generation
+values. The warning threshold must be set before inspecting outcomes.
 
 ---
 
-## Central hypothesis H_fragmentation
+## H_fragmentation
 
-> At fixed total habitat area, subdivision into many small patches can prevent
-> maintenance of a high-investment trait mode and its associated genetic diversity
-> because more patches fall below the interaction-support threshold.
+> At fixed total area, subdivision can prevent maintenance of a high-investment
+> trait mode and change associated genetic structure when more patches fall below
+> the interaction-support region.
 
-This contains two distinct claims.
+The ecological component is Type C: an interaction threshold alone only removes
+that mechanism. High-trait loss additionally requires the declared trait margin
+condition.
 
-### Ecological component
+The genetic component is Type H. `H_alpha`, `H_gamma`, and `F_ST` are distinct:
+fragmentation can lower local `H_alpha`, increase `F_ST`, and preserve or change
+`H_gamma` differently.
 
-If each patch must exceed a justified threshold to support the collective
-interaction mechanism, P2 gives the limited Type C result:
-
-```text
-max_j A_j <= A_c
-=> no patch expresses that mechanism.
-```
-
-This does not yet prove high-trait loss; the trait-mode lifting condition must
-also hold.
-
-### Genetic component
-
-The statement that associated diversity is not maintained is Type H until a
-multi-patch transmission model is specified. Fragmentation can reduce local
-`H_alpha` through stronger drift while increasing `F_ST`; pooled `H_gamma` can
-behave differently. The theory must never collapse these quantities into one
-word, 'diversity'.
-
-### Dynamic simulation contrast
-
-At fixed total area, compare at minimum:
+Dynamic comparisons keep total area fixed across:
 
 ```text
 one large patch
@@ -225,42 +168,39 @@ m equal isolated patches
 m equal patches with controlled migration.
 ```
 
-Report separately:
-
-```text
-interaction state q
-high-trait viable-set occupancy
-census N and effective reproductive size proxy
-H_alpha
-H_gamma
-F_ST
-trait-associated allele frequency distribution.
-```
+Each report retains q, N, N_e, potential viability, realised high-trait abundance,
+allele frequency, H_alpha, H_gamma, F_ST, and event times separately.
 
 ---
 
-## Simulation role and stop rules
+## Simulation closure and stop rules
 
-Dynamic simulation begins only after every update equation is specified. Each run
-must state whether it is testing a theorem assumption or a central hypothesis.
+The finite-bin experiment layer declares:
 
-Stop and report a counterexample when any of these occurs:
+```text
+n_{j,t+1}(z_k) ~ Multinomial(N_{j,t+1}, pi_{j,t}(z_k))
+```
+
+with optional allele-linked two-kernel recruitment and optional trait/allele
+feedback into q. This supports model-specific results only.
+
+Report counterexamples rather than discarding them when any occur:
 
 ```text
 positive feedback but no bistability in the tested range
 bistability without high-trait margin sign change
-trait-mode collapse without a genetic leading signal
-fragmentation lowers H_alpha but raises or preserves H_gamma
-interaction increase raises reproductive skew and lowers N_e.
+potential viability loss without realised occupancy loss
+realised trait collapse without a genetic lead
+fragmentation lowers H_alpha but preserves H_gamma
+interaction raises census N but lowers N_e through skew.
 ```
 
 These are scientific results, not failed simulations.
 
 ---
 
-## The current relation in one sentence
+## Current relation in one sentence
 
-PR #48 provides the **logical joints** of the program: it says exactly which
-additional model-specific facts are required to turn H_critical,
-H_genetic_lag, and H_fragmentation into theorems, and which facts must instead be
-examined by dynamic simulation.
+The theorem layer specifies what must be proved under explicit assumptions; the
+finite occupancy phase-diagram layer tests which of those assumptions and event
+orderings arise in the declared stochastic model.
