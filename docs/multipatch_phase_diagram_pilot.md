@@ -27,7 +27,7 @@ python examples/multipatch_phase_diagram_pilot.py
 
 ## Selected Landscape Contrasts
 
-| scenario | A_ref | kappa | theta | Pr(realised persists) | H_alpha mean | H_gamma mean | F_ST mean |
+| scenario | A_ref | interaction feedback | theta | Pr(realised persists) | H_alpha mean | H_gamma mean | F_ST mean |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | one_large | 0.8 | 3.0 | 0.55 | 1.000 | 0.178 | 0.178 | 0.000 |
 | equal_isolated | 0.8 | 3.0 | 0.55 | 0.750 | 0.057 | 0.076 | 0.157 |
@@ -44,7 +44,7 @@ python examples/multipatch_phase_diagram_pilot.py
 
 ## Severe Fragmented Cell
 
-For `equal_isolated`, `A_ref=1.2`, `kappa=4.5`, `theta=0.75`:
+For `equal_isolated`, `A_ref=1.2`, `interaction_feedback=4.5`, `theta=0.75`:
 
 - final realised high-trait persistence probability: 0.000
 - final potential high-trait viability probability: 0.000

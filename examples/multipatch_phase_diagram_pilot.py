@@ -87,7 +87,7 @@ def render_markdown(results: Sequence[CellResult]) -> str:
         "",
         "## Selected landscape contrasts",
         "",
-        "| scenario | A_ref | kappa | theta | Pr(realised persists) | H_alpha mean | H_gamma mean | F_ST mean |",
+        "| scenario | A_ref | interaction feedback | theta | Pr(realised persists) | H_alpha mean | H_gamma mean | F_ST mean |",
         "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in selected:
@@ -109,7 +109,7 @@ def render_markdown(results: Sequence[CellResult]) -> str:
             "",
             "## Severe fragmented cell",
             "",
-            "For `equal_isolated`, `A_ref=1.2`, `kappa=4.5`, `theta=0.75`:",
+            "For `equal_isolated`, `A_ref=1.2`, `interaction_feedback=4.5`, `theta=0.75`:",
             "",
             f"- final realised high-trait persistence probability: {_fmt(severe['probabilities.realised_high_trait_persistence_final'])}",
             f"- final potential high-trait viability probability: {_fmt(severe['probabilities.potential_high_trait_viability_final'])}",
