@@ -1,4 +1,5 @@
 from dataclasses import replace
+from pathlib import Path
 
 from causal_model.multipatch_criticality_dynamics import DynamicsParameters, simulate
 from causal_model.multipatch_criticality_experiments import (
@@ -18,6 +19,11 @@ from causal_model.multipatch_criticality_experiments import (
     summarise_replicate,
 )
 from examples.multipatch_phase_diagram_pilot import pilot_spec, render_markdown
+from examples.multipatch_h_alpha_lead_phase_boundary import (
+    LEAD_PROBABILITY_KEY,
+    heatmap_matrix,
+    render_markdown as render_h_alpha_boundary_markdown,
+)
 
 
 def _low_trait_distribution(size: int) -> tuple[float, ...]:
@@ -211,3 +217,45 @@ def test_pilot_report_keeps_math_layer_before_ecosystem_projection() -> None:
     assert "not an empirical ecosystem projection" in report
     assert "Omega_tau^potential != realised N_H > 0 != p > 0 != H_alpha > 0" in report
     assert "not to map them onto Campanula immediately" in report
+
+
+def test_h_alpha_phase_boundary_uses_simulation_feedback_label() -> None:
+    rows = (
+        _boundary_row("equal_isolated", 1.2, 4.5, 0.75, 1.0),
+        _boundary_row("one_large", 1.2, 4.5, 0.75, 0.0),
+    )
+    report = render_h_alpha_boundary_markdown(rows, Path("docs/figures/h_alpha_lead_phase_boundary.svg"))
+
+    assert "interaction_feedback" in report
+    assert "not the canonical logistic theorem parameter `kappa`" in report
+    assert "Campanula mapping is deliberately deferred" in report
+
+
+def test_h_alpha_phase_boundary_matrix_reads_lead_probability() -> None:
+    rows = (
+        _boundary_row("equal_isolated", 0.8, 3.0, 0.35, 0.25),
+        _boundary_row("equal_isolated", 0.8, 3.0, 0.75, 0.50),
+        _boundary_row("equal_isolated", 1.2, 3.0, 0.35, 0.75),
+        _boundary_row("equal_isolated", 1.2, 3.0, 0.75, 1.00),
+    )
+    area_values, theta_values, matrix = heatmap_matrix(rows, scenario_id="equal_isolated", interaction_feedback=3.0)
+
+    assert area_values == (0.8, 1.2)
+    assert theta_values == (0.35, 0.75)
+    assert matrix == [[0.25, 0.5], [0.75, 1.0]]
+
+
+def _boundary_row(
+    scenario_id: str,
+    area_reference: float,
+    interaction_feedback: float,
+    theta: float,
+    h_alpha_lead_probability: float,
+) -> dict[str, object]:
+    return {
+        "scenario_id": scenario_id,
+        "area_reference": area_reference,
+        "interaction_feedback": interaction_feedback,
+        "interaction_barrier": theta,
+        LEAD_PROBABILITY_KEY: h_alpha_lead_probability,
+    }

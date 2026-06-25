@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="514" height="625" viewBox="0 0 514 625">
+<style>text{font-family:Arial,sans-serif;font-size:12px}.small{font-size:10px}.title{font-size:14px;font-weight:bold}</style>
+<rect width="100%" height="100%" fill="white"/>
+<text x="18" y="26" class="title">Pr(tau_H_alpha &lt; tau_trait_realised) phase boundary</text>
+<text x="90" y="44" class="small">interaction_feedback=3.0</text>
+<text x="14" y="117.0" class="small">one_large</text>
+<text x="14" y="133.0" class="small">A_ref</text>
+<rect x="90" y="146" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="111.0" y="171.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="132" y="146" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="153.0" y="171.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="174" y="146" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="195.0" y="171.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="90" y="104" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="111.0" y="129.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="132" y="104" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="153.0" y="129.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="174" y="104" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="195.0" y="129.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="90" y="62" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="111.0" y="87.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="132" y="62" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="153.0" y="87.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="174" y="62" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="195.0" y="87.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<text x="111.0" y="204" text-anchor="middle" class="small">0.35</text>
+<text x="153.0" y="204" text-anchor="middle" class="small">0.55</text>
+<text x="195.0" y="204" text-anchor="middle" class="small">0.75</text>
+<text x="82" y="171.0" text-anchor="end" class="small">0.8</text>
+<text x="82" y="129.0" text-anchor="end" class="small">1.0</text>
+<text x="82" y="87.0" text-anchor="end" class="small">1.2</text>
+<text x="278" y="44" class="small">interaction_feedback=4.5</text>
+<rect x="278" y="146" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="299.0" y="171.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="320" y="146" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="341.0" y="171.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="362" y="146" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="383.0" y="171.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="278" y="104" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="299.0" y="129.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="320" y="104" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="341.0" y="129.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="362" y="104" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="383.0" y="129.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="278" y="62" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="299.0" y="87.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="320" y="62" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="341.0" y="87.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="362" y="62" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="383.0" y="87.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<text x="299.0" y="204" text-anchor="middle" class="small">0.35</text>
+<text x="341.0" y="204" text-anchor="middle" class="small">0.55</text>
+<text x="383.0" y="204" text-anchor="middle" class="small">0.75</text>
+<text x="270" y="171.0" text-anchor="end" class="small">0.8</text>
+<text x="270" y="129.0" text-anchor="end" class="small">1.0</text>
+<text x="270" y="87.0" text-anchor="end" class="small">1.2</text>
+<text x="90" y="240" class="small">interaction_feedback=3.0</text>
+<text x="14" y="313.0" class="small">equal_isolated</text>
+<text x="14" y="329.0" class="small">A_ref</text>
+<rect x="90" y="342" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="111.0" y="367.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="132" y="342" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="153.0" y="367.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="174" y="342" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="195.0" y="367.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="90" y="300" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="111.0" y="325.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="132" y="300" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="153.0" y="325.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="174" y="300" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="195.0" y="325.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="90" y="258" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="111.0" y="283.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="132" y="258" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="153.0" y="283.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="174" y="258" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="195.0" y="283.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<text x="111.0" y="400" text-anchor="middle" class="small">0.35</text>
+<text x="153.0" y="400" text-anchor="middle" class="small">0.55</text>
+<text x="195.0" y="400" text-anchor="middle" class="small">0.75</text>
+<text x="82" y="367.0" text-anchor="end" class="small">0.8</text>
+<text x="82" y="325.0" text-anchor="end" class="small">1.0</text>
+<text x="82" y="283.0" text-anchor="end" class="small">1.2</text>
+<text x="278" y="240" class="small">interaction_feedback=4.5</text>
+<rect x="278" y="342" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="299.0" y="367.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="320" y="342" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="341.0" y="367.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="362" y="342" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="383.0" y="367.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="278" y="300" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="299.0" y="325.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="320" y="300" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="341.0" y="325.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="362" y="300" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="383.0" y="325.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="278" y="258" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="299.0" y="283.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="320" y="258" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="341.0" y="283.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="362" y="258" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="383.0" y="283.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<text x="299.0" y="400" text-anchor="middle" class="small">0.35</text>
+<text x="341.0" y="400" text-anchor="middle" class="small">0.55</text>
+<text x="383.0" y="400" text-anchor="middle" class="small">0.75</text>
+<text x="270" y="367.0" text-anchor="end" class="small">0.8</text>
+<text x="270" y="325.0" text-anchor="end" class="small">1.0</text>
+<text x="270" y="283.0" text-anchor="end" class="small">1.2</text>
+<text x="90" y="436" class="small">interaction_feedback=3.0</text>
+<text x="14" y="509.0" class="small">equal_migrating</text>
+<text x="14" y="525.0" class="small">A_ref</text>
+<rect x="90" y="538" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="111.0" y="563.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="132" y="538" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="153.0" y="563.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="174" y="538" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="195.0" y="563.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="90" y="496" width="42" height="42" fill="#440154" stroke="#ffffff"/>
+<text x="111.0" y="521.0" text-anchor="middle" fill="black" class="small">0.00</text>
+<rect x="132" y="496" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="153.0" y="521.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="174" y="496" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="195.0" y="521.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="90" y="454" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="111.0" y="479.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="132" y="454" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="153.0" y="479.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="174" y="454" width="42" height="42" fill="#a2d648" stroke="#ffffff"/>
+<text x="195.0" y="479.0" text-anchor="middle" fill="white" class="small">0.86</text>
+<text x="111.0" y="596" text-anchor="middle" class="small">0.35</text>
+<text x="153.0" y="596" text-anchor="middle" class="small">0.55</text>
+<text x="195.0" y="596" text-anchor="middle" class="small">0.75</text>
+<text x="82" y="563.0" text-anchor="end" class="small">0.8</text>
+<text x="82" y="521.0" text-anchor="end" class="small">1.0</text>
+<text x="82" y="479.0" text-anchor="end" class="small">1.2</text>
+<text x="153.0" y="614" text-anchor="middle" class="small">theta</text>
+<text x="278" y="436" class="small">interaction_feedback=4.5</text>
+<rect x="278" y="538" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="299.0" y="563.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="320" y="538" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="341.0" y="563.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="362" y="538" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="383.0" y="563.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="278" y="496" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="299.0" y="521.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="320" y="496" width="42" height="42" fill="#aed844" stroke="#ffffff"/>
+<text x="341.0" y="521.0" text-anchor="middle" fill="white" class="small">0.88</text>
+<rect x="362" y="496" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="383.0" y="521.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="278" y="454" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="299.0" y="479.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="320" y="454" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="341.0" y="479.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<rect x="362" y="454" width="42" height="42" fill="#fde725" stroke="#ffffff"/>
+<text x="383.0" y="479.0" text-anchor="middle" fill="white" class="small">1.00</text>
+<text x="299.0" y="596" text-anchor="middle" class="small">0.35</text>
+<text x="341.0" y="596" text-anchor="middle" class="small">0.55</text>
+<text x="383.0" y="596" text-anchor="middle" class="small">0.75</text>
+<text x="270" y="563.0" text-anchor="end" class="small">0.8</text>
+<text x="270" y="521.0" text-anchor="end" class="small">1.0</text>
+<text x="270" y="479.0" text-anchor="end" class="small">1.2</text>
+<text x="341.0" y="614" text-anchor="middle" class="small">theta</text>
+<text x="432" y="44" class="small">lead probability</text>
+<rect x="432" y="202" width="20" height="14" fill="#440154"/>
+<text x="460" y="213" class="small">0.0</text>
+<rect x="432" y="188" width="20" height="14" fill="#40216a"/>
+<rect x="432" y="174" width="20" height="14" fill="#3d4280"/>
+<rect x="432" y="160" width="20" height="14" fill="#365f8b"/>
+<rect x="432" y="146" width="20" height="14" fill="#2b788c"/>
+<rect x="432" y="132" width="20" height="14" fill="#21918c"/>
+<text x="460" y="143" class="small">0.5</text>
+<rect x="432" y="118" width="20" height="14" fill="#39a77b"/>
+<rect x="432" y="104" width="20" height="14" fill="#52be6a"/>
+<rect x="432" y="90" width="20" height="14" fill="#7ecf56"/>
+<rect x="432" y="76" width="20" height="14" fill="#bddb3d"/>
+<rect x="432" y="62" width="20" height="14" fill="#fde725"/>
+<text x="460" y="73" class="small">1.0</text>
+</svg>
