@@ -2,9 +2,8 @@
 
 ## Purpose
 
-This is the next theorem layer after the channel-identifiability results. It does
-not yet include alleles, drift, or a full metapopulation. Its question is more
-specific:
+This is the deterministic interaction-feedback layer of the eco-genetic theorem
+sequence. It asks a specific question:
 
 > When individuals collectively sustain an interaction environment, can patch
 > size create a sharp threshold between low- and high-interaction trait regimes?
@@ -15,7 +14,8 @@ structure has an exact patch-size boundary for the *possibility* of bistability,
 hysteresis, and discontinuous trait-mode loss.
 
 The executable implementation is
-`causal_model.patch_interaction_bifurcation_theory`.
+`causal_model.patch_interaction_bifurcation_theory`. The finite-population genetic
+extension is in `docs/patch_genetic_drift_theorem.md`.
 
 ---
 
@@ -304,23 +304,17 @@ post-hoc claim that every trait change is caused by patch size.
 
 ---
 
-## 7. Scope and next theorem
+## 7. Scope and genetic extension
 
 - `q` is a mean-field patch interaction state, not a directly observed pollinator
   count or mating probability.
 - The model requires positive feedback of the stated logistic form.
 - P4 concerns capacity for hysteresis, not guaranteed high-trait persistence.
-- No allele frequencies, mutation, migration, drift, or genetic diversity occur
-  yet.
+- P1--P4 contain no allele frequencies by themselves.
 
-The next mathematical extension should add allele dynamics only after this phase
-diagram is understood. The useful question will be whether genetic erosion has a
-separate threshold from trait-mode collapse, for example whether
-
-```text
-A_genetic > A_trait
-```
-
-can occur under drift, migration, and interaction feedback. That must be proved
-in a distinct stochastic or deterministic population-genetic model; it should not
-be asserted from P1--P4 alone.
+The next layer is now implemented rather than merely proposed:
+`docs/patch_genetic_drift_theorem.md` adds finite reproduction, expected
+heterozygosity loss, interaction-branch-dependent drift erosion, and the exact
+within-patch drift cost of equal isolated partition. It still does **not** prove a
+separate genetic recovery threshold; that requires mutation, migration, and
+trait-dependent selection in a multi-patch model.
