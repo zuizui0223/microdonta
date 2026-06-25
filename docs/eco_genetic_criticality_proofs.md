@@ -259,6 +259,67 @@ ceil[log(h_warn/h_0)/log(lambda_bar)] < T.
 
 This is sufficient, not necessary.
 
+## Theorem L3 - decay plus persistence sufficient condition
+
+L2 assumes that the realised trait-collapse time `T` is already known. To turn
+H_genetic_lag into a model theorem, `T` must itself be bounded from the trait
+dynamics.
+
+Assume two independently proved bounds over the same time axis:
+
+```text
+h_t <= h_0 lambda_bar^t,        0 < lambda_bar < 1,
+N_H,t >= L_t > 0                for every t<T.
+```
+
+The first is a genetic-erosion upper bound. The second is a realised high-trait
+persistence lower bound. The second condition implies
+
+```text
+tau_trait_realised >= T.
+```
+
+Let
+
+```text
+t_warn^* = ceil[log(h_warn/h_0)/log(lambda_bar)].
+```
+
+If
+
+```text
+t_warn^* < T,
+```
+
+then
+
+```text
+tau_H <= t_warn^* < T <= tau_trait_realised,
+```
+
+and therefore
+
+```text
+tau_H < tau_trait_realised.
+```
+
+### Meaning
+
+This is the missing bridge between the phase-boundary witness and a theorem. A
+simulation cell with many leads suggests where such a bridge might hold, but it
+does not supply the bridge. A proof must separately establish:
+
+```text
+genetic decay bound
+trait persistence bound
+```
+
+for the same closure and parameter region.
+
+The implementation in `causal_model.eco_genetic_lag_theory` exposes this as a
+certificate, not as an inference engine. It checks the logical implication once
+the two bounds have been supplied.
+
 ---
 
 # IV. What remains for the full three-hypothesis dynamic model

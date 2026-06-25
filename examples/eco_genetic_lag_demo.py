@@ -8,7 +8,11 @@ from __future__ import annotations
 from dataclasses import asdict
 import json
 
-from causal_model.eco_genetic_lag_theory import assess_genetic_lag, uniform_upper_multiplier_bound
+from causal_model.eco_genetic_lag_theory import (
+    assess_genetic_lag,
+    conditional_lead_certificate,
+    uniform_upper_multiplier_bound,
+)
 
 
 def main() -> None:
@@ -24,6 +28,9 @@ def main() -> None:
         ),
         "uniform_sufficient_bound": asdict(
             uniform_upper_multiplier_bound(initial, warning, 0.7, collapse_time)
+        ),
+        "decay_plus_persistence_certificate": asdict(
+            conditional_lead_certificate(initial, warning, 0.7, (4.0, 3.0, 2.0, 1.0, 0.5))
         ),
     }
     print(json.dumps(payload, indent=2))

@@ -2,6 +2,8 @@ import pytest
 
 from causal_model.eco_genetic_lag_theory import (
     assess_genetic_lag,
+    certify_trait_persistence_bound,
+    conditional_lead_certificate,
     cumulative_multiplier,
     diversity_trajectory,
     exact_lead_condition,
@@ -78,6 +80,39 @@ def test_uniform_bound_gives_sufficient_not_necessary_lead_certificate():
     assert not no_guarantee.lead_guaranteed
 
 
+def test_trait_persistence_bound_returns_first_possible_loss_time():
+    bound = certify_trait_persistence_bound((5.0, 3.0, 0.1, 0.0, 0.0))
+
+    assert bound.certified_trait_loss_lower_bound == 3
+    assert bound.extinction_threshold == 0.0
+
+
+def test_conditional_lead_certificate_combines_decay_and_persistence_bounds():
+    certificate = conditional_lead_certificate(
+        initial_diversity=0.8,
+        warning_threshold=0.5,
+        multiplier_upper_bound=0.7,
+        trait_lower_bounds=(4.0, 3.0, 2.0, 1.0, 0.5),
+    )
+
+    assert certificate.diversity_bound.latest_guaranteed_warning_time == 2
+    assert certificate.trait_persistence_bound.certified_trait_loss_lower_bound == 5
+    assert certificate.lead_guaranteed
+
+
+def test_conditional_lead_certificate_is_not_triggered_without_trait_margin():
+    certificate = conditional_lead_certificate(
+        initial_diversity=0.8,
+        warning_threshold=0.5,
+        multiplier_upper_bound=0.7,
+        trait_lower_bounds=(4.0, 1.0, 0.0, 0.0),
+    )
+
+    assert certificate.diversity_bound.latest_guaranteed_warning_time == 2
+    assert certificate.trait_persistence_bound.certified_trait_loss_lower_bound == 2
+    assert not certificate.lead_guaranteed
+
+
 def test_first_warning_time_and_inputs():
     assert first_warning_time((0.8, 0.6, 0.5, 0.4), 0.5) == 2
     assert diversity_trajectory(0.6, (0.9, 0.9)) == pytest.approx((0.6, 0.54, 0.486))
@@ -85,3 +120,5 @@ def test_first_warning_time_and_inputs():
         assess_genetic_lag(0.8, 0.5, (0.9,), trait_collapse_time=2)
     with pytest.raises(ValueError):
         uniform_upper_multiplier_bound(0.8, 0.5, 1.0, 3)
+    with pytest.raises(ValueError):
+        certify_trait_persistence_bound(())

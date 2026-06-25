@@ -59,6 +59,29 @@ class UniformLagBound:
     lead_guaranteed: bool
 
 
+@dataclass(frozen=True)
+class TraitPersistenceBound:
+    """A lower-bound certificate for realised high-trait persistence.
+
+    ``certified_trait_loss_lower_bound=T`` means the realised high-trait quantity
+    is certified above the extinction threshold for every ``t<T``. Therefore the
+    first possible realised trait-loss time is at least ``T``.
+    """
+
+    trait_lower_bounds: tuple[float, ...]
+    extinction_threshold: float
+    certified_trait_loss_lower_bound: int
+
+
+@dataclass(frozen=True)
+class ConditionalLeadCertificate:
+    """A sufficient-condition certificate for genetic warning before trait loss."""
+
+    diversity_bound: UniformLagBound
+    trait_persistence_bound: TraitPersistenceBound
+    lead_guaranteed: bool
+
+
 def _validate_diversity(value: float, name: str) -> None:
     if not 0.0 < value <= 1.0:
         raise ValueError(f"{name} must lie in (0, 1]")
@@ -182,4 +205,63 @@ def uniform_upper_multiplier_bound(
         trait_collapse_time=trait_collapse_time,
         latest_guaranteed_warning_time=time,
         lead_guaranteed=time < trait_collapse_time,
+    )
+
+
+def certify_trait_persistence_bound(
+    trait_lower_bounds: Sequence[float],
+    extinction_threshold: float = 0.0,
+) -> TraitPersistenceBound:
+    """Convert realised high-trait lower bounds into a trait-loss time bound.
+
+    The inputs are deterministic lower bounds on a non-negative realised
+    high-trait quantity, indexed by time. If the bounds are positive above the
+    declared extinction threshold through times ``0,...,T-1``, then
+    ``tau_trait_realised >= T``. The function returns the largest such prefix
+    length. It deliberately does not infer the lower bounds from a simulator.
+    """
+    if extinction_threshold < 0.0:
+        raise ValueError("extinction_threshold must be non-negative")
+    observed = tuple(float(value) for value in trait_lower_bounds)
+    if not observed:
+        raise ValueError("trait_lower_bounds must be nonempty")
+    certified_until = 0
+    for value in observed:
+        if value < 0.0:
+            raise ValueError("trait lower bounds must be non-negative")
+        if value <= extinction_threshold:
+            break
+        certified_until += 1
+    return TraitPersistenceBound(
+        trait_lower_bounds=observed,
+        extinction_threshold=float(extinction_threshold),
+        certified_trait_loss_lower_bound=certified_until,
+    )
+
+
+def conditional_lead_certificate(
+    initial_diversity: float,
+    warning_threshold: float,
+    multiplier_upper_bound: float,
+    trait_lower_bounds: Sequence[float],
+    extinction_threshold: float = 0.0,
+) -> ConditionalLeadCertificate:
+    """Combine genetic decay and trait-persistence bounds into a lead theorem.
+
+    If ``h_t <= h_0 lambda_bar^t`` with ``lambda_bar<1`` and the realised
+    high-trait lower bounds certify ``tau_trait_realised >= T``, then
+    ``tau_H < tau_trait_realised`` is guaranteed whenever the L2 warning-time
+    upper bound is strictly smaller than ``T``.
+    """
+    persistence = certify_trait_persistence_bound(trait_lower_bounds, extinction_threshold)
+    diversity = uniform_upper_multiplier_bound(
+        initial_diversity=initial_diversity,
+        warning_threshold=warning_threshold,
+        multiplier_upper_bound=multiplier_upper_bound,
+        trait_collapse_time=persistence.certified_trait_loss_lower_bound,
+    )
+    return ConditionalLeadCertificate(
+        diversity_bound=diversity,
+        trait_persistence_bound=persistence,
+        lead_guaranteed=diversity.lead_guaranteed,
     )
