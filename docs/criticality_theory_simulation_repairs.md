@@ -33,22 +33,35 @@ high-interaction route; trait-mode loss is conditional on the subcritical margin
 
 ## R2. Potential viability is not realised occupancy
 
-`Omega_tau(q)` is a potential viable trait set. The current simulator records
-potential high-trait component presence and component count. It does not track a
-resident trait distribution `mu_t(z)` or trait-bin abundances. Therefore current
-simulation claims must use:
+`Omega_tau(q)` is a potential viable trait set. The simulator records potential
+high-trait component presence and component count. It also now tracks a realised
+resident trait distribution `mu_t(z)` under the explicitly named simulation
+closure `viability_selection_local_recruitment`.
+
+Therefore reports must separate:
 
 ```text
 potential high-trait viability loss
+realised high-trait occupancy loss
+genetic persistence / diversity thresholds
 ```
 
-not:
+and must not collapse these into:
 
 ```text
-realised high-trait population extinction.
+population extinction
+theorem-level trait loss
+genetic warning proof
 ```
 
-A later trait-distribution state is required for the latter.
+The realised occupancy update is a model assumption:
+
+```text
+mu_j,t+1(z_k) proportional to mu_j,t(z_k) * max(epsilon, W(z_k;q_j,t)).
+```
+
+There is no hidden claim that high-allele frequency `p_j,t` uniquely determines
+trait value `z`.
 
 ## R3. Expected theorem paths versus realised stochastic paths
 
