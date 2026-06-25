@@ -19,6 +19,10 @@ what can be identified from a performance map. The present principles are a
 dynamics layer: they determine what follows from finite transmission and
 collective interaction feedback.
 
+The relationship to the three central dynamic hypotheses
+`H_critical`, `H_genetic_lag`, and `H_fragmentation` is specified in
+`docs/eco_genetic_hypothesis_program.md`.
+
 ---
 
 ## 1. States and ordering
