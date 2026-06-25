@@ -33,7 +33,8 @@ general theorem layer
 
 The standard/full phase-diagram profiles use a declared finite-bin,
 two-kernel, coupled-feedback closure. They are Type S experiments and never
-retroactively strengthen earlier theorem claims.
+retroactively strengthen earlier theorem claims. A model-specific phase diagram
+is not a theorem.
 
 ---
 
