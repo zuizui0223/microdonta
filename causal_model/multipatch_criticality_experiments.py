@@ -1,27 +1,29 @@
 """Reproducible phase-diagram experiments for realised occupancy hypotheses.
 
-This module is a simulation/reporting layer. It does not alter the theorem layer,
-and it does not reinterpret potential viability, realised trait
-occupancy, or genetic persistence as interchangeable events.
+This is a simulation/reporting layer. It does not alter the theorem layer, and it
+keeps potential viability, realised occupancy, allele persistence, and diversity
+statistics distinct.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from itertools import product
 from statistics import median
 from typing import Iterable, Mapping, Sequence
 
 from causal_model.multipatch_criticality_dynamics import (
     DynamicsParameters,
+    FirstPassageEvent,
     SimulationResult,
+    first_passage_events,
     simulate,
     tau_FST,
     tau_H_alpha,
     tau_H_gamma,
+    tau_allele_loss,
     tau_trait_potential,
     tau_trait_realised,
 )
-
 
 SCENARIO_ONE_LARGE = "one_large"
 SCENARIO_EQUAL_ISOLATED = "equal_isolated"
@@ -33,7 +35,7 @@ PROFILE_FULL = "full"
 
 @dataclass(frozen=True)
 class ExperimentSpec:
-    """Immutable specification for model-specific stochastic experiments."""
+    """Immutable specification for declared stochastic experiments."""
 
     experiment_id: str = "realised_occupancy_phase_diagram"
     profile: str = PROFILE_QUICK
@@ -49,59 +51,42 @@ class ExperimentSpec:
     h_alpha_warning_threshold: float = 0.2
     h_gamma_warning_threshold: float = 0.2
     fst_warning_threshold: float = 0.2
+    allele_loss_threshold: float = 0.0
     base_parameters: DynamicsParameters = DynamicsParameters(patch_areas=(1.0,))
 
     def __post_init__(self) -> None:
         if self.profile not in {PROFILE_QUICK, PROFILE_STANDARD, PROFILE_FULL}:
             raise ValueError("unknown experiment profile")
-        if self.total_area <= 0.0:
-            raise ValueError("total_area must be positive")
-        if self.patch_count < 1:
-            raise ValueError("patch_count must be at least one")
-        if self.generations < 1:
-            raise ValueError("generations must be positive")
-        if self.replicates < 1:
-            raise ValueError("replicates must be at least one")
-        if not 0.0 <= self.migration_rate <= 1.0:
-            raise ValueError("migration_rate must lie in [0, 1]")
-        for values, label in (
-            (self.area_reference_values, "area_reference_values"),
-            (self.interaction_feedback_values, "interaction_feedback_values"),
-            (self.interaction_barrier_values, "interaction_barrier_values"),
-        ):
-            if not values:
-                raise ValueError(f"{label} must be nonempty")
-        for threshold, label in (
+        if self.total_area <= 0.0 or self.patch_count < 1:
+            raise ValueError("total_area must be positive and patch_count at least one")
+        if self.generations < 1 or self.replicates < 1:
+            raise ValueError("generations and replicates must be positive")
+        for value, label in (
+            (self.migration_rate, "migration_rate"),
             (self.h_alpha_warning_threshold, "h_alpha_warning_threshold"),
             (self.h_gamma_warning_threshold, "h_gamma_warning_threshold"),
             (self.fst_warning_threshold, "fst_warning_threshold"),
+            (self.allele_loss_threshold, "allele_loss_threshold"),
         ):
-            if not 0.0 <= threshold <= 1.0:
+            if not 0.0 <= value <= 1.0:
                 raise ValueError(f"{label} must lie in [0, 1]")
+        if not all((self.area_reference_values, self.interaction_feedback_values, self.interaction_barrier_values)):
+            raise ValueError("parameter-grid values must be nonempty")
 
 
 @dataclass(frozen=True)
 class ParameterCell:
-    """One grid cell shared across landscape scenarios."""
-
     cell_index: int
     area_reference: float
     interaction_feedback: float
     interaction_barrier: float
 
     def as_dict(self) -> dict[str, float | int]:
-        return {
-            "cell_index": self.cell_index,
-            "area_reference": self.area_reference,
-            "interaction_feedback": self.interaction_feedback,
-            "interaction_barrier": self.interaction_barrier,
-        }
+        return asdict(self)
 
 
 @dataclass(frozen=True)
 class LandscapeScenario:
-    """A named habitat layout and migration closure."""
-
     scenario_id: str
     patch_areas: tuple[float, ...]
     migration_rate: float
@@ -113,7 +98,7 @@ class LandscapeScenario:
 
 @dataclass(frozen=True)
 class ReplicateSummary:
-    """JSON-serialisable replicate summary with explicit censoring."""
+    """One replicate with raw first-passage times and explicit event metadata."""
 
     replicate_index: int
     seed: int
@@ -121,19 +106,23 @@ class ReplicateSummary:
     final_population_by_patch: tuple[int, ...]
     final_effective_size_by_patch: tuple[float, ...]
     final_p_by_patch: tuple[float, ...]
+    final_high_trait_abundance_by_patch: tuple[int, ...]
     h_alpha: float
     h_gamma: float
     fst: float | None
     realised_high_trait_patch_fraction: float
     realised_high_trait_mass_mean: float
+    realised_high_trait_abundance_mean: float
     potential_high_trait_patch_fraction: float
     potential_high_trait_viable: bool
     realised_high_trait_persists: bool
     tau_trait_potential: int | None
     tau_trait_realised: int | None
+    tau_allele_loss: int | None
     tau_H_alpha: int | None
     tau_H_gamma: int | None
     tau_FST: int | None
+    events: tuple[FirstPassageEvent, ...]
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -143,26 +132,28 @@ class ReplicateSummary:
             "final_population_by_patch": list(self.final_population_by_patch),
             "final_effective_size_by_patch": list(self.final_effective_size_by_patch),
             "final_p_by_patch": list(self.final_p_by_patch),
+            "final_high_trait_abundance_by_patch": list(self.final_high_trait_abundance_by_patch),
             "h_alpha": self.h_alpha,
             "h_gamma": self.h_gamma,
             "fst": self.fst,
             "realised_high_trait_patch_fraction": self.realised_high_trait_patch_fraction,
             "realised_high_trait_mass_mean": self.realised_high_trait_mass_mean,
+            "realised_high_trait_abundance_mean": self.realised_high_trait_abundance_mean,
             "potential_high_trait_patch_fraction": self.potential_high_trait_patch_fraction,
             "potential_high_trait_viable": self.potential_high_trait_viable,
             "realised_high_trait_persists": self.realised_high_trait_persists,
             "tau_trait_potential": self.tau_trait_potential,
             "tau_trait_realised": self.tau_trait_realised,
+            "tau_allele_loss": self.tau_allele_loss,
             "tau_H_alpha": self.tau_H_alpha,
             "tau_H_gamma": self.tau_H_gamma,
             "tau_FST": self.tau_FST,
+            "events": [asdict(event) for event in self.events],
         }
 
 
 @dataclass(frozen=True)
 class CellResult:
-    """Aggregated result for one scenario and one parameter-grid cell."""
-
     experiment_id: str
     profile: str
     scenario_id: str
@@ -193,8 +184,22 @@ class CellResult:
         return row
 
 
+def _finite_base_parameters(grid_size: int = 31) -> DynamicsParameters:
+    """Declared finite-bin, two-kernel, coupled-feedback experiment closure."""
+    return replace(
+        DynamicsParameters(patch_areas=(1.0,)),
+        trait_grid_size=grid_size,
+        trait_occupancy_mode="finite_trait_bin_recruitment",
+        genotype_trait_recruitment="two_kernel_recruitment",
+        inheritance_weight=0.5,
+        q_feedback_alpha=0.6,
+        q_feedback_beta_trait=0.3,
+        q_feedback_gamma_allele=0.1,
+    )
+
+
 def quick_profile() -> ExperimentSpec:
-    """Return a tiny profile intended for tests and examples."""
+    """Tiny legacy/deterministic profile for tests and examples only."""
     return ExperimentSpec(
         profile=PROFILE_QUICK,
         generations=8,
@@ -207,7 +212,7 @@ def quick_profile() -> ExperimentSpec:
 
 
 def standard_profile() -> ExperimentSpec:
-    """Return a moderate local-run profile."""
+    """Moderate finite-bin profile for interpretable local phase diagrams."""
     return ExperimentSpec(
         profile=PROFILE_STANDARD,
         generations=30,
@@ -215,11 +220,12 @@ def standard_profile() -> ExperimentSpec:
         area_reference_values=(0.8, 1.0, 1.2),
         interaction_feedback_values=(3.0, 4.5, 6.0),
         interaction_barrier_values=(0.35, 0.5, 0.65),
+        base_parameters=_finite_base_parameters(),
     )
 
 
 def full_profile() -> ExperimentSpec:
-    """Return an opt-in profile; normal tests should never execute it."""
+    """Opt-in finite-bin profile; never execute during normal tests."""
     return ExperimentSpec(
         profile=PROFILE_FULL,
         generations=80,
@@ -227,63 +233,41 @@ def full_profile() -> ExperimentSpec:
         area_reference_values=(0.6, 0.8, 1.0, 1.2, 1.4),
         interaction_feedback_values=(2.5, 3.5, 4.5, 5.5, 6.5),
         interaction_barrier_values=(0.3, 0.4, 0.5, 0.6, 0.7),
+        base_parameters=_finite_base_parameters(grid_size=41),
     )
 
 
 def scenario_one_large(spec: ExperimentSpec) -> LandscapeScenario:
-    return LandscapeScenario(SCENARIO_ONE_LARGE, (spec.total_area,), migration_rate=0.0)
+    return LandscapeScenario(SCENARIO_ONE_LARGE, (spec.total_area,), 0.0)
 
 
 def scenario_equal_isolated(spec: ExperimentSpec) -> LandscapeScenario:
     area = spec.total_area / spec.patch_count
-    return LandscapeScenario(SCENARIO_EQUAL_ISOLATED, tuple(area for _ in range(spec.patch_count)), migration_rate=0.0)
+    return LandscapeScenario(SCENARIO_EQUAL_ISOLATED, tuple(area for _ in range(spec.patch_count)), 0.0)
 
 
 def scenario_equal_migrating(spec: ExperimentSpec) -> LandscapeScenario:
-    area = spec.total_area / spec.patch_count
-    return LandscapeScenario(
-        SCENARIO_EQUAL_MIGRATING,
-        scenario_equal_isolated(spec).patch_areas,
-        migration_rate=spec.migration_rate,
-    )
+    return LandscapeScenario(SCENARIO_EQUAL_MIGRATING, scenario_equal_isolated(spec).patch_areas, spec.migration_rate)
 
 
 def default_scenarios(spec: ExperimentSpec) -> tuple[LandscapeScenario, ...]:
-    return (
-        scenario_one_large(spec),
-        scenario_equal_isolated(spec),
-        scenario_equal_migrating(spec),
-    )
+    return (scenario_one_large(spec), scenario_equal_isolated(spec), scenario_equal_migrating(spec))
 
 
 def parameter_grid(spec: ExperimentSpec) -> tuple[ParameterCell, ...]:
-    cells: list[ParameterCell] = []
-    for index, values in enumerate(
-        product(
-            spec.area_reference_values,
-            spec.interaction_feedback_values,
-            spec.interaction_barrier_values,
-        )
-    ):
-        area_reference, interaction_feedback, interaction_barrier = values
-        cells.append(ParameterCell(index, area_reference, interaction_feedback, interaction_barrier))
-    return tuple(cells)
+    return tuple(
+        ParameterCell(index, *values)
+        for index, values in enumerate(product(spec.area_reference_values, spec.interaction_feedback_values, spec.interaction_barrier_values))
+    )
 
 
 def derived_seed(master_seed: int, cell_index: int, replicate_index: int) -> int:
-    """Stable per-cell/per-replicate seed shared across comparable scenarios."""
     if cell_index < 0 or replicate_index < 0:
         raise ValueError("cell_index and replicate_index must be nonnegative")
     return (master_seed * 1_000_003 + cell_index * 10_007 + replicate_index * 101 + 17) % (2**31 - 1)
 
 
-def parameters_for_cell(
-    spec: ExperimentSpec,
-    scenario: LandscapeScenario,
-    cell: ParameterCell,
-    *,
-    seed: int,
-) -> DynamicsParameters:
+def parameters_for_cell(spec: ExperimentSpec, scenario: LandscapeScenario, cell: ParameterCell, *, seed: int) -> DynamicsParameters:
     return replace(
         spec.base_parameters,
         patch_areas=scenario.patch_areas,
@@ -296,39 +280,21 @@ def parameters_for_cell(
     )
 
 
-def run_parameter_grid(
-    spec: ExperimentSpec,
-    scenarios: Sequence[LandscapeScenario] | None = None,
-) -> tuple[CellResult, ...]:
-    """Run the requested profile; no full run is triggered unless called."""
-    selected_scenarios = tuple(scenarios) if scenarios is not None else default_scenarios(spec)
-    results: list[CellResult] = []
-    for scenario in selected_scenarios:
+def run_parameter_grid(spec: ExperimentSpec, scenarios: Sequence[LandscapeScenario] | None = None) -> tuple[CellResult, ...]:
+    selected = tuple(scenarios) if scenarios is not None else default_scenarios(spec)
+    output: list[CellResult] = []
+    for scenario in selected:
         for cell in parameter_grid(spec):
-            replicates = tuple(_run_replicate(spec, scenario, cell, index) for index in range(spec.replicates))
-            results.append(
-                CellResult(
-                    experiment_id=spec.experiment_id,
-                    profile=spec.profile,
-                    scenario_id=scenario.scenario_id,
-                    parameters=cell,
-                    replicates=replicates,
-                    summary=_aggregate_replicates(replicates),
-                )
-            )
-    return tuple(results)
+            reps = tuple(_run_replicate(spec, scenario, cell, index) for index in range(spec.replicates))
+            output.append(CellResult(spec.experiment_id, spec.profile, scenario.scenario_id, cell, reps, _aggregate_replicates(reps)))
+    return tuple(output)
 
 
 def results_to_csv_rows(results: Iterable[CellResult]) -> tuple[dict[str, object], ...]:
     return tuple(result.to_csv_row() for result in results)
 
 
-def _run_replicate(
-    spec: ExperimentSpec,
-    scenario: LandscapeScenario,
-    cell: ParameterCell,
-    replicate_index: int,
-) -> ReplicateSummary:
+def _run_replicate(spec: ExperimentSpec, scenario: LandscapeScenario, cell: ParameterCell, replicate_index: int) -> ReplicateSummary:
     seed = derived_seed(spec.master_seed, cell.cell_index, replicate_index)
     result = simulate(parameters_for_cell(spec, scenario, cell, seed=seed))
     return summarise_replicate(
@@ -338,6 +304,7 @@ def _run_replicate(
         h_alpha_warning_threshold=spec.h_alpha_warning_threshold,
         h_gamma_warning_threshold=spec.h_gamma_warning_threshold,
         fst_warning_threshold=spec.fst_warning_threshold,
+        allele_loss_threshold=spec.allele_loss_threshold,
     )
 
 
@@ -349,12 +316,23 @@ def summarise_replicate(
     h_alpha_warning_threshold: float,
     h_gamma_warning_threshold: float,
     fst_warning_threshold: float,
+    allele_loss_threshold: float = 0.0,
 ) -> ReplicateSummary:
     final = result.snapshots[-1]
     patch_count = len(final.population)
-    realised_flags = tuple(summary.realised_high_trait_occupied for summary in final.trait_occupancy)
-    realised_mass = tuple(summary.high_trait_mass for summary in final.trait_occupancy)
+    realised = final.trait_occupancy
+    realised_flags = tuple(summary.realised_high_trait_occupied for summary in realised)
+    realised_mass = tuple(summary.high_trait_mass for summary in realised)
+    realised_abundance = tuple(summary.high_trait_abundance for summary in realised)
     potential_flags = tuple(summary.high_trait_component_present for summary in final.trait_space)
+    events = first_passage_events(
+        result,
+        h_alpha_threshold=h_alpha_warning_threshold,
+        h_gamma_threshold=h_gamma_warning_threshold,
+        fst_threshold=fst_warning_threshold,
+        allele_threshold=allele_loss_threshold,
+    )
+    times = {event.name: event.time for event in events}
     return ReplicateSummary(
         replicate_index=replicate_index,
         seed=seed,
@@ -362,68 +340,59 @@ def summarise_replicate(
         final_population_by_patch=final.population,
         final_effective_size_by_patch=final.effective_size,
         final_p_by_patch=final.high_allele_frequency,
+        final_high_trait_abundance_by_patch=realised_abundance,
         h_alpha=final.h_alpha,
         h_gamma=final.h_gamma,
         fst=final.fst,
         realised_high_trait_patch_fraction=sum(realised_flags) / patch_count,
         realised_high_trait_mass_mean=sum(realised_mass) / patch_count,
+        realised_high_trait_abundance_mean=sum(realised_abundance) / patch_count,
         potential_high_trait_patch_fraction=sum(potential_flags) / patch_count,
         potential_high_trait_viable=any(potential_flags),
         realised_high_trait_persists=any(realised_flags),
-        tau_trait_potential=tau_trait_potential(result),
-        tau_trait_realised=tau_trait_realised(result),
-        tau_H_alpha=tau_H_alpha(result, h_alpha_warning_threshold),
-        tau_H_gamma=tau_H_gamma(result, h_gamma_warning_threshold),
-        tau_FST=tau_FST(result, fst_warning_threshold),
+        tau_trait_potential=times["tau_trait_potential"],
+        tau_trait_realised=times["tau_trait_realised"],
+        tau_allele_loss=times["tau_allele_loss"],
+        tau_H_alpha=times["tau_H_alpha"],
+        tau_H_gamma=times["tau_H_gamma"],
+        tau_FST=times["tau_FST"],
+        events=events,
     )
 
 
 def _aggregate_replicates(replicates: Sequence[ReplicateSummary]) -> dict[str, object]:
     if not replicates:
         raise ValueError("replicates must be nonempty")
+    warnings = ("tau_H_alpha", "tau_H_gamma", "tau_FST", "tau_allele_loss")
     return {
         "uncertainty": "empirical 2.5%, 50%, and 97.5% quantiles across replicates",
         "valid_event_pair_counts": {
-            "H_alpha_vs_trait_realised": _valid_pair_count(replicates, "tau_H_alpha", "tau_trait_realised"),
-            "H_gamma_vs_trait_realised": _valid_pair_count(replicates, "tau_H_gamma", "tau_trait_realised"),
-            "FST_vs_trait_realised": _valid_pair_count(replicates, "tau_FST", "tau_trait_realised"),
+            f"{name}_vs_trait_realised": _valid_pair_count(replicates, name, "tau_trait_realised") for name in warnings
         },
-        "censored_event_counts": {
-            "tau_trait_potential": _censored_count(replicates, "tau_trait_potential"),
-            "tau_trait_realised": _censored_count(replicates, "tau_trait_realised"),
-            "tau_H_alpha": _censored_count(replicates, "tau_H_alpha"),
-            "tau_H_gamma": _censored_count(replicates, "tau_H_gamma"),
-            "tau_FST": _censored_count(replicates, "tau_FST"),
-        },
+        "censored_event_counts": {name: _censored_count(replicates, name) for name in (
+            "tau_trait_potential", "tau_trait_realised", "tau_allele_loss", "tau_H_alpha", "tau_H_gamma", "tau_FST"
+        )},
         "metrics": {
             "H_alpha": _metric_summary(rep.h_alpha for rep in replicates),
             "H_gamma": _metric_summary(rep.h_gamma for rep in replicates),
             "F_ST": _metric_summary(rep.fst for rep in replicates if rep.fst is not None),
-            "realised_high_trait_occupancy": _metric_summary(
-                rep.realised_high_trait_patch_fraction for rep in replicates
-            ),
-            "potential_high_trait_occupancy": _metric_summary(
-                rep.potential_high_trait_patch_fraction for rep in replicates
-            ),
+            "realised_high_trait_occupancy": _metric_summary(rep.realised_high_trait_patch_fraction for rep in replicates),
+            "realised_high_trait_abundance": _metric_summary(rep.realised_high_trait_abundance_mean for rep in replicates),
+            "potential_high_trait_occupancy": _metric_summary(rep.potential_high_trait_patch_fraction for rep in replicates),
         },
         "probabilities": {
-            "realised_high_trait_persistence_final": _probability(
-                rep.realised_high_trait_persists for rep in replicates
-            ),
+            "realised_high_trait_persistence_final": _probability(rep.realised_high_trait_persists for rep in replicates),
             "potential_high_trait_viability_final": _probability(rep.potential_high_trait_viable for rep in replicates),
             "genetic_lead_H_alpha": _lead_probability(replicates, "tau_H_alpha"),
             "genetic_lead_H_gamma": _lead_probability(replicates, "tau_H_gamma"),
             "genetic_lead_FST": _lead_probability(replicates, "tau_FST"),
+            "allele_loss_lead": _lead_probability(replicates, "tau_allele_loss"),
         },
         "first_passage": {
-            "tau_trait_potential": _event_summary(replicates, "tau_trait_potential"),
-            "tau_trait_realised": _event_summary(replicates, "tau_trait_realised"),
-            "tau_H_alpha": _event_summary(replicates, "tau_H_alpha"),
-            "tau_H_gamma": _event_summary(replicates, "tau_H_gamma"),
-            "tau_FST": _event_summary(replicates, "tau_FST"),
-            "tau_H_alpha_minus_tau_trait_realised": _difference_summary(replicates, "tau_H_alpha"),
-            "tau_H_gamma_minus_tau_trait_realised": _difference_summary(replicates, "tau_H_gamma"),
-            "tau_FST_minus_tau_trait_realised": _difference_summary(replicates, "tau_FST"),
+            **{name: _event_summary(replicates, name) for name in (
+                "tau_trait_potential", "tau_trait_realised", "tau_allele_loss", "tau_H_alpha", "tau_H_gamma", "tau_FST"
+            )},
+            **{f"{name}_minus_tau_trait_realised": _difference_summary(replicates, name) for name in warnings},
         },
     }
 
@@ -432,38 +401,36 @@ def _metric_summary(values: Iterable[float]) -> dict[str, float | None]:
     observed = tuple(float(value) for value in values)
     if not observed:
         return {"mean": None, "q025": None, "median": None, "q975": None}
-    return {
-        "mean": sum(observed) / len(observed),
-        "q025": _quantile(observed, 0.025),
-        "median": _quantile(observed, 0.5),
-        "q975": _quantile(observed, 0.975),
-    }
+    return {"mean": sum(observed) / len(observed), "q025": _quantile(observed, 0.025), "median": _quantile(observed, 0.5), "q975": _quantile(observed, 0.975)}
 
 
 def _event_summary(replicates: Sequence[ReplicateSummary], attribute: str) -> dict[str, object]:
     values = tuple(getattr(rep, attribute) for rep in replicates)
     observed = tuple(float(value) for value in values if value is not None)
+    metadata = tuple(event for rep in replicates for event in rep.events if event.name == attribute)
     return {
         "values": list(values),
         "median": None if not observed else median(observed),
         "q025": None if not observed else _quantile(observed, 0.025),
         "q975": None if not observed else _quantile(observed, 0.975),
         "censored_count": sum(value is None for value in values),
+        "threshold": None if not metadata else metadata[0].threshold,
+        "aggregation_rule": None if not metadata else metadata[0].aggregation_rule,
     }
 
 
 def _difference_summary(replicates: Sequence[ReplicateSummary], warning_attribute: str) -> dict[str, object]:
-    differences = tuple(
+    values = tuple(
         getattr(rep, warning_attribute) - rep.tau_trait_realised
         for rep in replicates
         if getattr(rep, warning_attribute) is not None and rep.tau_trait_realised is not None
     )
     return {
-        "values": list(differences),
-        "median": None if not differences else median(differences),
-        "q025": None if not differences else _quantile(differences, 0.025),
-        "q975": None if not differences else _quantile(differences, 0.975),
-        "censored_count": len(replicates) - len(differences),
+        "values": list(values),
+        "median": None if not values else median(values),
+        "q025": None if not values else _quantile(values, 0.025),
+        "q975": None if not values else _quantile(values, 0.975),
+        "censored_count": len(replicates) - len(values),
     }
 
 
@@ -498,8 +465,7 @@ def _quantile(values: Sequence[float], probability: float) -> float:
     position = probability * (len(ordered) - 1)
     lower = int(position)
     upper = min(lower + 1, len(ordered) - 1)
-    fraction = position - lower
-    return ordered[lower] * (1.0 - fraction) + ordered[upper] * fraction
+    return ordered[lower] * (1.0 - position + lower) + ordered[upper] * (position - lower)
 
 
 def _flatten_mapping(mapping: Mapping[str, object], prefix: str = "") -> dict[str, object]:
