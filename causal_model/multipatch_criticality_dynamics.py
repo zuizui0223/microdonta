@@ -21,6 +21,7 @@ class DynamicsParameters:
     initial_interaction: tuple[float, ...] = ()
     initial_high_allele_frequency: tuple[float, ...] = ()
     initial_trait_distribution: tuple[tuple[float, ...], ...] = ()
+    initial_trait_abundance: tuple[tuple[int, ...], ...] = ()
     density_capacity: float = 40.0
     area_reference: float = 1.0
     interaction_feedback: float = 6.0
@@ -35,8 +36,19 @@ class DynamicsParameters:
     trait_grid_size: int = 101
     high_trait_cutoff: float = 0.7
     realised_high_trait_threshold: float = 1e-3
+    realised_bin_abundance_threshold: int = 1
+    realised_high_trait_abundance_threshold: int = 1
+    trait_occupancy_mode: str = "deterministic_viability_selection"
     trait_occupancy_model: str = "viability_selection_local_recruitment"
     trait_selection_floor: float = 1e-12
+    genotype_trait_recruitment: str = "resident_trait_only"
+    inheritance_weight: float = 1.0
+    low_trait_kernel_center: float = 0.0
+    high_trait_kernel_center: float = 1.0
+    trait_kernel_width: float = 0.2
+    q_feedback_alpha: float | None = None
+    q_feedback_beta_trait: float = 0.0
+    q_feedback_gamma_allele: float | None = None
     selection_strength: float = 0.5
     baseline_growth: float = 0.3
     interaction_growth: float = 0.4
@@ -78,10 +90,28 @@ class DynamicsParameters:
             raise ValueError("high_trait_cutoff must lie in [0, 1]")
         if self.realised_high_trait_threshold < 0.0:
             raise ValueError("realised_high_trait_threshold must be nonnegative")
+        if self.realised_bin_abundance_threshold < 1 or self.realised_high_trait_abundance_threshold < 1:
+            raise ValueError("realised abundance thresholds must be positive integers")
+        if self.trait_occupancy_mode not in {"deterministic_viability_selection", "finite_trait_bin_recruitment"}:
+            raise ValueError("unknown trait_occupancy_mode")
         if self.trait_occupancy_model != "viability_selection_local_recruitment":
             raise ValueError("unknown trait_occupancy_model")
         if self.trait_selection_floor <= 0.0:
             raise ValueError("trait_selection_floor must be positive")
+        if self.genotype_trait_recruitment not in {"resident_trait_only", "two_kernel_recruitment"}:
+            raise ValueError("unknown genotype_trait_recruitment")
+        if not 0.0 <= self.inheritance_weight <= 1.0:
+            raise ValueError("inheritance_weight must lie in [0, 1]")
+        if not 0.0 <= self.low_trait_kernel_center <= 1.0 or not 0.0 <= self.high_trait_kernel_center <= 1.0:
+            raise ValueError("trait kernel centers must lie in [0, 1]")
+        if self.trait_kernel_width <= 0.0:
+            raise ValueError("trait_kernel_width must be positive")
+        if self.q_feedback_alpha is not None and not 0.0 <= self.q_feedback_alpha <= 1.0:
+            raise ValueError("q_feedback_alpha must lie in [0, 1]")
+        if self.q_feedback_beta_trait < 0.0:
+            raise ValueError("q_feedback_beta_trait must be nonnegative")
+        if self.q_feedback_gamma_allele is not None and self.q_feedback_gamma_allele < 0.0:
+            raise ValueError("q_feedback_gamma_allele must be nonnegative")
         if self.initial_trait_distribution:
             if len(self.initial_trait_distribution) != n:
                 raise ValueError("initial_trait_distribution must be empty or match patch count")
@@ -92,6 +122,16 @@ class DynamicsParameters:
                     raise ValueError("initial_trait_distribution cannot contain negative values")
                 if sum(distribution) <= 0.0:
                     raise ValueError("each initial_trait_distribution row must have positive mass")
+        if self.initial_trait_abundance:
+            if len(self.initial_trait_abundance) != n:
+                raise ValueError("initial_trait_abundance must be empty or match patch count")
+            for abundance in self.initial_trait_abundance:
+                if len(abundance) != self.trait_grid_size:
+                    raise ValueError("each initial_trait_abundance row must match trait_grid_size")
+                if any(value < 0 for value in abundance):
+                    raise ValueError("initial_trait_abundance cannot contain negative values")
+                if sum(abundance) <= 0:
+                    raise ValueError("each initial_trait_abundance row must have positive abundance")
         if not 0.0 < self.effective_fraction <= 1.0:
             raise ValueError("effective_fraction must lie in (0, 1]")
         if not 0.0 <= self.skew_penalty < 1.0:
@@ -116,6 +156,9 @@ class TraitOccupancySummary:
     """
 
     distribution: tuple[float, ...]
+    abundance: tuple[int, ...]
+    total_abundance: int
+    high_trait_abundance: int
     high_trait_mass: float
     realised_high_trait_occupied: bool
     realised_components: int
@@ -140,6 +183,16 @@ class SimulationSnapshot:
 class SimulationResult:
     parameters: DynamicsParameters
     snapshots: tuple[SimulationSnapshot, ...]
+
+
+@dataclass(frozen=True)
+class FirstPassageEvent:
+    name: str
+    occurred: bool
+    time: int | None
+    censored: bool
+    threshold: float | int | None
+    aggregation_rule: str
 
 
 def sigmoid(value: float) -> float:
@@ -192,11 +245,19 @@ def trait_occupancy_summary(
     distribution: Sequence[float],
     potential: TraitSpaceSummary,
     parameters: DynamicsParameters,
+    abundance: Sequence[int] | None = None,
 ) -> TraitOccupancySummary:
     """Summarise realised trait-bin occupancy independently of potential viability."""
     normalised = _normalise_distribution(distribution)
     grid = trait_grid(parameters)
-    occupied = tuple(value > 0.0 for value in normalised)
+    if abundance is None:
+        counts = _abundance_from_distribution(normalised, 0)
+    else:
+        counts = tuple(int(value) for value in abundance)
+    if parameters.trait_occupancy_mode == "finite_trait_bin_recruitment":
+        occupied = tuple(value >= parameters.realised_bin_abundance_threshold for value in counts)
+    else:
+        occupied = tuple(value > 0.0 for value in normalised)
     components = 0
     in_component = False
     for is_occupied in occupied:
@@ -205,11 +266,20 @@ def trait_occupancy_summary(
             in_component = True
         if not is_occupied:
             in_component = False
+    high_abundance = sum(value for z, value in zip(grid, counts) if z >= parameters.high_trait_cutoff)
+    total_abundance = sum(counts)
     high_mass = sum(value for z, value in zip(grid, normalised) if z >= parameters.high_trait_cutoff)
+    if parameters.trait_occupancy_mode == "finite_trait_bin_recruitment":
+        realised_high = high_abundance >= parameters.realised_high_trait_abundance_threshold
+    else:
+        realised_high = high_mass > parameters.realised_high_trait_threshold
     return TraitOccupancySummary(
         distribution=normalised,
+        abundance=counts,
+        total_abundance=total_abundance,
+        high_trait_abundance=high_abundance,
         high_trait_mass=high_mass,
-        realised_high_trait_occupied=high_mass > parameters.realised_high_trait_threshold,
+        realised_high_trait_occupied=realised_high,
         realised_components=components,
         potential_high_trait_component_present=potential.high_trait_component_present,
     )
@@ -234,11 +304,45 @@ def _binomial(rng: Random, trials: int, probability: float) -> int:
     return sum(rng.random() < probability for _ in range(trials))
 
 
+def _multinomial(rng: Random, trials: int, probabilities: Sequence[float]) -> tuple[int, ...]:
+    if trials < 0:
+        raise ValueError("trials must be nonnegative")
+    normalised = _normalise_distribution(probabilities)
+    counts = [0 for _ in normalised]
+    cumulative: list[float] = []
+    running = 0.0
+    for probability in normalised:
+        running += probability
+        cumulative.append(running)
+    cumulative[-1] = 1.0
+    for _ in range(trials):
+        draw = rng.random()
+        for index, boundary in enumerate(cumulative):
+            if draw <= boundary:
+                counts[index] += 1
+                break
+    return tuple(counts)
+
+
 def _normalise_distribution(distribution: Sequence[float]) -> tuple[float, ...]:
-    total = sum(float(value) for value in distribution)
+    values = tuple(float(value) for value in distribution)
+    total = sum(values)
     if total <= 0.0:
         raise ValueError("trait distribution must have positive mass")
-    return tuple(float(value) / total for value in distribution)
+    return tuple(value / total for value in values)
+
+
+def _abundance_from_distribution(distribution: Sequence[float], total: int) -> tuple[int, ...]:
+    if total <= 0:
+        return tuple(0 for _ in distribution)
+    normalised = _normalise_distribution(distribution)
+    raw = [value * total for value in normalised]
+    counts = [int(value) for value in raw]
+    remainder = total - sum(counts)
+    order = sorted(range(len(raw)), key=lambda index: raw[index] - counts[index], reverse=True)
+    for index in order[:remainder]:
+        counts[index] += 1
+    return tuple(counts)
 
 
 def _default_trait_distribution(parameters: DynamicsParameters) -> tuple[float, ...]:
@@ -247,9 +351,53 @@ def _default_trait_distribution(parameters: DynamicsParameters) -> tuple[float, 
     return _normalise_distribution(weights)
 
 
+def _kernel_distribution(center: float, parameters: DynamicsParameters) -> tuple[float, ...]:
+    grid = trait_grid(parameters)
+    high_kernel = center >= parameters.high_trait_cutoff
+    weights = []
+    for z in grid:
+        in_declared_region = z >= parameters.high_trait_cutoff if high_kernel else z < parameters.high_trait_cutoff
+        if in_declared_region:
+            weights.append(max(parameters.trait_selection_floor, exp(-((z - center) / parameters.trait_kernel_width) ** 2)))
+        else:
+            weights.append(0.0)
+    return _normalise_distribution(weights)
+
+
+def recruit_trait_distribution(
+    resident_distribution: Sequence[float],
+    high_allele_frequency: float,
+    parameters: DynamicsParameters,
+) -> tuple[float, ...]:
+    """Return the declared pre-selection recruit trait distribution.
+
+    ``two_kernel_recruitment`` is an allele-linked recruitment closure, not a
+    Mendelian inheritance model and not mutation across trait bins.
+    """
+    resident = _normalise_distribution(resident_distribution)
+    if parameters.genotype_trait_recruitment == "resident_trait_only":
+        return resident
+    low_kernel = _kernel_distribution(parameters.low_trait_kernel_center, parameters)
+    high_kernel = _kernel_distribution(parameters.high_trait_kernel_center, parameters)
+    allele_kernel = tuple(
+        (1.0 - high_allele_frequency) * low + high_allele_frequency * high
+        for low, high in zip(low_kernel, high_kernel)
+    )
+    return _normalise_distribution(
+        (1.0 - parameters.inheritance_weight) * kernel + parameters.inheritance_weight * mass
+        for kernel, mass in zip(allele_kernel, resident)
+    )
+
+
 def _initial_values(
     parameters: DynamicsParameters,
-) -> tuple[tuple[int, ...], tuple[float, ...], tuple[float, ...], tuple[tuple[float, ...], ...]]:
+) -> tuple[
+    tuple[int, ...],
+    tuple[float, ...],
+    tuple[float, ...],
+    tuple[tuple[float, ...], ...],
+    tuple[tuple[int, ...], ...],
+]:
     n = len(parameters.patch_areas)
     population = parameters.initial_population or tuple(
         max(1, round(parameters.density_capacity * area * 0.6)) for area in parameters.patch_areas
@@ -260,7 +408,17 @@ def _initial_values(
         trait_distribution = tuple(_normalise_distribution(row) for row in parameters.initial_trait_distribution)
     else:
         trait_distribution = tuple(_default_trait_distribution(parameters) for _ in range(n))
-    return tuple(population), tuple(interaction), tuple(frequency), trait_distribution
+    if parameters.initial_trait_abundance:
+        trait_abundance = tuple(tuple(int(value) for value in row) for row in parameters.initial_trait_abundance)
+        if not parameters.initial_population:
+            population = tuple(sum(row) for row in trait_abundance)
+        trait_distribution = tuple(_normalise_distribution(row) for row in trait_abundance)
+    else:
+        trait_abundance = tuple(
+            _abundance_from_distribution(distribution, count)
+            for distribution, count in zip(trait_distribution, population)
+        )
+    return tuple(population), tuple(interaction), tuple(frequency), trait_distribution, trait_abundance
 
 
 def _effective_size(population: int, interaction: float, parameters: DynamicsParameters) -> float:
@@ -274,13 +432,14 @@ def _snapshot(
     interaction: tuple[float, ...],
     frequency: tuple[float, ...],
     trait_distribution: tuple[tuple[float, ...], ...],
+    trait_abundance: tuple[tuple[int, ...], ...],
     parameters: DynamicsParameters,
 ) -> SimulationSnapshot:
     effective = tuple(_effective_size(n, q, parameters) for n, q in zip(population, interaction))
     trait_spaces = tuple(trait_space_summary(q, parameters) for q in interaction)
     trait_occupancies = tuple(
-        trait_occupancy_summary(mu, potential, parameters)
-        for mu, potential in zip(trait_distribution, trait_spaces)
+        trait_occupancy_summary(mu, potential, parameters, abundance)
+        for mu, potential, abundance in zip(trait_distribution, trait_spaces, trait_abundance)
     )
     h_alpha, h_gamma, fst = _diversity(frequency, tuple(float(n) for n in population))
     return SimulationSnapshot(
@@ -301,6 +460,7 @@ def update_trait_distribution(
     distribution: Sequence[float],
     interaction: float,
     parameters: DynamicsParameters,
+    high_allele_frequency: float = 0.0,
 ) -> tuple[float, ...]:
     """Update resident trait-bin frequencies by the declared simple model.
 
@@ -309,7 +469,7 @@ def update_trait_distribution(
     There is no mutation or dispersal across trait bins in this first extension.
     """
     grid = trait_grid(parameters)
-    normalised = _normalise_distribution(distribution)
+    normalised = recruit_trait_distribution(distribution, high_allele_frequency, parameters)
     weighted = tuple(
         mass * max(parameters.trait_selection_floor, trait_fitness(z, interaction, parameters))
         for z, mass in zip(grid, normalised)
@@ -317,30 +477,71 @@ def update_trait_distribution(
     return _normalise_distribution(weighted)
 
 
+def update_trait_abundance(
+    abundance: Sequence[int],
+    interaction: float,
+    high_allele_frequency: float,
+    next_population: int,
+    parameters: DynamicsParameters,
+    rng: Random,
+) -> tuple[int, ...]:
+    """Update realised trait-bin abundance under the finite recruitment closure."""
+    if next_population < 1:
+        raise ValueError("next_population must be positive")
+    resident = _normalise_distribution(abundance)
+    recruit = recruit_trait_distribution(resident, high_allele_frequency, parameters)
+    grid = trait_grid(parameters)
+    selected = _normalise_distribution(
+        mass * max(parameters.trait_selection_floor, trait_fitness(z, interaction, parameters))
+        for z, mass in zip(grid, recruit)
+    )
+    return _multinomial(rng, next_population, selected)
+
+
+def _feedback_weights(parameters: DynamicsParameters) -> tuple[float, float, float]:
+    if parameters.q_feedback_alpha is None and parameters.q_feedback_gamma_allele is None:
+        return parameters.interaction_memory_weight, parameters.q_feedback_beta_trait, 1.0 - parameters.interaction_memory_weight
+    alpha = parameters.interaction_memory_weight if parameters.q_feedback_alpha is None else parameters.q_feedback_alpha
+    gamma = 0.0 if parameters.q_feedback_gamma_allele is None else parameters.q_feedback_gamma_allele
+    return alpha, parameters.q_feedback_beta_trait, gamma
+
+
+def interaction_support_signal(
+    interaction: float,
+    realised_high_trait_mass: float,
+    high_allele_frequency: float,
+    parameters: DynamicsParameters,
+) -> float:
+    alpha, beta_trait, gamma = _feedback_weights(parameters)
+    return alpha * interaction + beta_trait * realised_high_trait_mass + gamma * high_allele_frequency
+
+
 def simulate(parameters: DynamicsParameters) -> SimulationResult:
     """Run the declared finite-population multi-patch life cycle."""
     rng = Random(parameters.random_seed)
-    population, interaction, frequency, trait_distribution = _initial_values(parameters)
-    snapshots = [_snapshot(0, population, interaction, frequency, trait_distribution, parameters)]
+    population, interaction, frequency, trait_distribution, trait_abundance = _initial_values(parameters)
+    snapshots = [_snapshot(0, population, interaction, frequency, trait_distribution, trait_abundance, parameters)]
 
     for generation in range(1, parameters.generations + 1):
-        next_trait_distribution = tuple(
-            update_trait_distribution(mu, q, parameters)
-            for mu, q in zip(trait_distribution, interaction)
-        )
+        current_occupancy = snapshots[-1].trait_occupancy
+        current_high_mass = tuple(summary.high_trait_mass for summary in current_occupancy)
         carrying = tuple(parameters.density_capacity * area for area in parameters.patch_areas)
         density = tuple(min(1.0, n / k) for n, k in zip(population, carrying))
+        support = tuple(
+            interaction_support_signal(q, x_h, p, parameters)
+            for q, x_h, p in zip(interaction, current_high_mass, frequency)
+        )
         q_next = tuple(
             sigmoid(
                 parameters.interaction_feedback
                 * (
                     (area / parameters.area_reference)
                     * dens
-                    * (parameters.interaction_memory_weight * q + (1.0 - parameters.interaction_memory_weight) * p)
+                    * signal
                     - parameters.interaction_barrier
                 )
             )
-            for area, dens, q, p in zip(parameters.patch_areas, density, interaction, frequency)
+            for area, dens, signal in zip(parameters.patch_areas, density, support)
         )
 
         selected: list[float] = []
@@ -363,6 +564,22 @@ def simulate(parameters: DynamicsParameters) -> SimulationResult:
             exponent = parameters.baseline_growth + parameters.interaction_growth * q + parameters.high_allele_growth * p - n / k
             next_population.append(max(1, round(n * exp(exponent))))
 
+        if parameters.trait_occupancy_mode == "finite_trait_bin_recruitment":
+            next_trait_abundance = tuple(
+                update_trait_abundance(abundance, q, p, n_next, parameters, rng)
+                for abundance, q, p, n_next in zip(trait_abundance, interaction, frequency, next_population)
+            )
+            next_trait_distribution = tuple(_normalise_distribution(row) for row in next_trait_abundance)
+        else:
+            next_trait_distribution = tuple(
+                update_trait_distribution(mu, q, parameters, p)
+                for mu, q, p in zip(trait_distribution, interaction, frequency)
+            )
+            next_trait_abundance = tuple(
+                _abundance_from_distribution(distribution, n_next)
+                for distribution, n_next in zip(next_trait_distribution, next_population)
+            )
+
         next_frequency: list[float] = []
         for n, q, p in zip(next_population, q_next, migrated):
             n_eff = _effective_size(n, q, parameters)
@@ -373,7 +590,10 @@ def simulate(parameters: DynamicsParameters) -> SimulationResult:
         interaction = q_next
         frequency = tuple(next_frequency)
         trait_distribution = next_trait_distribution
-        snapshots.append(_snapshot(generation, population, interaction, frequency, trait_distribution, parameters))
+        trait_abundance = next_trait_abundance
+        snapshots.append(
+            _snapshot(generation, population, interaction, frequency, trait_distribution, trait_abundance, parameters)
+        )
 
     return SimulationResult(parameters, tuple(snapshots))
 
@@ -389,7 +609,7 @@ def tau_trait_potential(result: SimulationResult) -> int | None:
 
 
 def first_potential_high_trait_absence(result: SimulationResult) -> int | None:
-    """Return first generation without potential high-trait viability in any patch."""
+    """Return first generation with all-patch loss of potential high-trait viability."""
     for snapshot in result.snapshots:
         if not any(summary.high_trait_component_present for summary in snapshot.trait_space):
             return snapshot.generation
@@ -397,7 +617,7 @@ def first_potential_high_trait_absence(result: SimulationResult) -> int | None:
 
 
 def first_realised_high_trait_absence(result: SimulationResult) -> int | None:
-    """Return first generation without realised high-trait occupancy in any patch."""
+    """Return first generation with all-patch loss of realised high-trait occupancy."""
     for snapshot in result.snapshots:
         if not any(summary.realised_high_trait_occupied for summary in snapshot.trait_occupancy):
             return snapshot.generation
@@ -407,6 +627,21 @@ def first_realised_high_trait_absence(result: SimulationResult) -> int | None:
 def tau_trait_realised(result: SimulationResult) -> int | None:
     """Return tau_trait_realised: first loss of realised high-trait occupancy."""
     return first_realised_high_trait_absence(result)
+
+
+def first_allele_loss(result: SimulationResult, allele_threshold: float = 0.0) -> int | None:
+    """Return first generation where all patches are at or below allele_threshold."""
+    if not 0.0 <= allele_threshold <= 1.0:
+        raise ValueError("allele_threshold must lie in [0, 1]")
+    for snapshot in result.snapshots:
+        if all(p <= allele_threshold for p in snapshot.high_allele_frequency):
+            return snapshot.generation
+    return None
+
+
+def tau_allele_loss(result: SimulationResult, allele_threshold: float = 0.0) -> int | None:
+    """Return tau_allele_loss under the all_patch_loss aggregation rule."""
+    return first_allele_loss(result, allele_threshold)
 
 
 def first_alpha_warning(result: SimulationResult, warning_threshold: float) -> int | None:
@@ -457,3 +692,72 @@ def first_fst_warning(result: SimulationResult, warning_threshold: float) -> int
 def tau_FST(result: SimulationResult, warning_threshold: float) -> int | None:
     """Return tau_FST: first F_ST warning-threshold crossing."""
     return first_fst_warning(result, warning_threshold)
+
+
+def first_passage_event(
+    name: str,
+    time: int | None,
+    *,
+    threshold: float | int | None,
+    aggregation_rule: str,
+) -> FirstPassageEvent:
+    """Wrap a first-passage time with explicit censoring metadata."""
+    return FirstPassageEvent(
+        name=name,
+        occurred=time is not None,
+        time=time,
+        censored=time is None,
+        threshold=threshold,
+        aggregation_rule=aggregation_rule,
+    )
+
+
+def first_passage_events(
+    result: SimulationResult,
+    *,
+    h_alpha_threshold: float,
+    h_gamma_threshold: float,
+    fst_threshold: float,
+    allele_threshold: float = 0.0,
+) -> tuple[FirstPassageEvent, ...]:
+    """Return predeclared first-passage events with explicit aggregation rules."""
+    return (
+        first_passage_event(
+            "tau_trait_potential",
+            tau_trait_potential(result),
+            threshold=result.parameters.viability_threshold,
+            aggregation_rule="all_patch_loss",
+        ),
+        first_passage_event(
+            "tau_trait_realised",
+            tau_trait_realised(result),
+            threshold=result.parameters.realised_high_trait_abundance_threshold
+            if result.parameters.trait_occupancy_mode == "finite_trait_bin_recruitment"
+            else result.parameters.realised_high_trait_threshold,
+            aggregation_rule="all_patch_loss",
+        ),
+        first_passage_event(
+            "tau_allele_loss",
+            tau_allele_loss(result, allele_threshold),
+            threshold=allele_threshold,
+            aggregation_rule="all_patch_loss",
+        ),
+        first_passage_event(
+            "tau_H_alpha",
+            tau_H_alpha(result, h_alpha_threshold),
+            threshold=h_alpha_threshold,
+            aggregation_rule="metapopulation_weighted_loss",
+        ),
+        first_passage_event(
+            "tau_H_gamma",
+            tau_H_gamma(result, h_gamma_threshold),
+            threshold=h_gamma_threshold,
+            aggregation_rule="metapopulation_weighted_loss",
+        ),
+        first_passage_event(
+            "tau_FST",
+            tau_FST(result, fst_threshold),
+            threshold=fst_threshold,
+            aggregation_rule="metapopulation_weighted_loss",
+        ),
+    )
