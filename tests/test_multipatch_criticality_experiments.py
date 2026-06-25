@@ -4,6 +4,7 @@ from causal_model.multipatch_criticality_dynamics import DynamicsParameters, sim
 from causal_model.multipatch_criticality_experiments import (
     PROFILE_FULL,
     PROFILE_QUICK,
+    PROFILE_STANDARD,
     derived_seed,
     full_profile,
     parameter_grid,
@@ -13,18 +14,17 @@ from causal_model.multipatch_criticality_experiments import (
     scenario_equal_isolated,
     scenario_equal_migrating,
     scenario_one_large,
+    standard_profile,
     summarise_replicate,
 )
 
 
 def _low_trait_distribution(size: int) -> tuple[float, ...]:
-    values = tuple(1.0 if index == 0 else 0.0 for index in range(size))
-    return values
+    return tuple(1.0 if index == 0 else 0.0 for index in range(size))
 
 
 def _high_trait_distribution(size: int) -> tuple[float, ...]:
-    values = tuple(1.0 if index == size - 1 else 0.0 for index in range(size))
-    return values
+    return tuple(1.0 if index == size - 1 else 0.0 for index in range(size))
 
 
 def test_scenario_constructors_preserve_total_area() -> None:
@@ -32,7 +32,6 @@ def test_scenario_constructors_preserve_total_area() -> None:
     one_large = scenario_one_large(spec)
     isolated = scenario_equal_isolated(spec)
     migrating = scenario_equal_migrating(spec)
-
     assert one_large.total_area == spec.total_area
     assert sum(isolated.patch_areas) == spec.total_area
     assert sum(migrating.patch_areas) == spec.total_area
@@ -42,7 +41,6 @@ def test_isolated_and_migrating_differ_only_in_migration_settings() -> None:
     spec = replace(quick_profile(), migration_rate=0.25)
     isolated = scenario_equal_isolated(spec)
     migrating = scenario_equal_migrating(spec)
-
     assert isolated.patch_areas == migrating.patch_areas
     assert isolated.migration_rate == 0.0
     assert migrating.migration_rate == 0.25
@@ -51,20 +49,20 @@ def test_isolated_and_migrating_differ_only_in_migration_settings() -> None:
 def test_seed_schedule_is_reproducible_and_shared_across_scenarios() -> None:
     spec = quick_profile()
     cell = parameter_grid(spec)[1]
-
     assert derived_seed(spec.master_seed, cell.cell_index, 2) == derived_seed(spec.master_seed, cell.cell_index, 2)
     assert derived_seed(spec.master_seed, cell.cell_index, 2) != derived_seed(spec.master_seed, cell.cell_index, 1)
 
 
-def test_experiment_result_keeps_censored_first_passages_explicit() -> None:
+def test_experiment_result_keeps_censored_first_passages_and_metadata_explicit() -> None:
     spec = replace(quick_profile(), replicates=2)
     result = run_parameter_grid(spec, scenarios=(scenario_one_large(spec),))[0]
-
     summary = result.summary
     assert "censored_event_counts" in summary
     assert "tau_trait_realised" in summary["first_passage"]
-    assert isinstance(summary["first_passage"]["tau_trait_realised"]["values"], list)
+    assert "tau_allele_loss" in summary["first_passage"]
+    assert "aggregation_rule" in summary["first_passage"]["tau_allele_loss"]
     assert "valid_event_pair_counts" in summary
+    assert all("events" in replicate.as_dict() for replicate in result.replicates)
 
 
 def test_potential_and_realised_trait_outcomes_can_differ() -> None:
@@ -88,7 +86,6 @@ def test_potential_and_realised_trait_outcomes_can_differ() -> None:
         h_gamma_warning_threshold=0.0,
         fst_warning_threshold=1.0,
     )
-
     assert summary.potential_high_trait_viable is True
     assert summary.realised_high_trait_persists is False
 
@@ -111,16 +108,36 @@ def test_allele_persistence_and_realised_trait_occupancy_can_differ() -> None:
         h_gamma_warning_threshold=0.0,
         fst_warning_threshold=1.0,
     )
-
     assert summary.tau_trait_realised == 0
     assert summary.h_alpha > 0.0
     assert summary.tau_H_alpha is None
+    assert summary.tau_allele_loss is None
+
+
+def test_standard_profile_uses_finite_two_kernel_coupled_closure() -> None:
+    spec = standard_profile()
+    parameters = spec.base_parameters
+    assert spec.profile == PROFILE_STANDARD
+    assert parameters.trait_occupancy_mode == "finite_trait_bin_recruitment"
+    assert parameters.genotype_trait_recruitment == "two_kernel_recruitment"
+    assert parameters.q_feedback_beta_trait > 0.0
+    assert parameters.q_feedback_gamma_allele is not None
+    assert parameters.q_feedback_gamma_allele > 0.0
+
+
+def test_finite_profile_reports_abundance_independently_of_mass() -> None:
+    spec = replace(standard_profile(), generations=2, replicates=1, area_reference_values=(1.0,), interaction_feedback_values=(3.0,), interaction_barrier_values=(0.5,))
+    result = run_parameter_grid(spec, scenarios=(scenario_one_large(spec),))[0]
+    replicate = result.replicates[0]
+    assert len(replicate.final_high_trait_abundance_by_patch) == 1
+    assert "realised_high_trait_abundance" in result.summary["metrics"]
+    row = results_to_csv_rows((result,))[0]
+    assert "metrics.realised_high_trait_abundance.mean" in row
 
 
 def test_h_alpha_h_gamma_and_fst_are_returned_independently() -> None:
     spec = replace(quick_profile(), replicates=2)
     result = run_parameter_grid(spec, scenarios=(scenario_equal_isolated(spec),))[0]
-
     metrics = result.summary["metrics"]
     assert set(metrics) >= {"H_alpha", "H_gamma", "F_ST"}
     row = results_to_csv_rows((result,))[0]
@@ -129,18 +146,17 @@ def test_h_alpha_h_gamma_and_fst_are_returned_independently() -> None:
     assert "metrics.F_ST.mean" in row
 
 
-def test_quick_profile_completes_quickly() -> None:
+def test_quick_profile_completes_quickly_and_remains_deterministic() -> None:
     spec = quick_profile()
     results = run_parameter_grid(spec)
-
     assert spec.profile == PROFILE_QUICK
+    assert spec.base_parameters.trait_occupancy_mode == "deterministic_viability_selection"
     assert len(results) == len(parameter_grid(spec)) * 3
 
 
 def test_full_phase_diagram_is_opt_in_not_triggered_by_quick_profile() -> None:
     quick = quick_profile()
     full = full_profile()
-
     assert quick.profile == PROFILE_QUICK
     assert full.profile == PROFILE_FULL
     assert quick.replicates < full.replicates
@@ -149,7 +165,6 @@ def test_full_phase_diagram_is_opt_in_not_triggered_by_quick_profile() -> None:
 
 def test_experiment_layer_does_not_reinterpret_theorem_claims() -> None:
     import causal_model.multipatch_criticality_experiments as experiments
-
     text = experiments.__doc__
     assert text is not None
     assert "simulation/reporting layer" in text
@@ -173,8 +188,8 @@ def test_replicate_summary_reports_patch_distributions() -> None:
         h_gamma_warning_threshold=0.2,
         fst_warning_threshold=0.2,
     )
-
     assert len(summary.final_q_by_patch) == 2
     assert len(summary.final_population_by_patch) == 2
     assert len(summary.final_effective_size_by_patch) == 2
     assert len(summary.final_p_by_patch) == 2
+    assert len(summary.final_high_trait_abundance_by_patch) == 2
