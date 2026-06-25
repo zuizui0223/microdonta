@@ -24,6 +24,20 @@ Type H  substantive dynamic hypothesis about an ecosystem model
 Type S  simulation result for a declared model, not proof of T/C/H.
 ```
 
+The current roadmap is layered as:
+
+```text
+general theorem layer
+-> canonical logistic corollary
+-> potential viability
+-> realised trait occupancy
+-> stochastic genetic first-passage experiments
+-> future mutation/recolonisation model
+```
+
+Each arrow adds assumptions. Later layers may diagnose model-specific transition
+regions, but they do not retroactively strengthen earlier theorem claims.
+
 ---
 
 ## The theorem layer already supplied by PR #48
