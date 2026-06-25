@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from causal_model.eco_genetic_principles import (
@@ -16,7 +18,6 @@ def test_g0_identity_requires_only_first_two_moments():
         next_frequency_mean=0.4,
         next_frequency_variance=0.03,
     )
-    # H(.4)=.48; E[H(P')]=.48-2*.03=.42
     assert result.heterozygosity_after_selection == pytest.approx(0.48)
     assert result.expected_heterozygosity_after_transmission == pytest.approx(0.42)
     assert result.expected_heterozygosity_loss == pytest.approx(0.06)
@@ -49,11 +50,9 @@ def test_p0_certifies_uniqueness_only_under_strict_global_contraction():
     assert below.global_lipschitz_bound == pytest.approx(0.8)
     assert below.uniqueness_certified
     assert not below.bistability_not_ruled_out
-
     assert boundary.global_lipschitz_bound == pytest.approx(1.0)
     assert not boundary.uniqueness_certified
     assert boundary.bistability_not_ruled_out
-
     assert above.global_lipschitz_bound == pytest.approx(1.2)
     assert not above.uniqueness_certified
     assert above.bistability_not_ruled_out
@@ -93,6 +92,15 @@ def test_conditional_eco_genetic_coupling_requires_explicit_ordering():
     assert supported.low_expected_heterozygosity_loss == pytest.approx(0.03)
     assert supported.high_expected_heterozygosity_loss == pytest.approx(0.01)
     assert not reversed_case.ordering_supported
+
+
+def test_hypothesis_program_keeps_central_hypotheses_outside_theorem_claims():
+    text = Path("docs/eco_genetic_hypothesis_program.md").read_text(encoding="utf-8")
+    assert "H_critical" in text
+    assert "H_genetic_lag" in text
+    assert "H_fragmentation" in text
+    assert "simulation result" in text
+    assert "not a theorem" in text
 
 
 def test_invalid_inputs_are_rejected():
