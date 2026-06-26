@@ -17,6 +17,7 @@ def _parameters() -> DynamicsParameters:
         inheritance_weight=0.5,
         high_base=2.0,
         high_interaction_benefit=0.0,
+        high_peak_width=0.4,
         viability_threshold=1.0,
         trait_grid_size=21,
         realised_high_trait_abundance_threshold=1,
