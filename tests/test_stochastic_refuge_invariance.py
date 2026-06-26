@@ -11,7 +11,7 @@ from causal_model.stochastic_refuge_invariance import (
 def _parameters() -> DynamicsParameters:
     return DynamicsParameters(
         patch_areas=(1.0,),
-        density_capacity=100.0,
+        density_capacity=1000.0,
         baseline_growth=0.8,
         interaction_growth=0.0,
         high_allele_growth=0.0,
@@ -33,8 +33,8 @@ def _region() -> RefugeRegion:
         interaction_lower=0.5,
         allele_lower=0.5,
         high_trait_mass_lower=0.05,
-        population_lower=80,
-        population_upper=80,
+        population_lower=800,
+        population_upper=800,
     )
 
 
@@ -42,8 +42,8 @@ def test_one_step_refuge_bound_closes_declared_rectangle() -> None:
     bound = one_step_refuge_bound(_parameters(), 1.0, _region())
 
     assert bound.interaction_next_lower >= 0.5
-    assert bound.population_next_lower >= 80
-    assert bound.population_next_upper <= 80
+    assert bound.population_next_lower >= 800
+    assert bound.population_next_upper <= 800
     assert bound.selected_allele_lower > 0.5
     assert bound.high_trait_recruit_lower > 0.05
     assert bound.deterministic_region_closed
@@ -78,7 +78,7 @@ def test_certificate_rejects_migration_because_single_patch_formula_is_exact_onl
 
 
 def test_nonclosed_rectangle_is_not_certified() -> None:
-    region = RefugeRegion(0.9, 0.5, 0.05, 80, 80)
+    region = RefugeRegion(0.9, 0.5, 0.05, 800, 800)
     certificate = finite_horizon_refuge_certificate(_parameters(), 1.0, region, horizon=2)
     assert not certificate.certified
     assert certificate.horizon_retention_probability_lower_bound == 0.0
