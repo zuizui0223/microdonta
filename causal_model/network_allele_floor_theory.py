@@ -8,7 +8,9 @@ convex combination of values all above that selected floor, so migration cannot
 reduce it. Only finite sampling can break the common floor.
 
 This is a conditional finite-horizon theorem. It does not prove the required
-interaction/population region, nor does it prove trait-bin persistence.
+interaction/population region, nor does it prove trait-bin persistence. Its
+interaction lower-envelope uses the explicit theorem conditions
+``high_interaction_benefit >= 0`` and ``selection_strength >= 0``.
 """
 from __future__ import annotations
 
@@ -57,6 +59,14 @@ def _round_lower(value: float) -> int:
     return ceil(value - 0.5)
 
 
+def _require_monotone_high_selection(parameters: DynamicsParameters) -> None:
+    """Check the conditions that make q_min a high-fitness lower envelope."""
+    if parameters.high_interaction_benefit < 0.0:
+        raise ValueError("network theorem requires non-negative high_interaction_benefit")
+    if parameters.selection_strength < 0.0:
+        raise ValueError("network theorem requires non-negative selection_strength")
+
+
 def selected_allele_floor(
     allele_floor: float,
     interaction_lower_bound: float,
@@ -64,10 +74,12 @@ def selected_allele_floor(
 ) -> float:
     """Lower-bound the simulator's selected high-allele frequency.
 
-    The simulator uses a one-allele viability update. The selected frequency is
-    increasing in both current frequency and high-allele fitness, so lower
-    bounds on both inputs give the displayed lower envelope.
+    The simulator uses a one-allele viability update. Under the stated
+    non-negative interaction-benefit and selection-strength conditions, selected
+    frequency is increasing in current frequency and interaction. Therefore
+    lower bounds on both inputs give the displayed lower envelope.
     """
+    _require_monotone_high_selection(parameters)
     p = _probability(allele_floor, "allele_floor")
     q = _probability(interaction_lower_bound, "interaction_lower_bound")
     margin = trait_fitness(1.0, q, parameters) - parameters.viability_threshold
