@@ -1,0 +1,24 @@
+name: Diagnose PR 59 tests
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  pytest-report:
+    if: github.event.pull_request.number == 59
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pytest
+      - name: Capture pytest report
+        run: pytest -q --tb=short --maxfail=20 > pytest-report.txt 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr59-pytest-report
+          path: pytest-report.txt
