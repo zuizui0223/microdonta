@@ -8,19 +8,15 @@ on:
         required: true
         default: "quick"
         type: choice
-        options:
-          - quick
-          - standard
-          - full
+        options: [quick, standard, full]
       backend:
         description: "Backend or backends to run"
         required: true
         default: "all"
         type: choice
-        options:
-          - all
-          - spatial
-          - defense
+        options: [all, spatial, defense]
+  pull_request:
+    branches: [main]
 
 jobs:
   endpoint-sensitivity:
@@ -36,12 +32,12 @@ jobs:
       - name: Run endpoint sensitivity
         run: >-
           python -m examples.endpoint_sensitivity_report
-          --profile "${{ inputs.profile }}"
-          --backend "${{ inputs.backend }}"
-          --output "outputs/endpoint_sensitivity_${{ inputs.backend }}_${{ inputs.profile }}.json"
+          --profile "standard"
+          --backend "all"
+          --output "outputs/endpoint_sensitivity_all_standard.json"
       - name: Upload report
         uses: actions/upload-artifact@v4
         with:
-          name: endpoint-sensitivity-${{ inputs.backend }}-${{ inputs.profile }}
+          name: endpoint-sensitivity-all-standard
           path: outputs/endpoint_sensitivity_*.json
           if-no-files-found: error
