@@ -3,16 +3,17 @@
 The package-level surface follows the publication mainline:
 
     admissible causal region -> CA / D / R / replaceability
-    -> mechanism equivalence -> NOV / RACH-SEQ next observation
+    -> mechanism equivalence -> validated NOV/EVSI -> RACH-SEQ
 
 Package-level callable names deliberately avoid colliding with submodule names.
 For example, ``compute_causal_admissibility`` is the root-level callable while
 ``causal_model.causal_admissibility`` remains the importable module; likewise
 ``run_rach_seq`` leaves ``causal_model.rach_seq`` intact.
 
-Lower-level causal-structure schemas and rule-transition ABMs remain available
-for compatibility and supplementary analyses, but they are not the package's
-primary inferential interface.
+The publication-level next-observation quantity is ``next_observation_evsi``.
+The older target-switch heuristic remains available only as the explicitly named
+``heuristic_next_observation_value`` compatibility helper and is not advertised
+in ``__all__``.
 """
 
 # Keep canonical submodules importable under their own names.
@@ -29,9 +30,11 @@ RACHSummary = causal_admissibility.RACHSummary
 compute_causal_admissibility = causal_admissibility.causal_admissibility
 causal_degeneracy = causal_admissibility.causal_degeneracy
 causal_resolvability = causal_admissibility.causal_resolvability
-next_observation_value = causal_admissibility.next_observation_value
 observation_contribution = causal_admissibility.observation_contribution
 rach_summary = causal_admissibility.rach_summary
+
+# Legacy heuristic: retained for compatibility but deliberately not primary API.
+heuristic_next_observation_value = causal_admissibility.next_observation_value
 
 SeqResult = rach_seq.SeqResult
 SeqStep = rach_seq.SeqStep
@@ -39,6 +42,7 @@ expected_edge_cuts = rach_seq.expected_edge_cuts
 filter_by_outcome = rach_seq.filter_by_outcome
 run_rach_seq = rach_seq.rach_seq
 
+from .nov_evsi import EVSIResult, next_observation_evsi
 from .causal_replaceability import (
     CRCResult,
     causal_replaceability_cost,
@@ -79,7 +83,7 @@ __all__ = [
     "CandidateOutcome",
     "CausalAdmissibilityResult",
     "CRCResult",
-    "NextObservationValueResult",
+    "EVSIResult",
     "ObservationContribution",
     "RACHSummary",
     "SeqResult",
@@ -94,7 +98,7 @@ __all__ = [
     "expected_edge_cuts",
     "filter_by_outcome",
     "mechanism_equivalence_structure",
-    "next_observation_value",
+    "next_observation_evsi",
     "observation_contribution",
     "run_rach_seq",
     "rach_summary",
