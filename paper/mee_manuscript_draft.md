@@ -29,15 +29,17 @@ For a future observation whose predictive outcomes are identified by the current
 admissible region, its validated next-observation value is exactly the residual
 mechanism–observation mutual information normalised by switch dimension,
 `NOV(Q)=I(S;Q|A_ε)/K`; RACH-SEQ recomputes that information state after each
-collected observation. Controlled known-truth and random-system benchmarks
-evaluate recovery, false exclusion, calibration, and observation efficiency. An
-exact one-step colonisation-recruitment factorisation demonstrates how the theorem
-can be earned for a specified life-cycle output without being overextended to a
-multistep agent-based model. Published Izu Islands *Campanula microdonta*
-patterns are used only as a prospective observation-design example: the existing
-record does not identify a vital-rate channel. RACH therefore turns structural
-non-identifiability into a reportable admissible set and an explicit measurement
-design rather than a forced model winner.
+collected observation. A preregistered synthetic selection benchmark challenges
+RACH-SEQ with mechanism-uninformative distractor measurements and compares its
+observation choices with a matched random candidate-order baseline while tracking
+hidden-truth false exclusion. An exact one-step colonisation-recruitment
+factorisation demonstrates how the theorem can be earned for a specified
+life-cycle output without being overextended to a multistep agent-based model.
+Published Izu Islands *Campanula microdonta* patterns are used only as a
+prospective observation-design example: the existing record does not identify a
+vital-rate channel. RACH therefore turns structural non-identifiability into a
+reportable admissible set and an explicit measurement design rather than a forced
+model winner.
 
 **Keywords:** structural identifiability, causal admissibility, degeneracy,
 approximate Bayesian computation, mutual information, value of information,
@@ -345,34 +347,59 @@ controlled diagnostic, not a natural-system mechanism claim.
 
 ### 4.3 Generality and observation-budget error control (Fig. 3)
 
-The submission result for this section is generated only by
-`paper/run_g2_frozen_benchmark.py`, which reads the preregistered
-`paper/g2_frozen_benchmark_protocol.json` and accepts no scientific parameter
-overrides. The frozen protocol evaluates five predeclared seeds, 200 random
-systems per seed, K ∈ {4,5,6}, one or two independent confounds, random pre-data
-driver coefficients, and observation budgets 0–4. Candidate ranking never sees
-the hidden truth; truth is used only after ranking to materialise the realised
-benchmark outcome. Analytic magnitude bands are required to partition the current
-admissible region, so G2 candidate values use `Pr(q|current A_ε)` rather than a
-stale declared prior.
+The submission result for this section is generated only by the current frozen
+protocol `rach-g2-truth-peek-free-v2` through
+`paper/run_g2_frozen_benchmark.py`. Protocol v1 is preserved in the archive but
+was **never executed as the final submission benchmark**. It was superseded before
+any final output was inspected because a resolver-only candidate vocabulary could
+test observation sufficiency without testing whether RACH-SEQ selected useful
+observations efficiently.
 
-The primary outputs are, for every observation budget, the fraction of systems
-that converge to an empty confounding graph, the fraction of confounding edges
-resolved, the mean number of observations actually used, and the hidden-truth
-false-exclusion rate. Results are retained per seed and summarised by mean and
-sample standard deviation across seeds. Every row is tagged with the SHA-256 hash
-of the exact frozen protocol. There is **no performance acceptance threshold**:
-favourable, null, or adverse outcomes are all retained as the result. Numerical
-values will be inserted here only from that protocol-tagged output after the
-frozen run completes; the pre-fix 99.2%/98.5% values are not submission evidence.
+V2 therefore separates those questions. Each generated system contains one or two
+disjoint two-driver confounds with an explicit quantitative resolving observation
+for each confound. It additionally contains **two binary nuisance measurements**
+generated independently of the mechanism vector. The nuisance measurements are
+valid, mutually exclusive/exhaustive predictive observation maps, but have no
+designed mechanism information. They therefore compete for the same observation
+budget without being malformed candidates.
 
-The benchmark deliberately asks a controlled method question rather than claiming
-that its random systems span all ecological mechanisms: given an admissible region
-with explicit confounding structure and a declared resolving-observation
-vocabulary, how efficiently does sequential observation design reduce that
-structure without excluding the hidden true explanation? Generalisation beyond
-that declared system family is a limitation, not something inferred from a high
-synthetic success rate.
+The exact same seed-defined systems, hidden mechanism truths, candidate sets and
+budgets are evaluated under two preregistered policies:
+
+```text
+RACH-SEQ      choose the remaining candidate with maximum expected confounding-edge cuts
+random_order  choose uniformly among remaining candidates
+```
+
+Neither policy sees a hidden outcome before selecting the candidate. Only after a
+candidate has been chosen is its hidden benchmark outcome materialised and the
+current admissible region conditioned on that observation. RACH-SEQ recomputes
+candidate outcome probabilities from current `A_ε` whenever a verified partition
+is available. Random-order selection is an uninformed **selection baseline**, not
+an alternative causal model.
+
+The frozen protocol uses five predeclared seeds, 200 systems per seed, 1,500 prior
+draws per system, K ∈ {4,5,6}, one or two confounds, random pre-data driver
+coefficients, two nuisance candidates and observation budgets 0–4. Primary
+policy-specific outputs are convergence to an empty confounding graph, fraction
+of confounding edges resolved, mean observations used and hidden-truth
+false-exclusion rate. The number of nuisance observations selected is retained as
+a selection diagnostic. The runner additionally reports within-seed
+`RACH-SEQ − random_order` contrasts for each budget and aggregates all quantities
+by mean and sample standard deviation across seeds.
+
+The comparison is deliberately **not an acceptance criterion**. There is no
+software test or protocol rule requiring RACH-SEQ to outperform random order in
+any metric. Favourable, null or adverse policy contrasts all remain valid frozen
+results. Every row is tagged with the SHA-256 hash of the exact v2 protocol, and
+numerical values will be inserted here only from those tagged outputs. The pre-fix
+99.2%/98.5% values are not submission evidence.
+
+This benchmark therefore supports a narrower and more falsifiable generality
+claim than “RACH works across ecology”: over a declared family of random confounded
+systems, it asks whether a sequential structural observation policy reduces
+mechanism ambiguity and how its observation-budget efficiency compares with an
+uninformed selection policy while controlling hidden-truth exclusion.
 
 ### 4.4 NOV information identity and calibration (Fig. 4)
 
@@ -471,20 +498,21 @@ heuristic next-observation score remains available only as an explicitly named
 compatibility helper and is not the primary publication API. The canonical
 submission inventory is `paper/submission_manifest.json`.
 
-The final generality/error-control benchmark is governed by
+The final selection/error-control benchmark is governed by
 `paper/g2_frozen_benchmark_protocol.json` and
-`paper/run_g2_frozen_benchmark.py`; manuscript generality numbers must carry the
-hash of that frozen protocol. Running
+`paper/run_g2_frozen_benchmark.py`; manuscript G2 numbers must carry the hash of
+that frozen v2 protocol. Running
 
 ```bash
 python paper/check_submission_bundle.py
 ```
 
 checks that every main-text dependency exists, that required theorem-first
-sections remain in the manuscript, and that provisional ecological-rule and
-structure-discovery claims have not re-entered the primary draft. The standard
-CI then runs the complete test suite across Python 3.10–3.12 and smoke-tests the
-core figure commands. No new empirical data are reported.
+sections remain in the manuscript, that G2 v2 retains its matched random-order
+selection challenge, and that provisional ecological-rule and structure-discovery
+claims have not re-entered the primary draft. The standard CI then runs the
+complete test suite across Python 3.10–3.12 and smoke-tests the core figure
+commands. No new empirical data are reported.
 
 ## 8. Discussion
 
@@ -504,6 +532,15 @@ the current admissible region. This also provides a clean stopping criterion:
 when every available candidate has zero validated NOV, the current candidate
 vocabulary contains no further information about the unresolved mechanism vector,
 even if `D_RACH` remains positive.
+
+The sequential algorithm adds a distinct claim: given a finite candidate
+vocabulary and observation budget, useful measurements should be selected before
+mechanism-uninformative alternatives if the structural score actually carries the
+intended information. The frozen G2 matched-policy benchmark therefore separates
+**observation sufficiency** from **selection efficiency**. A high resolver-only
+success rate alone would not validate the latter. Conversely, an adverse or null
+RACH-versus-random contrast would narrow the method's defensible boundary and is
+retained rather than tuned away.
 
 RACH combines familiar components—ABC-style restriction, explicit biological
 constraints, entropy, pattern-oriented modelling, and value of information
@@ -527,12 +564,15 @@ constraint grammar, prior, distance and tolerance. A missing causal program
 cannot be recovered by reporting the retained set. A validated stored-region NOV
 also requires an observation map whose predictive outcomes can actually be
 obtained as a pushforward of current `A_ε`; otherwise the EVSI is non-estimable
-without an additional predictive model. Under stochastic simulators,
-re-inference-free filtering is approximate and its Monte Carlo properties must be
-reported. Measurement error can be propagated, but unknown regime-specific proxy
-calibration is structural and cannot be repaired by larger sample size alone.
-Finally, the Campanula example remains prospective until channel-resolved data and
-calibration evidence exist.
+without an additional predictive model. The v2 random-system benchmark challenges
+selection only against simple independent nuisance measurements and a uniform
+random-order baseline; it does not establish optimality against all experimental
+design algorithms or all ecological candidate vocabularies. Under stochastic
+simulators, re-inference-free filtering is approximate and its Monte Carlo
+properties must be reported. Measurement error can be propagated, but unknown
+regime-specific proxy calibration is structural and cannot be repaired by larger
+sample size alone. Finally, the Campanula example remains prospective until
+channel-resolved data and calibration evidence exist.
 
 The immediate empirical implication is modest but actionable: observed
 contraction, shift, fragmentation or persistence should not be assigned to a
@@ -547,9 +587,10 @@ ranked next-observation design.
    sufficient/insufficient measurement boundary; hand-off to RACH.
 2. **Figure 2 — Controlled confound.** Model ranking versus the admissible set,
    causal degeneracy, and the resolving observation.
-3. **Figure 3 — Sequential generality and error control.** Frozen RACH-SEQ budget
-   curves with convergence, edge resolution, observations used, false exclusion,
-   and seed-level uncertainty.
+3. **Figure 3 — Sequential selection and error control.** Frozen v2 budget curves
+   for RACH-SEQ and random-order baseline, convergence, edge resolution,
+   observations used, distractors selected, false exclusion, and seed-level
+   uncertainty/contrasts.
 4. **Figure 4 — NOV information and calibration.** `I(S;Q|A_ε)/K` identity,
    admissible-region conditioning versus fresh re-inference, and realised-gain
    calibration.
