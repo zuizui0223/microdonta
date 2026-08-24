@@ -5,26 +5,40 @@ The package-level surface follows the publication mainline:
     admissible causal region -> CA / D / R / replaceability
     -> mechanism equivalence -> NOV / RACH-SEQ next observation
 
+Package-level callable names deliberately avoid colliding with submodule names.
+For example, ``compute_causal_admissibility`` is the root-level callable while
+``causal_model.causal_admissibility`` remains the importable module; likewise
+``run_rach_seq`` leaves ``causal_model.rach_seq`` intact.
+
 Lower-level causal-structure schemas and rule-transition ABMs remain available
 for compatibility and supplementary analyses, but they are not the package's
 primary inferential interface.
 """
 
+# Keep canonical submodules importable under their own names.
+from . import causal_admissibility
+from . import rach_seq
+
 # RACH inferential core.
-from .causal_admissibility import (
-    CandidateObservation,
-    CandidateOutcome,
-    CausalAdmissibilityResult,
-    NextObservationValueResult,
-    ObservationContribution,
-    RACHSummary,
-    causal_admissibility,
-    causal_degeneracy,
-    causal_resolvability,
-    next_observation_value,
-    observation_contribution,
-    rach_summary,
-)
+CandidateObservation = causal_admissibility.CandidateObservation
+CandidateOutcome = causal_admissibility.CandidateOutcome
+CausalAdmissibilityResult = causal_admissibility.CausalAdmissibilityResult
+NextObservationValueResult = causal_admissibility.NextObservationValueResult
+ObservationContribution = causal_admissibility.ObservationContribution
+RACHSummary = causal_admissibility.RACHSummary
+compute_causal_admissibility = causal_admissibility.causal_admissibility
+causal_degeneracy = causal_admissibility.causal_degeneracy
+causal_resolvability = causal_admissibility.causal_resolvability
+next_observation_value = causal_admissibility.next_observation_value
+observation_contribution = causal_admissibility.observation_contribution
+rach_summary = causal_admissibility.rach_summary
+
+SeqResult = rach_seq.SeqResult
+SeqStep = rach_seq.SeqStep
+expected_edge_cuts = rach_seq.expected_edge_cuts
+filter_by_outcome = rach_seq.filter_by_outcome
+run_rach_seq = rach_seq.rach_seq
+
 from .causal_replaceability import (
     CRCResult,
     causal_replaceability_cost,
@@ -33,13 +47,6 @@ from .causal_replaceability import (
     crc_profile_full,
 )
 from .mechanism_equivalence import mechanism_equivalence_structure
-from .rach_seq import (
-    SeqResult,
-    SeqStep,
-    expected_edge_cuts,
-    filter_by_outcome,
-    rach_seq,
-)
 
 # General-purpose support schemas retained for backward compatibility.
 from .latent_parameters import LatentParameter
@@ -59,7 +66,7 @@ from .generator_bridge import (
     bridge_inputs_for_structure,
 )
 
-# Supplementary rule-transition compatibility.  Existing ABM modules expose a
+# Supplementary rule-transition compatibility. Existing ABM modules expose a
 # shared isolated-intervention contract; this is deliberately not part of
 # ``__all__`` because it is not the RACH publication mainline.
 from .rule_transition_protocol import install_rule_transition_contracts
@@ -77,7 +84,7 @@ __all__ = [
     "RACHSummary",
     "SeqResult",
     "SeqStep",
-    "causal_admissibility",
+    "compute_causal_admissibility",
     "causal_degeneracy",
     "causal_replaceability_cost",
     "causal_replaceability_cost_full",
@@ -89,7 +96,7 @@ __all__ = [
     "mechanism_equivalence_structure",
     "next_observation_value",
     "observation_contribution",
-    "rach_seq",
+    "run_rach_seq",
     "rach_summary",
     # Compatibility support schemas.
     "CausalEdge",
