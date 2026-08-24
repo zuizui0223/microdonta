@@ -66,7 +66,10 @@ def main() -> None:
     mainline_required = [
         "microdonta has one scientific product",
         "N1-N4 exact channel-identifiability boundary",
-        "candidate observation's predictive distribution",
+        "next_observation_evsi",
+        "validated admissible-region EVSI",
+        "heuristic_next_observation_value",
+        "performance threshold",
         "Pass G2",
         "Pass G5",
         "What is not the mainline",
@@ -76,6 +79,10 @@ def main() -> None:
         raise SystemExit(
             "normative RACH mainline markers are missing:\n- " + "\n- ".join(absent_mainline)
         )
+
+    method_paths = set(manifest["main_text"].get("method", []))
+    if "causal_model/nov_evsi.py" not in method_paths:
+        raise SystemExit("validated NOV EVSI implementation is missing from main-text method inventory")
 
     print("submission bundle OK")
     print(f"target: {manifest['primary_target']}")
