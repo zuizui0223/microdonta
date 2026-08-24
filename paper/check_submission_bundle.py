@@ -8,6 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "paper" / "submission_manifest.json"
 MANUSCRIPT_PATH = ROOT / "paper" / "mee_manuscript_draft.md"
 MAINLINE_PATH = ROOT / "docs" / "mainline.md"
+THEORY_PATH = ROOT / "docs" / "rach_theory.md"
+FOUNDATIONS_PATH = ROOT / "docs" / "rach_mathematical_foundations.md"
 
 
 def iter_paths(value):
@@ -43,7 +45,8 @@ def main() -> None:
         "### 2.3 N2:",
         "### 2.4 N3–N4:",
         "## 3. RACH:",
-        "## 4. Controlled validation",
+        "I(S;Q|A_ε)/K",
+        "### 4.3 Generality and observation-budget error control",
         "## 5. Exact ecological projection and ABM boundary",
         "## 6. Prospective worked design:",
     ]
@@ -57,17 +60,22 @@ def main() -> None:
         "### 4.3 Transfer to a published animal rule",
         "publication-grade worked example now",
         "Tier-A (validated) simulator",
+        "99.2% of confounding edges",
+        "98.5% of systems fully converging",
     ]
     present = [marker for marker in forbidden_main_claims if marker in manuscript]
     if present:
-        raise SystemExit("excluded claims re-entered the primary manuscript:\n- " + "\n- ".join(present))
+        raise SystemExit(
+            "excluded or pre-fix claims re-entered the primary manuscript:\n- "
+            + "\n- ".join(present)
+        )
 
     mainline = MAINLINE_PATH.read_text(encoding="utf-8")
     mainline_required = [
         "microdonta has one scientific product",
         "N1-N4 exact channel-identifiability boundary",
         "next_observation_evsi",
-        "validated admissible-region EVSI",
+        "I(S;Q | A_epsilon) / K",
         "heuristic_next_observation_value",
         "performance threshold",
         "Pass G2",
@@ -80,9 +88,40 @@ def main() -> None:
             "normative RACH mainline markers are missing:\n- " + "\n- ".join(absent_mainline)
         )
 
+    theory = THEORY_PATH.read_text(encoding="utf-8")
+    theory_required = [
+        "NOV(Q)=I(S;Q | A_epsilon) / K",
+        "heuristic_next_observation_value",
+        "next_observation_evsi",
+        "There is no favourable-result acceptance threshold",
+    ]
+    absent_theory = [marker for marker in theory_required if marker not in theory]
+    if absent_theory:
+        raise SystemExit(
+            "RACH theory drifted from the publication mainline:\n- "
+            + "\n- ".join(absent_theory)
+        )
+
+    foundations = FOUNDATIONS_PATH.read_text(encoding="utf-8")
+    foundation_required = [
+        "Validated NOV is normalised mechanism–observation information",
+        "I(S ; Q | A_ε) / K",
+        "0 ≤ NOV(Q) ≤ H(S | A_ε)/K",
+    ]
+    absent_foundations = [
+        marker for marker in foundation_required if marker not in foundations
+    ]
+    if absent_foundations:
+        raise SystemExit(
+            "RACH mathematical foundations are missing NOV information identity:\n- "
+            + "\n- ".join(absent_foundations)
+        )
+
     method_paths = set(manifest["main_text"].get("method", []))
     if "causal_model/nov_evsi.py" not in method_paths:
-        raise SystemExit("validated NOV EVSI implementation is missing from main-text method inventory")
+        raise SystemExit(
+            "validated NOV EVSI implementation is missing from main-text method inventory"
+        )
 
     print("submission bundle OK")
     print(f"target: {manifest['primary_target']}")
