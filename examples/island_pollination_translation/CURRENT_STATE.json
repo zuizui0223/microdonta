@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "updated_on": "2026-08-24",
+  "source_programme": "zuizui0223/izu-core",
+  "target_framework": "microdonta/RACH",
+  "role": "future_empirical_translation_not_current_izu_core_submission_blocker",
+  "tracks": [
+    {
+      "track_id": "signed_functional_starting_position",
+      "status": "blocked_for_direct_empirical_test",
+      "microdonta_role": "next_observation_and_proxy_calibration",
+      "izu_core_submission_blocker": false
+    },
+    {
+      "track_id": "network_context_effective_service",
+      "status": "partial_empirical_bridges_only_no_mapping_ready_system",
+      "microdonta_role": "channel_measurement_and_proxy_calibration",
+      "izu_core_submission_blocker": false
+    },
+    {
+      "track_id": "complete_service_dependency_response_bridge",
+      "status": "multiple_partial_bridges_zero_complete_bridge",
+      "microdonta_role": "RACH_SEQ_observation_package",
+      "izu_core_submission_blocker": false
+    }
+  ],
+  "protected_boundaries": [
+    "do_not_equate_visitor_abundance_identity_or_richness_with_effective_service",
+    "do_not_equate_unsigned_matching_with_signed_functional_position",
+    "do_not_equate_the_synthetic_ABM_coordinate_with_one_named_empirical_trait_without_a_mapping_gate",
+    "do_not_infer_missing_causal_links_from_adjacent_observations",
+    "do_not_treat_these_tracks_as_required_for_the_current_izu_core_island_ecology_submission"
+  ]
+}
