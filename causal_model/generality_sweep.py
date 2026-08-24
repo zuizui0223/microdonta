@@ -157,8 +157,11 @@ def _abc_accept(
             continue
         row = dict(state)
         row["theta"] = theta
+        # Preserve raw simulated magnitudes. Rounding here can move values just
+        # outside analytically defined outcome bands and incorrectly force a
+        # declared-prior fallback instead of verified Pr(v | current A_epsilon).
         for t, magnitude in enumerate(magnitudes):
-            row[f"trait{t}_mag"] = round(magnitude, 4)
+            row[f"trait{t}_mag"] = magnitude
         accepted.append(row)
     return accepted
 
