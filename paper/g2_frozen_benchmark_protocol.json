@@ -55,15 +55,19 @@
     "rach_seq_minus_random_order_false_exclusion_rate"
   ],
   "reporting": {
+    "per_system_records_required": true,
     "per_seed_required": true,
     "aggregate_across_seeds": "mean_and_sample_sd",
     "policy_rows_required": true,
     "policy_contrast_rows_required": true,
+    "protocol_sha256_required_on_every_output_row": true,
+    "clean_git_commit_sha_required_on_every_output_row": true,
+    "matched_system_signatures_verified_before_aggregation": true,
     "performance_acceptance_thresholds": "none_report_all_frozen_outcomes",
     "old_pre_fix_generality_numbers_must_not_be_reused": true
   },
   "freeze_policy": {
     "parameter_changes_after_final_run": "require_new_protocol_id_and_full_rerun",
-    "manuscript_numbers": "must_come_only_from_outputs_tagged_with_this_protocol_hash"
+    "manuscript_numbers": "must_come_only_from_outputs_tagged_with_this_protocol_hash_and_code_commit"
   }
 }
