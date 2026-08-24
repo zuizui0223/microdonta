@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "paper" / "submission_manifest.json"
 MANUSCRIPT_PATH = ROOT / "paper" / "mee_manuscript_draft.md"
+MAINLINE_PATH = ROOT / "docs" / "mainline.md"
 
 
 def iter_paths(value):
@@ -24,6 +25,7 @@ def main() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     missing = sorted(
         path for path in set(iter_paths({
+            "governance": manifest.get("governance", []),
             "main_text": manifest["main_text"],
             "supplementary": manifest["supplementary"],
             "archive": manifest["archive"],
@@ -59,9 +61,25 @@ def main() -> None:
     if present:
         raise SystemExit("excluded claims re-entered the primary manuscript:\n- " + "\n- ".join(present))
 
+    mainline = MAINLINE_PATH.read_text(encoding="utf-8")
+    mainline_required = [
+        "microdonta has one scientific product",
+        "N1-N4 exact channel-identifiability boundary",
+        "candidate observation's predictive distribution",
+        "Pass G2",
+        "Pass G5",
+        "What is not the mainline",
+    ]
+    absent_mainline = [marker for marker in mainline_required if marker not in mainline]
+    if absent_mainline:
+        raise SystemExit(
+            "normative RACH mainline markers are missing:\n- " + "\n- ".join(absent_mainline)
+        )
+
     print("submission bundle OK")
     print(f"target: {manifest['primary_target']}")
     print("spine: " + " -> ".join(manifest["claim_spine"]))
+    print("governance: " + ", ".join(manifest.get("governance", [])))
 
 
 if __name__ == "__main__":
