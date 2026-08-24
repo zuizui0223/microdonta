@@ -29,7 +29,8 @@ observation contract
 -> A_epsilon: restricted admissible causal hypotheses
 -> CA / D_RACH / R_RACH / CRC
 -> mechanism-equivalence structure
--> validated NOV/EVSI -> RACH-SEQ next-observation design
+-> validated NOV = I(S;Q | A_epsilon)/K
+-> RACH-SEQ next-observation design
 ```
 
 ### Output
@@ -49,7 +50,7 @@ The MEE paper is fixed to:
 ```text
 N1-N4 exact channel-identifiability boundary
 -> RACH admissible explanation set
--> validated NOV/EVSI and RACH-SEQ observation design
+-> information-theoretic NOV/EVSI and RACH-SEQ observation design
 -> controlled truth-peek-free validation
 -> exact one-step colonisation projection
 -> prospective Campanula measurement design
@@ -65,30 +66,43 @@ from the **current** admissible region whenever its listed outcomes form a
 verified mutually exclusive and exhaustive partition. Hidden benchmark truth is
 never a predictive prior.
 
-The publication-level single-shot NOV is `next_observation_evsi`. It is called a
-validated admissible-region EVSI only when the candidate outcome maps form that
-verified partition of current `A_epsilon`:
+The publication-level single-shot NOV is `next_observation_evsi`. For a verified
+current-region predictive map,
 
 ```text
-NOV(q) = EVSI(q)
-       = sum_v Pr(v | current A_epsilon)
-           [R(A_epsilon | q=v) - R(A_epsilon)].
+NOV(Q)
+= sum_q Pr(q | current A_epsilon)
+    [R(A_epsilon | Q=q) - R(A_epsilon)]
+= I(S;Q | A_epsilon) / K.
 ```
 
+Thus
+
+```text
+0 <= NOV(Q) <= 1 - R_RACH(A_epsilon).
+```
+
+`NOV(Q)=0` exactly when `Q` carries no information about the remaining mechanism
+vector under current `A_epsilon`; the upper bound is attained exactly when the
+observation resolves all remaining switch entropy under the declared system.
+This is the normative meaning of validated NOV in microdonta.
+
 If a candidate's outcomes overlap, are incomplete, or required simulator columns
-are absent, the stored admissible region does not identify the predictive
-outcome distribution. `next_observation_evsi` therefore reports that candidate as
-**not estimable**; it does not silently substitute a declared prior and call the
-result a validated EVSI. The older target-switch score is retained only as the
-explicitly named compatibility helper `heuristic_next_observation_value` and is
-not part of the primary public API.
+are absent, the stored admissible region does not identify the predictive outcome
+distribution. `next_observation_evsi` therefore reports that candidate as **not
+estimable**; it does not silently substitute a declared prior and call the result
+a validated EVSI. The older target-switch score is retained only as the explicitly
+named compatibility helper `heuristic_next_observation_value` and is not part of
+the primary public API.
 
 RACH-SEQ is slightly broader because it must still be able to rank a declared
 field-design candidate set. At each sequential step it uses
-`Pr(v | current A_epsilon)` when a partition is verified; otherwise it may use a
+`Pr(q | current A_epsilon)` when a partition is verified; otherwise it may use a
 predeclared outcome prior as an explicit fallback. Every step records which
 probability source was used. Thus fallback ranking is transparent and is never
-confused with the validated single-shot EVSI quantity.
+confused with the validated single-shot `I(S;Q|A_epsilon)/K` quantity.
+
+## Validation rule
 
 The publication benchmark reports both resolution and error control:
 
