@@ -34,6 +34,13 @@ def test_coefficient_sampling_range_satisfies_declared_separability():
     assert ratio_hi < 2.0
 
 
+def test_g2_protocol_has_no_favourable_performance_gate():
+    protocol, _ = load_protocol()
+    assert protocol["reporting"]["performance_acceptance_thresholds"] == (
+        "none_report_all_frozen_outcomes"
+    )
+
+
 def test_frozen_runner_has_no_scientific_parameter_arguments():
     # The callable can choose only where to write results. Scientific parameters
     # must come from the frozen JSON, not analysis-time function arguments.
