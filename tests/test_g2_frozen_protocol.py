@@ -52,12 +52,19 @@ def test_selection_challenge_is_predeclared():
     assert selection["policy_comparison_is_descriptive_not_acceptance_gate"] is True
 
 
-def test_g2_protocol_has_no_favourable_performance_gate():
+def test_g2_reporting_requires_full_provenance_without_success_gate():
     protocol, _ = load_protocol()
-    assert protocol["reporting"]["performance_acceptance_thresholds"] == (
+    reporting = protocol["reporting"]
+    assert reporting["per_system_records_required"] is True
+    assert reporting["per_seed_required"] is True
+    assert reporting["policy_rows_required"] is True
+    assert reporting["policy_contrast_rows_required"] is True
+    assert reporting["protocol_sha256_required_on_every_output_row"] is True
+    assert reporting["clean_git_commit_sha_required_on_every_output_row"] is True
+    assert reporting["matched_system_signatures_verified_before_aggregation"] is True
+    assert reporting["performance_acceptance_thresholds"] == (
         "none_report_all_frozen_outcomes"
     )
-    assert protocol["reporting"]["policy_contrast_rows_required"] is True
 
 
 def test_frozen_runner_has_no_scientific_parameter_arguments():
