@@ -30,7 +30,7 @@ observation contract
 -> CA / D_RACH / R_RACH / CRC
 -> mechanism-equivalence structure
 -> validated NOV = I(S;Q | A_epsilon)/K
--> RACH-SEQ next-observation design
+-> RACH-SEQ next-observation selection
 ```
 
 ### Output
@@ -50,8 +50,9 @@ The MEE paper is fixed to:
 ```text
 N1-N4 exact channel-identifiability boundary
 -> RACH admissible explanation set
--> information-theoretic NOV/EVSI and RACH-SEQ observation design
--> controlled truth-peek-free validation
+-> information-theoretic NOV/EVSI
+-> RACH-SEQ observation selection
+-> controlled selection and error validation
 -> exact one-step colonisation projection
 -> prospective Campanula measurement design
 ```
@@ -104,23 +105,57 @@ confused with the validated single-shot `I(S;Q|A_epsilon)/K` quantity.
 
 ## Validation rule
 
-The publication benchmark reports both resolution and error control:
+A valid synthetic benchmark must not feed hidden truth into candidate ranking.
+It also must distinguish two different claims:
+
+```text
+observation sufficiency:  does a declared observation exist that can break a confound?
+selection efficiency:     does the algorithm choose useful observations under limited budget?
+```
+
+A resolver-only candidate set can test the first claim but not the second. The
+submission benchmark must therefore challenge observation selection itself.
+
+### Frozen G2 selection challenge
+
+The current preregistered protocol is
+`rach-g2-truth-peek-free-v2`. V1 is retained in the archive but was never executed
+as the final benchmark; it was superseded before any final output was inspected
+because it contained only directly resolving candidates.
+
+V2 adds exactly two mechanism-uninformative binary nuisance measurements per
+system and evaluates two policies on the same generated systems, hidden truths,
+candidate sets and budgets:
+
+```text
+rach_seq      choose by expected confounding-edge cuts
+random_order  choose uniformly among remaining candidates
+```
+
+For both policies, hidden truth is materialised only after the candidate has been
+selected. The random-order policy is a selection baseline, not an alternative
+causal model.
+
+The publication benchmark reports:
 
 ```text
 observation budget
--> fraction of confounding edges resolved
--> convergence probability
+-> policy-specific fraction of confounding edges resolved
+-> policy-specific convergence probability
+-> observations used
+-> nuisance/distractor observations selected
 -> false-exclusion rate for the hidden true explanation
+-> within-seed RACH-SEQ minus random-order contrasts
 ```
 
-A benchmark that feeds the hidden true outcome into candidate ranking is invalid
-for the main submission, even if it produces better apparent performance.
+The policy contrast is **descriptive, not an acceptance gate**. RACH-SEQ is not
+required by software tests or the protocol to outperform random selection.
+Favourable, null, or adverse frozen differences are all reportable results.
 
-The final G2 configuration is preregistered in
-`paper/g2_frozen_benchmark_protocol.json`. The final runner accepts no scientific
-parameter overrides; every output is tagged with the SHA-256 hash of that protocol.
-The protocol has no favourable performance threshold: favourable, null, or
-adverse frozen outcomes are all reportable results.
+The final runner accepts no scientific parameter overrides; every output is
+tagged with the SHA-256 hash of the exact v2 protocol. Any later change to the
+scientific configuration after execution requires a new protocol id and full
+rerun.
 
 ## Exact ecological projection boundary
 
@@ -149,8 +184,9 @@ layer. They do not change the mainline and are not empirical validation of RACH.
 ## Active development order
 
 1. **Pass G2 — benchmark validity.** Keep candidate ranking truth-peek-free,
-   use current-`A_epsilon` sequential predictive reweighting, and run the frozen
-   protocol to produce the final observation-budget/error-control table.
+   retain the current-`A_epsilon` predictive semantics, pass the matched-policy v2
+   CI, and run the frozen protocol to produce the final observation-budget/error-
+   control and selection-comparison tables.
 2. **Pass G5 — reproducibility.** Rebuild the complete figure set from a clean
    environment and verify the submission/boundary gates and wheel.
 3. Freeze the public RACH API and submission release.
