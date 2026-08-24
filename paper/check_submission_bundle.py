@@ -37,6 +37,7 @@ def main() -> None:
 
     manuscript = MANUSCRIPT_PATH.read_text(encoding="utf-8")
     required = [
+        "Numerical benchmark statements remain subject",
         "## 2. Exact channel-identifiability boundary",
         "### 2.2 N1:",
         "### 2.3 N2:",
