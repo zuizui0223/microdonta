@@ -8,6 +8,7 @@ from causal_model.generality_sweep import (
     _abc_accept,
     _candidates_for_system,
     _make_random_system,
+    _sample_driver_coefficients,
     _truth_magnitude,
     run_budget_sweep,
     run_generality_sweep,
@@ -24,6 +25,15 @@ def test_random_system_disjoint_driver_pairs():
     assert len(set(flat)) == len(flat)
     for td, pair in zip(truth, drivers):
         assert td in pair
+
+
+def test_sampled_driver_coefficients_keep_magnitude_bands_separated():
+    rng = random.Random(9)
+    pairs = [_sample_driver_coefficients(rng) for _ in range(50)]
+    assert len(set(pairs)) > 40
+    for a, b in pairs:
+        ratio = b / a
+        assert 1.5 < ratio < 2.0
 
 
 def test_abc_accept_produces_confounding_edges():
@@ -52,8 +62,11 @@ def test_truth_magnitude_distinguishes_drivers():
 def test_candidates_are_predictive_distribution_from_admissible_region():
     rng = random.Random(3)
     switches, drivers, _truth = _make_random_system(rng, K=6, n_confounds=2)
-    accepted = _abc_accept(rng, switches, drivers, n_attempts=1200)
-    cands = _candidates_for_system(drivers, accepted)
+    coeffs = _sample_driver_coefficients(rng)
+    accepted = _abc_accept(
+        rng, switches, drivers, n_attempts=1200, driver_coeffs=coeffs
+    )
+    cands = _candidates_for_system(drivers, accepted, driver_coeffs=coeffs)
     assert len(cands) == 2
     for candidate in cands:
         names = {outcome.name for outcome in candidate.outcomes}
@@ -71,6 +84,8 @@ def test_sweep_returns_records_and_summary():
     assert res.records
     assert all(isinstance(r, SystemRecord) for r in res.records)
     assert all(r.truth_peek_free for r in res.records)
+    # Effect magnitudes vary across systems rather than being one fixed benchmark.
+    assert len({(r.driver_coeff_a, r.driver_coeff_b) for r in res.records}) > 5
     assert 0.0 <= res.frac_converged <= 1.0
     assert 0.0 <= res.mean_frac_resolved <= 1.0
     assert 0.0 <= res.false_exclusion_rate <= 1.0
@@ -97,6 +112,8 @@ def test_sweep_is_reproducible():
     assert a.mean_frac_resolved == b.mean_frac_resolved
     assert a.frac_converged == b.frac_converged
     assert a.false_exclusion_rate == b.false_exclusion_rate
+    assert [r.driver_coeff_a for r in a.records] == [r.driver_coeff_a for r in b.records]
+    assert [r.driver_coeff_b for r in a.records] == [r.driver_coeff_b for r in b.records]
     assert len(a.records) == len(b.records)
 
 
