@@ -1,6 +1,11 @@
 __pycache__/
 *.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
 .pytest_cache/
 .streamlit/secrets.toml
+graphify-out/
 examples/*/outputs/
 outputs/

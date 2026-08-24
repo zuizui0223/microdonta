@@ -2,6 +2,27 @@
 
 [![CI](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml/badge.svg)](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml)
 
+## Canonical publication path
+
+The active submission is the MEE methods paper defined in
+[`paper/README.md`](paper/README.md). Its theorem-first spine is N1–N4 →
+RACH → NOV/RACH-SEQ → controlled benchmarks → exact one-step projection →
+prospective Campanula design. The machine-readable boundary is
+[`paper/submission_manifest.json`](paper/submission_manifest.json), and CI
+rejects drift back to provisional ecological-rule or structure-discovery claims.
+
+The repository-wide program boundary is separate from the paper boundary. See
+[`docs/repository_map.md`](docs/repository_map.md) and
+[`repository_programs.json`](repository_programs.json) for the Graphify-derived
+map of RACH, adapters, optional backends, apps, archives, and external ownership.
+The all-repository audit is in
+[`docs/repository_ecosystem.md`](docs/repository_ecosystem.md); it is a boundary
+registry, not a claim that microdonta owns the other projects.
+
+Run `python paper/check_submission_bundle.py` and
+`python scripts/check_repository_boundaries.py` before manuscript, figure, or
+repository-structure changes.
+
 **RACH** means **Restricted Admissible Causal Hypotheses**. It keeps every causal
 explanation that remains compatible with a declared model family, biological
 constraints, and observed pattern, then states exactly what is still unresolved
@@ -39,6 +60,27 @@ A_epsilon(y_obs, x_obs)
 
 The output is the set of surviving causal explanations, their equivalence or
 replaceability, and observations expected to reduce that uncertainty.
+
+## Position in the repository ecosystem
+
+microdonta owns the inference layer between a declared ecological observation
+contract and the next measurement. It does not own field capture, the source
+island ecology, global comparative analyses, SDMs, eco-genetic mechanisms, or
+ecological-state philosophy.
+
+The merged izu-core bridge contains exactly three nonblocking adapters:
+
+| Source question | Frozen RACH contract | microdonta role |
+|---|---|---|
+| real signed functional starting position | `signed_position = plant_trait - pollinator_functional_center`, fixed before outcome inspection | next observation plus N3/N4 proxy calibration |
+| network context to effective service | `effective_service = sum_k(visitor_rate_k * direct_effectiveness_k)` | channel measurement plus proxy calibration |
+| complete pollinator-change chain | change -> service -> dependency/assurance -> response | RACH-SEQ observation package |
+
+Readiness is conjunctive. Unsigned matching cannot replace signed position;
+visitor rate, identity, richness, or degree cannot replace direct effectiveness;
+and a missing link in the complete chain cannot be inferred from adjacent
+observations. The source results and field contracts remain owned by
+[`izu-core`](https://github.com/zuizui0223/izu-core).
 
 ## Mathematical identifiability boundary
 
@@ -171,12 +213,21 @@ causal_model/
   colonization_metapopulation_abm.py    establishment-mediated connectivity ABM
   campanula_real_data.py                published Campanula evidence and study design
 
+attraction_trait_model/                 optional biological simulator backend
+apps/streamlit_app.py                   interactive application, not evidence
+paper/                                  canonical submission workspace
+
 examples/
   spatial_metapopulation_demo.py
   endpoint_sensitivity_report.py
   channel_identifiability_demo.py
   proxy_calibration_demo.py
+  island_pollination_translation/       three izu-core-to-RACH adapter contracts
 ```
+
+Eco-genetic criticality code, documentation, examples, and tests are owned only
+by [`zuizui0223/eco-genetic-criticality`](https://github.com/zuizui0223/eco-genetic-criticality).
+They are intentionally absent from the current microdonta tree.
 
 ## Campanula microdonta: empirical layer
 
@@ -344,6 +395,7 @@ artifact. `full` is intentionally manual because it is a large factorial analysi
 
 ```bash
 pip install -e ".[dev]"
+python scripts/check_repository_boundaries.py
 pytest -q
 
 # Mathematical theorem demonstrations
@@ -359,6 +411,9 @@ python -m examples.rule_transition_demo
 
 ## Documentation
 
+- `docs/repository_map.md` — Graphify-derived program topology and physical boundaries
+- `docs/repository_ecosystem.md` — all 23 repositories, sole responsibilities, and allowed handoffs
+- `docs/publication_claim_graph.md` — claim–evidence graph, manuscript boundary, and submission gates
 - `docs/trait_space_contraction_theorem.md` — restricted comparative statics for the simplified viable-set model
 - `docs/theory_corrections.md` — exact edge-retention threshold correction
 - `docs/channel_identifiability_theorem.md` — N1/N2 structural non-identifiability and one-factor recovery

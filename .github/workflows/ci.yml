@@ -25,6 +25,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Check submission bundle
+        run: python paper/check_submission_bundle.py
+
+      - name: Check repository program boundaries
+        run: python scripts/check_repository_boundaries.py
+
       - name: Run test suite
         run: pytest -q
 

@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "audited_owner": "zuizui0223",
+  "audited_on": "2026-08-24",
+  "purpose": "portfolio boundary audit; this file does not make microdonta the owner of other repositories",
+  "repositories": [
+    {"name": "hotarubukuro", "status": "independent_active", "owner_of": "Campanula punctata geographical flower-colour submission pipeline", "boundary": "not a RACH implementation or island-mechanism repository"},
+    {"name": "azami", "status": "independent_active", "owner_of": "global continuous thistle image phenomics", "boundary": "ends at present-day spatial discovery; hands evolutionary-time questions to EAzami"},
+    {"name": "bita", "status": "independent_active", "owner_of": "biotic interaction trait-architecture theory and synthesis", "boundary": "does not own RACH inference or the legacy attraction simulator"},
+    {"name": "island", "status": "independent_active", "owner_of": "global island floral and reproductive comparative analysis", "boundary": "Bombus environmental compatibility is not visitation, service, or historical loss"},
+    {"name": "microdonta", "status": "independent_active", "owner_of": "RACH admissible-mechanism inference, equivalence diagnosis, and next-observation design", "boundary": "consumes external observations through adapters; does not own source ecological results"},
+    {"name": "pollipi", "status": "independent_active", "owner_of": "local-first Raspberry Pi field capture", "boundary": "mesh decisions are observation metadata, not confirmed biological events"},
+    {"name": "insepi", "status": "independent_active", "owner_of": "noise-first observability and sensing-error diagnosis", "boundary": "does not own PolliPi device operation or event capture"},
+    {"name": "acsp", "status": "independent_active", "owner_of": "validated candidate survey-patch generation", "boundary": "does not own routing, budgets, occupancy probability, or EOG support-topology forecasting"},
+    {"name": "eco-genetic-criticality", "status": "independent_active", "owner_of": "finite eco-genetic criticality mechanisms and closed H1-H3 evidence", "boundary": "sole code owner; microdonta must retain references only"},
+    {"name": "ccoc", "status": "independent_active", "owner_of": "open-composition compression obstruction theory", "boundary": "feeds CREST conceptually without transferring theorem implementation"},
+    {"name": "izu-core", "status": "independent_active", "owner_of": "island ecological response architecture, ABM results, and field measurement contracts", "boundary": "exports exactly three nonblocking translation tracks to microdonta"},
+    {"name": "eco-genetic-warning-extensions", "status": "independent_active", "owner_of": "condition recovery, warning portability, and integrated eco-genetic submission orchestration", "boundary": "extends but does not duplicate the criticality parent code base"},
+    {"name": "mltr", "status": "independent_active", "owner_of": "non-nested macro-law transport and repair", "boundary": "feeds CREST semantic-obstruction synthesis without owning CREST philosophy"},
+    {"name": "ced", "status": "independent_active", "owner_of": "closure evidence, reportability, and risk-limited observation design", "boundary": "licenses evidence after state requirements; does not duplicate RACH model-family inference"},
+    {"name": "mrm", "status": "independent_active", "owner_of": "mechanism-robust deterministic, typed, and set-valued laws", "boundary": "owns retained-mechanism disagreement, not CED evidence architecture"},
+    {"name": "shimahotarubukuro", "status": "independent_active", "owner_of": "Campanula microdonta specimen morphometrics and Pst pipeline", "boundary": "measurement publication path, not island causal identification"},
+    {"name": "fcp", "status": "independent_active", "owner_of": "comparative spatial organization of intraspecific flower-colour variation", "boundary": "frozen 34-species comparative paper, not a general phase-theory package"},
+    {"name": "eog", "status": "independent_active", "owner_of": "environmental occupancy world sets, forecasts, and spatial support topology", "boundary": "canonical successor of ODSP support topology"},
+    {"name": "odsp", "status": "superseded_tombstone", "owner_of": "migration record only", "boundary": "no active code, data, method, or publication ownership after transfer to EOG"},
+    {"name": "EAzami", "status": "independent_active", "owner_of": "East-Asian Cirsium functional diversification through evolutionary time", "boundary": "begins where Azami spatial image-phenomic discovery ends"},
+    {"name": "chun", "status": "independent_active", "owner_of": "reversible floral pigment deployment and molecular pathway histories", "boundary": "visible colour alone cannot establish reactivation"},
+    {"name": "sdmr", "status": "independent_active", "owner_of": "leakage-free SDM candidate-universe and predictor-strategy benchmarking", "boundary": "does not own ACSP field patches or EOG world-set forecasting"},
+    {"name": "crest", "status": "independent_active", "owner_of": "contract-relative ecological state philosophy and finite synthesis", "boundary": "synthesizes CCOC, MLTR, MRM, and CED without copying their theorem implementations"}
+  ],
+  "declared_relations": [
+    {"from": "azami", "to": "EAzami", "type": "spatial_pattern_to_evolutionary_time_handoff"},
+    {"from": "eco-genetic-criticality", "to": "eco-genetic-warning-extensions", "type": "mechanistic_parent_to_condition_extension"},
+    {"from": "ccoc", "to": "crest", "type": "conceptual_obstruction_input_only"},
+    {"from": "mltr", "to": "crest", "type": "conceptual_obstruction_input_only"},
+    {"from": "mrm", "to": "crest", "type": "conceptual_obstruction_input_only"},
+    {"from": "ced", "to": "crest", "type": "downstream_evidence_licensing_input_only"},
+    {"from": "izu-core", "to": "microdonta", "type": "three_nonblocking_observation_adapters"},
+    {"from": "odsp", "to": "eog", "type": "superseded_by"},
+    {"from": "pollipi", "to": "insepi", "type": "optional_observation_trace_adapter_not_code_merge"}
+  ]
+}
