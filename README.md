@@ -2,6 +2,17 @@
 
 [![CI](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml/badge.svg)](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml)
 
+## Canonical publication path
+
+The active submission is the MEE methods paper defined in
+[`paper/README.md`](paper/README.md). Its theorem-first spine is N1–N4 →
+RACH → NOV/RACH-SEQ → controlled benchmarks → exact one-step projection →
+prospective Campanula design. The machine-readable boundary is
+[`paper/submission_manifest.json`](paper/submission_manifest.json), and CI
+rejects drift back to provisional ecological-rule or structure-discovery claims.
+
+Run `python paper/check_submission_bundle.py` before manuscript or figure changes.
+
 **RACH** means **Restricted Admissible Causal Hypotheses**. It keeps every causal
 explanation that remains compatible with a declared model family, biological
 constraints, and observed pattern, then states exactly what is still unresolved
