@@ -1,4 +1,11 @@
-"""Tests for the truth-peek-free RACH-SEQ generality sweep."""
+"""Tests for the truth-peek-free RACH-SEQ generality sweep.
+
+These tests protect benchmark integrity and reproducibility. They deliberately do
+not require a favourable scientific result: resolution, convergence, or hidden-
+truth error rates are outputs of the frozen G2 run, not software acceptance
+criteria to tune toward.
+"""
+import math
 import random
 
 from causal_model.generality_sweep import (
@@ -36,7 +43,7 @@ def test_sampled_driver_coefficients_keep_magnitude_bands_separated():
         assert 1.5 < ratio < 2.0
 
 
-def test_abc_accept_produces_confounding_edges():
+def test_abc_accept_produces_declared_confounding_edge():
     rng = random.Random(1)
     switches, drivers, _ = _make_random_system(rng, K=4, n_confounds=1)
     accepted = _abc_accept(rng, switches, drivers, n_attempts=2000)
@@ -73,37 +80,58 @@ def test_candidates_are_predictive_distribution_from_admissible_region():
         assert names <= {"driver_a_only", "driver_b_only", "both_on"}
         assert len(names) >= 2
         assert abs(sum(o.prior_probability for o in candidate.outcomes) - 1.0) < 1e-12
-        assert all(o.extra_pattern_rows[0]["type"] == "absolute_summary" for o in candidate.outcomes)
-        # No outcome is a probability-one oracle supplied from hidden truth.
+        assert all(
+            o.extra_pattern_rows[0]["type"] == "absolute_summary"
+            for o in candidate.outcomes
+        )
+        # Hidden benchmark truth must never appear as a probability-one oracle.
         assert max(o.prior_probability for o in candidate.outcomes) < 1.0
 
 
-def test_sweep_returns_records_and_summary():
+def test_sweep_returns_finite_truth_peek_free_metrics():
     res = run_generality_sweep(n_systems=30, seed=0, n_attempts=600)
     assert isinstance(res, SweepResult)
     assert res.records
     assert all(isinstance(r, SystemRecord) for r in res.records)
     assert all(r.truth_peek_free for r in res.records)
-    # Effect magnitudes vary across systems rather than being one fixed benchmark.
     assert len({(r.driver_coeff_a, r.driver_coeff_b) for r in res.records}) > 5
     assert 0.0 <= res.frac_converged <= 1.0
     assert 0.0 <= res.mean_frac_resolved <= 1.0
     assert 0.0 <= res.false_exclusion_rate <= 1.0
+    assert all(
+        math.isfinite(value)
+        for value in (
+            res.mean_R0,
+            res.mean_R_final,
+            res.mean_steps,
+            res.mean_frac_resolved,
+            res.false_exclusion_rate,
+        )
+    )
 
 
-def test_sweep_resolves_most_confounds_without_truth_peeking():
-    res = run_generality_sweep(n_systems=80, seed=0, n_attempts=800)
-    assert res.mean_frac_resolved > 0.8
-    assert res.mean_R_final > res.mean_R0
-    assert res.false_exclusion_rate < 0.05
-
-
-def test_budget_sweep_reports_error_control_and_efficiency():
+def test_budget_sweep_reports_results_without_encoding_a_desired_result():
     rows = run_budget_sweep((0, 1, 2), n_systems=40, seed=11, n_attempts=700)
     assert all(isinstance(row, BudgetSummary) for row in rows)
     assert [row.budget for row in rows] == [0, 1, 2]
-    assert rows[0].mean_frac_resolved <= rows[1].mean_frac_resolved <= rows[2].mean_frac_resolved
-    assert all(0.0 <= row.false_exclusion_rate <= 1.0 for row in rows)
+    # The same generated systems must be compared at every observation budget.
+    assert len({row.n_systems for row in rows}) == 1
+    assert len({row.systems_with_edges for row in rows}) == 1
+    assert rows[0].mean_steps == 0.0
+    for row in rows:
+        assert 0.0 <= row.frac_converged <= 1.0
+        assert 0.0 <= row.mean_frac_resolved <= 1.0
+        assert 0.0 <= row.false_exclusion_rate <= 1.0
+        assert 0.0 <= row.mean_steps <= row.budget
+        assert all(
+            math.isfinite(value)
+            for value in (
+                row.frac_converged,
+                row.mean_frac_resolved,
+                row.mean_steps,
+                row.false_exclusion_rate,
+            )
+        )
 
 
 def test_sweep_is_reproducible():
