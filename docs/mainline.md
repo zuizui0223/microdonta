@@ -61,10 +61,16 @@ Only code needed to support this spine is primary-paper code.
 
 Synthetic truth may be used to score an algorithm only after the algorithm has
 made its choice. In particular, a candidate observation's predictive distribution
-must be constructed from the current admissible region (or another predeclared
-predictive model), not from the hidden benchmark truth.
+must be constructed from the **current** admissible region whenever its listed
+outcomes form a verified mutually exclusive and exhaustive partition. If that
+partition cannot be verified because outcome maps overlap, are incomplete, or
+required simulator columns are absent, a predeclared outcome prior is the explicit
+fallback. Hidden benchmark truth is never a predictive prior.
 
-The publication benchmark therefore reports both resolution and error control:
+RACH-SEQ repeats this calculation after every observation, so the operative
+quantity is `Pr(v | current A_epsilon)`, not a stale probability frozen at step 0.
+
+The publication benchmark reports both resolution and error control:
 
 ```text
 observation budget
@@ -75,6 +81,10 @@ observation budget
 
 A benchmark that feeds the hidden true outcome into candidate ranking is invalid
 for the main submission, even if it produces better apparent performance.
+
+The final G2 configuration is preregistered in
+`paper/g2_frozen_benchmark_protocol.json`. The final runner accepts no scientific
+parameter overrides; every output is tagged with the SHA-256 hash of that protocol.
 
 ## Exact ecological projection boundary
 
@@ -102,8 +112,9 @@ layer. They do not change the mainline and are not empirical validation of RACH.
 
 ## Active development order
 
-1. **Pass G2 — benchmark validity.** Keep candidate ranking truth-peek-free, lock
-   generators/seeds, and produce the final observation-budget/error-control table.
+1. **Pass G2 — benchmark validity.** Keep candidate ranking truth-peek-free,
+   use current-`A_epsilon` sequential predictive reweighting, and run the frozen
+   protocol to produce the final observation-budget/error-control table.
 2. **Pass G5 — reproducibility.** Rebuild the complete figure set from a clean
    environment and verify the submission/boundary gates and wheel.
 3. Freeze the public RACH API and submission release.
@@ -113,8 +124,10 @@ a blocker before these three steps are complete.
 
 ## Public API boundary
 
-Package-level imports should expose RACH first: `causal_admissibility`,
+Package-level callables expose RACH first: `compute_causal_admissibility`,
 `causal_degeneracy`, `causal_resolvability`, replaceability/CRC,
-`mechanism_equivalence_structure`, NOV, `rach_seq`, and `rach_summary`.
-Legacy structure-scoring helpers may remain for compatibility but must not define
-what the package appears to be.
+`mechanism_equivalence_structure`, NOV, `run_rach_seq`, and `rach_summary`.
+Canonical submodules such as `causal_model.causal_admissibility` and
+`causal_model.rach_seq` remain importable under their own names and are never
+shadowed by root-level functions. Legacy structure-scoring helpers may remain for
+compatibility but must not define what the package appears to be.
