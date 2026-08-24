@@ -48,6 +48,7 @@ def main() -> None:
         "## 3. RACH:",
         "I(S;Q|A_ε)/K",
         "### 4.3 Generality and observation-budget error control",
+        "random_order",
         "## 5. Exact ecological projection and ABM boundary",
         "## 6. Prospective worked design:",
     ]
@@ -79,6 +80,7 @@ def main() -> None:
         "I(S;Q | A_epsilon) / K",
         "heuristic_next_observation_value",
         "descriptive, not an acceptance gate",
+        "random_order",
         "Pass G2",
         "Pass G5",
         "What is not the mainline",
@@ -124,9 +126,6 @@ def main() -> None:
             "validated NOV EVSI implementation is missing from main-text method inventory"
         )
 
-    # G2 validation design is scientific governance, not a convenient runtime
-    # default. The current protocol must challenge selection itself rather than
-    # reverting to the resolver-only v1 design.
     protocol = json.loads(G2_PROTOCOL_PATH.read_text(encoding="utf-8"))
     if protocol.get("protocol_id") != "rach-g2-truth-peek-free-v2":
         raise SystemExit("current G2 protocol is not frozen selection-validation v2")
@@ -142,7 +141,23 @@ def main() -> None:
         raise SystemExit("G2 policy comparison must be matched on generated systems")
     if not selection.get("policy_comparison_is_descriptive_not_acceptance_gate"):
         raise SystemExit("G2 policy contrast must remain descriptive, not a success gate")
+
     reporting = protocol.get("reporting", {})
+    required_reporting = [
+        "per_system_records_required",
+        "per_seed_required",
+        "policy_rows_required",
+        "policy_contrast_rows_required",
+        "protocol_sha256_required_on_every_output_row",
+        "clean_git_commit_sha_required_on_every_output_row",
+        "matched_system_signatures_verified_before_aggregation",
+    ]
+    missing_reporting = [key for key in required_reporting if reporting.get(key) is not True]
+    if missing_reporting:
+        raise SystemExit(
+            "G2 provenance/reporting requirements are missing:\n- "
+            + "\n- ".join(missing_reporting)
+        )
     if reporting.get("performance_acceptance_thresholds") != "none_report_all_frozen_outcomes":
         raise SystemExit("G2 protocol may not encode a favourable-result acceptance threshold")
 
