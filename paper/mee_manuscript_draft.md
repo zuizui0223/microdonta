@@ -7,7 +7,8 @@ Kyoto University, Kyoto, Japan
 > **Working draft for Methods in Ecology and Evolution.** This theorem-first
 > draft supersedes the pre-theorem manuscript archived under
 > `paper/archive/`. Numerical benchmark statements remain subject to the final
-> frozen submission run and table.
+> frozen submission run and table; pre-fix generality percentages are deliberately
+> absent from this draft until replaced by protocol-tagged frozen outputs.
 
 ---
 
@@ -105,12 +106,12 @@ pattern admits, plus the measurement that would justify narrowing it.
 Let trait-specific total performance be
 
 [
-W_i(z)=F_i(z)E_i(z), qquad F_i(z)>0, E_i(z)>0,
+W_i(z)=F_i(z)E_i(z), \qquad F_i(z)>0, E_i(z)>0,
 ]
 
-for regimes (iin{0,1}). A net-only observation is any deterministic
-operator (O_i=Phi(W_i)). This class includes the complete performance curve,
-every viable set (Omega_t={z:W_i(z)ge t}), and every edge, breadth,
+for regimes (i\in{0,1}). A net-only observation is any deterministic
+operator (O_i=\Phi(W_i)). This class includes the complete performance curve,
+every viable set (\Omega_t={z:W_i(z)\ge t}), and every edge, breadth,
 component count, or other geometry derived from those sets. The result is about
 the information discarded by multiplication; it is not a statement that local
 reproduction and establishment are biologically interchangeable.
@@ -120,13 +121,13 @@ reproduction and establishment are biologically interchangeable.
 For any positive trait-dependent multiplier (a(z)), compare
 
 [
-P_F: (F_1,E_1)=(aF_0,E_0), qquad
+P_F: (F_1,E_1)=(aF_0,E_0), \qquad
 P_E: (F_1,E_1)=(F_0,aE_0).
 ]
 
 Both yield (W_1(z)=a(z)F_0(z)E_0(z)) pointwise. Therefore
-(Phi(W_1)) is identical under the two distinct programs for every net-only
-operator (Phi). Complete trait-space geometry at every threshold cannot break
+(\Phi(W_1)) is identical under the two distinct programs for every net-only
+operator (\Phi). Complete trait-space geometry at every threshold cannot break
 this symmetry. N1 is structural non-identifiability, not low statistical power.
 
 ### 2.3 N2: net performance plus one channel is sufficient
@@ -134,7 +135,7 @@ this symmetry. N1 is structural non-identifiability, not low statistical power.
 If (W_i) and (F_i) are observed, positivity gives the unique reconstruction
 (E_i=W_i/F_i); observing (W_i) and (E_i) symmetrically gives
 (F_i=W_i/E_i). The before/after ratios
-(ho_F=F_1/F_0) and (ho_E=E_1/E_0) then distinguish
+(\rho_F=F_1/F_0) and (\rho_E=E_1/E_0) then distinguish
 fecundity-only, establishment-only, mixed, and unchanged cases. No assumption
 that exactly one channel changed is required.
 
@@ -144,7 +145,7 @@ Field assays are commonly proxies. Let (X_i(z)=q_i(z)F_i(z)). If
 (q_0(z)=q_1(z)>0), then (X_1/X_0=F_1/F_0), and
 
 [
-ho_E(z)=rac{W_1(z)/W_0(z)}{X_1(z)/X_0(z)}.
+\rho_E(z)=\frac{W_1(z)/W_0(z)}{X_1(z)/X_0(z)}.
 ]
 
 Thus unknown absolute calibration is compatible with identification of relative
@@ -208,6 +209,16 @@ EVSI for quantitative observations, and connects RACH to the value-of-informatio
 tradition in applied ecology (Canessa et al. 2015) while removing its usual
 requirement of an external decision/utility model.
 
+The executable public quantity follows the same information boundary. For an
+explicit finite candidate outcome vocabulary, `next_observation_evsi` computes
+`Pr(v|A_ε)` from the stored region only when the outcome maps form a verified
+mutually exclusive and exhaustive partition of current `A_ε`. If the maps overlap,
+are incomplete, or required simulator outputs are absent, that predictive
+pushforward is not identified by the stored region and the validated EVSI is
+reported as **not estimable**. A declared outcome prior is not silently substituted
+and relabelled as validated EVSI. The older target-switch heuristic is retained
+only as an explicitly named compatibility score, not as the publication NOV.
+
 ### 3.4 Sensitivity to ε and the prior, not rule selection
 
 Because `R_RACH` depends on `ε` and the prior, RACH is reported for a single
@@ -267,14 +278,17 @@ degeneracy and ranks the next observation, but stops there. RACH-SEQ iterates it
 Given the mechanism equivalence structure — the confounding graph over switches,
 whose edges are the coupled (high mutual-information) mechanism pairs the data
 cannot separate — RACH-SEQ scores each candidate by its *expected confounding-edge
-cuts* (NOV reinterpreted in mechanism space: `Σ_v Pr(v|A)·max(0, |E| − |E_{q=v}|)`
-rather than a scalar resolvability gain), takes the highest-scoring observation,
-updates `A` by the same re-inference-free filtering (line 12), recomputes the
-graph, and repeats until the graph is empty (every mechanism separated) or the
-observation budget is spent. The loop has an explicit termination and a
-convergence target — an empty confounding graph — and never re-runs the
-simulator. The single-shot quantities (D, R, CA, NOV) are the body of the loop;
-RACH-SEQ is their sequential closure.
+cuts* (`Σ_v Pr(v|A_current)·max(0, |E| − |E_{q=v}|)`), takes the
+highest-scoring observation, updates `A`, recomputes the graph and the predictive
+distribution, and repeats until the graph is empty or the observation budget is
+spent. Thus a verified candidate is reweighted by `Pr(v|current A_ε)` at every
+step, rather than by a probability frozen at step 0. If an outcome vocabulary does
+not define a verified partition, a predeclared prior may be used as an explicit
+RACH-SEQ ranking fallback and its probability source is reported; that fallback
+is not called the validated single-shot EVSI. Hidden synthetic truth is used only
+after candidate ranking to materialise a benchmark outcome. The loop never needs
+to re-run a deterministic simulator when the stored-row conditioning identity
+applies.
 
 ## 4. Controlled validation
 
@@ -310,22 +324,38 @@ the method's controlled diagnostic in one figure: model selection answers "which
 wins?" with a near-arbitrary winner, while RACH answers "are these mechanisms
 even separable, and what would separate them?"
 
-### 4.3 Generality (Figs. 3, S2)
+### 4.3 Generality and observation-budget error control (Fig. 3)
 
-*(`python -m causal_model.generality_sweep --n-systems 200 --seed 0
---figure …`)*  The generality claim is made *distributional* by running RACH-SEQ
-over a *family* of randomly generated confounded systems: each draws K ∈ {4,5,6}
-binary mechanism switches and one or two independent confounds, with coupling
-structure, driver coefficients, and underlying truth all randomised. RACH-SEQ
-solves each under a fixed observation budget (≤4 observations), scoring
-candidates by expected confounding-edge cuts (§3.5). Across **200 such systems**
-the algorithm resolves a mean **99.2% of confounding edges** (median 100%), with
-**98.5% of systems fully converging** to an empty confounding graph, lifting mean
-resolvability from **R = 0.14 to 0.64** in 1.5 observations on average (Fig. 2).
-Generality is therefore shown as a distribution over a population of random
-systems with an error bar — not as a second hand-built example.
+The submission result for this section is generated only by
+`paper/run_g2_frozen_benchmark.py`, which reads the preregistered
+`paper/g2_frozen_benchmark_protocol.json` and accepts no scientific parameter
+overrides. The frozen protocol evaluates five predeclared seeds, 200 random
+systems per seed, K ∈ {4,5,6}, one or two independent confounds, random pre-data
+driver coefficients, and observation budgets 0–4. Candidate ranking never sees
+the hidden truth; truth is used only after ranking to materialise the realised
+benchmark outcome. Analytic magnitude bands are constructed to partition the
+current admissible region, so G2 candidate values use
+`Pr(v|current A_ε)` rather than a stale declared prior.
 
-The mechanism is illustrated concretely in Fig. S2 *(`python -m
+The primary outputs are, for every observation budget, the fraction of systems
+that converge to an empty confounding graph, the fraction of confounding edges
+resolved, the mean number of observations actually used, and the hidden-truth
+false-exclusion rate. Results are retained per seed and summarised by mean and
+sample standard deviation across seeds. Every row is tagged with the SHA-256 hash
+of the exact frozen protocol. There is **no performance acceptance threshold**:
+favourable, null, or adverse outcomes are all retained as the result. Numerical
+values will be inserted here only from that protocol-tagged output after the
+frozen run completes; the pre-fix 99.2%/98.5% values are not submission evidence.
+
+The benchmark deliberately asks a controlled method question rather than claiming
+that its random systems span all ecological mechanisms: given an admissible region
+with explicit confounding structure and a declared resolving-observation
+vocabulary, how efficiently does sequential observation design reduce that
+structure without excluding the hidden true explanation? Generalisation beyond
+that declared system family is a limitation, not something inferred from a high
+synthetic success rate.
+
+The mechanism is illustrated separately in Fig. S2 *(`python -m
 causal_model.synthetic_demo --figure …`; seed 1, n = 4000, |A_ε| = 2995)*: an
 unrelated 4-switch system (mechanisms B and C sharing an ordinal trend but
 differing in magnitude) reproduces the same RACH signatures (`D = 3.58 of 4`,
@@ -351,20 +381,20 @@ observation map are declared. In the colonisation life cycle, expected juvenile
 recruits retained after one step for one initial adult can be written exactly as
 
 [
-W_{mathrm{recruit}}(z)=F_{mathrm{local}}(z)
-E_{mathrm{settlement}}(z),
+W_{\mathrm{recruit}}(z)=F_{\mathrm{local}}(z)
+E_{\mathrm{settlement}}(z),
 ]
 
 with
 
 [
-F_{mathrm{local}}=P(mathrm{survive})P(mathrm{conceive}midmathrm{survive})
+F_{\mathrm{local}}=P(\mathrm{survive})P(\mathrm{conceive}\mid\mathrm{survive})
 ]
 
 and
 
 [
-E_{mathrm{settlement}}=(1-p_{mathrm{ext}})
+E_{\mathrm{settlement}}=(1-p_{\mathrm{ext}})
 [D(z)cT+{1-D(z)}L].
 ]
 
@@ -407,7 +437,7 @@ The minimum theorem-ready comparison is:
 | (W(z)) | trait-specific total performance on a shared trait domain and census scale |
 | one channel | direct (F(z)) or (E(z)), measured before and after or among regimes |
 | or proxy (X(z)) | conversion to the channel demonstrated stable or calibrated in each regime |
-| uncertainty | propagated through reconstructed (ho_F) and (ho_E) |
+| uncertainty | propagated through reconstructed (\rho_F) and (\rho_E) |
 | mapping | declared recruitment/reachability and life-cycle window |
 
 For a pollination interpretation, visitation alone is insufficient because
@@ -421,9 +451,17 @@ empirical validation of RACH.
 ## 7. Software and reproducibility
 
 The Python package implements N1–N4 constructions, RACH admissibility and
-replaceability, NOV, RACH-SEQ, controlled benchmarks, the exact one-step
-colonisation projection, and the executable projection ledger. The canonical
-submission inventory is `paper/submission_manifest.json`. Running
+replaceability, validated NOV/EVSI (`causal_model/nov_evsi.py`), RACH-SEQ,
+controlled benchmarks, the exact one-step colonisation projection, and the
+executable projection ledger. The older heuristic next-observation score remains
+available only as an explicitly named compatibility helper and is not the primary
+publication API. The canonical submission inventory is
+`paper/submission_manifest.json`.
+
+The final generality/error-control benchmark is governed by
+`paper/g2_frozen_benchmark_protocol.json` and
+`paper/run_g2_frozen_benchmark.py`; manuscript generality numbers must carry the
+hash of that frozen protocol. Running
 
 ```bash
 python paper/check_submission_bundle.py
@@ -463,12 +501,15 @@ allowing them to test robustness after additional processes are introduced.
 
 Several limitations remain. Admissibility is relative to a program vocabulary,
 constraint grammar, prior, distance and tolerance. A missing causal program
-cannot be recovered by reporting the retained set. Under stochastic simulators,
-re-inference-free filtering for NOV is an approximation whose Monte Carlo
-properties must be reported. Measurement error can be propagated, but unknown
-regime-specific proxy calibration is structural and cannot be repaired by larger
-sample size alone. Finally, the Campanula example remains prospective until
-channel-resolved data and calibration evidence exist.
+cannot be recovered by reporting the retained set. A validated stored-region NOV
+also requires an observation map whose predictive outcomes can actually be
+obtained as a pushforward of current `A_ε`; otherwise the EVSI is non-estimable
+without an additional predictive model. Under stochastic simulators,
+re-inference-free filtering is approximate and its Monte Carlo properties must be
+reported. Measurement error can be propagated, but unknown regime-specific proxy
+calibration is structural and cannot be repaired by larger sample size alone.
+Finally, the Campanula example remains prospective until channel-resolved data and
+calibration evidence exist.
 
 The immediate empirical implication is modest but actionable: observed
 contraction, shift, fragmentation or persistence should not be assigned to a
@@ -483,8 +524,9 @@ next-observation design.
    sufficient/insufficient measurement boundary; hand-off to RACH.
 2. **Figure 2 — Controlled confound.** Model ranking versus the admissible set,
    causal degeneracy, and the resolving observation.
-3. **Figure 3 — Sequential generality.** RACH-SEQ performance across random
-   systems with recovery, false-exclusion, false-invariant and budget summaries.
+3. **Figure 3 — Sequential generality and error control.** Frozen RACH-SEQ budget
+   curves with convergence, edge resolution, observations used, false exclusion,
+   and seed-level uncertainty.
 4. **Figure 4 — NOV calibration.** Admissible-region EVSI versus fresh
    re-inference and realised gain.
 5. **Figure 5 — Earned ecological projection.** Exact one-step colonisation
