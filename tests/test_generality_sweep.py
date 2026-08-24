@@ -21,6 +21,7 @@ from causal_model.generality_sweep import (
     run_generality_sweep,
 )
 from causal_model.mechanism_equivalence import mechanism_equivalence_structure
+from causal_model.rach_seq import predictive_outcome_distribution
 
 
 def test_random_system_disjoint_driver_pairs():
@@ -66,16 +67,16 @@ def test_truth_magnitude_distinguishes_drivers():
     assert _truth_magnitude("s0", pair) != _truth_magnitude("s1", pair)
 
 
-def test_candidates_are_predictive_distribution_from_admissible_region():
+def test_candidates_are_verified_current_region_predictive_partitions():
     rng = random.Random(3)
     switches, drivers, _truth = _make_random_system(rng, K=6, n_confounds=2)
     coeffs = _sample_driver_coefficients(rng)
     accepted = _abc_accept(
         rng, switches, drivers, n_attempts=1200, driver_coeffs=coeffs
     )
-    cands = _candidates_for_system(drivers, accepted, driver_coeffs=coeffs)
-    assert len(cands) == 2
-    for candidate in cands:
+    candidates = _candidates_for_system(drivers, accepted, driver_coeffs=coeffs)
+    assert len(candidates) == 2
+    for candidate in candidates:
         names = {outcome.name for outcome in candidate.outcomes}
         assert names <= {"driver_a_only", "driver_b_only", "both_on"}
         assert len(names) >= 2
@@ -86,6 +87,16 @@ def test_candidates_are_predictive_distribution_from_admissible_region():
         )
         # Hidden benchmark truth must never appear as a probability-one oracle.
         assert max(o.prior_probability for o in candidate.outcomes) < 1.0
+        # The G2 generator is deliberately constructed so these analytic bands
+        # partition every current admissible row. The benchmark should therefore
+        # never need the declared-prior fallback for its own resolving candidates.
+        distribution = predictive_outcome_distribution(candidate, accepted)
+        assert distribution.partition_verified
+        assert distribution.source == "current_admissible_region"
+        for outcome in candidate.outcomes:
+            assert abs(
+                distribution.probabilities[outcome.name] - outcome.prior_probability
+            ) < 1e-12
 
 
 def test_sweep_returns_finite_truth_peek_free_metrics():
