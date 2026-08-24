@@ -20,6 +20,8 @@ N1–N4 identifiability boundary
 | `mee_manuscript_draft.md` | theorem-first primary manuscript | active main text |
 | `submission_manifest.json` | machine-readable claim/evidence inventory | active governance |
 | `check_submission_bundle.py` | verifies the publication boundary in CI | active gate |
+| `g2_frozen_benchmark_protocol.json` | preregistered final RACH-SEQ benchmark settings | frozen before final run |
+| `run_g2_frozen_benchmark.py` | protocol-locked G2 runner | active validation |
 | `supplementary_outline.md` | ABM robustness, sensitivity and extended validation | Supplement |
 | `supplement/odd_protocol_draft.md` | ODD documentation for model families | Supplement source |
 | `archive/mee_manuscript_pre_theorem_2026-08-24.md` | superseded model-first manuscript | archive only |
@@ -44,7 +46,7 @@ implementation.
 | Gate | Status | Remaining work |
 |---|---|---|
 | G1 claim consistency | **Pass** | theorem-first manuscript, README and manifest aligned |
-| G2 benchmark validity | **Partial** | candidate ranking is now required to be truth-peek-free and the budget/error-control runner is implemented; freeze the final generator/seed set and produce the submission table |
+| G2 benchmark validity | **Partial** | truth-peek-free sequential reweighting and the outcome-neutral final protocol are frozen; run the protocol, rerun known-truth/NOV calibration, and replace quarantined manuscript numbers |
 | G3 projection honesty | **Pass** | exact/extension-required/not-applicable ledger retained |
 | G4 worked-example evidence | **Pass for prospective use** | no empirical channel attribution; primary-source table still needed for final prose |
 | G5 reproducible submission | **Partial** | bundle checker added; final full figure rebuild and clean-environment run pending |
@@ -52,8 +54,9 @@ implementation.
 **G2 numerical quarantine.** Any generality percentages or mean-resolvability
 values already written in manuscript §4.3 came from the pre-fix benchmark and are
 provisional. They must not be treated as submission evidence or copied into the
-abstract/results until the truth-peek-free, random-coefficient generator is
-frozen and the final budget/error-control run in issue #72 replaces them.
+abstract/results. The final G2 runner has no favourable performance threshold:
+whatever the frozen protocol returns—favourable, null, or adverse—is the result
+that must replace those numbers.
 
 No additional ecological example should enter the primary manuscript before G2
 and G5 pass.
