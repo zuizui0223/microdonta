@@ -34,6 +34,7 @@
   "reporting": {
     "per_seed_required": true,
     "aggregate_across_seeds": "mean_and_sample_sd",
+    "performance_acceptance_thresholds": "none_report_all_frozen_outcomes",
     "old_pre_fix_generality_numbers_must_not_be_reused": true
   },
   "freeze_policy": {
