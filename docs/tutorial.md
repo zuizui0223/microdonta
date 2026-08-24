@@ -11,7 +11,7 @@ Campanula example, or plug in your own system.
 ```bash
 pip install -e ".[dev]"     # runtime + matplotlib + pytest
 # or:  pip install -r requirements.txt -r requirements-dev.txt
-pytest -q                   # 80 tests should pass
+pytest -q                   # run the complete regression suite
 ```
 
 ## 2. Reproduce the paper figures (one command each)
@@ -83,7 +83,7 @@ the copy-paste starting point.
 ## 5. Interactive exploration
 
 ```bash
-streamlit run streamlit_app.py
+streamlit run apps/streamlit_app.py
 ```
 
 The app walks the Campanula worked example through every step (RACH inference →

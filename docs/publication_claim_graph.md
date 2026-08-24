@@ -1,6 +1,7 @@
 # Publication claim graph
 
-Status: publication boundary for the current main branch, 2026-08-24.
+Status: publication boundary for the theorem-first reorganisation branch,
+2026-08-24.
 
 This document turns the mixed repository into a claim–evidence graph. It is a
 submission map, not a claim that every retained module belongs in one paper.
@@ -12,11 +13,11 @@ flowchart TD
     R["microdonta repository"] --> A["Active: RACH methods"]
     R --> B["Active but separate: Campanula/Izu"]
     R --> C["Supplementary: ABM robustness"]
-    R --> D["Frozen: prototypes and eco-genetic mirror"]
+    R --> D["Separate: eco-genetic criticality"]
     A --> M["Primary submission: MEE Methods"]
     B --> E["Future empirical paper after channel-resolved data"]
     C --> M
-    D --> X["Exclude from new claims"]
+    D --> X["Independent research program"]
 ~~~
 
 | Node | Scientific role | Current evidence | Publication disposition |
@@ -26,8 +27,9 @@ flowchart TD
 | One-step colonization bridge | Show one exact life-cycle projection of W=FE | colonization_recruitment_factorization.py and projection ledger | Main worked model or Supplement |
 | Rule-transition ABMs | Test whether restricted conclusions persist with extra processes | spatial, defense, and colonization backends plus endpoint sensitivity | Supplementary robustness only |
 | Campanula/Izu | Show what published island patterns cannot identify and which measurements are required | campanula_real_data.py and examples/campanula_izu | Prospective worked example only |
-| Attraction-trait model | Biological incubator without a fixed validation target | attraction_trait_model | Freeze until promotion criteria are met |
-| Legacy and eco-genetic mirror | Historical reproducibility | legacy modules and migrated H1–H3 files | Exclude; active H1–H3 work belongs in eco-genetic-criticality |
+| Attraction-trait model | Optional simulator backend used by prospective workflows | attraction_trait_model | Retain as software support; exclude from primary evidence |
+| Eco-genetic criticality | Independent criticality, fragmentation, and genetic-lag program | eco_genetic_criticality plus matched docs/examples/tests | Separate physical package and publication program |
+| Legacy | Historical reproducibility | legacy modules and archived documents | Exclude from new claims |
 
 ## 2. Claim–evidence graph
 
@@ -136,15 +138,16 @@ explanations.
 
 | Gate | Pass condition | Current status |
 |---|---|---|
-| G1 Claim consistency | README, manuscript, figures, and code use the same theorem → RACH → observation-design story | **Fail:** manuscript predates the theorem-first README |
+| G1 Claim consistency | README, manuscript, figures, and code use the same theorem → RACH → observation-design story | **Pass:** theorem-first manuscript, README, and manifest aligned |
 | G2 Benchmark validity | preregistered generators; recovery, false-exclusion, false-invariant, calibration, and budget curves reported | **Partial:** known-truth and generality code exist; final error-control table is not the manuscript spine |
 | G3 Projection honesty | every ecological or ABM claim has exact / extension-required / not-applicable status | **Pass in ledger; manuscript integration pending** |
-| G4 Worked-example evidence | all literature encodings are primary-source verified or clearly prospective | **Fail:** several rule-panel encodings are explicitly provisional |
-| G5 Reproducible submission | one command rebuilds main and supplementary figures and a clean environment passes tests | **Not yet demonstrated by this document** |
+| G4 Worked-example evidence | all literature encodings are primary-source verified or clearly prospective | **Pass for prospective use:** provisional rule panels are excluded |
+| G5 Reproducible submission | one command rebuilds main and supplementary figures and a clean environment passes tests | **Partial:** scope and boundary checks plus regression suite pass; final full figure rebuild remains |
 
-The next implementation milestone is G1: rewrite the MEE manuscript outline and
-figure order around the theorem → RACH → benchmark → projection chain. Additional
-ecological examples should not be added before G1 and G2 pass.
+The next implementation milestones are G2 and G5: freeze the benchmark design,
+produce the final error-control and budget table, then rebuild the complete
+figure bundle in a clean environment. Additional ecological examples should not
+enter the primary manuscript before those gates pass.
 
 ## 7. Stop rules
 
@@ -155,5 +158,5 @@ ecological examples should not be added before G1 and G2 pass.
 - Do not use ABM agreement as proof of an algebraic theorem.
 - Do not present Campanula as empirical validation before channel-resolved data
   exist.
-- Do not revive frozen eco-genetic or tutorial modules as evidence for the RACH
-  submission.
+- Do not use the separate eco-genetic package or application code as evidence for
+  the RACH submission.

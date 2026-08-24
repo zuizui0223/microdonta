@@ -11,7 +11,15 @@ prospective Campanula design. The machine-readable boundary is
 [`paper/submission_manifest.json`](paper/submission_manifest.json), and CI
 rejects drift back to provisional ecological-rule or structure-discovery claims.
 
-Run `python paper/check_submission_bundle.py` before manuscript or figure changes.
+The repository-wide program boundary is separate from the paper boundary. See
+[`docs/repository_map.md`](docs/repository_map.md) and
+[`repository_programs.json`](repository_programs.json) for the Graphify-derived
+map of RACH, the separate eco-genetic program, optional backends, apps, and
+archives.
+
+Run `python paper/check_submission_bundle.py` and
+`python scripts/check_repository_boundaries.py` before manuscript, figure, or
+repository-structure changes.
 
 **RACH** means **Restricted Admissible Causal Hypotheses**. It keeps every causal
 explanation that remains compatible with a declared model family, biological
@@ -181,6 +189,16 @@ causal_model/
   defense_metapopulation_abm.py         survival-mediated defense ABM
   colonization_metapopulation_abm.py    establishment-mediated connectivity ABM
   campanula_real_data.py                published Campanula evidence and study design
+
+eco_genetic_criticality/
+  multipatch_criticality_dynamics.py    separate eco-genetic research program
+  patch_partition_theory.py             program-specific theorem layer
+  ...                                   not distributed in the RACH wheel
+
+attraction_trait_model/                 optional biological simulator backend
+apps/streamlit_app.py                   interactive application, not evidence
+paper/                                  canonical submission workspace
+docs/eco_genetic_criticality/           documentation for the separate program
 
 examples/
   spatial_metapopulation_demo.py
@@ -355,6 +373,7 @@ artifact. `full` is intentionally manual because it is a large factorial analysi
 
 ```bash
 pip install -e ".[dev]"
+python scripts/check_repository_boundaries.py
 pytest -q
 
 # Mathematical theorem demonstrations
@@ -370,6 +389,7 @@ python -m examples.rule_transition_demo
 
 ## Documentation
 
+- `docs/repository_map.md` — Graphify-derived program topology and physical boundaries
 - `docs/publication_claim_graph.md` — claim–evidence graph, manuscript boundary, and submission gates
 - `docs/trait_space_contraction_theorem.md` — restricted comparative statics for the simplified viable-set model
 - `docs/theory_corrections.md` — exact edge-retention threshold correction

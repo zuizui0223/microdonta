@@ -48,7 +48,8 @@ dev = [
 Repository = "https://github.com/zuizui0223/microdonta"
 
 [tool.setuptools]
-# These are the importable packages exercised by the test suite and figures.
+# RACH plus its optional biological simulator backend.  The separate
+# eco_genetic_criticality program is intentionally not part of the RACH wheel.
 packages = ["causal_model", "attraction_trait_model"]
 
 [tool.pytest.ini_options]

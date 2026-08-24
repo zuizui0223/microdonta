@@ -67,14 +67,17 @@
     "future_method_extension": [
       "causal_model/structure_discovery.py"
     ],
-    "frozen_incubator": [
-      "attraction_trait_model",
-      "streamlit_app.py"
+    "support_backend_not_evidence": [
+      "attraction_trait_model"
+    ],
+    "application_not_evidence": [
+      "apps/streamlit_app.py"
     ],
     "separate_program": [
-      "causal_model/eco_genetic_constitutive_theory.py",
-      "causal_model/eco_genetic_lag_theory.py",
-      "causal_model/eco_genetic_principles.py"
+      "eco_genetic_criticality",
+      "docs/eco_genetic_criticality",
+      "examples/eco_genetic_criticality",
+      "tests/eco_genetic_criticality"
     ]
   },
   "archive": [

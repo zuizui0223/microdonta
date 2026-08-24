@@ -24,13 +24,14 @@ N1–N4 identifiability boundary
 | `archive/mee_manuscript_pre_theorem_2026-08-24.md` | superseded model-first manuscript | archive only |
 
 The submission does not use the provisional Bergmann/Allen/Foster/Gloger rule
-panel, structure discovery, the eco-genetic mirror, the attraction-trait
-incubator, or Streamlit as scientific evidence.
+panel, structure discovery, the separate eco-genetic program, the optional
+attraction-trait backend, or Streamlit as scientific evidence.
 
 ## Reproducibility gate
 
 ```bash
 python paper/check_submission_bundle.py
+python scripts/check_repository_boundaries.py
 pytest -q
 ```
 
