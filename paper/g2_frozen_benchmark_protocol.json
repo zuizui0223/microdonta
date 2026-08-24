@@ -1,11 +1,13 @@
 {
-  "schema_version": 1,
-  "protocol_id": "rach-g2-truth-peek-free-v1",
+  "schema_version": 2,
+  "protocol_id": "rach-g2-truth-peek-free-v2",
   "status": "frozen_before_final_run",
-  "purpose": "Final submission benchmark for RACH-SEQ observation efficiency and hidden-truth error control.",
+  "supersedes": "rach-g2-truth-peek-free-v1",
+  "supersession_reason": "v1 was never executed as the final benchmark; pre-execution review found that a resolver-only candidate set did not test observation selection against distractors or an uninformed policy",
+  "purpose": "Final submission benchmark for RACH-SEQ observation-selection efficiency and hidden-truth error control.",
   "generator": {
     "truth_peek_free": true,
-    "hidden_truth_use": "materialise_realised_outcome_after_candidate_ranking_only",
+    "hidden_truth_use": "materialise_realised_outcome_after_candidate_selection_only",
     "theta_range": [0.8, 1.2],
     "ordinal_slope_threshold": 0.05,
     "driver_coefficient_sampling": {
@@ -14,7 +16,21 @@
       "b_definition": "b = a * ratio",
       "separability_constraint": "1.5 < b/a < 2.0"
     },
-    "predictive_outcome_probability": "current_A_epsilon_partition_when_verified_else_declared_prior"
+    "predictive_outcome_probability": "current_A_epsilon_partition_when_verified_else_declared_prior",
+    "distractor_candidates": {
+      "count": 2,
+      "type": "binary_nuisance_marker",
+      "generation": "independent_Bernoulli_0.5_per_admissible_row",
+      "hidden_truth": "independent_Bernoulli_0.5_per_system",
+      "intended_mechanism_information": "none_by_construction"
+    }
+  },
+  "selection_validation": {
+    "policies": ["rach_seq", "random_order"],
+    "rach_seq_objective": "expected_confounding_edge_cuts",
+    "random_order_definition": "uniform_choice_among_remaining_candidates_before_hidden_outcome_materialisation",
+    "same_systems_truths_candidates_and_budgets_across_policies": true,
+    "policy_comparison_is_descriptive_not_acceptance_gate": true
   },
   "sweep": {
     "seeds": [0, 1, 2, 3, 4],
@@ -31,9 +47,18 @@
     "mean_steps",
     "false_exclusion_rate"
   ],
+  "selection_diagnostics": [
+    "mean_distractors_selected",
+    "rach_seq_minus_random_order_frac_converged",
+    "rach_seq_minus_random_order_mean_frac_resolved",
+    "rach_seq_minus_random_order_mean_steps",
+    "rach_seq_minus_random_order_false_exclusion_rate"
+  ],
   "reporting": {
     "per_seed_required": true,
     "aggregate_across_seeds": "mean_and_sample_sd",
+    "policy_rows_required": true,
+    "policy_contrast_rows_required": true,
     "performance_acceptance_thresholds": "none_report_all_frozen_outcomes",
     "old_pre_fix_generality_numbers_must_not_be_reused": true
   },
