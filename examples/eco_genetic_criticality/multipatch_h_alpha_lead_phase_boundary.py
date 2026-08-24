@@ -256,7 +256,11 @@ def _relative_path(path: Path, base: Path) -> Path:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--svg", type=Path, default=Path("docs/figures/h_alpha_lead_phase_boundary.svg"))
+    parser.add_argument(
+        "--svg",
+        type=Path,
+        default=Path("docs/eco_genetic_criticality/figures/h_alpha_lead_phase_boundary.svg"),
+    )
     parser.add_argument("--markdown", type=Path, default=Path("docs/eco_genetic_criticality/h_alpha_lead_phase_boundary.md"))
     parser.add_argument("--csv", type=Path, help="Optional path for CSV-friendly rows.")
     args = parser.parse_args(argv)

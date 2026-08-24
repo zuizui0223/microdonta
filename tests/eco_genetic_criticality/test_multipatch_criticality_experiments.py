@@ -227,7 +227,10 @@ def test_h_alpha_phase_boundary_uses_simulation_feedback_label() -> None:
         _boundary_row("equal_isolated", 1.2, 4.5, 0.75, 1.0),
         _boundary_row("one_large", 1.2, 4.5, 0.75, 0.0),
     )
-    report = render_h_alpha_boundary_markdown(rows, Path("docs/figures/h_alpha_lead_phase_boundary.svg"))
+    report = render_h_alpha_boundary_markdown(
+        rows,
+        Path("docs/eco_genetic_criticality/figures/h_alpha_lead_phase_boundary.svg"),
+    )
 
     assert "interaction_feedback" in report
     assert "not the canonical logistic theorem parameter `kappa`" in report
