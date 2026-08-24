@@ -29,7 +29,7 @@ observation contract
 -> A_epsilon: restricted admissible causal hypotheses
 -> CA / D_RACH / R_RACH / CRC
 -> mechanism-equivalence structure
--> NOV / RACH-SEQ next-observation design
+-> validated NOV/EVSI -> RACH-SEQ next-observation design
 ```
 
 ### Output
@@ -49,7 +49,7 @@ The MEE paper is fixed to:
 ```text
 N1-N4 exact channel-identifiability boundary
 -> RACH admissible explanation set
--> NOV / RACH-SEQ observation design
+-> validated NOV/EVSI and RACH-SEQ observation design
 -> controlled truth-peek-free validation
 -> exact one-step colonisation projection
 -> prospective Campanula measurement design
@@ -57,18 +57,38 @@ N1-N4 exact channel-identifiability boundary
 
 Only code needed to support this spine is primary-paper code.
 
-## Validation rule
+## Predictive-probability and NOV boundary
 
 Synthetic truth may be used to score an algorithm only after the algorithm has
-made its choice. In particular, a candidate observation's predictive distribution
-must be constructed from the **current** admissible region whenever its listed
-outcomes form a verified mutually exclusive and exhaustive partition. If that
-partition cannot be verified because outcome maps overlap, are incomplete, or
-required simulator columns are absent, a predeclared outcome prior is the explicit
-fallback. Hidden benchmark truth is never a predictive prior.
+made its choice. A candidate observation's predictive distribution is derived
+from the **current** admissible region whenever its listed outcomes form a
+verified mutually exclusive and exhaustive partition. Hidden benchmark truth is
+never a predictive prior.
 
-RACH-SEQ repeats this calculation after every observation, so the operative
-quantity is `Pr(v | current A_epsilon)`, not a stale probability frozen at step 0.
+The publication-level single-shot NOV is `next_observation_evsi`. It is called a
+validated admissible-region EVSI only when the candidate outcome maps form that
+verified partition of current `A_epsilon`:
+
+```text
+NOV(q) = EVSI(q)
+       = sum_v Pr(v | current A_epsilon)
+           [R(A_epsilon | q=v) - R(A_epsilon)].
+```
+
+If a candidate's outcomes overlap, are incomplete, or required simulator columns
+are absent, the stored admissible region does not identify the predictive
+outcome distribution. `next_observation_evsi` therefore reports that candidate as
+**not estimable**; it does not silently substitute a declared prior and call the
+result a validated EVSI. The older target-switch score is retained only as the
+explicitly named compatibility helper `heuristic_next_observation_value` and is
+not part of the primary public API.
+
+RACH-SEQ is slightly broader because it must still be able to rank a declared
+field-design candidate set. At each sequential step it uses
+`Pr(v | current A_epsilon)` when a partition is verified; otherwise it may use a
+predeclared outcome prior as an explicit fallback. Every step records which
+probability source was used. Thus fallback ranking is transparent and is never
+confused with the validated single-shot EVSI quantity.
 
 The publication benchmark reports both resolution and error control:
 
@@ -85,6 +105,8 @@ for the main submission, even if it produces better apparent performance.
 The final G2 configuration is preregistered in
 `paper/g2_frozen_benchmark_protocol.json`. The final runner accepts no scientific
 parameter overrides; every output is tagged with the SHA-256 hash of that protocol.
+The protocol has no favourable performance threshold: favourable, null, or
+adverse frozen outcomes are all reportable results.
 
 ## Exact ecological projection boundary
 
@@ -126,8 +148,9 @@ a blocker before these three steps are complete.
 
 Package-level callables expose RACH first: `compute_causal_admissibility`,
 `causal_degeneracy`, `causal_resolvability`, replaceability/CRC,
-`mechanism_equivalence_structure`, NOV, `run_rach_seq`, and `rach_summary`.
-Canonical submodules such as `causal_model.causal_admissibility` and
-`causal_model.rach_seq` remain importable under their own names and are never
-shadowed by root-level functions. Legacy structure-scoring helpers may remain for
-compatibility but must not define what the package appears to be.
+`mechanism_equivalence_structure`, `next_observation_evsi`, `run_rach_seq`, and
+`rach_summary`. Canonical submodules such as
+`causal_model.causal_admissibility` and `causal_model.rach_seq` remain importable
+under their own names and are never shadowed by root-level functions. Legacy
+structure-scoring helpers and heuristic NOV may remain for compatibility but must
+not define what the package appears to be.
