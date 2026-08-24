@@ -1,7 +1,8 @@
 # Submission workspace
 
 This directory is the canonical publication workspace for the RACH methods
-submission. The primary story is fixed as:
+submission. The normative development boundary is
+[`docs/mainline.md`](../docs/mainline.md). The primary story is fixed as:
 
 ```text
 N1–N4 identifiability boundary
@@ -43,7 +44,7 @@ implementation.
 | Gate | Status | Remaining work |
 |---|---|---|
 | G1 claim consistency | **Pass** | theorem-first manuscript, README and manifest aligned |
-| G2 benchmark validity | **Partial** | freeze generators and produce final error-control/budget table |
+| G2 benchmark validity | **Partial** | candidate ranking is now required to be truth-peek-free and the budget/error-control runner is implemented; freeze the final generator/seed set and produce the submission table |
 | G3 projection honesty | **Pass** | exact/extension-required/not-applicable ledger retained |
 | G4 worked-example evidence | **Pass for prospective use** | no empirical channel attribution; primary-source table still needed for final prose |
 | G5 reproducible submission | **Partial** | bundle checker added; final full figure rebuild and clean-environment run pending |
