@@ -11,7 +11,9 @@
     "prospective Campanula measurement design"
   ],
   "governance": [
-    "docs/mainline.md"
+    "docs/mainline.md",
+    "paper/g2_frozen_benchmark_protocol.json",
+    "paper/run_g2_frozen_benchmark.py"
   ],
   "main_text": {
     "manuscript": [
@@ -33,7 +35,9 @@
     "validation": [
       "causal_model/known_truth_benchmark.py",
       "causal_model/generality_sweep.py",
-      "causal_model/nov_calibration.py"
+      "causal_model/nov_calibration.py",
+      "paper/g2_frozen_benchmark_protocol.json",
+      "paper/run_g2_frozen_benchmark.py"
     ],
     "projection": [
       "causal_model/colonization_recruitment_factorization.py",
