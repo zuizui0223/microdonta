@@ -1,0 +1,79 @@
+{
+  "schema_version": 2,
+  "repository": "zuizui0223/microdonta",
+  "primary_program": "rach_method",
+  "programs": {
+    "rach_method": {
+      "status": "primary submission and installable method",
+      "roots": ["causal_model", "paper"]
+    },
+    "abm_robustness": {
+      "status": "supplementary evidence only",
+      "roots": [
+        "causal_model/spatial_metapopulation_abm.py",
+        "causal_model/defense_metapopulation_abm.py",
+        "causal_model/colonization_metapopulation_abm.py",
+        "causal_model/endpoint_sensitivity_backends.py"
+      ]
+    },
+    "campanula_izu": {
+      "status": "prospective observation-design example",
+      "roots": ["causal_model/campanula_real_data.py", "examples/campanula_izu"]
+    },
+    "island_pollination_translation": {
+      "status": "three external-to-RACH adapter contracts; not empirical evidence",
+      "source_repository": "zuizui0223/izu-core",
+      "roots": ["examples/island_pollination_translation"],
+      "track_ids": [
+        "signed_functional_starting_position",
+        "network_context_effective_service",
+        "complete_service_dependency_response_bridge"
+      ]
+    },
+    "attraction_trait_backend": {
+      "status": "optional simulator backend; not primary evidence",
+      "roots": ["attraction_trait_model"]
+    },
+    "applications": {
+      "status": "interactive interfaces; not scientific evidence",
+      "roots": ["apps"]
+    },
+    "archives": {
+      "status": "historical record only",
+      "roots": ["legacy", "docs/archive", "paper/archive"]
+    }
+  },
+  "external_programs": {
+    "eco_genetic_criticality": {
+      "owner_repository": "zuizui0223/eco-genetic-criticality",
+      "local_policy": "reference_only_no_code_docs_examples_or_tests",
+      "forbidden_roots": [
+        "eco_genetic_criticality",
+        "docs/eco_genetic_criticality",
+        "examples/eco_genetic_criticality",
+        "tests/eco_genetic_criticality"
+      ],
+      "forbidden_module_names": [
+        "eco_genetic_constitutive_theory",
+        "eco_genetic_lag_theory",
+        "eco_genetic_principles",
+        "finite_bin_closure_bounds",
+        "migration_safe_refuge",
+        "multipatch_criticality_dynamics",
+        "multipatch_criticality_ensemble",
+        "multipatch_criticality_experiments",
+        "network_allele_floor_theory",
+        "network_high_trait_floor_theory",
+        "patch_feedback_hysteresis_theory",
+        "patch_partition_theory",
+        "probabilistic_h_alpha_lead_theory",
+        "stochastic_refuge_invariance"
+      ]
+    }
+  },
+  "rach_distribution_packages": ["causal_model", "attraction_trait_model"],
+  "forbidden_imports": [
+    {"from_root": "causal_model", "to_module": "eco_genetic_criticality"}
+  ],
+  "portfolio_registry": "repository_ecosystem.json"
+}

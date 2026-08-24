@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "primary_target": "Methods in Ecology and Evolution",
+  "manuscript_type": "Methods / Practical Tools",
+  "claim_spine": [
+    "N1-N4 channel-identifiability boundary",
+    "RACH admissible explanation set",
+    "NOV and RACH-SEQ next-observation design",
+    "controlled synthetic validation",
+    "exact one-step colonization projection",
+    "prospective Campanula measurement design"
+  ],
+  "main_text": {
+    "manuscript": [
+      "paper/mee_manuscript_draft.md"
+    ],
+    "theory": [
+      "causal_model/channel_identifiability_theory.py",
+      "causal_model/proxy_calibration_theory.py",
+      "docs/channel_identifiability_theorem.md",
+      "docs/proxy_calibration_theorem.md"
+    ],
+    "method": [
+      "causal_model/causal_admissibility.py",
+      "causal_model/causal_replaceability.py",
+      "causal_model/rach_seq.py",
+      "docs/rach_theory.md",
+      "docs/rach_mathematical_foundations.md"
+    ],
+    "validation": [
+      "causal_model/known_truth_benchmark.py",
+      "causal_model/generality_sweep.py",
+      "causal_model/nov_calibration.py"
+    ],
+    "projection": [
+      "causal_model/colonization_recruitment_factorization.py",
+      "causal_model/theorem_projection_ledger.py",
+      "docs/colonization_recruitment_factorization.md",
+      "docs/theorem_projection_ledger.md"
+    ],
+    "prospective_example": [
+      "causal_model/campanula_real_data.py",
+      "docs/campanula_channel_protocol.md",
+      "docs/inoue_literature_values.md"
+    ]
+  },
+  "supplementary": {
+    "outline": [
+      "paper/supplementary_outline.md"
+    ],
+    "protocol": [
+      "paper/supplement/odd_protocol_draft.md"
+    ],
+    "robustness": [
+      "causal_model/spatial_metapopulation_abm.py",
+      "causal_model/colonization_metapopulation_abm.py",
+      "causal_model/defense_metapopulation_abm.py",
+      "causal_model/endpoint_sensitivity_backends.py"
+    ]
+  },
+  "excluded_from_primary": {
+    "provisional_rule_panels": [
+      "causal_model/bergmann_worked_example.py",
+      "causal_model/ecological_rules_validation.py",
+      "causal_model/converse_bergmann.py"
+    ],
+    "future_method_extension": [
+      "causal_model/structure_discovery.py"
+    ],
+    "support_backend_not_evidence": [
+      "attraction_trait_model"
+    ],
+    "application_not_evidence": [
+      "apps/streamlit_app.py"
+    ],
+    "external_program": {
+      "owner_repository": "zuizui0223/eco-genetic-criticality",
+      "local_policy": "reference_only_no_code_docs_examples_or_tests"
+    }
+  },
+  "archive": [
+    "paper/archive/mee_manuscript_pre_theorem_2026-08-24.md",
+    "docs/archive/repository_scope_audit_2026-06.md",
+    "docs/archive/post_eco_split_triage_2026-06.md"
+  ]
+}
