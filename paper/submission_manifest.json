@@ -5,7 +5,7 @@
   "claim_spine": [
     "N1-N4 channel-identifiability boundary",
     "RACH admissible explanation set",
-    "NOV and RACH-SEQ next-observation design",
+    "validated NOV EVSI and RACH-SEQ next-observation design",
     "controlled synthetic validation",
     "exact one-step colonization projection",
     "prospective Campanula measurement design"
@@ -28,6 +28,7 @@
     "method": [
       "causal_model/causal_admissibility.py",
       "causal_model/causal_replaceability.py",
+      "causal_model/nov_evsi.py",
       "causal_model/rach_seq.py",
       "docs/rach_theory.md",
       "docs/rach_mathematical_foundations.md"
