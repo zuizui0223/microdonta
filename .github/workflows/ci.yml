@@ -43,7 +43,7 @@ jobs:
       - name: Run test suite
         run: pytest -q
 
-      - name: Smoke-test figure and G2 benchmark CLIs
+      - name: Smoke-test figure and G2 v2 benchmark CLIs
         run: |
           mkdir -p outputs/ci
           python -m causal_model.confound_demo  --n-attempts 200 --figure outputs/ci/confound.png
@@ -53,8 +53,9 @@ jobs:
             --n-attempts 100 --noise-rates 0.0,0.1 \
             --figure outputs/ci/known_truth.png
           python -m causal_model.generality_sweep \
-            --n-systems 20 --n-attempts 300 \
+            --n-systems 20 --n-attempts 300 --n-distractors 2 \
             --budget-sweep 0,1,2 \
+            --policies rach_seq,random_order \
             --budget-table outputs/ci/rach_seq_budget.csv
 
       - name: Check outputs were written
@@ -62,5 +63,7 @@ jobs:
           for f in confound synthetic nov known_truth; do
             test -s "outputs/ci/$f.png" || { echo "missing outputs/ci/$f.png"; exit 1; }
           done
-          test -s outputs/ci/rach_seq_budget.csv || { echo "missing RACH-SEQ budget table"; exit 1; }
-          echo "all smoke-test figures and G2 benchmark table generated"
+          test -s outputs/ci/rach_seq_budget.csv || { echo "missing G2 v2 policy table"; exit 1; }
+          grep -q '^rach_seq,' outputs/ci/rach_seq_budget.csv || { echo "missing rach_seq rows"; exit 1; }
+          grep -q '^random_order,' outputs/ci/rach_seq_budget.csv || { echo "missing random_order rows"; exit 1; }
+          echo "all smoke-test figures and G2 v2 policy rows generated"
