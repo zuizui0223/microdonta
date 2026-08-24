@@ -6,7 +6,7 @@
     "N1-N4 channel-identifiability boundary",
     "RACH admissible explanation set",
     "validated NOV EVSI and RACH-SEQ next-observation design",
-    "controlled synthetic validation",
+    "controlled synthetic selection validation",
     "exact one-step colonization projection",
     "prospective Campanula measurement design"
   ],
@@ -88,6 +88,8 @@
   },
   "archive": [
     "paper/archive/mee_manuscript_pre_theorem_2026-08-24.md",
+    "paper/archive/g2_frozen_benchmark_protocol_v1_pre_execution.json",
+    "paper/archive/g2_protocol_v1_supersession.md",
     "docs/archive/repository_scope_audit_2026-06.md",
     "docs/archive/post_eco_split_triage_2026-06.md"
   ]
