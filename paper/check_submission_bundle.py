@@ -78,7 +78,7 @@ def main() -> None:
         "next_observation_evsi",
         "I(S;Q | A_epsilon) / K",
         "heuristic_next_observation_value",
-        "performance threshold",
+        "descriptive, not an acceptance gate",
         "Pass G2",
         "Pass G5",
         "What is not the mainline",
