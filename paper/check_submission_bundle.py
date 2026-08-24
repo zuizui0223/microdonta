@@ -10,6 +10,7 @@ MANUSCRIPT_PATH = ROOT / "paper" / "mee_manuscript_draft.md"
 MAINLINE_PATH = ROOT / "docs" / "mainline.md"
 THEORY_PATH = ROOT / "docs" / "rach_theory.md"
 FOUNDATIONS_PATH = ROOT / "docs" / "rach_mathematical_foundations.md"
+G2_PROTOCOL_PATH = ROOT / "paper" / "g2_frozen_benchmark_protocol.json"
 
 
 def iter_paths(value):
@@ -123,10 +124,33 @@ def main() -> None:
             "validated NOV EVSI implementation is missing from main-text method inventory"
         )
 
+    # G2 validation design is scientific governance, not a convenient runtime
+    # default. The current protocol must challenge selection itself rather than
+    # reverting to the resolver-only v1 design.
+    protocol = json.loads(G2_PROTOCOL_PATH.read_text(encoding="utf-8"))
+    if protocol.get("protocol_id") != "rach-g2-truth-peek-free-v2":
+        raise SystemExit("current G2 protocol is not frozen selection-validation v2")
+    if protocol.get("supersedes") != "rach-g2-truth-peek-free-v1":
+        raise SystemExit("G2 v1 supersession provenance is missing")
+    distractors = protocol.get("generator", {}).get("distractor_candidates", {})
+    if distractors.get("count") != 2:
+        raise SystemExit("G2 v2 must retain exactly two preregistered distractor candidates")
+    selection = protocol.get("selection_validation", {})
+    if selection.get("policies") != ["rach_seq", "random_order"]:
+        raise SystemExit("G2 v2 must compare RACH-SEQ with the random-order baseline")
+    if not selection.get("same_systems_truths_candidates_and_budgets_across_policies"):
+        raise SystemExit("G2 policy comparison must be matched on generated systems")
+    if not selection.get("policy_comparison_is_descriptive_not_acceptance_gate"):
+        raise SystemExit("G2 policy contrast must remain descriptive, not a success gate")
+    reporting = protocol.get("reporting", {})
+    if reporting.get("performance_acceptance_thresholds") != "none_report_all_frozen_outcomes":
+        raise SystemExit("G2 protocol may not encode a favourable-result acceptance threshold")
+
     print("submission bundle OK")
     print(f"target: {manifest['primary_target']}")
     print("spine: " + " -> ".join(manifest["claim_spine"]))
     print("governance: " + ", ".join(manifest.get("governance", [])))
+    print(f"g2 protocol: {protocol['protocol_id']}")
 
 
 if __name__ == "__main__":
