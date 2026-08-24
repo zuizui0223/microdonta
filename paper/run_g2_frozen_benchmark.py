@@ -3,11 +3,15 @@
 The scientific configuration is read only from
 ``paper/g2_frozen_benchmark_protocol.json``. The CLI can choose an output
 directory, but cannot alter seeds, budgets, candidate vocabulary, policies,
-system counts, or ABC draws. Every output row carries the SHA-256 hash of the
-exact protocol bytes.
+system counts, or prior/ABC draws.
+
+Every output row carries two provenance keys:
+
+- SHA-256 of the exact frozen protocol bytes;
+- the exact clean Git commit SHA whose code produced the result.
 
 Protocol v2 evaluates RACH-SEQ and a uniform random candidate-order baseline on
-the same seed-defined system family, candidate vocabulary, hidden truths, and
+the same seed-defined system family, candidate vocabulary, hidden truths and
 observation budgets. Policy contrasts are descriptive outputs only; no sign or
 magnitude is required for software acceptance.
 """
@@ -18,10 +22,12 @@ import csv
 import hashlib
 import json
 import math
+import os
 import statistics
+import subprocess
 from pathlib import Path
 
-from causal_model.generality_sweep import run_budget_sweep
+from causal_model.generality_sweep import run_generality_sweep
 
 ROOT = Path(__file__).resolve().parents[1]
 PROTOCOL_PATH = ROOT / "paper" / "g2_frozen_benchmark_protocol.json"
@@ -34,6 +40,31 @@ def load_protocol() -> tuple[dict, str]:
     if protocol.get("status") != "frozen_before_final_run":
         raise RuntimeError("G2 protocol is not in frozen_before_final_run state")
     return protocol, digest
+
+
+def _code_revision() -> str:
+    """Return the exact clean repository commit used for the frozen run."""
+    try:
+        sha = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+        ).strip()
+        dirty = subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=ROOT, text=True
+        ).strip()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise RuntimeError("cannot determine Git revision for frozen G2 run") from exc
+    if dirty:
+        raise RuntimeError(
+            "frozen G2 run requires a clean Git worktree; commit all code/protocol changes first"
+        )
+    env_sha = os.environ.get("GITHUB_SHA")
+    if env_sha and env_sha != sha:
+        raise RuntimeError(
+            f"GITHUB_SHA ({env_sha}) does not match checked-out HEAD ({sha})"
+        )
+    if len(sha) != 40:
+        raise RuntimeError(f"unexpected Git commit SHA: {sha!r}")
+    return sha
 
 
 def _sample_sd(values: list[float]) -> float:
@@ -56,8 +87,21 @@ def _write_csv(path: Path, fields: list[str], rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
+def _system_signature(record) -> tuple:
+    """Pre-outcome system identity used to verify matched policy evaluation."""
+    return (
+        record.K,
+        record.n_confounds,
+        record.n_initial_edges,
+        record.driver_coeff_a,
+        record.driver_coeff_b,
+        record.n_distractors,
+    )
+
+
 def run_protocol(output_dir: str | Path) -> dict[str, Path]:
     protocol, protocol_hash = load_protocol()
+    code_sha = _code_revision()
     sweep = protocol["sweep"]
     selection = protocol["selection_validation"]
     n_distractors = int(protocol["generator"]["distractor_candidates"]["count"])
@@ -66,38 +110,110 @@ def run_protocol(output_dir: str | Path) -> dict[str, Path]:
     out.mkdir(parents=True, exist_ok=True)
 
     per_seed_rows: list[dict] = []
+    system_rows: list[dict] = []
+
+    # Exact record signatures are retained per seed and checked across every
+    # policy/budget cell before any aggregate is accepted.
+    reference_signatures: dict[int, list[tuple]] = {}
+
     for seed in sweep["seeds"]:
-        summaries = run_budget_sweep(
-            budgets=tuple(int(x) for x in sweep["budgets"]),
-            n_systems=int(sweep["n_systems_per_seed"]),
-            seed=int(seed),
-            n_attempts=int(sweep["n_attempts"]),
-            K_choices=tuple(int(x) for x in sweep["K_choices"]),
-            confound_choices=tuple(int(x) for x in sweep["confound_choices"]),
-            min_sub_size=int(sweep["min_sub_size"]),
-            n_distractors=n_distractors,
-            policies=policies,
-        )
-        for summary in summaries:
-            per_seed_rows.append({
-                "protocol_id": protocol["protocol_id"],
-                "protocol_sha256": protocol_hash,
-                "seed": int(seed),
-                "policy": summary.policy,
-                "budget": summary.budget,
-                "n_systems": summary.n_systems,
-                "systems_with_edges": summary.systems_with_edges,
-                "frac_converged": summary.frac_converged,
-                "mean_frac_resolved": summary.mean_frac_resolved,
-                "mean_steps": summary.mean_steps,
-                "false_exclusion_rate": summary.false_exclusion_rate,
-                "mean_distractors_selected": summary.mean_distractors_selected,
-            })
+        for policy in policies:
+            for budget in sweep["budgets"]:
+                result = run_generality_sweep(
+                    n_systems=int(sweep["n_systems_per_seed"]),
+                    seed=int(seed),
+                    n_attempts=int(sweep["n_attempts"]),
+                    K_choices=tuple(int(x) for x in sweep["K_choices"]),
+                    confound_choices=tuple(int(x) for x in sweep["confound_choices"]),
+                    budget=int(budget),
+                    min_sub_size=int(sweep["min_sub_size"]),
+                    n_distractors=n_distractors,
+                    policy=policy,  # type: ignore[arg-type]
+                )
+
+                signatures = [_system_signature(record) for record in result.records]
+                if int(seed) not in reference_signatures:
+                    reference_signatures[int(seed)] = signatures
+                elif signatures != reference_signatures[int(seed)]:
+                    raise RuntimeError(
+                        "policy/budget cells did not evaluate identical generated systems "
+                        f"for seed={seed}, policy={policy}, budget={budget}"
+                    )
+
+                per_seed_rows.append({
+                    "protocol_id": protocol["protocol_id"],
+                    "protocol_sha256": protocol_hash,
+                    "code_commit_sha": code_sha,
+                    "seed": int(seed),
+                    "policy": policy,
+                    "budget": int(budget),
+                    "n_systems": len(result.records),
+                    "systems_with_edges": result.systems_with_edges,
+                    "frac_converged": result.frac_converged,
+                    "mean_frac_resolved": result.mean_frac_resolved,
+                    "mean_steps": result.mean_steps,
+                    "false_exclusion_rate": result.false_exclusion_rate,
+                    "mean_distractors_selected": result.mean_distractors_selected,
+                })
+
+                for record_index, record in enumerate(result.records):
+                    system_rows.append({
+                        "protocol_id": protocol["protocol_id"],
+                        "protocol_sha256": protocol_hash,
+                        "code_commit_sha": code_sha,
+                        "seed": int(seed),
+                        "policy": policy,
+                        "budget": int(budget),
+                        "record_index": record_index,
+                        "K": record.K,
+                        "n_confounds": record.n_confounds,
+                        "n_initial_edges": record.n_initial_edges,
+                        "n_resolved": record.n_resolved,
+                        "n_unresolved": record.n_unresolved,
+                        "converged": record.converged,
+                        "steps_taken": record.steps_taken,
+                        "R0": record.R0,
+                        "R_final": record.R_final,
+                        "truth_retained": record.truth_retained,
+                        "truth_peek_free": record.truth_peek_free,
+                        "driver_coeff_a": record.driver_coeff_a,
+                        "driver_coeff_b": record.driver_coeff_b,
+                        "n_distractors": record.n_distractors,
+                        "distractors_selected": record.distractors_selected,
+                    })
+
+    system_path = out / "g2_system_records.csv"
+    system_fields = [
+        "protocol_id",
+        "protocol_sha256",
+        "code_commit_sha",
+        "seed",
+        "policy",
+        "budget",
+        "record_index",
+        "K",
+        "n_confounds",
+        "n_initial_edges",
+        "n_resolved",
+        "n_unresolved",
+        "converged",
+        "steps_taken",
+        "R0",
+        "R_final",
+        "truth_retained",
+        "truth_peek_free",
+        "driver_coeff_a",
+        "driver_coeff_b",
+        "n_distractors",
+        "distractors_selected",
+    ]
+    _write_csv(system_path, system_fields, system_rows)
 
     per_seed_path = out / "g2_budget_by_seed_policy.csv"
     per_seed_fields = [
         "protocol_id",
         "protocol_sha256",
+        "code_commit_sha",
         "seed",
         "policy",
         "budget",
@@ -111,8 +227,6 @@ def run_protocol(output_dir: str | Path) -> dict[str, Path]:
     ]
     _write_csv(per_seed_path, per_seed_fields, per_seed_rows)
 
-    # Aggregate each policy/budget separately; preserve the baseline instead of
-    # collapsing policies before the scientific comparison is visible.
     aggregate_rows: list[dict] = []
     aggregate_metrics = [
         *protocol["primary_metrics"],
@@ -132,6 +246,7 @@ def run_protocol(output_dir: str | Path) -> dict[str, Path]:
             row = {
                 "protocol_id": protocol["protocol_id"],
                 "protocol_sha256": protocol_hash,
+                "code_commit_sha": code_sha,
                 "policy": policy,
                 "budget": int(budget),
                 "n_seeds": len(group),
@@ -147,6 +262,7 @@ def run_protocol(output_dir: str | Path) -> dict[str, Path]:
     aggregate_fields = [
         "protocol_id",
         "protocol_sha256",
+        "code_commit_sha",
         "policy",
         "budget",
         "n_seeds",
@@ -182,6 +298,7 @@ def run_protocol(output_dir: str | Path) -> dict[str, Path]:
             row = {
                 "protocol_id": protocol["protocol_id"],
                 "protocol_sha256": protocol_hash,
+                "code_commit_sha": code_sha,
                 "seed": int(seed),
                 "budget": int(budget),
             }
@@ -196,19 +313,28 @@ def run_protocol(output_dir: str | Path) -> dict[str, Path]:
             contrast_rows.append(row)
 
     contrast_path = out / "g2_policy_contrast_by_seed.csv"
-    contrast_fields = ["protocol_id", "protocol_sha256", "seed", "budget"] + [
+    contrast_fields = [
+        "protocol_id",
+        "protocol_sha256",
+        "code_commit_sha",
+        "seed",
+        "budget",
+    ] + [
         f"rach_seq_minus_random_order_{metric}"
         for metric in contrast_source_metrics
     ]
     _write_csv(contrast_path, contrast_fields, contrast_rows)
 
     contrast_aggregate_rows: list[dict] = []
-    contrast_metrics = [field for field in contrast_fields if field.startswith("rach_seq_minus")]
+    contrast_metrics = [
+        field for field in contrast_fields if field.startswith("rach_seq_minus")
+    ]
     for budget in sweep["budgets"]:
         group = [row for row in contrast_rows if row["budget"] == int(budget)]
         row = {
             "protocol_id": protocol["protocol_id"],
             "protocol_sha256": protocol_hash,
+            "code_commit_sha": code_sha,
             "budget": int(budget),
             "n_seeds": len(group),
         }
@@ -222,6 +348,7 @@ def run_protocol(output_dir: str | Path) -> dict[str, Path]:
     contrast_aggregate_fields = [
         "protocol_id",
         "protocol_sha256",
+        "code_commit_sha",
         "budget",
         "n_seeds",
     ]
@@ -236,7 +363,11 @@ def run_protocol(output_dir: str | Path) -> dict[str, Path]:
     snapshot_path = out / "g2_protocol_snapshot.json"
     snapshot_path.write_text(
         json.dumps(
-            {"protocol_sha256": protocol_hash, "protocol": protocol},
+            {
+                "protocol_sha256": protocol_hash,
+                "code_commit_sha": code_sha,
+                "protocol": protocol,
+            },
             indent=2,
             sort_keys=True,
         ) + "\n",
@@ -244,6 +375,7 @@ def run_protocol(output_dir: str | Path) -> dict[str, Path]:
     )
 
     return {
+        "system_records": system_path,
         "per_seed_policy": per_seed_path,
         "policy_aggregate": aggregate_path,
         "contrast_by_seed": contrast_path,
