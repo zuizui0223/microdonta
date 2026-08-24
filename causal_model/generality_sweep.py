@@ -6,7 +6,9 @@ materialise the realised observation through ``outcome_overrides``.
 
 That separation is essential: a benchmark that inserts the true observation into
 the candidate distribution before ranking would measure an oracle-assisted
-procedure rather than RACH-SEQ.
+procedure rather than RACH-SEQ.  Each random system also receives a pre-data
+randomised driver-coefficient pair, so the generality claim is not tied to one
+fixed magnitude contrast.
 """
 from __future__ import annotations
 
@@ -27,9 +29,10 @@ from causal_model.mechanism_equivalence import mechanism_equivalence_structure
 from causal_model.rach_seq import filter_by_outcome, rach_seq
 
 
-# The coefficient ratio is chosen so the three quantitative outcome bands
-# (driver A only, driver B only, both on) remain separated for theta in [0.8, 1.2].
-_DRIVER_COEFFS = (0.35, 0.60)
+# Compatibility defaults for direct helper calls. The publication sweep samples
+# a fresh pair per system. With theta in [0.8, 1.2], non-overlapping magnitude
+# bands require 1.5 < coeff_b / coeff_a < 2.0.
+_DEFAULT_DRIVER_COEFFS = (0.35, 0.60)
 _THETA_LO, _THETA_HI = 0.8, 1.2
 _SLOPE_TOL = 0.05
 
@@ -58,6 +61,8 @@ class SystemRecord:
     R_final: float
     truth_retained: bool = True
     truth_peek_free: bool = True
+    driver_coeff_a: float = float("nan")
+    driver_coeff_b: float = float("nan")
 
     @property
     def frac_resolved(self) -> float:
@@ -91,6 +96,25 @@ class BudgetSummary:
     false_exclusion_rate: float
 
 
+def _sample_driver_coefficients(rng: random.Random) -> tuple[float, float]:
+    """Sample a discriminable driver pair before data/truth are inspected.
+
+    For theta in [0.8, 1.2], the three magnitude bands are disjoint when
+    1.5 < b/a < 2.0:
+
+      A-only : [0.8a, 1.2a]
+      B-only : [0.8b, 1.2b]
+      both   : [0.8(a+b), 1.2(a+b)]
+
+    The restricted ratio therefore makes a quantitative magnitude genuinely
+    resolving while still varying effect sizes across random systems.
+    """
+    a = rng.uniform(0.28, 0.42)
+    ratio = rng.uniform(1.60, 1.85)
+    b = a * ratio
+    return round(a, 6), round(b, 6)
+
+
 def _make_random_system(rng: random.Random, K: int, n_confounds: int):
     """Build one random confounded system with a hidden one-driver truth per trait."""
     names = [f"s{i}" for i in range(K)]
@@ -104,8 +128,15 @@ def _make_random_system(rng: random.Random, K: int, n_confounds: int):
     return switches, drivers_per_trait, truth_driver
 
 
-def _abc_accept(rng: random.Random, switches, drivers_per_trait, n_attempts: int):
+def _abc_accept(
+    rng: random.Random,
+    switches,
+    drivers_per_trait,
+    n_attempts: int,
+    driver_coeffs: tuple[float, float] = _DEFAULT_DRIVER_COEFFS,
+):
     """Generate A_epsilon from ordinal-positive observations only."""
+    coeff_a, coeff_b = driver_coeffs
     names = [sw.name for sw in switches]
     accepted: list[dict] = []
     for _ in range(n_attempts):
@@ -115,8 +146,8 @@ def _abc_accept(rng: random.Random, switches, drivers_per_trait, n_attempts: int
         ok = True
         for a, b in drivers_per_trait:
             slope = theta * (
-                _DRIVER_COEFFS[0] * int(state[a])
-                + _DRIVER_COEFFS[1] * int(state[b])
+                coeff_a * int(state[a])
+                + coeff_b * int(state[b])
             )
             magnitudes.append(slope)
             if slope <= _SLOPE_TOL:
@@ -132,9 +163,13 @@ def _abc_accept(rng: random.Random, switches, drivers_per_trait, n_attempts: int
     return accepted
 
 
-def _truth_magnitude(driver_name: str, pair: tuple[str, str]) -> float:
+def _truth_magnitude(
+    driver_name: str,
+    pair: tuple[str, str],
+    driver_coeffs: tuple[float, float] = _DEFAULT_DRIVER_COEFFS,
+) -> float:
     """Magnitude at theta=1 when exactly the hidden true driver is on."""
-    return _DRIVER_COEFFS[0] if driver_name == pair[0] else _DRIVER_COEFFS[1]
+    return driver_coeffs[0] if driver_name == pair[0] else driver_coeffs[1]
 
 
 def _mode_name(a_on: bool, b_on: bool) -> str:
@@ -147,19 +182,24 @@ def _mode_name(a_on: bool, b_on: bool) -> str:
     return "neither_on"
 
 
-def _mode_coefficient(mode: str) -> float:
+def _mode_coefficient(mode: str, driver_coeffs: tuple[float, float]) -> float:
+    coeff_a, coeff_b = driver_coeffs
     if mode == "driver_a_only":
-        return _DRIVER_COEFFS[0]
+        return coeff_a
     if mode == "driver_b_only":
-        return _DRIVER_COEFFS[1]
+        return coeff_b
     if mode == "both_on":
-        return sum(_DRIVER_COEFFS)
+        return coeff_a + coeff_b
     raise ValueError(f"unsupported mode: {mode}")
 
 
-def _absolute_band_pattern(trait_index: int, mode: str) -> dict:
+def _absolute_band_pattern(
+    trait_index: int,
+    mode: str,
+    driver_coeffs: tuple[float, float],
+) -> dict:
     """Return an absolute-summary pattern covering that mode's full theta band."""
-    coeff = _mode_coefficient(mode)
+    coeff = _mode_coefficient(mode, driver_coeffs)
     lower = coeff * _THETA_LO
     upper = coeff * _THETA_HI
     centre = (lower + upper) / 2.0
@@ -174,7 +214,11 @@ def _absolute_band_pattern(trait_index: int, mode: str) -> dict:
     }
 
 
-def _candidates_for_system(drivers_per_trait, accepted_rows: list[dict]):
+def _candidates_for_system(
+    drivers_per_trait,
+    accepted_rows: list[dict],
+    driver_coeffs: tuple[float, float] = _DEFAULT_DRIVER_COEFFS,
+):
     """Construct candidate outcome distributions from A_epsilon, never from truth.
 
     For each trait, the predictive probabilities of ``driver_a_only``,
@@ -199,7 +243,7 @@ def _candidates_for_system(drivers_per_trait, accepted_rows: list[dict]):
                 name=mode,
                 description=f"Trait {t} quantitative magnitude falls in the {mode} band.",
                 prior_probability=counts[mode] / total,
-                extra_pattern_rows=[_absolute_band_pattern(t, mode)],
+                extra_pattern_rows=[_absolute_band_pattern(t, mode, driver_coeffs)],
             )
             for mode in ("driver_a_only", "driver_b_only", "both_on")
             if counts[mode] > 0
@@ -273,13 +317,24 @@ def run_generality_sweep(
         K = sys_rng.choice(K_choices)
         n_confounds = min(sys_rng.choice(confound_choices), K // 2)
         switches, drivers, truth_driver = _make_random_system(sys_rng, K, n_confounds)
-        accepted = _abc_accept(sys_rng, switches, drivers, n_attempts)
+        driver_coeffs = _sample_driver_coefficients(sys_rng)
+        accepted = _abc_accept(
+            sys_rng,
+            switches,
+            drivers,
+            n_attempts,
+            driver_coeffs=driver_coeffs,
+        )
         if len(accepted) < min_sub_size:
             continue
 
         initial = mechanism_equivalence_structure(accepted, switches)
         R0 = causal_resolvability(accepted, switches)
-        candidates = _candidates_for_system(drivers, accepted)
+        candidates = _candidates_for_system(
+            drivers,
+            accepted,
+            driver_coeffs=driver_coeffs,
+        )
         overrides = _truth_outcome_overrides(drivers, truth_driver)
 
         seq = rach_seq(
@@ -305,6 +360,8 @@ def run_generality_sweep(
             R_final=round(seq.steps[-1].R, 4),
             truth_retained=_truth_retained(final_rows, drivers, truth_driver),
             truth_peek_free=True,
+            driver_coeff_a=driver_coeffs[0],
+            driver_coeff_b=driver_coeffs[1],
         ))
 
     _summarize(result)
