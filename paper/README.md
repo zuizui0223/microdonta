@@ -49,5 +49,11 @@ implementation.
 | G4 worked-example evidence | **Pass for prospective use** | no empirical channel attribution; primary-source table still needed for final prose |
 | G5 reproducible submission | **Partial** | bundle checker added; final full figure rebuild and clean-environment run pending |
 
+**G2 numerical quarantine.** Any generality percentages or mean-resolvability
+values already written in manuscript §4.3 came from the pre-fix benchmark and are
+provisional. They must not be treated as submission evidence or copied into the
+abstract/results until the truth-peek-free, random-coefficient generator is
+frozen and the final budget/error-control run in issue #72 replaces them.
+
 No additional ecological example should enter the primary manuscript before G2
 and G5 pass.
