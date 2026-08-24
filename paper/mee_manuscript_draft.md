@@ -24,20 +24,24 @@ unknown proxy calibration is sufficient for relative change only when it is
 stable across the comparison (N3), whereas calibration drift restores
 non-identifiability (N4). We then present Restricted Admissible Causal
 Hypotheses (RACH), which retains every mechanism program compatible with a
-declared grammar and observations, reports the remaining causal degeneracy, and
-uses next-observation value and RACH-SEQ to rank measurements that reduce it.
-Controlled known-truth and random-system benchmarks evaluate recovery, false
-exclusion, calibration, and observation efficiency. An exact one-step
-colonisation-recruitment factorisation demonstrates how the theorem can be
-earned for a specified life-cycle output without being overextended to a
+declared grammar and observations and reports the remaining causal degeneracy.
+For a future observation whose predictive outcomes are identified by the current
+admissible region, its validated next-observation value is exactly the residual
+mechanism–observation mutual information normalised by switch dimension,
+`NOV(Q)=I(S;Q|A_ε)/K`; RACH-SEQ recomputes that information state after each
+collected observation. Controlled known-truth and random-system benchmarks
+evaluate recovery, false exclusion, calibration, and observation efficiency. An
+exact one-step colonisation-recruitment factorisation demonstrates how the theorem
+can be earned for a specified life-cycle output without being overextended to a
 multistep agent-based model. Published Izu Islands *Campanula microdonta*
 patterns are used only as a prospective observation-design example: the existing
 record does not identify a vital-rate channel. RACH therefore turns structural
-non-identifiability into a reportable admissible set and an explicit minimal
-measurement design rather than a forced model winner.
+non-identifiability into a reportable admissible set and an explicit measurement
+design rather than a forced model winner.
 
 **Keywords:** structural identifiability, causal admissibility, degeneracy,
-approximate Bayesian computation, value of information, observation design.
+approximate Bayesian computation, mutual information, value of information,
+observation design.
 
 ---
 
@@ -87,14 +91,15 @@ formalises this:
    (θ, s) whose simulated patterns match independent observations within `ε`;
 4. **causal degeneracy** `D_RACH = H(S | A_ε)` and **resolvability**
    `R_RACH = 1 − D_RACH/K` quantify how much the data resolve mechanism identity;
-5. **observation contribution** `OC_k` and **next-observation value** `NOV(q)`
-   quantify, respectively, how much each current observation and each *candidate
-   future* observation contribute to resolvability.
+5. **observation contribution** `OC_k` measures how current patterns affect joint
+   mechanism resolution, while a validated **next-observation value** `NOV(Q)`
+   measures how much residual mechanism information a future observation is
+   expected to remove.
 
 RACH is not a new simulator and does not claim to recover causal truth. It
 identifies which mechanisms remain admissible under stated assumptions, reports
-how confounded they are, and prioritises the observations that would most reduce
-the remaining ambiguity. In other words, it is a discipline against precisely the
+how confounded they are, and prioritises observations that would reduce the
+remaining ambiguity. In other words, it is a discipline against precisely the
 causal-coincidence leap described above: where a natural-history reading would
 propose one mechanism from a pattern, RACH returns the *set* of mechanisms the
 pattern admits, plus the measurement that would justify narrowing it.
@@ -176,48 +181,81 @@ A_ε(y_obs, x_obs) = { (θ,s) ∈ Θ×S : G(θ)=1, d(P_sim(f(x_obs;θ,s)), P_obs
 
 `x_obs` is fixed context (not an inference target); `y_obs` are independent
 observations; the pattern maps `P_sim, P_obs` send raw values into a common
-**ordinal pattern space** (e.g. the sign of a trait's trend along an
-environmental gradient — *not* a pairwise endpoint contrast), and
-`d = 1 − weighted_match_rate`. ABC approximates `A_ε` by sampling (θ, s) from the
-prior `π` and keeping draws with `d ≤ ε`. Full definitions and the worked-example
-instantiation are in `docs/rach_theory.md` and `docs/rach_mathematical_foundations.md`.
+observation space, and `d` is predeclared before inference. ABC approximates
+`A_ε` by sampling (θ, s) from the prior `π` and retaining draws with `d ≤ ε`.
+Full definitions and the worked-example instantiation are in `docs/rach_theory.md`
+and `docs/rach_mathematical_foundations.md`.
 
 ### 3.2 The five quantities and their guarantees
 
 `CA_j = P(s_j=1 | A_ε)`; `D_RACH = H(S|A_ε)`; `R_RACH = 1 − D_RACH/K`;
-`OC_k = R_RACH(O) − R_RACH(O∖{k})`; `NOV(q) = E_{y_q}[R_RACH(O∪{q=y_q}) − R_RACH(O)]`.
-We prove (Propositions 1–7, `docs/rach_mathematical_foundations.md`): `A_ε` is
-well-defined; `CA_j ∈ [0,1]`; `0 ≤ D_RACH ≤ K`; `0 ≤ R_RACH ≤ 1` (normalised by
-the **maximum** switch entropy `K`, not a non-uniform prior entropy);
-`−1 ≤ OC_k ≤ 1` and **`OC_k` may be negative** (observation contribution is not
-monotone); `NOV(q)` is finite under finite/integrable outcomes; and the Monte
-Carlo estimators are consistent. Empty `A_ε` makes the conditional quantities
-non-estimable and is reported as such.
+`OC_k = R_RACH(O) − R_RACH(O∖{k})`. For a future observation `Q` with an
+identified predictive distribution under current `A_ε`,
 
-### 3.3 NOV as a constructive resolvability-EVSI
+[
+NOV(Q)=E_Q\{R_RACH(A_ε|Q)-R_RACH(A_ε)\}.
+]
 
-For a **quantitative** candidate observation `q = g(θ,s)` we take the predictive
-outcome distribution to be the pushforward of the restricted prior `π|A_ε` under
-`g`, with utility the internal resolvability (no external decision model). This
-yields a constructive EVSI (Proposition 6′) with three guarantees, verified in
-`causal_model/nov_calibration.py`: it is bounded in `[-1,1]`; under a
-deterministic simulator it is **exact from the stored admissible region**
-(conditioning a fresh ABC run on `q=v` accepts exactly the filtered sub-region,
-so no re-inference is needed); and it is the **unbiased** predictive mean of the
-realised gain. This upgrades NOV from a heuristic priority score to a validated
-EVSI for quantitative observations, and connects RACH to the value-of-information
-tradition in applied ecology (Canessa et al. 2015) while removing its usual
-requirement of an external decision/utility model.
+We prove (Propositions 1–7, `docs/rach_mathematical_foundations.md`) that `A_ε`
+is well-defined; `CA_j ∈ [0,1]`; `0 ≤ D_RACH ≤ K`; `0 ≤ R_RACH ≤ 1` (normalised
+by the **maximum** switch entropy `K`, not a non-uniform prior entropy); and
+`−1 ≤ OC_k ≤ 1`, with `OC_k` allowed to be negative. For the validated
+current-region predictive map, Proposition 6′ gives the stronger exact identity
+
+[
+\boxed{NOV(Q)=I(S;Q\mid A_ε)/K}
+]
+
+and therefore
+
+[
+0\le NOV(Q)\le 1-R_RACH(A_ε)\le1.
+]
+
+Thus `NOV(Q)=0` exactly when the candidate observation carries no information
+about the remaining mechanism vector under current `A_ε`; it attains the full
+remaining uncertainty `1-R_RACH` exactly when observing `Q` completely resolves
+that switch uncertainty. Empty `A_ε` makes conditional quantities non-estimable.
+The finite-sample estimators are consistent under the stated assumptions.
+
+### 3.3 NOV as mechanism–observation information
+
+For a candidate observation `Q=g(θ,s)`, take the predictive outcome distribution
+to be the pushforward of the restricted prior `π|A_ε` under `g`. Then
+
+[
+\begin{aligned}
+NOV(Q)
+&=E_Q[R_RACH(A_ε|Q)-R_RACH(A_ε)]\\
+&=\frac{H(S|A_ε)-H(S|A_ε,Q)}{K}\\
+&=\frac{I(S;Q|A_ε)}{K}.
+\end{aligned}
+]
+
+This is the constructive resolvability-EVSI of RACH. It needs no external
+decision utility because its utility is the inference's own residual mechanism
+uncertainty. The information identity also explains why a coherent validated NOV
+cannot be negative in expectation, even though an individual realised outcome
+can increase conditional switch entropy and lower realised `R_RACH`.
+
+Under a deterministic simulator, conditioning a fresh inference on `Q=q` accepts
+exactly the filtered stored sub-region `A_ε|{Q=q}`. Hence no simulator re-run is
+needed for the stored-region calculation. The implementation in
+`causal_model/nov_evsi.py` independently constructs the empirical joint `(S,Q)`
+table and checks `EVSI=I(S;Q|A_ε)/K`; `causal_model/nov_calibration.py` separately
+checks stored-region filtering against fresh re-inference and realised-gain
+calibration.
 
 The executable public quantity follows the same information boundary. For an
 explicit finite candidate outcome vocabulary, `next_observation_evsi` computes
-`Pr(v|A_ε)` from the stored region only when the outcome maps form a verified
-mutually exclusive and exhaustive partition of current `A_ε`. If the maps overlap,
-are incomplete, or required simulator outputs are absent, that predictive
-pushforward is not identified by the stored region and the validated EVSI is
-reported as **not estimable**. A declared outcome prior is not silently substituted
-and relabelled as validated EVSI. The older target-switch heuristic is retained
-only as an explicitly named compatibility score, not as the publication NOV.
+`Pr(q|A_ε)` only when the outcome maps form a verified mutually exclusive and
+exhaustive partition of current `A_ε`. If the maps overlap, are incomplete, or
+required simulator outputs are absent, that predictive pushforward is not
+identified by the stored region and the validated EVSI is reported as **not
+estimable**. A declared outcome prior is not silently substituted and relabelled
+as validated EVSI. The older target-switch heuristic is retained only as the
+explicit compatibility helper `heuristic_next_observation_value`, not as the
+publication NOV.
 
 ### 3.4 Sensitivity to ε and the prior, not rule selection
 
@@ -230,99 +268,80 @@ sensitivity disclosed rather than optimised over.
 
 ### 3.5 The RACH algorithm
 
-RACH is a single procedure (Algorithm 1), not a pipeline of separate analyses.
-Its primitives are standard — prior sampling / ABC, Shannon entropy, and a
-preposterior expectation — but three steps that do not co-occur, with this
-objective, in ABC model choice, pattern-oriented modelling, or classical
-value-of-information give RACH its distinct identity:
+RACH is a single procedure, not a pipeline of separate analyses. Its primitives
+are standard — prior sampling / ABC, Shannon entropy, and preposterior
+expectation — but three steps that do not co-occur with this objective in ABC
+model choice, pattern-oriented modelling, or classical value-of-information give
+RACH its distinct identity:
 
 (i) a **constraint grammar `G` applied before the data**, together with an
 evidence-role taxonomy (`observed_target` / `input_context` / `diagnostic_only` /
 `future_observation`) that determines which observations may enter the distance
-`d` and thereby blocks circular inference (line 4);
+`d` and thereby blocks circular inference;
 
-(ii) the **entropy of the switch posterior is reported as the result** — causal
-degeneracy — rather than its mode (line 9);
+(ii) the **entropy of the switch posterior is reported as a result** — causal
+degeneracy — rather than hidden behind its mode;
 
-(iii) an **observation-design step whose utility is the inference's own causal
-resolvability** (lines 10–14): a value-of-information computation that needs no
-external decision or utility model and is obtained *exactly from the stored
-admissible region* by filtering, with no re-inference (§3.3, Proposition 6′).
+(iii) a **next-observation step whose value is the mutual information between a
+candidate measurement and residual mechanism identity**, normalised by `K`.
 
 ```
 Algorithm 1  RACH
 Input : switches S = {s_1..s_K}; prior π over (θ,s); constraint grammar G;
-        simulator f; pattern maps P_sim, P_obs; observed patterns y_obs (with
-        evidence roles); context x_obs; tolerance ε; candidate observations Q
-Output: degeneracy D, resolvability R, admissibility CA_j, observation values NOV
+        simulator f; pattern maps P_sim, P_obs; observed patterns y_obs;
+        context x_obs; tolerance ε; candidate observations Q
+Output: admissibility CA_j, degeneracy D, resolvability R, validated NOV where estimable
 
- 1  A ← ∅                                       # admissible causal region
+ 1  A ← ∅
  2  repeat N times:
  3      draw (θ, s) ~ π
- 4      if G(θ) = 0: continue                   # pre-data feasibility filter
- 5      p ← P_sim(f(x_obs; θ, s))               # simulate → ordinal pattern
- 6      if d(p, P_obs(y_obs)) ≤ ε:              # only role = observed_target enter d
+ 4      if G(θ) = 0: continue
+ 5      p ← P_sim(f(x_obs; θ, s))
+ 6      if d(p, P_obs(y_obs)) ≤ ε:
  7          A ← A ∪ {(θ, s)}
- 8  CA_j ← mean_{(θ,s)∈A} s_j                   # P(s_j = 1 | A_ε)
- 9  D ← H(S | A);  R ← 1 − D / K                # DEGENERACY, RESOLVABILITY = result
-10  for each quantitative candidate q ∈ Q:      # observation design, no re-inference
-11      for each value-bin v of g_q over A:
-12          A_{q=v} ← { (θ,s) ∈ A : g_q(θ,s) ≈ v }
-13          R_v ← 1 − H(S | A_{q=v}) / K
-14      NOV(q) ← Σ_v Pr(v | A) · R_v − R        # preposterior EVSI on resolvability
-15  return D, R, CA_j, NOV
+ 8  CA_j ← mean_{(θ,s)∈A} s_j
+ 9  D ← H(S | A);  R ← 1 − D / K
+10  for each candidate Q with an identified predictive map over A:
+11      construct Pr(Q=q | A) from the current admissible region
+12      compute I(S;Q | A)
+13      NOV(Q) ← I(S;Q | A) / K
+14  return A, CA_j, D, R, NOV
 ```
 
-**Closing the loop (RACH-SEQ).** Algorithm 1 is single-shot: it reports the
-degeneracy and ranks the next observation, but stops there. RACH-SEQ iterates it.
-Given the mechanism equivalence structure — the confounding graph over switches,
-whose edges are the coupled (high mutual-information) mechanism pairs the data
-cannot separate — RACH-SEQ scores each candidate by its *expected confounding-edge
-cuts* (`Σ_v Pr(v|A_current)·max(0, |E| − |E_{q=v}|)`), takes the
-highest-scoring observation, updates `A`, recomputes the graph and the predictive
-distribution, and repeats until the graph is empty or the observation budget is
-spent. Thus a verified candidate is reweighted by `Pr(v|current A_ε)` at every
-step, rather than by a probability frozen at step 0. If an outcome vocabulary does
-not define a verified partition, a predeclared prior may be used as an explicit
-RACH-SEQ ranking fallback and its probability source is reported; that fallback
-is not called the validated single-shot EVSI. Hidden synthetic truth is used only
-after candidate ranking to materialise a benchmark outcome. The loop never needs
-to re-run a deterministic simulator when the stored-row conditioning identity
-applies.
+**Closing the loop (RACH-SEQ).** Single-shot RACH evaluates what is worth
+measuring *now*; RACH-SEQ iterates after observations arrive. Given the current
+mechanism-equivalence graph, it scores each candidate by expected confounding-edge
+cuts, takes the highest-scoring available observation, conditions `A`, recomputes
+the graph and predictive distributions, and repeats until the graph is empty or
+the budget is exhausted. Thus a verified candidate is reweighted by
+`Pr(q|current A_ε)` at every step, rather than by a probability frozen at step 0.
+If an outcome vocabulary does not define a verified partition, a predeclared
+prior may be used as an explicit RACH-SEQ ranking fallback and its probability
+source is reported; that fallback is not called validated single-shot EVSI.
+Hidden synthetic truth is used only *after* candidate ranking to materialise a
+benchmark outcome.
 
 ## 4. Controlled validation
 
 ### 4.1 Known-truth recovery (self-consistency; Fig. S1)
 
-*(`python -m causal_model.known_truth_benchmark --figure …`)*  A
+*(`python -m causal_model.known_truth_benchmark --figure …`)* A
 specified-simulator recovery benchmark generates synthetic data under a fixed
-switch state and checks that RACH recovers it; cross-backend modes
+switch state and checks RACH under controlled truth; cross-backend modes
 (proxy→proxy self-consistency vs abm→proxy / abm→abm simulator robustness) are
-supported. This tests self-consistency, not real-world causation. Recovery is
-deliberately *partial* (Fig. S1): switches that are confounded by construction
-are not recoverable from the pattern alone — exactly the degeneracy the rest of
-the paper quantifies — while per-switch CA error stays bounded and the recovery
-of identifiable switches degrades gracefully as injected pattern-noise rises. We
-therefore present this as a self-consistency check, not as an identification
-claim.
+supported. This tests self-consistency or misspecification robustness, not
+real-world causation. Confounded switches are deliberately not expected to become
+uniquely recoverable from a non-identifying pattern.
 
-### 4.2 Model selection misleads; RACH does not (Fig. 2)
+### 4.2 Model selection misleads; RACH exposes the confound (Fig. 2)
 
 *(`python -m causal_model.confound_demo --figure …`; proxy backend, seed 7,
-n = 600 draws, |A_ε| = 346)*  In a system where two mechanisms — selfing syndrome
-(S2) and island isolation (S3) — produce the same ordinal gradients (verified:
-both reproduce the current `y_obs` exactly), ABC model choice reports a single MAP
-switch-combination with only **P = 0.11**. RACH instead reports
-**D_RACH = 3.56 of 4** (R = 0.11), with `CA(S2) = 0.67 ≈ CA(S3) = 0.66` — the
-confound is made explicit, not hidden. NOV then ranks the resolving observation,
-and adding a measured **nectar-guide magnitude** (truth = S3) resolves it:
-`CA(S3) 0.66→0.84` (up), `CA(S2) 0.67→0.49` (down), `D 3.56→2.37`, `R 0.11→0.41`.
-Crucially, the *selfing/Fis magnitude* reduces degeneracy but cannot reject S2
-(S2 can mimic high selfing), whereas the nectar-guide decline is a signature S2
-cannot mimic — a distinction RACH surfaces and model selection cannot. This is
-the method's controlled diagnostic in one figure: model selection answers "which model
-wins?" with a near-arbitrary winner, while RACH answers "are these mechanisms
-even separable, and what would separate them?"
+n = 600 draws, |A_ε| = 346)* In a controlled system where selfing syndrome (S2)
+and island isolation (S3) reproduce the same ordinal gradients, ABC model choice
+reports a single MAP switch-combination with low posterior mass. RACH instead
+reports high degeneracy and the coupled mechanism structure, then asks which
+measurement carries information about that unresolved pair. This figure is a
+controlled diagnostic, not a natural-system mechanism claim.
 
 ### 4.3 Generality and observation-budget error control (Fig. 3)
 
@@ -333,9 +352,9 @@ overrides. The frozen protocol evaluates five predeclared seeds, 200 random
 systems per seed, K ∈ {4,5,6}, one or two independent confounds, random pre-data
 driver coefficients, and observation budgets 0–4. Candidate ranking never sees
 the hidden truth; truth is used only after ranking to materialise the realised
-benchmark outcome. Analytic magnitude bands are constructed to partition the
-current admissible region, so G2 candidate values use
-`Pr(v|current A_ε)` rather than a stale declared prior.
+benchmark outcome. Analytic magnitude bands are required to partition the current
+admissible region, so G2 candidate values use `Pr(q|current A_ε)` rather than a
+stale declared prior.
 
 The primary outputs are, for every observation budget, the fraction of systems
 that converge to an empty confounding graph, the fraction of confounding edges
@@ -355,24 +374,18 @@ structure without excluding the hidden true explanation? Generalisation beyond
 that declared system family is a limitation, not something inferred from a high
 synthetic success rate.
 
-The mechanism is illustrated separately in Fig. S2 *(`python -m
-causal_model.synthetic_demo --figure …`; seed 1, n = 4000, |A_ε| = 2995)*: an
-unrelated 4-switch system (mechanisms B and C sharing an ordinal trend but
-differing in magnitude) reproduces the same RACH signatures (`D = 3.58 of 4`,
-`CA(B) ≈ CA(C) ≈ 0.66` confounded) and resolves them with a single quantitative
-magnitude observation (`CA(C) → 1.00`, `CA(B) → 0.08`). The inference layer
-consumes accepted (θ, s) draws and a switch list with no Campanula dependency.
+### 4.4 NOV information identity and calibration (Fig. 4)
 
-### 4.4 NOV-EVSI calibration (Fig. 4)
-
-*(`python -m causal_model.nov_calibration --figure …`; seed 7, n = 1000,
-|A_ε| = 597)*  (i) The cheap admissible-region EVSI equals a fresh re-inference
-for every tested quantitative observation (1:1, |Δ|<1e-6). (ii) The preposterior
-`EVSI(q)` positively predicts the realised resolvability gain across observations
-and true states (Pearson r = 0.77);
-because EVSI is the full-predictive expectation it orders observations by value
-with honest spread across truths. Together these close the "it is just heuristic
-value-of-information" objection: NOV is a genuine, validated EVSI.
+NOV is checked at two independent levels. First,
+`causal_model/nov_evsi.py` calculates the expected resolvability gain from
+conditional sub-regions and independently calculates the empirical mutual
+information of `(S,Q)`; the implementation requires agreement with
+`I(S;Q|A_ε)/K` up to the existing display rounding of `R_RACH`. Second,
+`python -m causal_model.nov_calibration --figure …` compares the cheap
+stored-region conditioning calculation with fresh deterministic re-inference and
+evaluates predictive expected value against realised gains across controlled true
+states. The first check establishes the information identity; the second tests the
+computational conditioning shortcut and empirical calibration.
 
 ## 5. Exact ecological projection and ABM boundary
 
@@ -451,12 +464,12 @@ empirical validation of RACH.
 ## 7. Software and reproducibility
 
 The Python package implements N1–N4 constructions, RACH admissibility and
-replaceability, validated NOV/EVSI (`causal_model/nov_evsi.py`), RACH-SEQ,
-controlled benchmarks, the exact one-step colonisation projection, and the
-executable projection ledger. The older heuristic next-observation score remains
-available only as an explicitly named compatibility helper and is not the primary
-publication API. The canonical submission inventory is
-`paper/submission_manifest.json`.
+replaceability, validated information-theoretic NOV/EVSI
+(`causal_model/nov_evsi.py`), RACH-SEQ, controlled benchmarks, the exact one-step
+colonisation projection, and the executable projection ledger. The older
+heuristic next-observation score remains available only as an explicitly named
+compatibility helper and is not the primary publication API. The canonical
+submission inventory is `paper/submission_manifest.json`.
 
 The final generality/error-control benchmark is governed by
 `paper/g2_frozen_benchmark_protocol.json` and
@@ -481,17 +494,27 @@ not an answer with large uncertainty; it is an answer to a question the data
 cannot distinguish. N1–N4 make that statement exact for a positive two-channel
 performance model. RACH then provides the finite reportability object needed in
 less algebraically tractable settings: the admissible explanation set, its
-degeneracy and replaceability structure, and the observation expected to reduce
-that structure.
+degeneracy and replaceability structure, and an information measure for what to
+observe next.
+
+The identity `NOV(Q)=I(S;Q|A_ε)/K` clarifies why this observation-design step is
+not an arbitrary priority score. A candidate observation is valuable exactly to
+the extent that it carries information about residual mechanism identity under
+the current admissible region. This also provides a clean stopping criterion:
+when every available candidate has zero validated NOV, the current candidate
+vocabulary contains no further information about the unresolved mechanism vector,
+even if `D_RACH` remains positive.
 
 RACH combines familiar components—ABC-style restriction, explicit biological
 constraints, entropy, pattern-oriented modelling, and value of information
 (Beaumont et al. 2002; Grimm et al. 2005; Chaloner & Verdinelli 1995; Canessa et
-al. 2015)—under a different stopping rule. It does not stop when a ranking can be
-computed. It stops when the declared observation budget is exhausted or the
-remaining programs are separated at the declared resolution. This also clarifies
-the relation to ABC model choice: RACH is designed for cases in which a model
-winner may be unstable or weakly supported (Robert et al. 2011).
+al. 2015)—under a different inferential target and stopping rule. It does not stop
+when a ranking can be computed. It stops when the declared observation budget is
+exhausted, the remaining programs are separated at the declared resolution, or
+the available observation vocabulary carries no further identified mechanism
+information. This also clarifies the relation to ABC model choice: RACH is
+designed for cases in which a model winner may be unstable or weakly supported
+(Robert et al. 2011).
 
 The exact projection illustrates how mathematical and ecological claims should
 be connected. The factorisation is earned for a specified one-step life-cycle
@@ -515,8 +538,8 @@ The immediate empirical implication is modest but actionable: observed
 contraction, shift, fragmentation or persistence should not be assigned to a
 vital-rate channel when it is only a function of net performance. The
 corresponding methods implication is stronger: non-identifiability can be
-reported as a reproducible scientific object and converted into a minimal
-next-observation design.
+reported as a reproducible scientific object and converted into a quantitatively
+ranked next-observation design.
 
 ## Figure plan
 
@@ -527,8 +550,9 @@ next-observation design.
 3. **Figure 3 — Sequential generality and error control.** Frozen RACH-SEQ budget
    curves with convergence, edge resolution, observations used, false exclusion,
    and seed-level uncertainty.
-4. **Figure 4 — NOV calibration.** Admissible-region EVSI versus fresh
-   re-inference and realised gain.
+4. **Figure 4 — NOV information and calibration.** `I(S;Q|A_ε)/K` identity,
+   admissible-region conditioning versus fresh re-inference, and realised-gain
+   calibration.
 5. **Figure 5 — Earned ecological projection.** Exact one-step colonisation
    factorisation, projection-ledger boundary, and prospective Campanula
    measurement design.
@@ -600,7 +624,7 @@ Ruiqi Zhang — [to add].
 - Inoue, K. & Kawahara, T. 1990. Allozyme differentiation and genetic structure in
   island and mainland Japanese populations of *Campanula punctata*. *American
   Journal of Botany* 77: 1440–1448.
-- Raiffa, H. & Schlaifer, R. 1961. *Applied Statistical Decision Theory.* Harvard
+- Raiffa, H. & Schlaifer, H. 1961. *Applied Statistical Decision Theory.* Harvard
   University Press, Boston.
 - Robert, C.P., Cornuet, J.-M., Marin, J.-M. & Pillai, N.S. 2011. Lack of
   confidence in approximate Bayesian computation model choice. *Proceedings of the
