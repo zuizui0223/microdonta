@@ -359,6 +359,7 @@ python -m examples.rule_transition_demo
 
 ## Documentation
 
+- `docs/publication_claim_graph.md` — claim–evidence graph, manuscript boundary, and submission gates
 - `docs/trait_space_contraction_theorem.md` — restricted comparative statics for the simplified viable-set model
 - `docs/theory_corrections.md` — exact edge-retention threshold correction
 - `docs/channel_identifiability_theorem.md` — N1/N2 structural non-identifiability and one-factor recovery
