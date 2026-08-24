@@ -1,9 +1,18 @@
 name: CI
 
 on:
+  # Feature branches are validated by pull_request. Running both push and
+  # pull_request on the same branch duplicates the complete 3-version matrix.
   push:
-    branches: ["**"]
+    branches: ["main"]
   pull_request:
+
+# A PR only needs validation for its newest head. This prevents rapid scientific
+# review commits from leaving obsolete Python 3.10-3.12 matrices queued behind
+# the current code under review.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
