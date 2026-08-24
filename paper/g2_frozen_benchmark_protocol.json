@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "protocol_id": "rach-g2-truth-peek-free-v1",
+  "status": "frozen_before_final_run",
+  "purpose": "Final submission benchmark for RACH-SEQ observation efficiency and hidden-truth error control.",
+  "generator": {
+    "truth_peek_free": true,
+    "hidden_truth_use": "materialise_realised_outcome_after_candidate_ranking_only",
+    "theta_range": [0.8, 1.2],
+    "ordinal_slope_threshold": 0.05,
+    "driver_coefficient_sampling": {
+      "a_uniform": [0.28, 0.42],
+      "b_over_a_uniform": [1.6, 1.85],
+      "b_definition": "b = a * ratio",
+      "separability_constraint": "1.5 < b/a < 2.0"
+    },
+    "predictive_outcome_probability": "current_A_epsilon_partition_when_verified_else_declared_prior"
+  },
+  "sweep": {
+    "seeds": [0, 1, 2, 3, 4],
+    "n_systems_per_seed": 200,
+    "n_attempts": 1500,
+    "K_choices": [4, 5, 6],
+    "confound_choices": [1, 2],
+    "budgets": [0, 1, 2, 3, 4],
+    "min_sub_size": 8
+  },
+  "primary_metrics": [
+    "frac_converged",
+    "mean_frac_resolved",
+    "mean_steps",
+    "false_exclusion_rate"
+  ],
+  "reporting": {
+    "per_seed_required": true,
+    "aggregate_across_seeds": "mean_and_sample_sd",
+    "old_pre_fix_generality_numbers_must_not_be_reused": true
+  },
+  "freeze_policy": {
+    "parameter_changes_after_final_run": "require_new_protocol_id_and_full_rerun",
+    "manuscript_numbers": "must_come_only_from_outputs_tagged_with_this_protocol_hash"
+  }
+}
