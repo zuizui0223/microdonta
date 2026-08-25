@@ -4,24 +4,48 @@ import importlib
 import causal_model as rach
 
 
-def test_primary_rach_symbols_are_package_level():
-    expected = {
-        "CandidateObservation",
-        "CandidateOutcome",
-        "RACHSummary",
-        "EVSIResult",
-        "compute_causal_admissibility",
-        "causal_degeneracy",
-        "causal_resolvability",
-        "causal_replaceability_cost",
-        "crc_profile",
-        "mechanism_equivalence_structure",
-        "next_observation_evsi",
-        "run_rach_seq",
-        "rach_summary",
+EXPECTED_PUBLIC_API = {
+    "CandidateObservation",
+    "CandidateOutcome",
+    "CausalAdmissibilityResult",
+    "CRCResult",
+    "EVSIResult",
+    "ObservationContribution",
+    "RACHSummary",
+    "SeqResult",
+    "SeqStep",
+    "compute_causal_admissibility",
+    "causal_degeneracy",
+    "causal_replaceability_cost",
+    "causal_replaceability_cost_full",
+    "causal_resolvability",
+    "crc_profile",
+    "crc_profile_full",
+    "mechanism_equivalence_structure",
+    "next_observation_evsi",
+    "observation_contribution",
+    "run_rach_seq",
+    "rach_summary",
+}
+
+
+def test_release_public_api_is_exactly_the_rach_mainline():
+    assert set(rach.__all__) == EXPECTED_PUBLIC_API
+    for name in EXPECTED_PUBLIC_API:
+        assert hasattr(rach, name)
+
+
+def test_compatibility_helpers_remain_explicit_but_are_not_advertised():
+    compatibility_only = {
+        "heuristic_next_observation_value",
+        "expected_edge_cuts",
+        "filter_by_outcome",
+        "CausalStructure",
+        "score_causal_structure",
+        "install_rule_transition_contracts",
     }
-    assert expected <= set(rach.__all__)
-    for name in expected:
+    assert not (compatibility_only & set(rach.__all__))
+    for name in compatibility_only:
         assert hasattr(rach, name)
 
 
@@ -40,7 +64,3 @@ def test_canonical_submodules_are_not_shadowed_by_root_callables():
     assert rach.rach_seq is seq_module
     assert rach.compute_causal_admissibility is ca_module.causal_admissibility
     assert rach.run_rach_seq is seq_module.rach_seq
-
-
-def test_rule_transition_installer_is_not_advertised_as_primary_api():
-    assert "install_rule_transition_contracts" not in rach.__all__
