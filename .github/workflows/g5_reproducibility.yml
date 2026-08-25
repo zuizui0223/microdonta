@@ -87,7 +87,7 @@ jobs:
                   ('mean_precision', 'mean_precision'),
                   ('mean_recall', 'mean_recall'),
                   ('mean_f1', 'mean_f1'),
-                  ('mean_abs_ca_error', 'mean_ca_error'),
+                  ('mean_ca_error', 'mean_ca_error'),
                   ('mean_R_RACH', 'mean_R_RACH'),
                   ('mean_D_RACH', 'mean_D_RACH'),
               ):
