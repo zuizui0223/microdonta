@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "repository": "zuizui0223/microdonta",
   "primary_program": "rach_method",
   "programs": {
@@ -20,10 +20,11 @@
       "status": "prospective observation-design example",
       "roots": ["causal_model/campanula_real_data.py", "examples/campanula_izu"]
     },
-    "island_pollination_translation": {
-      "status": "three external-to-RACH adapter contracts; not empirical evidence",
-      "source_repository": "zuizui0223/izu-core",
-      "roots": ["examples/island_pollination_translation"],
+    "island_pollination_empirical_tracks": {
+      "status": "standalone empirical observation-design programme; not manuscript evidence",
+      "external_manuscript_dependency": false,
+      "external_repository_dependency": false,
+      "roots": ["examples/island_pollination_empirical_tracks"],
       "track_ids": [
         "signed_functional_starting_position",
         "network_context_effective_service",
