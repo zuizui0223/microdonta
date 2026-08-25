@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "result_id": "rach-g2-truth-peek-free-v2-final-2026-08-25",
+  "protocol_id": "rach-g2-truth-peek-free-v2",
+  "protocol_sha256": "3568025f98a671b232e5d6b865063f37baa5bec319a594f831d6b5b953428cb7",
+  "code_commit_sha": "f343c2361db28c0b3e528b882b3370eda5abf5ed",
+  "workflow_run_id": 32801131991,
+  "artifact": {
+    "id": 9546604585,
+    "name": "g2-frozen-v2-f343c2361db28c0b3e528b882b3370eda5abf5ed",
+    "sha256": "687593e70b54e5f1545cccaa2a84f0692e3ca99a945a8d58047b77f48f7cb655",
+    "system_records_rows": 10000,
+    "all_truth_peek_free": true,
+    "all_truth_retained": true
+  },
+  "policy_budget_aggregate": [
+    {"policy":"rach_seq","budget":0,"n_seeds":5,"total_systems":1000,"frac_converged_mean":0.0,"frac_converged_sd":0.0,"mean_frac_resolved_mean":0.0,"mean_frac_resolved_sd":0.0,"mean_steps_mean":0.0,"mean_steps_sd":0.0,"false_exclusion_rate_mean":0.0,"false_exclusion_rate_sd":0.0,"mean_distractors_selected_mean":0.0,"mean_distractors_selected_sd":0.0},
+    {"policy":"rach_seq","budget":1,"n_seeds":5,"total_systems":1000,"frac_converged_mean":0.495,"frac_converged_sd":0.0302076149339864,"mean_frac_resolved_mean":0.748,"mean_frac_resolved_sd":0.0150416089564914,"mean_steps_mean":1.0,"mean_steps_sd":0.0,"false_exclusion_rate_mean":0.0,"false_exclusion_rate_sd":0.0,"mean_distractors_selected_mean":0.0,"mean_distractors_selected_sd":0.0},
+    {"policy":"rach_seq","budget":2,"n_seeds":5,"total_systems":1000,"frac_converged_mean":0.99,"frac_converged_sd":0.0079056941504209,"mean_frac_resolved_mean":1.0,"mean_frac_resolved_sd":0.0,"mean_steps_mean":1.505,"mean_steps_sd":0.0302076149339864,"false_exclusion_rate_mean":0.0,"false_exclusion_rate_sd":0.0,"mean_distractors_selected_mean":0.001,"mean_distractors_selected_sd":0.0022360679774997},
+    {"policy":"rach_seq","budget":3,"n_seeds":5,"total_systems":1000,"frac_converged_mean":0.997,"frac_converged_sd":0.0027386127875258,"mean_frac_resolved_mean":1.0,"mean_frac_resolved_sd":0.0,"mean_steps_mean":1.515,"mean_steps_sd":0.0264575131106459,"false_exclusion_rate_mean":0.0,"false_exclusion_rate_sd":0.0,"mean_distractors_selected_mean":0.011,"mean_distractors_selected_sd":0.0089442719099991},
+    {"policy":"rach_seq","budget":4,"n_seeds":5,"total_systems":1000,"frac_converged_mean":0.999,"frac_converged_sd":0.0022360679774997,"mean_frac_resolved_mean":1.0,"mean_frac_resolved_sd":0.0,"mean_steps_mean":1.518,"mean_steps_sd":0.0265988721564776,"false_exclusion_rate_mean":0.0,"false_exclusion_rate_sd":0.0,"mean_distractors_selected_mean":0.014,"mean_distractors_selected_sd":0.0096176920308356},
+    {"policy":"random_order","budget":0,"n_seeds":5,"total_systems":1000,"frac_converged_mean":0.0,"frac_converged_sd":0.0,"mean_frac_resolved_mean":0.0,"mean_frac_resolved_sd":0.0,"mean_steps_mean":0.0,"mean_steps_sd":0.0,"false_exclusion_rate_mean":0.0,"false_exclusion_rate_sd":0.0,"mean_distractors_selected_mean":0.0,"mean_distractors_selected_sd":0.0},
+    {"policy":"random_order","budget":1,"n_seeds":5,"total_systems":1000,"frac_converged_mean":0.179,"frac_converged_sd":0.0243413232048683,"mean_frac_resolved_mean":0.2995,"mean_frac_resolved_sd":0.014295978455267,"mean_steps_mean":1.0,"mean_steps_sd":0.0,"false_exclusion_rate_mean":0.0,"false_exclusion_rate_sd":0.0,"mean_distractors_selected_mean":0.58,"mean_distractors_selected_sd":0.0127475487839819},
+    {"policy":"random_order","budget":2,"n_seeds":5,"total_systems":1000,"frac_converged_mean":0.435,"frac_converged_sd":0.0355316760088797,"mean_frac_resolved_mean":0.6045,"mean_frac_resolved_sd":0.023075964985669,"mean_steps_mean":1.821,"mean_steps_sd":0.0243413232048683,"false_exclusion_rate_mean":0.0,"false_exclusion_rate_sd":0.0,"mean_distractors_selected_mean":0.974,"mean_distractors_selected_sd":0.0277037903534256},
+    {"policy":"random_order","budget":3,"n_seeds":5,"total_systems":1000,"frac_converged_mean":0.689,"frac_converged_sd":0.0421900462194579,"mean_frac_resolved_mean":0.865,"mean_frac_resolved_sd":0.0196850190502634,"mean_steps_mean":2.386,"mean_steps_sd":0.0553845662209365,"false_exclusion_rate_mean":0.0,"false_exclusion_rate_sd":0.0,"mean_distractors_selected_mean":1.152,"mean_distractors_selected_sd":0.0560802995712397},
+    {"policy":"random_order","budget":4,"n_seeds":5,"total_systems":1000,"frac_converged_mean":0.94,"frac_converged_sd":0.0158113883008419,"mean_frac_resolved_mean":1.0,"mean_frac_resolved_sd":0.0,"mean_steps_mean":2.673,"mean_steps_sd":0.0841575902970012,"false_exclusion_rate_mean":0.0,"false_exclusion_rate_sd":0.0,"mean_distractors_selected_mean":1.169,"mean_distractors_selected_sd":0.0561693867768479}
+  ],
+  "policy_contrast_aggregate": [
+    {"budget":0,"n_seeds":5,"rach_seq_minus_random_order_frac_converged_mean":0.0,"rach_seq_minus_random_order_frac_converged_sd":0.0,"rach_seq_minus_random_order_mean_frac_resolved_mean":0.0,"rach_seq_minus_random_order_mean_frac_resolved_sd":0.0,"rach_seq_minus_random_order_mean_steps_mean":0.0,"rach_seq_minus_random_order_mean_steps_sd":0.0,"rach_seq_minus_random_order_false_exclusion_rate_mean":0.0,"rach_seq_minus_random_order_false_exclusion_rate_sd":0.0,"rach_seq_minus_random_order_mean_distractors_selected_mean":0.0,"rach_seq_minus_random_order_mean_distractors_selected_sd":0.0},
+    {"budget":1,"n_seeds":5,"rach_seq_minus_random_order_frac_converged_mean":0.316,"rach_seq_minus_random_order_frac_converged_sd":0.0204328163627641,"rach_seq_minus_random_order_mean_frac_resolved_mean":0.4485,"rach_seq_minus_random_order_mean_frac_resolved_sd":0.0144274033142296,"rach_seq_minus_random_order_mean_steps_mean":0.0,"rach_seq_minus_random_order_mean_steps_sd":0.0,"rach_seq_minus_random_order_false_exclusion_rate_mean":0.0,"rach_seq_minus_random_order_false_exclusion_rate_sd":0.0,"rach_seq_minus_random_order_mean_distractors_selected_mean":-0.58,"rach_seq_minus_random_order_mean_distractors_selected_sd":0.0127475487839819},
+    {"budget":2,"n_seeds":5,"rach_seq_minus_random_order_frac_converged_mean":0.555,"rach_seq_minus_random_order_frac_converged_sd":0.0416833299999999,"rach_seq_minus_random_order_mean_frac_resolved_mean":0.3955,"rach_seq_minus_random_order_mean_frac_resolved_sd":0.023075964985669,"rach_seq_minus_random_order_mean_steps_mean":-0.316,"rach_seq_minus_random_order_mean_steps_sd":0.0204328163627641,"rach_seq_minus_random_order_false_exclusion_rate_mean":0.0,"rach_seq_minus_random_order_false_exclusion_rate_sd":0.0,"rach_seq_minus_random_order_mean_distractors_selected_mean":-0.973,"rach_seq_minus_random_order_mean_distractors_selected_sd":0.0263628526529281},
+    {"budget":3,"n_seeds":5,"rach_seq_minus_random_order_frac_converged_mean":0.308,"rach_seq_minus_random_order_frac_converged_sd":0.0426614580154031,"rach_seq_minus_random_order_mean_frac_resolved_mean":0.135,"rach_seq_minus_random_order_mean_frac_resolved_sd":0.0196850190502634,"rach_seq_minus_random_order_mean_steps_mean":-0.871,"rach_seq_minus_random_order_mean_steps_sd":0.0395916657890556,"rach_seq_minus_random_order_false_exclusion_rate_mean":0.0,"rach_seq_minus_random_order_false_exclusion_rate_sd":0.0,"rach_seq_minus_random_order_mean_distractors_selected_mean":-1.141,"rach_seq_minus_random_order_mean_distractors_selected_sd":0.0607655329947318},
+    {"budget":4,"n_seeds":5,"rach_seq_minus_random_order_frac_converged_mean":0.059,"rach_seq_minus_random_order_frac_converged_sd":0.0151657508881031,"rach_seq_minus_random_order_mean_frac_resolved_mean":0.0,"rach_seq_minus_random_order_mean_frac_resolved_sd":0.0,"rach_seq_minus_random_order_mean_steps_mean":-1.155,"rach_seq_minus_random_order_mean_steps_sd":0.0628490254498826,"rach_seq_minus_random_order_false_exclusion_rate_mean":0.0,"rach_seq_minus_random_order_false_exclusion_rate_sd":0.0,"rach_seq_minus_random_order_mean_distractors_selected_mean":-1.155,"rach_seq_minus_random_order_mean_distractors_selected_sd":0.0628490254498826}
+  ],
+  "per_seed_range_summary": {
+    "rach_seq_budget_2_frac_converged": [0.98, 1.0],
+    "random_order_budget_2_frac_converged": [0.4, 0.495],
+    "rach_seq_budget_2_mean_frac_resolved": [1.0, 1.0],
+    "random_order_budget_2_mean_frac_resolved": [0.575, 0.6275],
+    "rach_seq_budget_2_mean_distractors_selected": [0.0, 0.005],
+    "random_order_budget_2_mean_distractors_selected": [0.94, 1.005]
+  },
+  "interpretation_guard": {
+    "performance_acceptance_threshold": "none",
+    "policy_contrasts_descriptive": true,
+    "pre_fix_numbers_reused": false,
+    "full_system_records_location": "GitHub Actions artifact 9546604585; archive with submission release/DOI"
+  }
+}
