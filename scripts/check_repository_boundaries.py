@@ -1,11 +1,10 @@
-"""Fail when repository ownership or adapter boundaries drift."""
+"""Fail when repository ownership or programme boundaries drift."""
 from __future__ import annotations
 
 import ast
 import json
 import re
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_PATH = ROOT / "repository_programs.json"
@@ -94,20 +93,28 @@ def main() -> None:
                         f"forbidden dependency {path.relative_to(ROOT)} -> {module}"
                     )
 
-    translation_state = json.loads(
-        (ROOT / "examples/island_pollination_translation/CURRENT_STATE.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    expected_tracks = registry["programs"]["island_pollination_translation"]["track_ids"]
-    actual_tracks = [row["track_id"] for row in translation_state["tracks"]]
+    state_path = ROOT / "examples/island_pollination_empirical_tracks/CURRENT_STATE.json"
+    empirical_state = json.loads(state_path.read_text(encoding="utf-8"))
+    programme = registry["programs"]["island_pollination_empirical_tracks"]
+    expected_tracks = programme["track_ids"]
+    actual_tracks = [row["track_id"] for row in empirical_state["tracks"]]
     if actual_tracks != expected_tracks:
         errors.append(
-            "island translation tracks changed: "
+            "island empirical tracks changed: "
             f"expected {expected_tracks}, got {actual_tracks}"
         )
-    if any(row["izu_core_submission_blocker"] for row in translation_state["tracks"]):
-        errors.append("an adapter was silently promoted to an izu-core submission blocker")
+    if empirical_state.get("external_manuscript_dependency") is not False:
+        errors.append("island empirical programme acquired an external manuscript dependency")
+    if empirical_state.get("external_repository_dependency") is not False:
+        errors.append("island empirical programme acquired an external repository dependency")
+    if programme.get("external_manuscript_dependency") is not False:
+        errors.append("registry marks island empirical programme as manuscript-dependent")
+    if programme.get("external_repository_dependency") is not False:
+        errors.append("registry marks island empirical programme as repository-dependent")
+
+    old_root = ROOT / "examples/island_pollination_translation"
+    if old_root.exists():
+        errors.append("legacy izu-core translation bridge remains in current tree")
 
     portfolio_path = ROOT / registry["portfolio_registry"]
     portfolio = json.loads(portfolio_path.read_text(encoding="utf-8"))
@@ -128,16 +135,20 @@ def main() -> None:
             f"extra={sorted(set(listed) - expected_repositories)}"
         )
 
-    legacy_tokens = [
+    stale_tokens = [
         "streamlit run streamlit_app.py",
         "`eco_genetic_criticality/`",
         "`docs/eco_genetic_criticality/`",
         "`examples/eco_genetic_criticality/`",
         "`tests/eco_genetic_criticality/`",
+        "island_pollination_translation",
+        "three izu-core adapters",
+        "izu-core-to-RACH adapter",
+        "merged izu-core bridge",
     ]
     for path in current_text_files():
         text = path.read_text(encoding="utf-8")
-        for token in legacy_tokens:
+        for token in stale_tokens:
             if token in text:
                 errors.append(f"stale active reference in {path.relative_to(ROOT)}: {token}")
 
@@ -146,9 +157,8 @@ def main() -> None:
 
     print("repository program boundaries OK")
     print("RACH distribution: " + ", ".join(sorted(actual_packages)))
-    print("external owner: zuizui0223/eco-genetic-criticality")
+    print("standalone island empirical tracks: " + ", ".join(actual_tracks))
     print("portfolio repositories: 23")
-    print("izu-core adapters: " + ", ".join(actual_tracks))
 
 
 if __name__ == "__main__":
