@@ -28,8 +28,9 @@ jobs:
           spec = importlib.util.spec_from_file_location('finalize_submission_text', 'scripts/finalize_submission_text.py')
           mod = importlib.util.module_from_spec(spec)
           spec.loader.exec_module(mod)
-          # Checker markers are patched explicitly below; do not use the helper's
-          # compatibility implementation for this one file.
+          # Mainline already carries the final NOV-selection semantics. Checker
+          # markers are patched explicitly below.
+          mod.update_mainline = lambda: None
           mod.update_checker = lambda: None
           mod.main()
           PY
@@ -88,7 +89,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add paper/mee_manuscript_draft.md docs/rach_theory.md docs/mainline.md paper/README.md paper/check_submission_bundle.py
+          git add paper/mee_manuscript_draft.md docs/rach_theory.md paper/README.md paper/check_submission_bundle.py
           git diff --cached --quiet && { echo 'no text changes'; exit 1; }
           git commit -m '[submission-text-finalized] integrate frozen G2 and validation results'
           git push origin HEAD:main
