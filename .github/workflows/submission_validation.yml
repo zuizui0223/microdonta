@@ -1,0 +1,110 @@
+name: Submission validation
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    if: contains(github.event.head_commit.message, '[submission-validation]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Verify submission boundary
+        run: |
+          python paper/check_submission_bundle.py
+          python scripts/check_repository_boundaries.py
+          test -z "$(git status --porcelain)"
+
+      - name: Run known-truth defaults
+        run: |
+          mkdir -p outputs/submission_validation/known_truth
+          python -m causal_model.known_truth_benchmark \
+            --n-attempts 200 \
+            --noise-rates 0.0,0.1,0.2 \
+            --preset literature_grounded \
+            --rule weighted_lax \
+            --seed 42 \
+            --output-dir outputs/submission_validation/known_truth \
+            --figure outputs/submission_validation/known_truth.png \
+            | tee outputs/submission_validation/known_truth.log
+
+      - name: Run NOV calibration defaults
+        run: |
+          python - <<'PY'
+          import json, os
+          from dataclasses import asdict
+          from causal_model.nov_calibration import run_calibration, make_figure
+          res = run_calibration(
+              preset_name='literature_grounded',
+              acceptance_rule='strict_all',
+              n_attempts=1000,
+              seed=7,
+          )
+          os.makedirs('outputs/submission_validation', exist_ok=True)
+          with open('outputs/submission_validation/nov_calibration.json', 'w') as f:
+              json.dump(asdict(res), f, indent=2)
+          make_figure(res, 'outputs/submission_validation/nov_calibration.png')
+          print(res)
+          PY
+
+      - name: Write provenance
+        run: |
+          python - <<'PY'
+          import json, os
+          payload = {
+            'code_commit_sha': os.environ['GITHUB_SHA'],
+            'known_truth': {
+              'n_attempts': 200,
+              'noise_rates': [0.0, 0.1, 0.2],
+              'preset': 'literature_grounded',
+              'rule': 'weighted_lax',
+              'seed': 42,
+              'generator_backend': 'proxy',
+              'inference_backend': 'proxy'
+            },
+            'nov_calibration': {
+              'n_attempts': 1000,
+              'preset': 'literature_grounded',
+              'rule': 'strict_all',
+              'seed': 7
+            },
+            'performance_acceptance_threshold': None
+          }
+          with open('outputs/submission_validation/provenance.json', 'w') as f:
+              json.dump(payload, f, indent=2)
+          PY
+
+      - name: Verify outputs
+        run: |
+          test -s outputs/submission_validation/known_truth/known_truth_summary.csv
+          test -s outputs/submission_validation/known_truth/recovery_by_noise.csv
+          test -s outputs/submission_validation/known_truth.png
+          test -s outputs/submission_validation/nov_calibration.json
+          test -s outputs/submission_validation/nov_calibration.png
+          test -s outputs/submission_validation/provenance.json
+
+      - name: Upload validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: submission-validation-${{ github.sha }}
+          path: outputs/submission_validation/
+          if-no-files-found: error
+          retention-days: 90
