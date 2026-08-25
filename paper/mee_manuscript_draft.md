@@ -339,9 +339,16 @@ switch state and checks RACH under controlled truth; cross-backend modes
 (proxy→proxy self-consistency vs abm→proxy / abm→abm simulator robustness) are
 supported. This tests self-consistency or misspecification robustness, not
 real-world causation. Confounded switches are deliberately not expected to become
-uniquely recoverable from a non-identifying pattern.
+uniquely recoverable from a non-identifying pattern. Under the unchanged submission defaults
+(200 draws per case, proxy→proxy, seed 42), the zero-noise stratum had mean
+switch-state accuracy 0.6562 while recall of applicable true-ON switches was
+1.000. Recall remained 1.000 in the 0.1 and 0.2 pattern-noise strata. This is
+the intended recovery signature for a non-identifying benchmark: the generating
+switches remain admissible while additional confounded explanations are not
+artificially forced away. Full frozen values and execution provenance are in
+`paper/results/submission_validation_summary.json`.
 
-### 4.2 Model selection misleads; RACH exposes the confound (Fig. 2)
+### 4.2 Model selection misleads; RACH exposes the confound (Fig. 1)
 
 *(`python -m causal_model.confound_demo --figure …`; proxy backend, seed 7,
 n = 600 draws, |A_ε| = 346)* In a controlled system where selfing syndrome (S2)
@@ -351,7 +358,7 @@ reports high degeneracy and the coupled mechanism structure, then asks which
 measurement carries information about that unresolved pair. This figure is a
 controlled diagnostic, not a natural-system mechanism claim.
 
-### 4.3 Generality and observation-budget error control (Fig. 3)
+### 4.3 Generality and observation-budget error control (Fig. 2)
 
 The submission result for this section is generated only by the current frozen
 protocol `rach-g2-truth-peek-free-v2` through
@@ -400,9 +407,9 @@ Frozen v2 results were decisive without any performance acceptance threshold. At
 The comparison is deliberately **not an acceptance criterion**. There is no
 software test or protocol rule requiring RACH-SEQ to outperform random order in
 any metric. Favourable, null or adverse policy contrasts all remain valid frozen
-results. Every row is tagged with the SHA-256 hash of the exact v2 protocol, and
-numerical values will be inserted here only from those tagged outputs. The pre-fix
-99.2%/98.5% values are not submission evidence.
+results. Every row is tagged with the SHA-256 hash of the exact v2 protocol and the clean
+execution commit. The numerical values above come only from those tagged frozen
+outputs. The pre-fix 99.2%/98.5% values are not submission evidence.
 
 This benchmark therefore supports a narrower and more falsifiable generality
 claim than “RACH works across ecology”: over a declared family of random confounded
@@ -410,7 +417,7 @@ systems, it asks whether a sequential information-theoretic observation policy r
 mechanism ambiguity and how its observation-budget efficiency compares with an
 uninformed selection policy while controlling hidden-truth exclusion.
 
-### 4.4 NOV information identity and calibration (Fig. 4)
+### 4.4 NOV information identity and calibration (Fig. 3)
 
 NOV is checked at two independent levels. First,
 `causal_model/nov_evsi.py` calculates the expected resolvability gain from
@@ -421,7 +428,16 @@ information of `(S,Q)`; the implementation requires agreement with
 stored-region conditioning calculation with fresh deterministic re-inference and
 evaluates predictive expected value against realised gains across controlled true
 states. The first check establishes the information identity; the second tests the
-computational conditioning shortcut and empirical calibration.
+computational conditioning shortcut and empirical calibration. In the unchanged submission-default rerun
+(1,000 draws, seed 7), the initial admissible region contained 597 draws
+(`R_RACH=0.1071`). Stored-region filtering and fresh deterministic re-inference
+gave identical resolvability gains for all six directly checked quantitative
+observations (maximum absolute difference 0). Across eight candidate observations
+and four controlled truths per observation, predictive EVSI correlated positively
+with mean realised resolvability gain (`r=0.7664`; mean absolute EVSI-minus-mean-
+realised difference 0.0739). These calibration values are descriptive checks, not
+performance gates, and are frozen in
+`paper/results/submission_validation_summary.json`.
 
 ## 5. Exact ecological projection and ABM boundary
 
