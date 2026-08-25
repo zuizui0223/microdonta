@@ -1,4 +1,4 @@
-"""Build manuscript Figure 3 from the frozen G2 v2 summary.
+"""Build manuscript Figure 2 from the frozen G2 v2 summary.
 
 This script is deliberately downstream of the frozen benchmark. It never reruns
 systems and accepts no scientific benchmark parameters; it only visualizes the
@@ -18,7 +18,7 @@ DEFAULT_RESULT = ROOT / "paper" / "results" / "g2_frozen_v2_summary.json"
 def load_rows(path: Path) -> tuple[dict, dict[tuple[str, int], dict]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("protocol_id") != "rach-g2-truth-peek-free-v2":
-        raise RuntimeError("Figure 3 requires the frozen G2 v2 result bundle")
+        raise RuntimeError("Figure 2 requires the frozen G2 v2 result bundle")
     rows = {
         (str(row["policy"]), int(row["budget"])): row
         for row in payload["policy_budget_aggregate"]
@@ -95,9 +95,9 @@ def make_figure(result_path: Path, output_path: Path) -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build frozen G2 manuscript Figure 3")
+    parser = argparse.ArgumentParser(description="Build frozen G2 manuscript Figure 2")
     parser.add_argument("--result", default=str(DEFAULT_RESULT))
-    parser.add_argument("--output", default="outputs/mee/figure3_g2_frozen_v2.png")
+    parser.add_argument("--output", default="outputs/mee/figure2_g2_frozen_v2.png")
     args = parser.parse_args(argv)
     output = make_figure(Path(args.result), Path(args.output))
     print(f"figure written: {output}")
