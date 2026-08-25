@@ -44,7 +44,7 @@ No final v1 output was inspected.
 V2 therefore evaluates the same generated systems under two predeclared policies:
 
 ```text
-RACH-SEQ      expected confounding-edge-cut selection
+RACH-SEQ      maximum current validated NOV; explicit fallback only if NOV is not estimable
 random_order  uniform random remaining-candidate selection
 ```
 
@@ -74,15 +74,17 @@ manuscript structure. The second checks repository ownership boundaries.
 | Gate | Status | Remaining work |
 |---|---|---|
 | G1 claim consistency | **Pass** | theorem-first manuscript, theory, API, README and manifest aligned |
-| G2 benchmark validity | **Partial** | truth-peek-free inference, current-A predictive reweighting, information-theoretic NOV and v2 matched-policy protocol are implemented/frozen; pass CI, run frozen v2, rerun known-truth/NOV calibration, then insert only protocol-tagged numbers |
+| G2 benchmark validity | **Pass** | frozen v2 executed with protocol/code provenance; known-truth and NOV defaults rerun; final numbers fixed in `paper/results/` |
 | G3 projection honesty | **Pass** | exact/extension-required/not-applicable ledger retained |
 | G4 worked-example evidence | **Pass for prospective use** | no empirical channel attribution; primary-source table still needed for final prose |
 | G5 reproducible submission | **Partial** | final full figure rebuild, clean-environment validation and wheel inspection pending |
 
-**G2 numerical quarantine.** The pre-fix 99.2%/98.5% generality values are not
+**G2 numerical provenance.** The pre-fix 99.2%/98.5% generality values are not
 submission evidence and CI forbids them from re-entering the active manuscript.
-The frozen v2 runner has no favourable performance threshold. Whatever the
-protocol-tagged result returns is the result to report.
+The accepted values are only those in `paper/results/g2_frozen_v2_summary.json`,
+which are tied to the frozen protocol SHA and execution commit. The protocol had
+no favourable performance threshold; the observed favourable policy contrast is
+a result, not a software acceptance condition.
 
 No additional ecological example should enter the primary manuscript before G2
 and G5 pass.

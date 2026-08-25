@@ -250,8 +250,9 @@ for t = 1..budget:
     recover mechanism-equivalence structure of A_{t-1}
     if no confounding edge remains: stop
     recompute candidate predictive distributions from A_{t-1}
-    rank candidates by expected confounding-edge cuts
-    take the highest-ranked available observation
+    rank verified candidates by current NOV = I(S;Q | A_{t-1}) / K
+    use normalized edge-cut fallback only when NOV is not estimable
+    take the highest-valued available observation
     condition on the realised outcome
     A_t <- A_{t-1} | outcome
 ```
@@ -264,7 +265,7 @@ Pr(Q=q | current A_epsilon)
 
 at the current step, not a stale probability frozen at step 0.
 
-RACH-SEQ is intentionally broader than validated single-shot EVSI. A field-design candidate whose outcome map does not form a verified stored-region partition may still be ranked using a **predeclared outcome prior as an explicit fallback**. That probability source is recorded in each sequence step. Such a fallback ranking is not relabelled as the validated `I(S;Q|A)/K` quantity.
+For every candidate with a verified stored-region outcome partition, RACH-SEQ uses exactly the same validated objective as single-shot NOV: `I(S;Q|A)/K`. A field-design candidate whose outcome map does not identify that quantity may still be ranked by the explicit compatibility score `expected_edge_cuts / current_edge_count`. The score source is recorded in each sequence step. A predeclared outcome prior may be used only to materialise an otherwise unavailable outcome in that fallback path; neither the fallback score nor its prior is relabelled as validated NOV.
 
 In controlled benchmarks, hidden synthetic truth is used only after ranking to materialise the realised observation. Feeding truth into the candidate predictive distribution before ranking is prohibited.
 

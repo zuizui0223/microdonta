@@ -40,7 +40,10 @@ def main() -> None:
 
     manuscript = MANUSCRIPT_PATH.read_text(encoding="utf-8")
     required = [
-        "Numerical benchmark statements remain subject",
+        "Frozen G2 v2 results below come only",
+        "maximum current validated NOV",
+        "0.990 ± 0.0079",
+        "paper/results/g2_frozen_v2_summary.json",
         "## 2. Exact channel-identifiability boundary",
         "### 2.2 N1:",
         "### 2.3 N2:",
@@ -64,6 +67,8 @@ def main() -> None:
         "Tier-A (validated) simulator",
         "99.2% of confounding edges",
         "98.5% of systems fully converging",
+        "maximum expected confounding-edge cuts",
+        "rank candidates by expected confounding-edge cuts",
     ]
     present = [marker for marker in forbidden_main_claims if marker in manuscript]
     if present:

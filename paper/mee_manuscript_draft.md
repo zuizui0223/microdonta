@@ -4,11 +4,11 @@
 
 Kyoto University, Kyoto, Japan
 
-> **Working draft for Methods in Ecology and Evolution.** This theorem-first
-> draft supersedes the pre-theorem manuscript archived under
-> `paper/archive/`. Numerical benchmark statements remain subject to the final
-> frozen submission run and table; pre-fix generality percentages are deliberately
-> absent from this draft until replaced by protocol-tagged frozen outputs.
+> **Submission-track draft for Methods in Ecology and Evolution.** This theorem-first
+> draft supersedes the pre-theorem manuscript archived under `paper/archive/`.
+> Frozen G2 v2 results below come only from the protocol/code-tagged result bundle
+> `paper/results/g2_frozen_v2_summary.json`; the pre-fix generality percentages
+> remain excluded from the active manuscript.
 
 ---
 
@@ -32,7 +32,10 @@ mechanism–observation mutual information normalised by switch dimension,
 collected observation. A preregistered synthetic selection benchmark challenges
 RACH-SEQ with mechanism-uninformative distractor measurements and compares its
 observation choices with a matched random candidate-order baseline while tracking
-hidden-truth false exclusion. An exact one-step colonisation-recruitment
+hidden-truth false exclusion. At an observation budget of two, RACH-SEQ resolved all initial confounding
+edges on average and fully converged in 99.0% of systems, versus 60.45% edge
+resolution and 43.5% convergence under random order; no hidden true explanation
+was excluded in any frozen policy-by-budget cell. An exact one-step colonisation-recruitment
 factorisation demonstrates how the theorem can be earned for a specified
 life-cycle output without being overextended to a multistep agent-based model.
 Published Izu Islands *Campanula microdonta* patterns are used only as a
@@ -311,17 +314,20 @@ Output: admissibility CA_j, degeneracy D, resolvability R, validated NOV where e
 ```
 
 **Closing the loop (RACH-SEQ).** Single-shot RACH evaluates what is worth
-measuring *now*; RACH-SEQ iterates after observations arrive. Given the current
-mechanism-equivalence graph, it scores each candidate by expected confounding-edge
-cuts, takes the highest-scoring available observation, conditions `A`, recomputes
-the graph and predictive distributions, and repeats until the graph is empty or
-the budget is exhausted. Thus a verified candidate is reweighted by
-`Pr(q|current A_ε)` at every step, rather than by a probability frozen at step 0.
-If an outcome vocabulary does not define a verified partition, a predeclared
-prior may be used as an explicit RACH-SEQ ranking fallback and its probability
-source is reported; that fallback is not called validated single-shot EVSI.
-Hidden synthetic truth is used only *after* candidate ranking to materialise a
-benchmark outcome.
+measuring *now*; RACH-SEQ iterates the same information objective after each
+observation arrives. At step `t`, every remaining candidate whose outcome map
+forms a verified partition of the current admissible region is scored by
+`NOV_t(Q)=I(S;Q|A_{ε,t})/K`; the candidate with the largest positive current NOV
+is selected, the realised outcome conditions `A_{ε,t}`, and all predictive
+distributions and NOV values are recomputed. The mechanism-equivalence graph and
+confounding-edge cuts are structural diagnostics and validation outcomes, not a
+second primary utility. If a candidate lacks a verified predictive partition,
+RACH-SEQ may use the explicit compatibility score `expected_edge_cuts /
+current_edge_count`, recorded as `normalized_edge_cut_fallback`; that score is
+never called validated NOV. A declared outcome prior can be used only to
+materialise an otherwise unavailable outcome in this fallback path, with its
+probability source reported. Hidden synthetic truth is used only *after* candidate
+selection to materialise a benchmark outcome.
 
 ## 4. Controlled validation
 
@@ -367,16 +373,17 @@ The exact same seed-defined systems, hidden mechanism truths, candidate sets and
 budgets are evaluated under two preregistered policies:
 
 ```text
-RACH-SEQ      choose the remaining candidate with maximum expected confounding-edge cuts
+RACH-SEQ      choose the remaining candidate with maximum current validated NOV
 random_order  choose uniformly among remaining candidates
 ```
 
 Neither policy sees a hidden outcome before selecting the candidate. Only after a
 candidate has been chosen is its hidden benchmark outcome materialised and the
 current admissible region conditioned on that observation. RACH-SEQ recomputes
-candidate outcome probabilities from current `A_ε` whenever a verified partition
-is available. Random-order selection is an uninformed **selection baseline**, not
-an alternative causal model.
+`NOV(Q)=I(S;Q|A_ε)/K` from the current region at every step and selects the
+highest-valued verified candidate; the normalized edge-cut fallback is used only
+when a predictive partition is not estimable. Random-order selection is an
+uninformed **selection baseline**, not an alternative causal model.
 
 The frozen protocol uses five predeclared seeds, 200 systems per seed, 1,500 prior
 draws per system, K ∈ {4,5,6}, one or two confounds, random pre-data driver
@@ -388,6 +395,8 @@ a selection diagnostic. The runner additionally reports within-seed
 `RACH-SEQ − random_order` contrasts for each budget and aggregates all quantities
 by mean and sample standard deviation across seeds.
 
+Frozen v2 results were decisive without any performance acceptance threshold. At budget 2 (mean ± sample SD across five predeclared seeds; 1,000 systems per policy), RACH-SEQ resolved 1.000 ± 0.000 of initial confounding edges, fully converged in 0.990 ± 0.0079 of systems, used 1.505 ± 0.030 observations, and selected only 0.001 ± 0.0022 distractors. Under the matched random-order policy, the corresponding values were 0.6045 ± 0.0231 edge resolution, 0.435 ± 0.0355 convergence, 1.821 ± 0.024 observations, and 0.974 ± 0.0277 distractors. The within-seed RACH-SEQ minus random contrast was therefore +0.3955 ± 0.0231 for edge resolution and +0.555 ± 0.0417 for convergence, while using 0.316 ± 0.020 fewer observations. Hidden-truth false exclusion was 0 in every policy × budget cell, and all 10,000 system-policy-budget records retained the hidden true explanation. At budget 1, convergence was 0.495 for RACH-SEQ versus 0.179 for random order; by budget 4 both policies resolved all initial edges on average, but RACH-SEQ still converged in 0.999 versus 0.940 of systems while using 1.518 versus 2.673 observations. These values come exclusively from the frozen result bundle `paper/results/g2_frozen_v2_summary.json` (protocol SHA-256 `3568025f98a671b232e5d6b865063f37baa5bec319a594f831d6b5b953428cb7`; execution commit `f343c2361db28c0b3e528b882b3370eda5abf5ed`).
+
 The comparison is deliberately **not an acceptance criterion**. There is no
 software test or protocol rule requiring RACH-SEQ to outperform random order in
 any metric. Favourable, null or adverse policy contrasts all remain valid frozen
@@ -397,7 +406,7 @@ numerical values will be inserted here only from those tagged outputs. The pre-f
 
 This benchmark therefore supports a narrower and more falsifiable generality
 claim than “RACH works across ecology”: over a declared family of random confounded
-systems, it asks whether a sequential structural observation policy reduces
+systems, it asks whether a sequential information-theoretic observation policy reduces
 mechanism ambiguity and how its observation-budget efficiency compares with an
 uninformed selection policy while controlling hidden-truth exclusion.
 
