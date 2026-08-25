@@ -114,15 +114,17 @@ analysis rather than silently dividing by zero.
 
 ## 3. Current published record
 
-The current source-confirmed Izu-island record contains directional patterns in:
+The current source-confirmed mainland/Izu comparison contains cross-population
+patterns in:
 
 ```text
-selfing rate
-flower size
-Bombus to halictid pollinator transition.
+breeding and mating system (SI/SC; outcrossing/inbreeding, with 1990 estimates)
+island-versus-mainland flower size
+Bombus-versus-halictid pollinator assemblage.
 ```
 
-It does not currently contain:
+These comparisons do not by themselves establish a continuous monotonic
+isolation-distance response for each trait. They also do not currently contain:
 
 ```text
 trait-specific W(z)
@@ -138,8 +140,8 @@ not ready for F-versus-E identification
 ```
 
 This is not a failure of the record. It tells us exactly why trait geometry,
-flower-size means, selfing rates, and visitor identity cannot settle the channel
-question on their own.
+flower-size contrasts, breeding/mating-system summaries, genetic outcrossing
+estimates, and visitor identity cannot settle the channel question on their own.
 
 ---
 

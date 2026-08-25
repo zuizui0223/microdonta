@@ -480,13 +480,31 @@ ABM cannot be used as proof of N1–N4.
 
 ## 6. Prospective worked design: Izu Islands *Campanula*
 
-Published Izu Islands records describe increased autonomous selfing, reduced
-flower size, and pollinator turnover along island isolation gradients (Inoue &
-Amano 1986; Inoue 1988, 1990). Those summaries are biologically informative but
-do not provide trait-specific total performance (W(z)), a resolved factor
-(F(z)) or (E(z)), or a proxy whose conversion is shown to be stable across
-islands. In the projection ledger the record is therefore
-`not_applicable` to N1–N4 as an empirical channel-identification claim.
+Published comparisons of mainland Honshu and Izu-island *Campanula* document
+population differences in pollinator assemblage, flower size and breeding/mating
+system, but they do not establish a single continuous response to geographic
+isolation. Inoue & Amano (1986) reported *Bombus diversus* on mainland Honshu,
+*B. ardens* plus halictid bees on Oshima, and halictid-bee pollination on
+Niijima, Kozushima and Hachijo; island flowers were smaller than mainland
+flowers, and Hachijo material was self-compatible and potentially autogamous.
+Inoue (1988) expanded natural-population bagging and pollinator observations,
+finding mainland Honshu and Oshima predominantly self-incompatible while the
+other surveyed Izu islands were predominantly self-compatible, with bumblebees
+absent from the islands except Oshima. Inoue (1990a) then described mainland
+Honshu and Oshima as self-incompatible/outcrossing, Toshima and Niijima as
+self-compatible but largely outcrossing, and Miyake and Hachijo as
+self-compatible and predominantly inbreeding; Inoue (1990b) related dichogamy
+and sex allocation to estimated selfing rates. The earlier papers treated the
+island material within *C. punctata*, whereas the 1990 mating-system papers
+treated Izu-island populations as *C. microdonta* and mainland populations as
+*C. punctata*. Allozyme work independently documented mainland–island genetic
+differentiation and lower outcrossing estimates in self-compatible island groups
+(Inoue & Kawahara 1990). These are population patterns and proxies, not direct
+measurements of a RACH channel. They do not provide trait-specific total
+performance (W(z)), a resolved factor (F(z)) or (E(z)), or a proxy whose
+conversion is shown to be stable across regimes. In the projection ledger the
+record is therefore `not_applicable` to N1–N4 as an empirical
+channel-identification claim.
 
 RACH uses the case prospectively. The present pattern admits at least a
 pollination/fecundity change, an establishment/reachability change, a
@@ -608,24 +626,25 @@ ranked next-observation design.
 
 ## Figure plan
 
-1. **Figure 1 — Exact boundary and workflow.** N1 observational symmetry; N2–N4
-   sufficient/insufficient measurement boundary; hand-off to RACH.
-2. **Figure 2 — Controlled confound.** Model ranking versus the admissible set,
-   causal degeneracy, and the resolving observation.
-3. **Figure 3 — Sequential selection and error control.** Frozen v2 budget curves
-   for RACH-SEQ and random-order baseline, convergence, edge resolution,
-   observations used, distractors selected, false exclusion, and seed-level
-   uncertainty/contrasts.
-4. **Figure 4 — NOV information and calibration.** `I(S;Q|A_ε)/K` identity,
-   admissible-region conditioning versus fresh re-inference, and realised-gain
-   calibration.
-5. **Figure 5 — Earned ecological projection.** Exact one-step colonisation
-   factorisation, projection-ledger boundary, and prospective Campanula
-   measurement design.
+1. **Figure 1 — Controlled confound.** ABC model ranking versus the admissible
+   set, causal degeneracy, NOV ranking, and the resolving quantitative
+   observation.
+2. **Figure 2 — Sequential selection and error control.** Frozen v2 budget curves
+   for RACH-SEQ and the matched random-order baseline: convergence, initial-edge
+   resolution, observations used, distractors selected, and seed-level
+   uncertainty.
+3. **Figure 3 — NOV conditioning and calibration.** Stored-region conditioning
+   versus fresh deterministic re-inference and predictive EVSI versus realised
+   resolvability gain.
+4. **Figure S1 — Known-truth recovery.** Controlled self-consistency across the
+   frozen noise strata, retained as Supplementary validation rather than a
+   natural-system mechanism claim.
 
-ABM endpoint sweeps, sensitivity analyses, and detailed known-truth panels belong
-in Supplementary Information. Ecological-rule panels and structure discovery are
-not part of this submission.
+N1–N4 and the earned one-step ecological projection are presented directly as
+formal results/equations in the text rather than reserving ungenerated main-figure
+numbers. ABM endpoint sweeps and extended sensitivity analyses belong in
+Supplementary Information. Ecological-rule panels and structure discovery are not
+part of this submission.
 
 ## Data accessibility and code availability
 
@@ -684,9 +703,11 @@ Ruiqi Zhang — [to add].
 - Inoue, K. 1988. Pattern of breeding-system change in the Izu Islands in
   *Campanula punctata*: bumblebee-absence hypothesis. *Plant Species Biology* 3:
   125–128.
-- Inoue, K. 1990. Evolution of mating systems in island populations of
+- Inoue, K. 1990a. Evolution of mating systems in island populations of
   *Campanula microdonta*: pollinator availability hypothesis. *Plant Species
   Biology* 5: 57–64.
+- Inoue, K. 1990b. Dichogamy, sex allocation, and mating system of *Campanula
+  microdonta* and *C. punctata*. *Plant Species Biology* 5: 197–203.
 - Inoue, K. & Kawahara, T. 1990. Allozyme differentiation and genetic structure in
   island and mainland Japanese populations of *Campanula punctata*. *American
   Journal of Botany* 77: 1440–1448.

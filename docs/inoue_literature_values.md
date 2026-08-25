@@ -18,10 +18,10 @@ absence of evidence.
 - Inoue, K. 1988. Pattern of breeding-system change in the Izu Islands in
   *Campanula punctata*: bumblebee-absence hypothesis. *Plant Species Biology*
   3(2): 125-128. doi:10.1111/j.1442-1984.1988.tb00178.x
-- Inoue, K. 1990. Evolution of mating systems in island populations of
+- Inoue, K. 1990a. Evolution of mating systems in island populations of
   *Campanula microdonta*: pollinator availability hypothesis. *Plant Species
   Biology* 5(1): 57-64. doi:10.1111/j.1442-1984.1990.tb00192.x
-- Inoue, K. 1990. Dichogamy, sex allocation, and mating system of *Campanula
+- Inoue, K. 1990b. Dichogamy, sex allocation, and mating system of *Campanula
   microdonta* and *C. punctata*. *Plant Species Biology* 5(2): 197-203.
   doi:10.1111/j.1442-1984.1990.tb00179.x
 - Inoue, K. & Kawahara, T. 1990. Allozyme differentiation and genetic structure
@@ -38,20 +38,29 @@ numeric dataset.
 |---|---|---|
 | Taxon/provenance | Izu island system is treated here as *C. microdonta*; older literature may use the broader *C. punctata* complex, and mainland Honshu *C. punctata* is a comparison context. | provenance |
 | Pollinator assemblage | Honshu: *Bombus diversus*; Oshima: *Bombus ardens* plus halictid bees; Niijima, Kozushima, and Hachijo: halictid bees. Bumblebees are absent from the Izu Islands except Oshima. | x_obs / input_context |
-| Flower size | Island flowers are smaller than mainland flowers, interpreted as adaptation to smaller pollinators. Exact per-island corolla values require PDF transcription. | current y_obs as directional flower-size gradient |
+| Flower size | Island flowers were reported smaller than mainland flowers; adaptation to smaller pollinators was proposed as a possible explanation, not demonstrated. Exact per-island corolla values require PDF transcription. | supports an island-vs-mainland flower-size contrast; not a source-confirmed monotonic distance slope |
 | Breeding system, 1986/1988 | Honshu mostly highly self-incompatible; Oshima mixed but mostly self-incompatible in later summary; Izu islands except Oshima largely self-compatible. | supports selfing/outcrossing gradient |
 | Mating system, 1990a | Honshu and Oshima are self-incompatible and obligately outcrossing; Toshima and Niijima are self-compatible and largely outcrossing; Miyake and Hachijo are self-compatible and predominantly inbreeding. | current y_obs as directional selfing/outcrossing gradient |
 | Dichogamy, 1990b | Staminate-phase duration differs among mating-system classes; male reproductive effort decreases with estimated selfing rate. This is dichogamy/sex-phase timing evidence, not a measured static herkogamy endpoint. | hypothesis_prediction / future observation, not y_obs |
+| Allozyme/outcrossing, 1990 | Mainland and island populations form differentiated genetic groups; outcrossing estimates are higher in mainland/Oshima groups, intermediate in northern self-compatible islands, and lower in southern predominantly inbreeding islands. Genetic diversity within island populations decreases with distance from the mainland. | independent population-genetic context; not trait-specific W/F/E |
 
 ## Current y_obs consequence
 
-The current ABC acceptance target deliberately remains narrow:
+The current ABC acceptance target deliberately remains narrow. The historical
+pattern names ending in `_distance` are **legacy implementation labels**, not a
+claim that the cited primary papers estimated a continuous linear response to
+geographic distance.
 
-- `selfing_distance`: selfing increases / outcrossing declines along the island
-  isolation gradient. Source: Inoue 1990a, with 1986/1988 breeding-system
-  corroboration.
-- `flower_size_distance`: flower size declines from mainland/less isolated
-  contexts toward island small-pollinator contexts. Source: Inoue & Amano 1986.
+- `selfing_distance`: interpret as an ordered mating-system contrast across the
+  declared mainland/island comparison: mainland/Oshima are predominantly
+  self-incompatible/outcrossing, northern self-compatible islands remain largely
+  outcrossing, and southern self-compatible islands are predominantly inbreeding.
+  Source: Inoue 1990a/1990b and Inoue & Kawahara 1990, with 1986/1988
+  breeding-system corroboration. Do not describe this as a source-fitted
+  monotonic distance law.
+- `flower_size_distance`: interpret only as the source-confirmed island-versus-
+  mainland smaller-flower contrast from Inoue & Amano 1986. The source summary
+  does not establish a monotonic per-island flower-size decline with distance.
 
 Pollinator assemblage is observed context (`x_obs`), not an output target.
 Herkogamy, nectar-guide intensity, Fis/He, bagging seed set, and modern
