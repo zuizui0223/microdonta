@@ -37,6 +37,9 @@ jobs:
       - name: Check submission bundle
         run: python paper/check_submission_bundle.py
 
+      - name: Check MEE Research Article format
+        run: python paper/check_mee_submission.py
+
       - name: Check repository program boundaries
         run: python scripts/check_repository_boundaries.py
 
