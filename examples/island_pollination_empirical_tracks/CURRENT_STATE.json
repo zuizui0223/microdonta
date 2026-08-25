@@ -1,0 +1,33 @@
+{
+  "schema_version": "2.0",
+  "updated_on": "2026-08-25",
+  "owner_framework": "microdonta/RACH",
+  "programme": "island_pollination_empirical_observation_design",
+  "role": "standalone_empirical_causal_observation_design",
+  "external_manuscript_dependency": false,
+  "external_repository_dependency": false,
+  "tracks": [
+    {
+      "track_id": "signed_functional_starting_position",
+      "status": "blocked_for_direct_empirical_test",
+      "rach_role": "next_observation_and_proxy_calibration"
+    },
+    {
+      "track_id": "network_context_effective_service",
+      "status": "partial_empirical_bridges_only_no_mapping_ready_system",
+      "rach_role": "channel_measurement_and_proxy_calibration"
+    },
+    {
+      "track_id": "complete_service_dependency_response_bridge",
+      "status": "multiple_partial_bridges_zero_complete_bridge",
+      "rach_role": "RACH_SEQ_observation_package"
+    }
+  ],
+  "protected_boundaries": [
+    "do_not_equate_visitor_abundance_identity_or_richness_with_effective_service",
+    "do_not_equate_unsigned_matching_with_signed_functional_position",
+    "do_not_equate_an_abstract_functional_coordinate_with_one_named_empirical_trait_without_a_mapping_gate",
+    "do_not_infer_missing_causal_links_from_adjacent_observations",
+    "do_not_make_track_readiness_depend_on_an_external_manuscript_or_repository"
+  ]
+}
