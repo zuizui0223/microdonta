@@ -1,6 +1,6 @@
 # Submission workspace
 
-This directory is the canonical publication workspace for the RACH methods
+This directory is the canonical publication workspace for the RACH **Research Article**
 submission. The normative development boundary is
 [`docs/mainline.md`](../docs/mainline.md). The primary story is fixed as:
 
@@ -27,6 +27,10 @@ N1–N4 identifiability boundary
 | `results/g5_reproducibility_summary.json` | clean figure/wheel/CI reproducibility record | final evidence |
 | `final_figure_inventory.json` | exact Main/Supp figure rebuild inventory | frozen |
 | `release_readiness.json` | v0.1.0 package/release freeze record | active release governance |
+| `mee_submission_requirements_2026.md` | current MEE Research Article requirements snapshot | active publication governance |
+| `check_mee_submission.py` | article-type/abstract/anonymity/word-count gate | active publication gate |
+| `title_page_draft.md` | separate author/title metadata file | Not for Review; human fields pending |
+| `campanula_primary_literature_audit.md` | source-bounded audit of the prospective example | completed editorial evidence audit |
 | `archive/g2_frozen_benchmark_protocol_v1_pre_execution.json` | exact unexecuted v1 protocol | archive only |
 | `archive/g2_protocol_v1_supersession.md` | why v1 was replaced before any final run | audit trail |
 | `supplementary_outline.md` | ABM robustness, sensitivity and extended validation | Supplement |
@@ -76,7 +80,7 @@ checks the frozen public API.
 | G1 claim consistency | **Pass** | theorem-first manuscript, theory, API, README and manifest aligned |
 | G2 benchmark validity | **Pass** | frozen v2 executed with protocol/code provenance; final numbers fixed in `paper/results/` |
 | G3 projection honesty | **Pass** | exact/extension-required/not-applicable ledger retained |
-| G4 worked-example evidence | **Pass for prospective use** | no empirical channel attribution; final source/reference audit remains editorial work |
+| G4 worked-example evidence | **Pass for prospective use** | qualitative main-text claims audited against the primary Inoue series; exact historical tables must be transcribed only if future numeric values are introduced |
 | G5 reproducible submission | **Pass** | clean rebuild, frozen-value reproduction, wheel audit and Python 3.10–3.12 matrix all passed |
 
 ### G5 provenance
@@ -107,6 +111,6 @@ external archival step and should be recorded later without altering frozen
 scientific results.
 
 With G2 and G5 passed, the main scientific implementation is frozen. Remaining
-work should be limited to journal formatting, final primary-source/reference
-checking, and external archive/DOI metadata unless a new version/protocol is
-explicitly opened.
+work should be limited to the anonymous reviewer bundle, human-supplied title-page
+metadata, final document export/line numbering, and external archive/DOI metadata
+unless a new version/protocol is explicitly opened.

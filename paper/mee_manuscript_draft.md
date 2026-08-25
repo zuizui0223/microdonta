@@ -1,9 +1,5 @@
 # RACH: from causal non-identifiability to next-observation design in ecological mechanism inference
 
-**Ruiqi Zhang**
-
-Kyoto University, Kyoto, Japan
-
 > **Submission-track draft for Methods in Ecology and Evolution.** This theorem-first
 > draft supersedes the pre-theorem manuscript archived under `paper/archive/`.
 > Frozen G2 v2 results below come only from the protocol/code-tagged result bundle
@@ -14,39 +10,48 @@ Kyoto University, Kyoto, Japan
 
 ## Abstract
 
-Ecological patterns can remain compatible with distinct mechanisms even when
-measured without sampling error. We first establish an exact identifiability
-boundary for positive trait performance (W(z)=F(z)E(z)). Any observation that
-depends only on (W), including complete thresholded trait-space geometry,
-cannot distinguish a change in (F) from the same trait-dependent change in
-(E) (N1). Observing (W) plus either channel recovers the other (N2); an
-unknown proxy calibration is sufficient for relative change only when it is
-stable across the comparison (N3), whereas calibration drift restores
-non-identifiability (N4). We then present Restricted Admissible Causal
-Hypotheses (RACH), which retains every mechanism program compatible with a
-declared grammar and observations and reports the remaining causal degeneracy.
-For a future observation whose predictive outcomes are identified by the current
-admissible region, its validated next-observation value is exactly the residual
-mechanism–observation mutual information normalised by switch dimension,
-`NOV(Q)=I(S;Q|A_ε)/K`; RACH-SEQ recomputes that information state after each
-collected observation. A preregistered synthetic selection benchmark challenges
-RACH-SEQ with mechanism-uninformative distractor measurements and compares its
-observation choices with a matched random candidate-order baseline while tracking
-hidden-truth false exclusion. At an observation budget of two, RACH-SEQ resolved all initial confounding
-edges on average and fully converged in 99.0% of systems, versus 60.45% edge
-resolution and 43.5% convergence under random order; no hidden true explanation
-was excluded in any frozen policy-by-budget cell. An exact one-step colonisation-recruitment
-factorisation demonstrates how the theorem can be earned for a specified
-life-cycle output without being overextended to a multistep agent-based model.
-Published Izu Islands *Campanula microdonta* patterns are used only as a
-prospective observation-design example: the existing record does not identify a
-vital-rate channel. RACH therefore turns structural non-identifiability into a
-reportable admissible set and an explicit measurement design rather than a forced
-model winner.
+1. Ecological patterns can remain compatible with distinct mechanisms even when
+measured without sampling error. We establish an exact identifiability boundary
+for positive trait performance, `W(z)=F(z)E(z)`: observations that depend only on
+`W` cannot distinguish equivalent changes in `F` and `E` (N1); `W` plus either
+channel identifies the other (N2); an unknown proxy calibration permits relative
+inference only when stable across regimes (N3), whereas calibration drift
+restores non-identifiability (N4).
 
-**Keywords:** structural identifiability, causal admissibility, degeneracy,
-approximate Bayesian computation, mutual information, value of information,
-observation design.
+2. We introduce Restricted Admissible Causal Hypotheses (RACH), which retains
+every mechanism program compatible with a declared constraint grammar and
+observation set and reports residual causal degeneracy rather than forcing a
+model winner. For candidate observations whose predictive outcomes are identified
+by the current admissible region, the validated next-observation value is
+`NOV(Q)=I(S;Q|A_ε)/K`. RACH-SEQ recomputes this information state after every
+observation and selects the candidate with maximum current validated NOV.
+
+3. In a preregistered truth-peek-free synthetic selection benchmark, RACH-SEQ
+competed with an uninformed random-order policy while both received identical
+systems, hidden truths, candidate sets and budgets. At budget two, RACH-SEQ
+resolved all initial confounding edges on average and converged in 99.0% of
+systems, compared with 60.45% edge resolution and 43.5% convergence under random
+order; hidden-truth false exclusion was zero in every frozen policy-by-budget
+cell. Independent checks confirmed the NOV information identity, exact
+stored-region conditioning for the deterministic validation model and
+reproducible software/figure builds.
+
+4. An exact one-step colonisation-recruitment factorisation shows how the theorem
+can be earned for a declared ecological output without extending it to
+unfactorised multistep dynamics. Historical Izu Islands *Campanula* records are
+used only as a prospective observation-design example because they do not
+identify a vital-rate channel. RACH therefore converts structural
+non-identifiability into a reportable admissible set, a stopping rule and an
+explicit next-measurement design.
+
+**Data/Code for peer review:** An anonymised reviewer bundle containing the
+executable Python code, frozen protocol/result summaries, tests and figure
+commands required to evaluate the manuscript will be uploaded with the
+submission. No new empirical data are reported.
+
+**Keywords:** approximate Bayesian computation; causal admissibility; degeneracy;
+mutual information; observation design; structural identifiability; value of
+information.
 
 ---
 
@@ -109,9 +114,11 @@ causal-coincidence leap described above: where a natural-history reading would
 propose one mechanism from a pattern, RACH returns the *set* of mechanisms the
 pattern admits, plus the measurement that would justify narrowing it.
 
-## 2. Exact channel-identifiability boundary
+## 2. Materials and Methods
 
-### 2.1 Observation class
+### 2.1 Exact channel-identifiability boundary
+
+#### 2.1.1 Observation class
 
 Let trait-specific total performance be
 
@@ -126,7 +133,7 @@ component count, or other geometry derived from those sets. The result is about
 the information discarded by multiplication; it is not a statement that local
 reproduction and establishment are biologically interchangeable.
 
-### 2.2 N1: net-only observations cannot identify the changed channel
+#### 2.1.2 N1: net-only observations cannot identify the changed channel
 
 For any positive trait-dependent multiplier (a(z)), compare
 
@@ -140,7 +147,7 @@ Both yield (W_1(z)=a(z)F_0(z)E_0(z)) pointwise. Therefore
 operator (\Phi). Complete trait-space geometry at every threshold cannot break
 this symmetry. N1 is structural non-identifiability, not low statistical power.
 
-### 2.3 N2: net performance plus one channel is sufficient
+#### 2.1.3 N2: net performance plus one channel is sufficient
 
 If (W_i) and (F_i) are observed, positivity gives the unique reconstruction
 (E_i=W_i/F_i); observing (W_i) and (E_i) symmetrically gives
@@ -149,7 +156,7 @@ If (W_i) and (F_i) are observed, positivity gives the unique reconstruction
 fecundity-only, establishment-only, mixed, and unchanged cases. No assumption
 that exactly one channel changed is required.
 
-### 2.4 N3–N4: proxy calibration is the operational boundary
+#### 2.1.4 N3–N4: proxy calibration is the operational boundary
 
 Field assays are commonly proxies. Let (X_i(z)=q_i(z)F_i(z)). If
 (q_0(z)=q_1(z)>0), then (X_1/X_0=F_1/F_0), and
@@ -164,7 +171,7 @@ same observed (W) and (X) support arbitrarily different latent channel
 changes (N4). A visit count or connectivity index is therefore not automatically
 a channel measurement; its conversion must be stable or separately calibrated.
 
-### 2.5 Scope and executable checks
+#### 2.1.5 Scope and executable checks
 
 N1–N4 require a declared positive multiplicative factorisation. Zeros,
 additional channels, nonmultiplicative interactions, measurement error, and
@@ -175,9 +182,9 @@ regression checks, not proofs. These results establish the boundary that RACH
 operates on: when the observation map cannot select a unique program, retain the
 compatible set and design a resolving observation.
 
-## 3. RACH: admissible explanations and next-observation design
+### 2.2 RACH: admissible explanations and next-observation design
 
-### 3.1 Formal object
+#### 2.2.1 Formal object
 
 ```
 RACH = (X, Y, Θ, S, G, f, P_sim, P_obs, d, ε, π)
@@ -191,7 +198,7 @@ observation space, and `d` is predeclared before inference. ABC approximates
 Full definitions and the worked-example instantiation are in `docs/rach_theory.md`
 and `docs/rach_mathematical_foundations.md`.
 
-### 3.2 The five quantities and their guarantees
+#### 2.2.2 The five quantities and their guarantees
 
 `CA_j = P(s_j=1 | A_ε)`; `D_RACH = H(S|A_ε)`; `R_RACH = 1 − D_RACH/K`;
 `OC_k = R_RACH(O) − R_RACH(O∖{k})`. For a future observation `Q` with an
@@ -223,7 +230,7 @@ remaining uncertainty `1-R_RACH` exactly when observing `Q` completely resolves
 that switch uncertainty. Empty `A_ε` makes conditional quantities non-estimable.
 The finite-sample estimators are consistent under the stated assumptions.
 
-### 3.3 NOV as mechanism–observation information
+#### 2.2.3 NOV as mechanism–observation information
 
 For a candidate observation `Q=g(θ,s)`, take the predictive outcome distribution
 to be the pushforward of the restricted prior `π|A_ε` under `g`. Then
@@ -262,7 +269,7 @@ as validated EVSI. The older target-switch heuristic is retained only as the
 explicit compatibility helper `heuristic_next_observation_value`, not as the
 publication NOV.
 
-### 3.4 Sensitivity to ε and the prior, not rule selection
+#### 2.2.4 Sensitivity to ε and the prior, not rule selection
 
 Because `R_RACH` depends on `ε` and the prior, RACH is reported for a single
 *pre-specified* acceptance rule and distance. Varying (prior × ε × distance) is
@@ -271,7 +278,7 @@ rule: selecting the setting that maximises `R_RACH` would overfit `ε` and is
 explicitly avoided. The reported result is the pre-specified one, with ε/prior
 sensitivity disclosed rather than optimised over.
 
-### 3.5 The RACH algorithm
+#### 2.2.5 The RACH algorithm
 
 RACH is a single procedure, not a pipeline of separate analyses. Its primitives
 are standard — prior sampling / ABC, Shannon entropy, and preposterior
@@ -329,9 +336,22 @@ materialise an otherwise unavailable outcome in this fallback path, with its
 probability source reported. Hidden synthetic truth is used only *after* candidate
 selection to materialise a benchmark outcome.
 
-## 4. Controlled validation
 
-### 4.1 Known-truth recovery (self-consistency; Fig. S1)
+### 2.3 AI-assisted development disclosure
+
+OpenAI ChatGPT (GPT-5.6 Sol; accessed August 2026) was used interactively to
+assist with code review, draft editing and repository/documentation maintenance.
+The author reviewed and takes responsibility for all generated or edited text and
+code. AI outputs were not treated as empirical observations or independent
+scientific evidence; frozen benchmark configurations and reported numerical
+results were executed and checked through the reproducible workflows described
+below.
+
+## 3. Results
+
+### 3.1 Controlled validation
+
+#### 3.1.1 Known-truth recovery (self-consistency; Fig. S1)
 
 *(`python -m causal_model.known_truth_benchmark --figure …`)* A
 specified-simulator recovery benchmark generates synthetic data under a fixed
@@ -348,7 +368,7 @@ switches remain admissible while additional confounded explanations are not
 artificially forced away. Full frozen values and execution provenance are in
 `paper/results/submission_validation_summary.json`.
 
-### 4.2 Model selection misleads; RACH exposes the confound (Fig. 1)
+#### 3.1.2 Model selection misleads; RACH exposes the confound (Fig. 1)
 
 *(`python -m causal_model.confound_demo --figure …`; proxy backend, seed 7,
 n = 600 draws, |A_ε| = 346)* In a controlled system where selfing syndrome (S2)
@@ -358,7 +378,7 @@ reports high degeneracy and the coupled mechanism structure, then asks which
 measurement carries information about that unresolved pair. This figure is a
 controlled diagnostic, not a natural-system mechanism claim.
 
-### 4.3 Generality and observation-budget error control (Fig. 2)
+#### 3.1.3 Generality and observation-budget error control (Fig. 2)
 
 The submission result for this section is generated only by the current frozen
 protocol `rach-g2-truth-peek-free-v2` through
@@ -417,7 +437,7 @@ systems, it asks whether a sequential information-theoretic observation policy r
 mechanism ambiguity and how its observation-budget efficiency compares with an
 uninformed selection policy while controlling hidden-truth exclusion.
 
-### 4.4 NOV information identity and calibration (Fig. 3)
+#### 3.1.4 NOV information identity and calibration (Fig. 3)
 
 NOV is checked at two independent levels. First,
 `causal_model/nov_evsi.py` calculates the expected resolvability gain from
@@ -439,7 +459,7 @@ realised difference 0.0739). These calibration values are descriptive checks, no
 performance gates, and are frozen in
 `paper/results/submission_validation_summary.json`.
 
-## 5. Exact ecological projection and ABM boundary
+### 3.2 Exact ecological projection and ABM boundary
 
 The abstract factorisation is projected only after an ecological output and its
 observation map are declared. In the colonisation life cycle, expected juvenile
@@ -478,7 +498,7 @@ families. The projection ledger labels each target `exact`,
 `requires_factorization_extension`, or `not_applicable`; agreement in a full
 ABM cannot be used as proof of N1–N4.
 
-## 6. Prospective worked design: Izu Islands *Campanula*
+### 3.3 Prospective worked design: Izu Islands *Campanula*
 
 Published comparisons of mainland Honshu and Izu-island *Campanula* document
 population differences in pollinator assemblage, flower size and breeding/mating
@@ -531,7 +551,7 @@ test that conversion. Campanula is retained in the main text because it shows ho
 a negative identifiability result changes a field design; it is not presented as
 empirical validation of RACH.
 
-## 7. Software and reproducibility
+## 4. Software and reproducibility
 
 The Python package implements N1–N4 constructions, RACH admissibility and
 replaceability, validated information-theoretic NOV/EVSI
@@ -557,7 +577,7 @@ claims have not re-entered the primary draft. The standard CI then runs the
 complete test suite across Python 3.10–3.12 and smoke-tests the core figure
 commands. No new empirical data are reported.
 
-## 8. Discussion
+## 5. Discussion
 
 The central methodological result is a change in the inferential target. When an
 observation map is structurally non-identifying, selecting a single mechanism is
@@ -624,56 +644,37 @@ corresponding methods implication is stronger: non-identifiability can be
 reported as a reproducible scientific object and converted into a quantitatively
 ranked next-observation design.
 
-## Figure plan
+## Figure captions
 
-1. **Figure 1 — Controlled confound.** ABC model ranking versus the admissible
-   set, causal degeneracy, NOV ranking, and the resolving quantitative
-   observation.
-2. **Figure 2 — Sequential selection and error control.** Frozen v2 budget curves
-   for RACH-SEQ and the matched random-order baseline: convergence, initial-edge
-   resolution, observations used, distractors selected, and seed-level
-   uncertainty.
-3. **Figure 3 — NOV conditioning and calibration.** Stored-region conditioning
-   versus fresh deterministic re-inference and predictive EVSI versus realised
-   resolvability gain.
-4. **Figure S1 — Known-truth recovery.** Controlled self-consistency across the
-   frozen noise strata, retained as Supplementary validation rather than a
-   natural-system mechanism claim.
+**Figure 1. Controlled confounding and next-observation resolution.** A controlled
+proxy-backend example contrasts a single low-mass ABC MAP switch combination with
+the full RACH admissible region. Panels report the model-ranking distribution,
+causal admissibility/degeneracy, validated NOV ranking for candidate measurements,
+and the change in admissibility after a quantitative confound-breaking
+observation. The figure is a diagnostic of inferential behaviour, not a
+natural-system mechanism claim.
 
-N1–N4 and the earned one-step ecological projection are presented directly as
-formal results/equations in the text rather than reserving ungenerated main-figure
-numbers. ABM endpoint sweeps and extended sensitivity analyses belong in
-Supplementary Information. Ecological-rule panels and structure discovery are not
-part of this submission.
+**Figure 2. Sequential observation selection under a limited budget.** Frozen G2
+v2 results compare RACH-SEQ, which selects the remaining candidate with maximum
+current validated NOV, with a matched uniform random-order policy. Panels show
+system convergence, fraction of initial confounding edges resolved, observations
+used and mechanism-uninformative distractor observations selected across budgets
+0–4. Error bars are sample standard deviations across five predeclared seeds;
+hidden-truth false exclusion was zero in every policy-by-budget cell.
 
-## Data accessibility and code availability
+**Figure 3. Stored-region NOV conditioning and calibration.** Left, resolvability
+gains obtained by filtering the current admissible region are compared with fresh
+deterministic re-inference for six quantitative observations. Right, predictive
+EVSI/NOV is compared with realised resolvability gain across controlled true
+states; grey points show individual truths and the highlighted points show the
+mean realised gain for each candidate observation.
 
-No new empirical data are reported. All algebraic constructions, synthetic
-generators, benchmark code, tests, and figure commands are in the accompanying
-repository. The archival DOI will be added after the submission release is
-minted.
+**Figure S1. Known-truth recovery self-consistency.** Controlled synthetic
+switch-state recovery under the unchanged submission defaults and predeclared
+pattern-noise strata. The panel is Supplementary validation of inference
+self-consistency; confounded switches are not required to become uniquely
+recoverable from non-identifying observations.
 
-## Author contributions
-
-Ruiqi Zhang conceived the framework, implemented the software, ran the analyses,
-and wrote the manuscript. Complete CRediT roles and any co-authors before
-submission.
-
-## Acknowledgements
-
-[To complete.]
-
-## Funding
-
-[To complete.]
-
-## Conflict of interest
-
-The author declares no conflict of interest.
-
-## ORCID
-
-Ruiqi Zhang — [to add].
 
 ## References
 

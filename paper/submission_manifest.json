@@ -1,7 +1,7 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "primary_target": "Methods in Ecology and Evolution",
-  "manuscript_type": "Methods / Practical Tools",
+  "manuscript_type": "Research Article",
   "claim_spine": [
     "N1-N4 channel-identifiability boundary",
     "RACH admissible explanation set",
@@ -20,7 +20,11 @@
     "paper/final_figure_inventory.json",
     "paper/release_readiness.json",
     "scripts/check_wheel_boundary.py",
-    "CITATION.cff"
+    "CITATION.cff",
+    "paper/mee_submission_requirements_2026.md",
+    "paper/check_mee_submission.py",
+    "paper/title_page_draft.md",
+    "paper/campanula_primary_literature_audit.md"
   ],
   "main_text": {
     "manuscript": [

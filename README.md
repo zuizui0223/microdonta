@@ -4,7 +4,7 @@
 
 ## Canonical publication path
 
-The active submission is the MEE methods paper defined in
+The active submission is the MEE **Research Article** defined in
 [`paper/README.md`](paper/README.md). Its theorem-first spine is N1–N4 →
 RACH → NOV/RACH-SEQ → controlled benchmarks → exact one-step projection →
 prospective Campanula design. The machine-readable boundary is
