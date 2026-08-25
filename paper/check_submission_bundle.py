@@ -7,6 +7,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "paper" / "submission_manifest.json"
 MANUSCRIPT_PATH = ROOT / "paper" / "mee_manuscript_draft.md"
+MAINLINE_PATH = ROOT / "docs" / "mainline.md"
+THEORY_PATH = ROOT / "docs" / "rach_theory.md"
+FOUNDATIONS_PATH = ROOT / "docs" / "rach_mathematical_foundations.md"
+G2_PROTOCOL_PATH = ROOT / "paper" / "g2_frozen_benchmark_protocol.json"
 
 
 def iter_paths(value):
@@ -24,6 +28,7 @@ def main() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     missing = sorted(
         path for path in set(iter_paths({
+            "governance": manifest.get("governance", []),
             "main_text": manifest["main_text"],
             "supplementary": manifest["supplementary"],
             "archive": manifest["archive"],
@@ -35,12 +40,15 @@ def main() -> None:
 
     manuscript = MANUSCRIPT_PATH.read_text(encoding="utf-8")
     required = [
+        "Numerical benchmark statements remain subject",
         "## 2. Exact channel-identifiability boundary",
         "### 2.2 N1:",
         "### 2.3 N2:",
         "### 2.4 N3–N4:",
         "## 3. RACH:",
-        "## 4. Controlled validation",
+        "I(S;Q|A_ε)/K",
+        "### 4.3 Generality and observation-budget error control",
+        "random_order",
         "## 5. Exact ecological projection and ABM boundary",
         "## 6. Prospective worked design:",
     ]
@@ -54,14 +62,110 @@ def main() -> None:
         "### 4.3 Transfer to a published animal rule",
         "publication-grade worked example now",
         "Tier-A (validated) simulator",
+        "99.2% of confounding edges",
+        "98.5% of systems fully converging",
     ]
     present = [marker for marker in forbidden_main_claims if marker in manuscript]
     if present:
-        raise SystemExit("excluded claims re-entered the primary manuscript:\n- " + "\n- ".join(present))
+        raise SystemExit(
+            "excluded or pre-fix claims re-entered the primary manuscript:\n- "
+            + "\n- ".join(present)
+        )
+
+    mainline = MAINLINE_PATH.read_text(encoding="utf-8")
+    mainline_required = [
+        "microdonta has one scientific product",
+        "N1-N4 exact channel-identifiability boundary",
+        "next_observation_evsi",
+        "I(S;Q | A_epsilon) / K",
+        "heuristic_next_observation_value",
+        "descriptive, not an acceptance gate",
+        "random_order",
+        "Pass G2",
+        "Pass G5",
+        "What is not the mainline",
+    ]
+    absent_mainline = [marker for marker in mainline_required if marker not in mainline]
+    if absent_mainline:
+        raise SystemExit(
+            "normative RACH mainline markers are missing:\n- " + "\n- ".join(absent_mainline)
+        )
+
+    theory = THEORY_PATH.read_text(encoding="utf-8")
+    theory_required = [
+        "I(S;Q | A_epsilon) / K",
+        "heuristic_next_observation_value",
+        "next_observation_evsi",
+        "There is no favourable-result acceptance threshold",
+    ]
+    absent_theory = [marker for marker in theory_required if marker not in theory]
+    if absent_theory:
+        raise SystemExit(
+            "RACH theory drifted from the publication mainline:\n- "
+            + "\n- ".join(absent_theory)
+        )
+
+    foundations = FOUNDATIONS_PATH.read_text(encoding="utf-8")
+    foundation_required = [
+        "Validated NOV is normalised mechanism–observation information",
+        "I(S ; Q | A_ε) / K",
+        "0 ≤ NOV(Q) ≤ H(S | A_ε)/K",
+    ]
+    absent_foundations = [
+        marker for marker in foundation_required if marker not in foundations
+    ]
+    if absent_foundations:
+        raise SystemExit(
+            "RACH mathematical foundations are missing NOV information identity:\n- "
+            + "\n- ".join(absent_foundations)
+        )
+
+    method_paths = set(manifest["main_text"].get("method", []))
+    if "causal_model/nov_evsi.py" not in method_paths:
+        raise SystemExit(
+            "validated NOV EVSI implementation is missing from main-text method inventory"
+        )
+
+    protocol = json.loads(G2_PROTOCOL_PATH.read_text(encoding="utf-8"))
+    if protocol.get("protocol_id") != "rach-g2-truth-peek-free-v2":
+        raise SystemExit("current G2 protocol is not frozen selection-validation v2")
+    if protocol.get("supersedes") != "rach-g2-truth-peek-free-v1":
+        raise SystemExit("G2 v1 supersession provenance is missing")
+    distractors = protocol.get("generator", {}).get("distractor_candidates", {})
+    if distractors.get("count") != 2:
+        raise SystemExit("G2 v2 must retain exactly two preregistered distractor candidates")
+    selection = protocol.get("selection_validation", {})
+    if selection.get("policies") != ["rach_seq", "random_order"]:
+        raise SystemExit("G2 v2 must compare RACH-SEQ with the random-order baseline")
+    if not selection.get("same_systems_truths_candidates_and_budgets_across_policies"):
+        raise SystemExit("G2 policy comparison must be matched on generated systems")
+    if not selection.get("policy_comparison_is_descriptive_not_acceptance_gate"):
+        raise SystemExit("G2 policy contrast must remain descriptive, not a success gate")
+
+    reporting = protocol.get("reporting", {})
+    required_reporting = [
+        "per_system_records_required",
+        "per_seed_required",
+        "policy_rows_required",
+        "policy_contrast_rows_required",
+        "protocol_sha256_required_on_every_output_row",
+        "clean_git_commit_sha_required_on_every_output_row",
+        "matched_system_signatures_verified_before_aggregation",
+    ]
+    missing_reporting = [key for key in required_reporting if reporting.get(key) is not True]
+    if missing_reporting:
+        raise SystemExit(
+            "G2 provenance/reporting requirements are missing:\n- "
+            + "\n- ".join(missing_reporting)
+        )
+    if reporting.get("performance_acceptance_thresholds") != "none_report_all_frozen_outcomes":
+        raise SystemExit("G2 protocol may not encode a favourable-result acceptance threshold")
 
     print("submission bundle OK")
     print(f"target: {manifest['primary_target']}")
     print("spine: " + " -> ".join(manifest["claim_spine"]))
+    print("governance: " + ", ".join(manifest.get("governance", [])))
+    print(f"g2 protocol: {protocol['protocol_id']}")
 
 
 if __name__ == "__main__":

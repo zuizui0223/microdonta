@@ -1,328 +1,384 @@
-# RACH — Causal Admissibility and Degeneracy Framework: Formal Theory
+# RACH — Causal Admissibility, Degeneracy, and Observation Design
 
-> **Version**: 2.0 — complete restatement as independent causal framework
-> **Worked example**: Izu Islands *Campanula microdonta* system. Older literature may refer to the broader *C. punctata* complex.
-> **Mathematical foundations**: for the well-definedness, metric-bound, and Monte
-> Carlo consistency proofs (Propositions 1–7), see
-> [`docs/rach_mathematical_foundations.md`](rach_mathematical_foundations.md).
-> Those theorems establish admissibility well-posedness, not causal truth.
+> **Version**: 2.1 — theorem-first RACH mainline  
+> **Worked example**: Izu Islands *Campanula microdonta* system. Older literature may refer to the broader *C. punctata* complex.  
+> **Mathematical foundations**: see [`docs/rach_mathematical_foundations.md`](rach_mathematical_foundations.md) for Propositions 1–7 and the information-theoretic NOV result.
 
 ---
 
 ## Overview
 
-RACH is a **causal admissibility and degeneracy framework** for ecological systems.
-
-It does **not** select the best model from a pre-defined list.  
-It does **not** test whether a hypothesis is true.
+RACH is a **causal admissibility and degeneracy framework** for ecological mechanism inference.
+It does not select a single best mechanism simply because a ranking can be computed, and it does not claim that an admissible mechanism is the true mechanism in nature.
 
 RACH asks:
 
-> *Under the current biological constraints and independent observations, which latent causal mechanisms remain admissible? How degenerate is the causal explanation? How much does each observation contribute to causal resolution? What would most improve causal resolution?*
+> Under the current biological constraints and independent observations, which latent causal mechanisms remain admissible, how much mechanism uncertainty remains, which mechanisms are observationally replaceable, and what observation would remove the most remaining uncertainty?
 
-Japanese:
+The framework itself is not ABC, ABM, or pattern-oriented modelling. Those can be computational components used to approximate the admissible region. The inferential objects are the admissible causal region, causal admissibility, causal degeneracy, causal resolvability, replaceability/equivalence structure, and next-observation value.
 
-> 現在の生物学的制約と独立観測データのもとで、どの潜在因果メカニズムが許容されるか。因果説明はどれだけ縮退しているか。どの観測が因果識別性に寄与しているか。何を観測すれば因果識別性が最も向上するか。
+```text
+observation contract
+→ A_epsilon
+→ CA / D_RACH / R_RACH / CRC
+→ mechanism-equivalence structure
+→ validated NOV/EVSI
+→ RACH-SEQ
+```
 
-**RACH is not ABC, ABM, or POM.**  
-ABC, ABM, and POM are computational components used to approximate the admissible
-causal region A_ε. The framework itself is defined by its inferential objects:
-causal admissibility, causal degeneracy, causal resolvability, and next-observation value.
+Where an ecological output has an exact positive factorisation such as `W=F*E`, the N1–N4 identifiability gate precedes this sequence. That theorem layer and RACH are complementary: the theorem states when an observation class cannot identify a channel; RACH reports the surviving explanation set and designs the observation that would reduce the ambiguity.
 
 ---
 
-## 1. The RACH Object
+## 1. The RACH object
 
-A RACH analysis is formally specified as a tuple:
+A RACH analysis is specified as
 
-```
-RACH = (X, Y, Θ, S, G, f, P_sim, P_obs, d, ε, A_ε, CA, D, R, OC, NOV)
-```
-
-### 1.1 Input spaces
-
-| Symbol | Name | Description | Example (Campanula) |
-|--------|------|-------------|---------------------|
-| X | Fixed ecological context | x_obs fed into f; **not** part of the ABC target distance | island isolation (`distance_from_mainland`), island area, observed Bombus/pollinator assemblage per population |
-| Y | Independent observation space | y_obs used for ABC acceptance — **ordinal directional gradients along the island-isolation axis**, not pairwise endpoint contrasts | current: `selfing_distance` (selfing ↑ with isolation) and `flower_size_distance` (flower size ↓ with isolation); genetic / guide / herkogamy endpoints enter only when independently measured |
-| Θ | Latent parameter space | Unknown ecological quantities inferred via ABC | guide_cost, selfing_benefit, Ne_isolation_slope, ... |
-| S | Causal switch space | {0,1}^K — which mechanisms are active | S1: guide attracts Bombus; S2: selfing syndrome; S3: common cause; S5: small pollinator |
-
-### 1.2 Constraint grammar G
-
-G: Θ → {0, 1}
-
-G(θ) = 1 if θ satisfies all biological feasibility constraints.  
-G(θ) = 0 otherwise → θ is rejected before simulation.
-
-G encodes **axioms** and **directional principles** (not data-dependent):
-
-```
-C1: selfing_benefit - inbreeding_depression ≥ -0.30  (net selfing fitness)
-C2: NOT (background_pollinator_efficiency > 0.55 AND selfing_benefit > 0.55)
-C3: NOT (guide_cost > 0.20 AND outcrossing_benefit < 0.05 AND guide_benefit > 0.80)
-C4: background_pollinator_efficiency < 0.80  (guild functional distinction)
-C5: Ne_isolation_slope > 0  (isolation reduces Ne: directional principle)
-    migration_decay_rate > 0
-    pollinator_loss_slope > 0
+```text
+RACH = (X, Y, Theta, S, G, f, P_sim, P_obs, d, epsilon, pi, A_epsilon)
 ```
 
-### 1.3 Generative dynamics f
+with derived quantities `CA`, `D`, `R`, `OC`, replaceability/equivalence structure, and `NOV`.
 
-f: X × Θ × S → Y_sim
+### 1.1 Spaces and maps
 
-f encodes the **ecological axioms** — dynamics that are unconditionally fixed:
+| Symbol | Meaning | Campanula example |
+|---|---|---|
+| `X` | fixed ecological context, not an ABC target | island isolation, observed pollinator context |
+| `Y` | independent observation space | source-supported trait gradients |
+| `Theta` | latent ecological parameter space | costs, benefits, demographic slopes |
+| `S` | finite mechanism-switch space `{0,1}^K` | guide attraction, selfing syndrome, common cause, substitution |
+| `G` | pre-data biological feasibility grammar | sign/range/compatibility constraints |
+| `f` | declared generative dynamics | phenomenological or ABM backend |
+| `P_sim`, `P_obs` | maps into a common observation/pattern space | ordinal gradients or measured quantitative summaries |
+| `d`, `epsilon` | predeclared discrepancy and tolerance | weighted pattern mismatch |
+| `pi` | prior over `(theta,s)` | fixed before outcome inspection |
 
-```
-Wright-Fisher / finite-population sampling
-Mendelian / parental trait inheritance
-Stochastic reproduction
-Fitness-proportional selection
-Pollination-to-reproduction rules
-```
+### 1.2 The admissible causal region
 
-f uses x_obs as fixed input context and θ, s as latent arguments.
+For fixed context `x_obs` and independent observations `y_obs`, define
 
-**Biological principles** encode direction into f's structure; magnitudes remain in θ:
-
-```
-Ne decreases with isolation     (direction: universal principle)
-  Ne = 1 - Ne_isolation_slope × distance   (slope: θ, inferred via ABC)
-
-Migration decays with isolation
-  m = m_0 × exp(-migration_decay_rate × distance)   (rate: θ)
-
-Bombus frequency declines with isolation
-  Bombus = max(0, 0.80 - pollinator_loss_slope × distance)   (slope: θ)
+```text
+A_epsilon(y_obs, x_obs)
+= { (theta,s) in Theta x S :
+      G(theta)=1
+      and d(P_sim(f(x_obs;theta,s)), P_obs(y_obs)) <= epsilon }
 ```
 
-### 1.4 Pattern maps and distance
+`A_epsilon` is the central inferential object. ABC is one way to approximate it by Monte Carlo sampling; RACH is not defined by ABC itself.
 
-`P_obs` and `P_sim` map raw values to a common **ordinal pattern space** defined
-on the island-isolation axis. The patterns are **not** pairwise endpoint contrasts
-(e.g. Oshima vs Hachijo); each pattern is the **sign of a trait's monotone trend
-along the isolation gradient** `x` (`distance_from_mainland`):
+The evidence-role boundary is mandatory:
 
-```
-pattern space:  for each y_obs variable k, an ordinal direction
-                σ_k ∈ {increasing, decreasing, flat}  ( +, −, ~ )
+- `input_context`: may enter `f`, never the acceptance distance;
+- `observed_target`: independent data allowed to enter `d`;
+- `diagnostic_only`: checked after inference, not used for acceptance;
+- `future_observation`: candidate observation used for observation design;
+- hypothesis-derived predictions are never recycled as independent `y_obs`.
 
-P_obs(y_obs)_k = sign of the observed trend of trait k vs island isolation
-                 (source-confirmed directional gradient; see §3)
+This separation blocks the circular operation “assume the mechanism’s predicted pattern, then use that same pattern to identify the mechanism.”
 
-P_sim(y_sim)_k = sign of the simulated trend of trait k vs island isolation,
-                 evaluated across the simulated population gradient
-                 (mainland → Oshima → Kozushima → Hachijo)
+### 1.3 Campanula observation space
 
-d(P_sim, P_obs) = 1 − weighted_match_rate
-               = ( Σ_k w_k · 1[ σ_k^sim ≠ σ_k^obs ] ) / ( Σ_k w_k )
-```
-
-Pattern `k` is **matched** iff the simulated ordinal direction `σ_k^sim` equals the
-observed direction `σ_k^obs`; `d` is the weight-normalised fraction of mismatched
-directions (so `d = 0` ⇔ all observed gradient directions are reproduced).
-Optional standardized / hybrid distance modes (see
-`pattern_evaluator.multi_component_distance`) extend this to numeric
-`absolute_summary` patterns once measured values exist; the current ABC `y_obs`
-uses ordinal `gradient_slope` patterns only.
-
-### 1.5 The admissible causal region A_ε
-
-```
-A_ε(y_obs, x_obs) = { (θ, s) ∈ Θ × S :
-                       G(θ) = 1,
-                       d(P_sim(f(x_obs; θ, s)), P_obs(y_obs)) ≤ ε }
-```
-
-A_ε is the **core inferential object**.
-
-- A_ε is a subset of parameter-mechanism space, not a probability distribution.
-- ABC approximates A_ε by sampling (θ, s) from the prior and keeping draws with d ≤ ε.
-- The approximation quality depends on sample size and prior coverage.
-- y_obs must contain only **independent observations** (`role = observed_target`; legacy `response_target` is accepted for backward compatibility).
-- Hypothesis predictions and syndrome definitions are excluded to prevent circular inference.
+The current prospective Campanula example uses source-supported ordinal directions along the isolation axis as the primary observed pattern class. Pairwise endpoint displays, predicted syndromes, and internally generated genetic proxies are not automatically independent observations. Quantitative future assays may enter only after their measurement map is declared.
 
 ---
 
-## 2. The Five Core RACH Quantities
+## 2. Core RACH quantities
 
-### 2.1 Causal admissibility CA_j
+### 2.1 Causal admissibility
 
-```
-CA_j = P(s_j = 1 | (θ, s) ∈ A_ε)
-```
+For switch `j`,
 
-CA_j is the **posterior probability that mechanism j is active**, given independent
-observations and biological constraints.
-
-| CA_j | Bayes factor | Interpretation |
-|------|-------------|----------------|
-| >> 0.5 | BF > 3 | Mechanism j is admissible — supported by data |
-| ≈ 0.5 | BF ≈ 1 | Data non-informative about mechanism j |
-| << 0.5 | BF < 1/3 | Mechanism j is inadmissible — opposed by data |
-
-**Epistemic note**: CA_j is not a proof of causal truth. It is the proportion of
-biologically feasible, observation-compatible parameter-mechanism space in which
-mechanism j is active.
-
-Code: `causal_model/causal_admissibility.py`, `causal_admissibility()`
-
-### 2.2 Causal degeneracy D
-
-```
-D_RACH = H(S | A_ε) = -Σ_{v ∈ {0,1}^K} P(S=v | A_ε) log₂ P(S=v | A_ε)
+```text
+CA_j = P(s_j=1 | A_epsilon).
 ```
 
-D measures the **remaining uncertainty about mechanism combinations** after
-conditioning on observations and constraints.
+`CA_j` is the conditional mass of the admissible region in which mechanism `j` is active. It is not a p-value and not proof of causal truth.
 
-| D | Interpretation |
-|---|----------------|
-| D = 0 | Unique mechanism combination — zero causal ambiguity |
-| D = K | All 2^K combinations equally present — maximum causal degeneracy |
-| 0 < D < K | Partial resolution — some mechanisms identified, others not |
+Interpretation is relative to the declared mechanism vocabulary, prior, constraints, simulator, observation map, distance, and tolerance. A mechanism omitted from `S` cannot be recovered by RACH.
 
-**Causal degeneracy is not a failure.** High D means the available observations
-cannot distinguish competing mechanisms. This is an important scientific finding:
-it tells the researcher which mechanisms are not yet separable given current data.
+Code: `causal_model.causal_admissibility.causal_admissibility()`; package-level callable `compute_causal_admissibility()`.
 
-Code: `causal_model/causal_admissibility.py`, `causal_degeneracy()`
+### 2.2 Causal degeneracy
 
-### 2.3 Causal resolvability R
-
-```
-R_RACH = 1 - H(S | A_ε) / H(S) = 1 - D / K
+```text
+D_RACH = H(S | A_epsilon).
 ```
 
-R normalizes causal degeneracy reduction to [0, 1]:
+For `K` binary switches,
 
-| R | Interpretation |
-|---|----------------|
-| R = 0 | No causal information from observations (D = K) |
-| R = 1 | Complete causal resolution (D = 0) |
-| R ∈ (0, 1) | Partial resolution |
-
-R is the primary scalar summary of **how much the current observation set resolves competing mechanisms**.
-
-Code: `causal_model/causal_admissibility.py`, `causal_resolvability()`
-
-### 2.4 Observation contribution OC_k
-
-```
-OC_k = R_RACH(O) - R_RACH(O \ {k})
+```text
+0 <= D_RACH <= K.
 ```
 
-OC_k measures how much observation pattern k contributes to causal resolvability.
-It is estimated by leave-one-out **re-acceptance over all evaluated rows**, not from
-accepted rows alone. This distinction matters because removing pattern k can allow
-previously rejected simulations to enter A_ε.
+High `D_RACH` is not a failed analysis. It is the reportable statement that the current observations leave many mechanism combinations compatible with the declared system.
 
-**OC_k is pattern-level, not switch-specific.** R_RACH is the *joint* resolvability
-of the whole switch vector s ∈ {0,1}^K (derived from the joint entropy H(S | A_ε), a
-single scalar over all K switches). OC_k therefore quantifies how pattern k changes
-the resolvability of the *entire* mechanism combination; there is exactly one OC_k per
-pattern and it does not decompose into a per-switch quantity. `observation_contribution()`
-returns one `ObservationContribution` per pattern, with `level="pattern"` and `n_switches=K`
-recorded for provenance.
+### 2.3 Causal resolvability
 
-| OC_k | Interpretation |
-|------|----------------|
-| OC_k > 0 | Pattern k increases causal resolution |
-| OC_k ≈ 0 | Pattern k is redundant with other patterns |
-| OC_k < 0 | Removing k would improve resolution (k confounds inference) |
-
-Code: `causal_model/causal_admissibility.py`, `observation_contribution()`
-
-### 2.5 Next-observation value NOV(q)
-
-```
-NOV(q) = E[ R_RACH(O ∪ q) - R_RACH(O) ]
+```text
+R_RACH = 1 - H(S | A_epsilon) / K
+       = 1 - D_RACH / K.
 ```
 
-NOV(q) estimates the expected increase in causal resolvability if candidate
-observation q were added to y_obs.
+The denominator is the maximum switch entropy `K`, not the prior entropy. This guarantees `R_RACH in [0,1]` even when event conditioning increases entropy relative to a non-uniform prior.
 
-The expectation is over possible outcomes of q (which we do not yet know).
-The current implementation uses a heuristic approximation based on:
+- `R=0`: maximum unresolved mechanism uncertainty;
+- `R=1`: one mechanism combination remains;
+- intermediate values: partial resolution.
 
-1. Current causal admissibility CA_j for the target switches of q
-2. Remaining ambiguity: how far CA_j is from 0 or 1 (most ambiguous → most gain)
-3. Number of target switches per candidate
+### 2.4 Observation contribution
 
-This approximation gives a **prioritised list of recommended next observations**,
-ranked by expected contribution to causal resolution.
+For an already collected observation pattern `o_k`,
 
-Code: `causal_model/causal_admissibility.py`, `next_observation_value()`
+```text
+OC_k = R_RACH(O) - R_RACH(O \ {o_k}).
+```
+
+`OC_k` is pattern-level and joint over the full switch vector. It may be negative: removing a noisy, contradictory, or over-constraining observation can increase resolvability. Correct leave-one-out calculation requires re-acceptance from all evaluated draws because dropping one pattern may admit simulations that were previously rejected.
+
+### 2.5 Causal replaceability and mechanism equivalence
+
+Marginal admissibility alone does not reveal whether two mechanisms substitute for each other. RACH therefore also reports the mechanism-equivalence structure of current `A_epsilon`:
+
+- pinned mechanisms;
+- free mechanisms;
+- confounding edges / coupled mechanism pairs;
+- logical relations supported by the admissible region;
+- replaceability / ablation cost (CRC).
+
+The point is structural: two mechanisms can each have substantial `CA_j` because either can reproduce the same observation, not because both are independently identified.
 
 ---
 
-## 3. Separation of epistemic roles
+## 3. Validated next-observation value
 
-A central RACH requirement is strict separation between:
+### 3.1 Predictive observation map
 
-| Role | Used as | ABC acceptance | Code label |
-|------|---------|---------------|------------|
-| Axiom | Dynamics fixed in f | never | hardcoded in `simulation.py`, `inheritance.py` |
-| Universal principle | Direction fixed in f / G; coefficient in θ | never | G constraint + θ prior |
-| Fixed context | x_obs input to f | never | `input_context` |
-| Independent observation | y_obs in d(·,·) | yes | `observed_target` |
-| Hypothesis prediction | Posterior predictive check only | NO | `hypothesis_prediction` |
-| Diagnostic definition | Internal consistency only | NO | `diagnostic_only` |
+Let `Q` be a candidate future observation. A publication-level RACH NOV requires a predictive distribution for `Q` under the **current** admissible region.
 
-**Why hypothesis_prediction must not be used as y_obs**:
+For a deterministic stored-region implementation, candidate outcomes must form a mutually exclusive and exhaustive partition of current `A_epsilon`. Then
 
-Using predictions derived from the hypothesis to test the same hypothesis creates
-circular inference. P(s | A_ε) would then reflect the researcher's prior assumption,
-not independent data.
-
-Example:
-> "selfing increases along the isolation gradient"
-> This is a **prediction** of S2/S3, not an independent field measurement.
-> Including it in y_obs inflates P(S2=1 | A_ε) regardless of true mechanism.
-
-**Current y_obs** (Campanula microdonta worked example; Inoue-series directional gradients):
-
-```
-selfing_distance       selfing increases / outcrossing declines with isolation
-                       weight=1.0  field_derived / Inoue1990a
-flower_size_distance   flower size declines along the island/small-pollinator context
-                       weight=0.8  field_derived / InoueAmano1986
+```text
+Pr(Q=q | A_epsilon)
 ```
 
-Legacy Oshima-vs-Hachijo pairwise rows are diagnostic displays of the same
-evidence and are excluded from ABC to avoid double-counting. Nectar-guide
-intensity is planned own-field data, not an Inoue-series per-population
-measurement. Herkogamy is treated as a theoretical/diagnostic dichogamy or
-delayed-selfing geometry target, not as an Inoue-series observed_target. Fis
-remains excluded until an independent genetic estimate is source-confirmed; the
-current simulator's Fis proxy is partly generated from selfing rate, so using it
-as y_obs would double-count selfing evidence.
+is the fraction of current admissible mass predicting outcome `q`.
+
+If outcome maps overlap, are incomplete, or required simulator outputs are missing, the stored region does not identify this predictive distribution. In that case `next_observation_evsi` reports the validated EVSI as **not estimable**. A declared prior is not silently substituted and relabelled as validated NOV.
+
+### 3.2 NOV is normalized mutual information
+
+For a verified predictive map,
+
+```text
+NOV(Q)
+= E_Q[ R_RACH(A_epsilon | Q) - R_RACH(A_epsilon) ]
+```
+
+and therefore
+
+```text
+NOV(Q)
+= [H(S | A_epsilon) - H(S | A_epsilon,Q)] / K
+= I(S;Q | A_epsilon) / K.
+```
+
+This identity is the operational meaning of next-observation value in the RACH mainline: the value of a candidate measurement is the fraction of the maximum `K` mechanism bits that the measurement is expected to remove from the current admissible region.
+
+Consequently,
+
+```text
+0 <= NOV(Q) <= 1 - R_RACH(A_epsilon) <= 1.
+```
+
+and
+
+```text
+NOV(Q)=0
+iff I(S;Q | A_epsilon)=0,
+```
+
+so a zero-value observation is one that carries no information about the remaining mechanism vector under the current admissible region.
+
+The maximum residual gain `1-R_RACH` is attained exactly when observing `Q` reduces the remaining switch entropy to zero.
+
+A particular realised outcome can decrease `R_RACH`; the theorem concerns the coherent **predictive mean** over the current admissible-region pushforward. Hence validated expected NOV is non-negative even though realised gain is not guaranteed to be.
+
+### 3.3 Exact stored-region filtering
+
+If `f` is deterministic given `(x_obs,theta,s)`, a fresh inference conditioned on observed `Q=q` accepts exactly
+
+```text
+A_epsilon | {Q=q}.
+```
+
+Therefore the conditional region can be obtained by filtering stored admissible draws rather than rerunning the simulator. `causal_model/nov_calibration.py` checks this identity against fresh re-inference in controlled systems.
+
+The implementation in `causal_model/nov_evsi.py` also computes the empirical joint table `(S,Q)` independently and regression-checks
+
+```text
+EVSI = I(S;Q|A_epsilon)/K.
+```
+
+### 3.4 Legacy heuristic boundary
+
+The repository historically contained a target-switch ambiguity score called `next_observation_value`. That score is useful only as a heuristic compatibility helper when no predictive outcome model exists.
+
+It is now exposed explicitly as
+
+```text
+heuristic_next_observation_value
+```
+
+and is not part of the primary package `__all__`. The publication-level function is
+
+```text
+next_observation_evsi
+```
+
+which refuses to manufacture a validated EVSI from an unidentified outcome distribution.
 
 ---
 
-**Falsification candidates for NOV.** Future observations should be designed to
-falsify individual switches, not merely support them. The Campanula worked example
-therefore defines one explicit falsification candidate for each switch: S1
-guide-masked Bombus choice / pollen deposition, S2 autonomous-selfing and bagging
-tests, S3 independent neutral-marker isolation structure, and S5 halictid
-substitution / exclusion tests.
+## 4. RACH-SEQ: sequential observation design
 
-## 4. Validation strategy
+Single-shot NOV asks which one observation is valuable now. RACH-SEQ closes the loop:
 
-RACH requires at least three validation layers:
+```text
+A_0 <- current A_epsilon
+for t = 1..budget:
+    recover mechanism-equivalence structure of A_{t-1}
+    if no confounding edge remains: stop
+    recompute candidate predictive distributions from A_{t-1}
+    rank candidates by expected confounding-edge cuts
+    take the highest-ranked available observation
+    condition on the realised outcome
+    A_t <- A_{t-1} | outcome
+```
 
-1. **Known-truth recovery**: generate synthetic y_obs from a known switch state, then test whether CA_j is high for the true ON switches.
-2. **Sensitivity analysis**: vary priors, ε, and pattern weights; robust conclusions should not flip under small perturbations.
-3. **Observation contribution and NOV**: if D_RACH remains high, identify which new observations would most improve R_RACH.
+For each candidate with a verified current-region outcome partition, RACH-SEQ uses
+
+```text
+Pr(Q=q | current A_epsilon)
+```
+
+at the current step, not a stale probability frozen at step 0.
+
+RACH-SEQ is intentionally broader than validated single-shot EVSI. A field-design candidate whose outcome map does not form a verified stored-region partition may still be ranked using a **predeclared outcome prior as an explicit fallback**. That probability source is recorded in each sequence step. Such a fallback ranking is not relabelled as the validated `I(S;Q|A)/K` quantity.
+
+In controlled benchmarks, hidden synthetic truth is used only after ranking to materialise the realised observation. Feeding truth into the candidate predictive distribution before ranking is prohibited.
 
 ---
 
-## 5. Manuscript framing
+## 5. Epistemic-role separation
 
-English:
+RACH separates what is assumed, observed, inferred, and designed.
 
-> We introduce RACH, a causal admissibility and degeneracy framework for ecological systems. Rather than selecting a single best model, RACH estimates the admissible causal region: the subset of latent parameter–mechanism space that satisfies biological constraints and reproduces independent observations. It then quantifies causal admissibility, causal degeneracy, causal resolvability, and the expected value of additional observations.
+| Role | Function | Allowed in acceptance distance? |
+|---|---|---:|
+| biological axiom / model equation | declares simulator family | no |
+| pre-data constraint `G` | removes infeasible parameter space | no |
+| fixed context `x_obs` | simulator input | no |
+| independent observation `y_obs` | restricts `A_epsilon` | yes |
+| diagnostic / hypothesis prediction | posterior check | no |
+| future observation | NOV / RACH-SEQ candidate | not until collected |
 
-Japanese:
+A candidate measurement can be scientifically attractive yet have no validated stored-region EVSI if its predictive map has not been declared. That is an information-model limitation, not permission to invent a probability.
 
-> 本研究では、生態学的因果メカニズムの許容性と縮退性を定量化するRACHを提案する。RACHは単一の最良モデルを選択するのではなく、生物学的制約を満たし、独立観測データを再現可能な潜在パラメータ・メカニズム空間の部分集合を許容因果領域として推定する。さらに、各因果メカニズムの許容性、因果縮退性、因果識別可能性、および追加観測の価値を定量化する。
+### Campanula prospective design
+
+For Campanula, candidate observations should attack specific unresolved links rather than merely repeat correlated endpoints. Examples include:
+
+- masked/unmasked guide assays with visitor-specific pollen transfer;
+- autonomous-selfing / bagging assays;
+- independent neutral-marker structure along isolation;
+- direct tests of small-pollinator functional substitution.
+
+These are prospective observation designs, not empirical validation already contained in the published record.
+
+---
+
+## 6. Validation strategy
+
+The main submission separates four validation questions.
+
+### 6.1 Known-truth recovery
+
+Generate controlled synthetic observations under known switch states and test recovery/calibration. This is simulator self-consistency or misspecification robustness depending on the generator/inference backend pair; it is not proof of real ecological causation.
+
+### 6.2 Generality and error control
+
+The frozen G2 random-system benchmark measures, over a preregistered controlled family:
+
+- convergence to no remaining confounding edges;
+- fraction of confounding edges resolved;
+- observations used under each budget;
+- hidden-truth false-exclusion rate.
+
+There is no favourable-result acceptance threshold. The frozen result is reported whether favourable, null, or adverse.
+
+### 6.3 NOV calibration
+
+For validated candidates, check:
+
+1. stored-region filtering vs fresh deterministic re-inference;
+2. `EVSI = I(S;Q|A_epsilon)/K`;
+3. calibration of predicted expected value against realised gains across controlled truths.
+
+### 6.4 Sensitivity
+
+Vary priors, `epsilon`, distance/weight choices only as sensitivity analysis. The predeclared main setting remains the reported inference; the setting that maximizes `R_RACH` is never selected post hoc.
+
+---
+
+## 7. Relationship to the N1–N4 channel theorem
+
+RACH does not make a rich simulator theorem-exact. The theorem layer requires a declared ecological factorisation and observation map.
+
+For positive
+
+```text
+W(z)=F(z)E(z),
+```
+
+N1 shows that net-only observations cannot distinguish an `F` change from the same multiplicative `E` change. N2 shows that observing net performance plus either exact channel identifies the other. N3/N4 show that a proxy is identifying for relative change only under stable or calibrated conversion.
+
+When N1 says the current observation class is structurally non-identifying, RACH does not try to recover a winner anyway. It retains the compatible explanations and asks which observation has information about the unresolved mechanism vector.
+
+The current exact ecological bridge is one-step expected retained juvenile recruitment. Long-run invasion growth, persistence, and endpoint trait-space geometry remain extension-required unless separately factorised.
+
+---
+
+## 8. Software boundary
+
+Primary RACH package callables are:
+
+```text
+compute_causal_admissibility
+causal_degeneracy
+causal_resolvability
+causal_replaceability_cost / crc_profile
+mechanism_equivalence_structure
+next_observation_evsi
+run_rach_seq
+rach_summary
+```
+
+Canonical submodules such as `causal_model.causal_admissibility` and `causal_model.rach_seq` remain importable and are not shadowed by root-level functions.
+
+Supplementary ABMs, structure discovery, Streamlit, provisional ecological-rule examples, and the optional attraction simulator do not define the publication API.
+
+---
+
+## 9. Manuscript framing
+
+A compact statement of the method is:
+
+> RACH replaces forced mechanism selection with an admissible explanation set. It quantifies residual mechanism entropy, reports replaceability structure, and converts unresolved mechanism uncertainty into an observation-design problem. When a candidate observation has a predictive map over the current admissible region, its validated next-observation value is exactly the normalized mutual information `I(S;Q|A_epsilon)/K`; RACH-SEQ recomputes that information state after each collected observation.
+
+The scientific stopping rule is therefore not “a model won.” It is one of:
+
+- the mechanism-equivalence structure has been resolved at the declared resolution;
+- the observation budget is exhausted;
+- no available candidate has an identified or useful resolving observation map;
+- the declared model family itself requires revision.

@@ -1,7 +1,8 @@
 # RACH: Mathematical Foundations
 
-This document states the well-definedness conditions, metric bounds, and Monte Carlo
-consistency properties of the RACH admissible causal region.
+This document states the well-definedness conditions, metric bounds, information-
+theoretic observation value, and Monte Carlo consistency properties of the RACH
+admissible causal region.
 
 > **Important scope:** the theorem below proves admissibility well-posedness, not
 > causal truth. RACH identifies mechanisms that remain admissible under specified
@@ -294,56 +295,116 @@ conditions. □
 
 ### Exact NOV versus heuristic NOV
 
-The current app may report a heuristic NOV priority score. Exact NOV requires a
-predictive distribution over possible outcomes of `q`. Without that outcome
-model, NOV should be described as a heuristic causal-resolution priority score,
-not exact EVSI. Proposition 6′ supplies the missing outcome model constructively
-for quantitative observations.
+An arbitrary declared outcome weighting can define a finite expected score, but
+it is not automatically the validated RACH EVSI. The publication quantity below
+requires the predictive distribution to be the pushforward of the *current*
+admissible region (or an explicitly declared external predictive model). Without
+that predictive object, a candidate should be reported as non-estimable for
+validated EVSI or, separately, as a heuristic/fallback priority score.
 
-### Proposition 6′ — Constructive admissible-region EVSI on resolvability
+### Proposition 6′ — Validated NOV is normalised mechanism–observation information
 
-Let a quantitative candidate observation be a measurable function of the
-admissible draw, `q = g(θ, s)` (the simulated value the measurement would take).
-Take the predictive distribution `P(y_q | A_ε)` to be the **pushforward of the
-restricted prior `π|A_ε` under `g`** — i.e. outcomes are weighted by the mass of
-the admissible region that predicts them — and define the conditioned region at
-measurement tolerance `τ`:
+Let `Q=g(θ,s)` be a measurable candidate observation under the restricted measure
+`π|A_ε`. Equivalently for a finite implementation, let the listed candidate
+outcomes form a mutually exclusive and exhaustive partition of current `A_ε`.
+Then the predictive distribution is the pushforward
+`P(Q=q | A_ε)`, and the post-observation resolvability is
 
 ```text
-A_ε | {q = v} = { (θ, s) ∈ A_ε : |g(θ, s) − v| ≤ τ }
-
-EVSI(q) = Σ_v P(y_q = v | A_ε) · [ R_RACH(A_ε | {q=v}) − R_RACH(A_ε) ]
+R_q = 1 - H(S | A_ε, Q=q) / K.
 ```
 
-**Claim 1 (well-defined, bounded).** `EVSI(q)` exists and lies in `[-1, 1]`.
-*Proof.* `g` is measurable and the outcome support is the (finite, when sampled)
-image of `A_ε`; by Proposition 4 each bracket lies in `[-1,1]`, and a
-probability-weighted average of values in `[-1,1]` lies in `[-1,1]`. It is a
-special case of Proposition 6 with `P(y_q|A_ε)` the pushforward measure. □
+Define validated next-observation value as the predictive mean gain:
 
-**Claim 2 (exactness — no re-inference needed).** If the simulator `f` is
+```text
+NOV(Q)
+= E_Q[R_q - R_RACH(A_ε)].
+```
+
+Because
+
+```text
+R_RACH(A_ε) = 1 - H(S | A_ε)/K,
+```
+
+we obtain the exact identity
+
+```text
+NOV(Q)
+= [H(S | A_ε) - H(S | A_ε, Q)] / K
+= I(S ; Q | A_ε) / K.
+```
+
+Here `I(S;Q|A_ε)` denotes mutual information under the distribution already
+conditioned on membership in the current admissible region.
+
+**Claim 1 (non-negativity and residual-uncertainty bound).**
+
+```text
+0 ≤ NOV(Q) ≤ H(S | A_ε)/K = 1 - R_RACH(A_ε) ≤ 1.
+```
+
+*Proof.* Mutual information is non-negative and bounded above by the entropy of
+either argument, in particular
+`0 ≤ I(S;Q|A_ε) ≤ H(S|A_ε) ≤ K`. Divide by `K>0`. □
+
+This is stronger than the generic `[-1,1]` bound in Proposition 6: a coherent
+pushforward observation cannot have negative *expected* value, even though a
+particular realised outcome may decrease `R_RACH`.
+
+**Claim 2 (zero and complete-resolution criteria).**
+
+```text
+NOV(Q)=0  iff  I(S;Q|A_ε)=0,
+```
+
+which for finite variables is equivalent to conditional independence of the
+candidate observation and the remaining mechanism vector under current `A_ε`.
+The maximum possible gain `NOV(Q)=1-R_RACH(A_ε)` is attained iff
+`H(S|A_ε,Q)=0`, i.e. observing `Q` completely resolves the remaining switch
+uncertainty under the declared model family. □
+
+**Claim 3 (exactness — no re-inference needed).** If the simulator `f` is
 deterministic in `(θ, s)` given `x_obs`, then conditioning a *fresh* ABC run on
-the augmented observation `q=v` accepts exactly the sub-region
-`A_ε | {q=v}` obtained by *filtering the existing admissible region*. Hence the
-EVSI computed from the stored admissible draws equals the EVSI obtained by
-re-running inference with `q` added.
+the augmented observation `Q=q` accepts exactly the sub-region
+`A_ε | {Q=q}` obtained by filtering the existing admissible region. Hence NOV
+computed from stored admissible draws equals NOV obtained by re-running inference
+with `Q` added.
+
 *Proof.* With deterministic `f`, acceptance of `(θ,s)` under the augmented target
-`O ∪ {q=v}` holds iff `(θ,s)` was accepted under `O` (it satisfies the original
-patterns) **and** `|g(θ,s) − v| ≤ τ` (it satisfies the added pattern). That is
-exactly membership of `A_ε | {q=v}`. The resolvability of the two identical sets
-is identical. □
+holds iff `(θ,s)` was accepted under the original observations **and** its
+predicted `Q` lies in the observed outcome class. This conjunction is exactly
+membership in the filtered sub-region. The conditional switch distributions —
+and therefore their entropies and resolvabilities — are identical. □
 
-**Claim 3 (unbiasedness).** `EVSI(q)` equals the predictive mean of the realised
-resolvability gain: `EVSI(q) = E_{v ~ P(y_q|A_ε)}[ R_RACH(A_ε|{q=v}) − R_RACH(A_ε) ]`.
-*Proof.* Immediate from the definition; the realised gain at an outcome `v` is the
-bracket, and `EVSI(q)` is its `P(y_q|A_ε)`-weighted average. □
+**Claim 4 (unbiased preposterior interpretation).** `NOV(Q)` equals the predictive
+mean of the realised resolvability gain by definition. Combined with the
+information identity, this means the expected value of measuring `Q` is precisely
+the fraction of the maximum `K` bits of mechanism uncertainty that `Q` is
+expected to remove from the current admissible region. □
 
-These three claims are verified empirically by `causal_model/nov_calibration.py`:
-Claim 2 gives a perfect 1:1 match between the filter-based and re-inference gains,
-and Claim 3 underlies the positive calibration of `EVSI(q)` against realised gains
-across true states. Proposition 6′ therefore upgrades NOV from a heuristic priority
-score to a **constructive, validated EVSI** for quantitative observations, while
-ordinal-only candidates without an outcome model remain heuristic.
+### Executable identity
+
+`causal_model/nov_evsi.py` computes the validated EVSI only for verified current-
+`A_ε` outcome partitions. It also computes the empirical joint table of `(S,Q)`
+independently and checks
+
+```text
+EVSI(q) = I(S;Q | A_ε) / K
+```
+
+against the expected-resolvability calculation, allowing only the numerical error
+introduced by the existing four-decimal display rounding of `R_RACH`.
+`causal_model/nov_calibration.py` separately checks the deterministic filtering
+identity against fresh re-inference and evaluates realised-gain calibration across
+controlled true states.
+
+Thus the publication-level NOV is not merely a heuristic value-of-information
+analogy: under its declared predictive map it is a normalised mutual-information
+quantity with an explicit zero-information criterion, a maximum possible gain,
+and an exact stored-region implementation. Candidates without an identified
+predictive outcome map remain non-estimable for this validated quantity rather
+than being silently assigned an EVSI from arbitrary outcome weights.
 
 ---
 
@@ -395,6 +456,12 @@ combinations also converge to `P(S=s | A_ε)`. Finite entropy is continuous on t
 probability simplex, so empirical `D_RACH` and `R_RACH` also converge to their
 population values.
 
+For a finite verified candidate partition `Q`, empirical joint frequencies of
+`(S,Q)` likewise converge almost surely. Mutual information is continuous on the
+finite joint probability simplex (with the usual zero-probability convention), so
+`I_hat(S;Q|A_ε)/K` — and hence the empirical validated NOV — is consistent as
+well.
+
 ---
 
 ## 9. Main theorem
@@ -420,8 +487,17 @@ OC_k      is an observation contribution score in [-1,1].
 NOV(q)    is a finite expected resolvability gain when candidate outcomes are finite or integrable.
 ```
 
+For a candidate observation whose predictive distribution is the pushforward of
+the current admissible region,
+
+```text
+NOV(q) = I(S;q | A_ε)/K,
+0 ≤ NOV(q) ≤ 1 - R_RACH(A_ε).
+```
+
 Moreover, under IID prior sampling and `π(A_ε)>0`, Monte Carlo estimators of
-`CA_j`, `D_RACH`, and `R_RACH` are consistent.
+`CA_j`, `D_RACH`, `R_RACH`, and finite-partition validated `NOV(q)` are
+consistent.
 
 ### Proof
 
@@ -436,10 +512,15 @@ The claims follow from Propositions 1–7. □
   extractors, distance function, tolerance `ε`, and independent observations.
 - If `π(A_ε)=0`, conditional RACH quantities are not estimable under that
   configuration.
-- Exact NOV requires a predictive distribution over future observation outcomes;
-  Proposition 6′ supplies one constructively for *quantitative* observations (the
-  admissible-region pushforward), validated in `nov_calibration.py`. Candidates
-  without an outcome model remain heuristic priority scores.
+- Validated NOV requires an identified predictive distribution over future
+  observation outcomes. Proposition 6′ supplies one constructively from the
+  current admissible-region pushforward. If listed outcomes do not form a verified
+  partition (or an external predictive model is not declared), the stored region
+  alone does not identify the EVSI; the candidate is non-estimable for the
+  validated quantity rather than being assigned an arbitrary value.
+- RACH-SEQ may still use a declared outcome prior as an explicit ranking fallback
+  when a candidate partition cannot be verified, but that fallback score is not
+  the validated `I(S;Q|A_ε)/K` quantity and its provenance must be reported.
 - Empirical claims require prior sensitivity, ε sensitivity, pattern-weight
   sensitivity, known-truth recovery, and independent validation.
 

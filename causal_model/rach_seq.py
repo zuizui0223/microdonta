@@ -1,50 +1,38 @@
-"""RACH-SEQ: Sequential mechanism equivalence class reduction.
+"""RACH-SEQ: sequential RACH observation design.
 
-RACH-SEQ closes the open loop that plain RACH leaves: after computing the
-mechanism equivalence structure (which confounding edges remain, which
-mechanisms the data cannot tell apart), RACH-SEQ decides *which observation
-to take next* to cut the most edges, takes it (by filtering the existing
-admissible region — no re-inference), and iterates until the confounding
-graph is empty (all mechanisms separated) or the budget is exhausted.
+RACH-SEQ closes the loop left open by single-shot RACH. Starting from the
+current admissible causal region ``A_epsilon``, it recomputes the value of every
+available candidate, selects the highest-valued observation, conditions the
+admissible region on the realised outcome, and repeats until either no
+confounding edge remains, no available observation has positive value, or the
+observation budget is exhausted.
 
-Algorithm
----------
-    A_ε_0 ← initial admissible region
-    structure_0 ← mechanism_equivalence_structure(A_ε_0, switches)
+For a candidate whose outcomes form a verified mutually exclusive and exhaustive
+partition of the *current* admissible region, the selection value is exactly the
+publication NOV:
 
-    for step in 1 .. budget:
-        if structure has no confounding edges: STOP  (converged)
-        for each candidate q not yet taken:
-            edge_cuts(q) ← Σ_v  p(v)  ·  max(0, |current_edges| − |edges(A_ε | q=v)|)
-        q* ← argmax edge_cuts
-        if max edge_cuts == 0: STOP  (no candidate can help)
-        v* ← sample outcome of q* (by prior_probability, or deterministic override)
-        A_ε ← {r ∈ A_ε : outputs(r) consistent with q*=v*}   (cheap filter, no re-runs)
-        structure ← mechanism_equivalence_structure(A_ε, switches)
+    NOV(Q) = I(S;Q | A_epsilon) / K.
 
-    return SeqResult
+Thus single-shot NOV and sequential RACH-SEQ share one primary objective: expected
+reduction of residual mechanism information. The mechanism-equivalence graph and
+edge cuts remain structural outputs/diagnostics, not a separate primary utility.
 
-The NOV reinterpretation
-------------------------
-Within RACH-SEQ, the value of observation q is *expected confounding-edge
-cuts* rather than expected resolvability gain.  This is the mechanism-space
-analogue: instead of a scalar gain in R, we count how many coupled-mechanism
-pairs the observation would separate.  Edges are the inferential currency.
+For compatibility with field-design candidates whose stored outcome maps do not
+identify a current-region predictive distribution, RACH-SEQ can still compute an
+explicit fallback score: expected confounding-edge cuts divided by the current
+number of confounding edges. That fallback lies in [0,1], is labelled
+``normalized_edge_cut_fallback`` in every sequence step, and must not be called
+the validated NOV quantity.
 
-The filtering step is exact under the deterministic proxy simulator and
-approximate under the stochastic ABM (as proved in nov_calibration.py).
-
-Simulator-agnostic
-------------------
-This module consumes accepted_rows (anything with population-trait columns
-``{pop}_{var}`` and boolean switch columns) and CandidateObservation objects.
-It has no Campanula dependency.
+Hidden benchmark truth may materialise an outcome only *after* candidate ranking;
+it never enters either the validated NOV or fallback ranking calculation.
 """
 from __future__ import annotations
 
+from collections import Counter
+import math
 import random
 from dataclasses import dataclass, field
-from typing import Sequence
 
 from causal_model.mechanism_equivalence import (
     ConfoundingEdge,
@@ -57,22 +45,21 @@ from causal_model.causal_admissibility import (
 )
 
 
-# Minimum absolute difference to call a directional pairwise comparison.
 _PAIRWISE_TOL = 0.02
-
-# Isolation-gradient population order (mainland = most connected).
 _GRADIENT_POPS = ("mainland", "Oshima", "Kozushima", "Hachijo")
 
 
 # ---------------------------------------------------------------------------
-# Row-level pattern matching (applies outcomes to the accepted region)
+# Row-level observation mapping
 # ---------------------------------------------------------------------------
 
 def _row_matches_pattern(row: dict, pattern: dict) -> bool:
-    """True if the simulated row's population-trait outputs satisfy the pattern.
+    """Return whether one simulated row is consistent with one pattern.
 
-    Unknown pattern types and missing columns return True (conservative:
-    do not exclude a row when evidence is absent).
+    Unknown pattern types and missing columns return ``True`` conservatively:
+    absent evidence must not silently exclude an admissible row. That conservative
+    behaviour is also why validated predictive values below are used only when
+    the listed outcomes demonstrably partition the current admissible region.
     """
     ptype = pattern.get("type", "")
     var = pattern.get("variable", "")
@@ -86,7 +73,6 @@ def _row_matches_pattern(row: dict, pattern: dict) -> bool:
         if lv is None or rv is None:
             return True
         lf, rf = float(lv), float(rv)
-        # Parse directional relation strings: "X < Y", "X > Y", "X ~= Y", etc.
         if "<" in relation and "~" not in relation:
             return lf < rf - _PAIRWISE_TOL
         if ">" in relation and "~" not in relation:
@@ -127,34 +113,155 @@ def _row_matches_pattern(row: dict, pattern: dict) -> bool:
             scale = float(pattern.get("scale") or pattern.get("se") or 0.1)
         except (ValueError, TypeError):
             return True
-        col = f"{pop}_{var}"
-        sim_val = row.get(col)
+        sim_val = row.get(f"{pop}_{var}")
         if sim_val is None:
             return True
         return abs(float(sim_val) - obs_val) <= scale * 2
 
-    return True  # unknown type — include row
+    return True
 
 
 def filter_by_outcome(
     accepted_rows: list[dict],
     extra_pattern_rows: list[dict],
 ) -> list[dict]:
-    """Filter accepted_rows to those consistent with all given pattern rows.
-
-    This is the "cheap" A_ε update step of RACH-SEQ: no re-inference, just
-    intersection of the existing admissible region with the new constraint.
-    Exact under the deterministic proxy simulator (see nov_calibration.py).
-    """
+    """Condition ``A_epsilon`` on all patterns describing one observed outcome."""
     result = accepted_rows
-    for prow in extra_pattern_rows:
-        result = [r for r in result if _row_matches_pattern(r, prow)]
+    for pattern in extra_pattern_rows:
+        result = [row for row in result if _row_matches_pattern(row, pattern)]
     return result
 
 
 # ---------------------------------------------------------------------------
-# Edge-cut value of a candidate observation
+# Sequential predictive outcome probabilities
 # ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class PredictiveOutcomeDistribution:
+    """Outcome probabilities available at one sequential step.
+
+    ``source`` is ``current_admissible_region`` only when the outcome filters are
+    mutually exclusive and exhaustive over the current rows. Otherwise it is
+    ``declared_prior`` and the declared probabilities are normalised before use.
+    """
+
+    probabilities: dict[str, float]
+    source: str
+    partition_verified: bool
+
+
+def predictive_outcome_distribution(
+    candidate: CandidateObservation,
+    accepted_rows: list[dict],
+) -> PredictiveOutcomeDistribution:
+    """Return ``Pr(q | current A_epsilon)`` when identifiable from stored rows."""
+    outcomes = list(candidate.outcomes or [])
+    if not outcomes:
+        return PredictiveOutcomeDistribution({}, "no_outcomes", False)
+
+    if accepted_rows:
+        counts = {outcome.name: 0 for outcome in outcomes}
+        memberships = [0] * len(accepted_rows)
+        for outcome in outcomes:
+            for idx, row in enumerate(accepted_rows):
+                if all(
+                    _row_matches_pattern(row, pattern)
+                    for pattern in outcome.extra_pattern_rows
+                ):
+                    counts[outcome.name] += 1
+                    memberships[idx] += 1
+        if all(count == 1 for count in memberships):
+            n = len(accepted_rows)
+            return PredictiveOutcomeDistribution(
+                probabilities={name: count / n for name, count in counts.items()},
+                source="current_admissible_region",
+                partition_verified=True,
+            )
+
+    declared = [float(outcome.prior_probability) for outcome in outcomes]
+    if any(probability < 0 for probability in declared):
+        raise ValueError(
+            f"candidate {candidate.name!r} has a negative outcome prior probability"
+        )
+    total = sum(declared)
+    if total <= 0:
+        raise ValueError(
+            f"candidate {candidate.name!r} must declare positive fallback outcome probability"
+        )
+    return PredictiveOutcomeDistribution(
+        probabilities={
+            outcome.name: probability / total
+            for outcome, probability in zip(outcomes, declared)
+        },
+        source="declared_prior",
+        partition_verified=False,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Information-theoretic NOV and structural fallback
+# ---------------------------------------------------------------------------
+
+def candidate_mutual_information_bits(
+    accepted_rows: list[dict],
+    switches,
+    candidate: CandidateObservation,
+) -> float | None:
+    """Return empirical ``I(S;Q | A_epsilon)`` for a verified candidate.
+
+    ``None`` means the stored admissible region does not identify the candidate's
+    predictive outcome distribution.
+    """
+    rows = list(accepted_rows)
+    switch_list = list(switches)
+    if not rows or not candidate.outcomes:
+        return None
+    distribution = predictive_outcome_distribution(candidate, rows)
+    if not distribution.partition_verified:
+        return None
+
+    joint: Counter[tuple[tuple[bool, ...], str]] = Counter()
+    state_counts: Counter[tuple[bool, ...]] = Counter()
+    outcome_counts: Counter[str] = Counter()
+    for outcome in candidate.outcomes:
+        sub = filter_by_outcome(rows, outcome.extra_pattern_rows)
+        for row in sub:
+            state = tuple(bool(row.get(sw.name)) for sw in switch_list)
+            joint[(state, outcome.name)] += 1
+            state_counts[state] += 1
+            outcome_counts[outcome.name] += 1
+
+    n = len(rows)
+    if sum(joint.values()) != n:
+        raise RuntimeError(
+            "verified predictive partition did not reproduce every admissible row exactly once"
+        )
+
+    mi = 0.0
+    for (state, outcome_name), count in joint.items():
+        p_joint = count / n
+        p_state = state_counts[state] / n
+        p_outcome = outcome_counts[outcome_name] / n
+        mi += p_joint * math.log2(p_joint / (p_state * p_outcome))
+    if mi < 0.0 and abs(mi) < 1e-12:
+        mi = 0.0
+    return mi
+
+
+def validated_nov_value(
+    candidate: CandidateObservation,
+    accepted_rows: list[dict],
+    switches,
+) -> float | None:
+    """Return validated ``NOV(Q)=I(S;Q|A_epsilon)/K`` when estimable."""
+    switch_list = list(switches)
+    mi = candidate_mutual_information_bits(accepted_rows, switch_list, candidate)
+    if mi is None:
+        return None
+    if not switch_list:
+        return 0.0
+    return max(0.0, mi / len(switch_list))
+
 
 def expected_edge_cuts(
     candidate: CandidateObservation,
@@ -164,107 +271,132 @@ def expected_edge_cuts(
     *,
     min_sub_size: int = 5,
 ) -> float:
-    """Expected number of confounding edges cut by taking this observation.
+    """Expected number of confounding edges cut by a candidate.
 
-    For candidates with defined outcomes:
-        E[cuts] = Σ_v  p(v)  ·  max(0, |current_edges| − |edges(sub_v)|)
-
-    For candidates without outcomes, a heuristic based on target-switch
-    overlap with existing edges is returned (discounted to indicate uncertainty).
-
-    Parameters
-    ----------
-    candidate:
-        Candidate observation to evaluate.
-    accepted_rows:
-        Current admissible region A_ε.
-    switches:
-        Causal switches.
-    current_structure:
-        Pre-computed equivalence structure of the current A_ε.
-    min_sub_size:
-        Minimum sub-region size to trust.  Outcomes that filter A_ε to fewer
-        than this many rows contribute 0 to the expectation.
+    This remains a structural diagnostic and compatibility fallback. For
+    publication-level verified candidates, RACH-SEQ selects by validated NOV
+    instead.
     """
     n_edges = len(current_structure.edges)
     if n_edges == 0:
         return 0.0
 
     if not candidate.outcomes:
-        # Heuristic: count edges where at least one endpoint is a target switch.
-        target_set = set(candidate.target_switches)
+        targets = set(candidate.target_switches)
         heuristic = sum(
-            1 for e in current_structure.edges
-            if e.a in target_set or e.b in target_set
+            1
+            for edge in current_structure.edges
+            if edge.a in targets or edge.b in targets
         )
-        return heuristic * 0.4   # discount for no explicit outcome model
+        return heuristic * 0.4
 
+    distribution = predictive_outcome_distribution(candidate, accepted_rows)
     total = 0.0
     for outcome in candidate.outcomes:
+        probability = distribution.probabilities.get(outcome.name, 0.0)
+        if probability <= 0:
+            continue
         sub = filter_by_outcome(accepted_rows, outcome.extra_pattern_rows)
         if len(sub) < min_sub_size:
             continue
-        sub_struct = mechanism_equivalence_structure(sub, switches)
-        cuts = max(0, n_edges - len(sub_struct.edges))
-        total += outcome.prior_probability * cuts
+        sub_structure = mechanism_equivalence_structure(sub, switches)
+        cuts = max(0, n_edges - len(sub_structure.edges))
+        total += probability * cuts
     return total
 
 
+def sequential_candidate_value(
+    candidate: CandidateObservation,
+    accepted_rows: list[dict],
+    switches,
+    current_structure: EquivalenceStructure,
+    *,
+    min_sub_size: int = 5,
+) -> tuple[float, str]:
+    """Return the adaptive selection score and its epistemic source.
+
+    Verified candidates use the exact normalized mutual-information NOV. An
+    unverified candidate falls back to expected edge cuts normalized by the
+    current number of confounding edges, keeping the fallback on a [0,1] scale.
+    """
+    nov = validated_nov_value(candidate, accepted_rows, switches)
+    if nov is not None:
+        return nov, "validated_nov"
+
+    n_edges = len(current_structure.edges)
+    if n_edges <= 0:
+        return 0.0, "normalized_edge_cut_fallback"
+    fallback = expected_edge_cuts(
+        candidate,
+        accepted_rows,
+        switches,
+        current_structure,
+        min_sub_size=min_sub_size,
+    ) / n_edges
+    return max(0.0, min(1.0, fallback)), "normalized_edge_cut_fallback"
+
+
 # ---------------------------------------------------------------------------
-# Result data structures
+# Result objects
 # ---------------------------------------------------------------------------
 
 @dataclass
 class SeqStep:
     """One iteration of RACH-SEQ."""
+
     step: int
-    observation_taken: str | None         # None at step 0 (initial)
-    outcome_observed: str | None          # None at step 0
-    n_accepted: int                       # |A_ε| after filtering
+    observation_taken: str | None
+    outcome_observed: str | None
+    n_accepted: int
     equivalence_structure: EquivalenceStructure
-    edges_cut_this_step: int              # edges removed in this step
-    R: float                              # causal resolvability
-    candidate_ranking: list[tuple[str, float]]  # (name, expected_edge_cuts)
+    edges_cut_this_step: int
+    R: float
+    candidate_ranking: list[tuple[str, float]]
+    candidate_probability_sources: dict[str, str] = field(default_factory=dict)
+    candidate_score_sources: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
 class SeqResult:
-    """Outcome of the full RACH-SEQ run."""
+    """Outcome of a full RACH-SEQ run."""
+
     initial_structure: EquivalenceStructure
     steps: list[SeqStep]
     final_structure: EquivalenceStructure
-    converged: bool                       # no confounding edges remain
-    budget_exhausted: bool                # budget ran out before convergence
-    observations_taken: list[str]         # ordered sequence of candidates used
-    edges_resolved: list[ConfoundingEdge] # edges cut during the run
-    edges_unresolved: list[ConfoundingEdge]  # edges still remaining
+    converged: bool
+    budget_exhausted: bool
+    observations_taken: list[str]
+    edges_resolved: list[ConfoundingEdge]
+    edges_unresolved: list[ConfoundingEdge]
 
     def describe(self) -> str:
         lines = [
             f"RACH-SEQ ({len(self.steps)} step(s))",
             f"  converged={self.converged}  budget_exhausted={self.budget_exhausted}",
-            f"  edges resolved={len(self.edges_resolved)}  "
-            f"unresolved={len(self.edges_unresolved)}",
+            f"  edges resolved={len(self.edges_resolved)}  unresolved={len(self.edges_unresolved)}",
         ]
         for step in self.steps:
             if step.step == 0:
-                n_e = len(step.equivalence_structure.edges)
                 lines.append(
                     f"  [init]  {step.n_accepted} accepted rows  "
-                    f"{n_e} confounding edge(s)  R={step.R:.3f}"
+                    f"{len(step.equivalence_structure.edges)} confounding edge(s)  R={step.R:.3f}"
                 )
             else:
+                name = step.observation_taken or ""
+                p_source = step.candidate_probability_sources.get(name, "unknown")
+                score_source = step.candidate_score_sources.get(name, "unknown")
                 lines.append(
                     f"  [step {step.step}]  took '{step.observation_taken}' "
-                    f"→ outcome '{step.outcome_observed}'  "
+                    f"-> outcome '{step.outcome_observed}'  "
                     f"cut {step.edges_cut_this_step} edge(s)  "
                     f"{len(step.equivalence_structure.edges)} remaining  "
-                    f"R={step.R:.3f}  n={step.n_accepted}"
+                    f"R={step.R:.3f}  n={step.n_accepted}  "
+                    f"score={score_source}  p-source={p_source}"
                 )
         if self.edges_unresolved:
             lines.append("  unresolved:")
-            for e in self.edges_unresolved:
-                lines.append(f"    {e.describe()}")
+            for edge in self.edges_unresolved:
+                lines.append(f"    {edge.describe()}")
         return "\n".join(lines)
 
 
@@ -280,43 +412,36 @@ def _materialize_and_filter(
     outcome_override: str | None = None,
     min_sub_size: int = 5,
 ) -> tuple[str | None, list[dict]]:
-    """Sample one outcome of a candidate and return the filtered sub-region.
-
-    Returns
-    -------
-    (outcome_name, filtered_rows)
-        outcome_name is None if the candidate has no outcomes.
-        filtered_rows is empty if the sub-region is too small.
-    """
+    """Materialise one outcome and condition the current admissible region."""
     if not candidate.outcomes:
-        return None, list(accepted_rows)   # no patterns to filter on
+        return None, list(accepted_rows)
 
     if outcome_override is not None:
-        pool = [o for o in candidate.outcomes if o.name == outcome_override]
-        if not pool:
+        matches = [o for o in candidate.outcomes if o.name == outcome_override]
+        if not matches:
             raise ValueError(
-                f"Outcome '{outcome_override}' not found in candidate '{candidate.name}'"
+                f"Outcome {outcome_override!r} not found in candidate {candidate.name!r}"
             )
-        chosen = pool[0]
+        chosen = matches[0]
     else:
-        # Sample by prior probability
-        r = rng.random()
+        distribution = predictive_outcome_distribution(candidate, accepted_rows)
+        draw = rng.random()
         cumulative = 0.0
         chosen = candidate.outcomes[-1]
         for outcome in candidate.outcomes:
-            cumulative += outcome.prior_probability
-            if r <= cumulative:
+            cumulative += distribution.probabilities.get(outcome.name, 0.0)
+            if draw <= cumulative:
                 chosen = outcome
                 break
 
     filtered = filter_by_outcome(accepted_rows, chosen.extra_pattern_rows)
     if len(filtered) < min_sub_size:
-        return chosen.name, []   # sub-region too small — signal failure
+        return chosen.name, []
     return chosen.name, filtered
 
 
 # ---------------------------------------------------------------------------
-# Main RACH-SEQ function
+# Main algorithm
 # ---------------------------------------------------------------------------
 
 def rach_seq(
@@ -329,48 +454,23 @@ def rach_seq(
     seed: int | None = None,
     outcome_overrides: dict[str, str] | None = None,
 ) -> SeqResult:
-    """Sequential mechanism equivalence class reduction algorithm.
+    """Sequentially reduce mechanism uncertainty under an observation budget.
 
-    Iteratively selects the observation that maximally cuts confounding edges
-    in the mechanism equivalence structure, updates the admissible region by
-    filtering (no re-inference), and repeats.
-
-    Parameters
-    ----------
-    accepted_rows:
-        Initial admissible region A_ε.  Each row must expose population-trait
-        columns ``{population}_{variable}`` (e.g. ``Hachijo_selfing_rate``) for
-        the outcome filtering to work, plus boolean switch columns.
-    switches:
-        Causal switch objects (anything with a ``.name`` attribute).
-    candidates:
-        Candidate observations.  Those with defined ``outcomes`` get a full
-        expected-edge-cut score; those without use a heuristic fallback.
-    budget:
-        Maximum number of observation steps.
-    min_sub_size:
-        Minimum post-filter sub-region size.  Outcomes filtering A_ε below
-        this count are skipped (their contribution treated as 0).
-    seed:
-        RNG seed for outcome sampling.
-    outcome_overrides:
-        ``{candidate_name: outcome_name}`` — pin a specific outcome for a
-        candidate instead of sampling.  Useful for deterministic tests or
-        real-data updates where the researcher supplies the actual observation.
-
-    Returns
-    -------
-    SeqResult
+    At every step, verified candidates are ranked by current
+    ``NOV(Q)=I(S;Q|A_epsilon)/K``. Unverified candidates may enter only through
+    the explicit normalized edge-cut fallback. External outcome overrides
+    represent collected results (or hidden truth in a controlled benchmark) and
+    bypass outcome sampling without affecting pre-observation ranking.
     """
     rng = random.Random(seed)
+    switch_list = list(switches)
     current_rows = list(accepted_rows)
     used: set[str] = set()
     observations_taken: list[str] = []
     steps: list[SeqStep] = []
 
-    # Step 0: initial structure
-    current_structure = mechanism_equivalence_structure(current_rows, switches)
-    current_R = causal_resolvability(current_rows, switches)
+    current_structure = mechanism_equivalence_structure(current_rows, switch_list)
+    current_R = causal_resolvability(current_rows, switch_list)
     steps.append(SeqStep(
         step=0,
         observation_taken=None,
@@ -380,70 +480,83 @@ def rach_seq(
         edges_cut_this_step=0,
         R=current_R,
         candidate_ranking=[],
+        candidate_probability_sources={},
+        candidate_score_sources={},
     ))
 
     budget_exhausted = False
 
     for step_num in range(1, budget + 1):
         if not current_structure.edges:
-            break   # converged — no confounding edges remain
+            break
 
-        available = [c for c in candidates if c.name not in used]
+        available = [candidate for candidate in candidates if candidate.name not in used]
         if not available:
             break
 
-        # Rank candidates by expected edge cuts
         ranking: list[tuple[str, float]] = []
-        for cand in available:
-            ec = expected_edge_cuts(
-                cand, current_rows, switches, current_structure,
+        probability_sources: dict[str, str] = {}
+        score_sources: dict[str, str] = {}
+        for candidate in available:
+            distribution = predictive_outcome_distribution(candidate, current_rows)
+            probability_sources[candidate.name] = distribution.source
+            value, score_source = sequential_candidate_value(
+                candidate,
+                current_rows,
+                switch_list,
+                current_structure,
                 min_sub_size=min_sub_size,
             )
-            ranking.append((cand.name, ec))
-        ranking.sort(key=lambda x: -x[1])
+            score_sources[candidate.name] = score_source
+            ranking.append((candidate.name, value))
+        ranking.sort(key=lambda item: (-item[1], item[0]))
 
         best_name, best_value = ranking[0]
         if best_value <= 0:
-            break   # no candidate can cut any edge
+            break
 
-        best_cand = next(c for c in available if c.name == best_name)
+        best_candidate = next(c for c in available if c.name == best_name)
         override = (outcome_overrides or {}).get(best_name)
         outcome_name, filtered = _materialize_and_filter(
-            best_cand, current_rows, rng,
+            best_candidate,
+            current_rows,
+            rng,
             outcome_override=override,
             min_sub_size=min_sub_size,
         )
 
-        used.add(best_cand.name)
+        used.add(best_candidate.name)
         if not filtered:
-            # Outcome filtered too aggressively — skip without consuming a step
             continue
 
         edges_before = len(current_structure.edges)
         current_rows = filtered
-        current_structure = mechanism_equivalence_structure(current_rows, switches)
-        current_R = causal_resolvability(current_rows, switches)
-        observations_taken.append(best_cand.name)
+        current_structure = mechanism_equivalence_structure(current_rows, switch_list)
+        current_R = causal_resolvability(current_rows, switch_list)
+        observations_taken.append(best_candidate.name)
 
         steps.append(SeqStep(
             step=step_num,
-            observation_taken=best_cand.name,
+            observation_taken=best_candidate.name,
             outcome_observed=outcome_name,
             n_accepted=len(current_rows),
             equivalence_structure=current_structure,
             edges_cut_this_step=max(0, edges_before - len(current_structure.edges)),
             R=current_R,
             candidate_ranking=ranking,
+            candidate_probability_sources=probability_sources,
+            candidate_score_sources=score_sources,
         ))
 
         if step_num == budget and current_structure.edges:
             budget_exhausted = True
 
-    # Classify edges resolved vs unresolved
     initial_structure = steps[0].equivalence_structure
-    final_ids = {(e.a, e.b) for e in current_structure.edges}
+    final_ids = {(edge.a, edge.b) for edge in current_structure.edges}
     edges_resolved = [
-        e for e in initial_structure.edges if (e.a, e.b) not in final_ids
+        edge
+        for edge in initial_structure.edges
+        if (edge.a, edge.b) not in final_ids
     ]
 
     return SeqResult(
@@ -456,3 +569,17 @@ def rach_seq(
         edges_resolved=edges_resolved,
         edges_unresolved=list(current_structure.edges),
     )
+
+
+__all__ = [
+    "PredictiveOutcomeDistribution",
+    "SeqResult",
+    "SeqStep",
+    "candidate_mutual_information_bits",
+    "expected_edge_cuts",
+    "filter_by_outcome",
+    "predictive_outcome_distribution",
+    "rach_seq",
+    "sequential_candidate_value",
+    "validated_nov_value",
+]
