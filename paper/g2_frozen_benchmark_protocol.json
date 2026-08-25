@@ -27,7 +27,9 @@
   },
   "selection_validation": {
     "policies": ["rach_seq", "random_order"],
-    "rach_seq_objective": "expected_confounding_edge_cuts",
+    "rach_seq_objective": "validated_nov_normalized_mutual_information",
+    "rach_seq_verified_candidate_value": "I(S;Q_given_current_A_epsilon)/K",
+    "rach_seq_unverified_candidate_fallback": "expected_edge_cuts_normalized_by_current_edge_count_with_provenance",
     "random_order_definition": "uniform_choice_among_remaining_candidates_before_hidden_outcome_materialisation",
     "same_systems_truths_candidates_and_budgets_across_policies": true,
     "policy_comparison_is_descriptive_not_acceptance_gate": true
