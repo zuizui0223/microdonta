@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "result_id": "rach-submission-validation-defaults-2026-08-25",
+  "code_commit_sha": "69065dc3d58ae2737fd9e81fe94d8bad8e43f9c3",
+  "workflow_run_id": 32801719977,
+  "artifact": {
+    "id": 9546717555,
+    "name": "submission-validation-69065dc3d58ae2737fd9e81fe94d8bad8e43f9c3",
+    "sha256": "92ea7e3e84997cf73901c2f618fcf7cbfe520df26b00436d51c988246332a37f"
+  },
+  "performance_acceptance_threshold": null,
+  "known_truth": {
+    "configuration": {
+      "n_attempts": 200,
+      "noise_rates": [0.0, 0.1, 0.2],
+      "preset": "literature_grounded",
+      "acceptance_rule": "weighted_lax",
+      "seed": 42,
+      "generator_backend": "proxy",
+      "inference_backend": "proxy"
+    },
+    "by_noise": [
+      {"noise_rate":0.0,"n_cases":8,"mean_accuracy":0.6562,"mean_precision":0.4792,"mean_recall":1.0,"mean_f1":0.6042,"mean_ca_error":0.3388,"mean_R_RACH":0.3699,"mean_D_RACH":2.5203},
+      {"noise_rate":0.1,"n_cases":8,"mean_accuracy":0.6875,"mean_precision":0.5729,"mean_recall":1.0,"mean_f1":0.6667,"mean_ca_error":0.3359,"mean_R_RACH":0.4719,"mean_D_RACH":2.1123},
+      {"noise_rate":0.2,"n_cases":8,"mean_accuracy":0.7083,"mean_precision":0.5417,"mean_recall":1.0,"mean_f1":0.6429,"mean_ca_error":0.2868,"mean_R_RACH":0.4238,"mean_D_RACH":2.3050}
+    ],
+    "interpretation": "Specified-simulator self-consistency only. Confounded switches are intentionally not required to yield unique recovery; applicable true-ON switch recall is 1.0 in the aggregated noise strata while additional admissible switches remain. Empty accepted regions in individual noisy cases are retained rather than tuned away."
+  },
+  "nov_calibration": {
+    "configuration": {
+      "n_attempts": 1000,
+      "preset": "literature_grounded",
+      "acceptance_rule": "strict_all",
+      "seed": 7
+    },
+    "R0": 0.1071,
+    "n_accepted": 597,
+    "filter_vs_fresh_reinference": {
+      "n_observations": 6,
+      "max_absolute_difference": 0.0,
+      "pairs": [
+        {"observation":"nectar_guide@Hachijo","filter_gain":0.2684,"fresh_gain":0.2684},
+        {"observation":"selfing_rate@Hachijo","filter_gain":0.1043,"fresh_gain":0.1043},
+        {"observation":"flower_size@Hachijo","filter_gain":0.2581,"fresh_gain":0.2581},
+        {"observation":"nectar_guide@Oshima","filter_gain":0.0215,"fresh_gain":0.0215},
+        {"observation":"selfing_rate@Oshima","filter_gain":0.0672,"fresh_gain":0.0672},
+        {"observation":"flower_size@Oshima","filter_gain":0.2304,"fresh_gain":0.2304}
+      ]
+    },
+    "predictive_vs_realised": {
+      "n_observations": 8,
+      "n_truths_per_observation": 4,
+      "pearson_r_evsi_vs_mean_realised_gain": 0.766443424523961,
+      "mean_absolute_evsi_minus_mean_realised": 0.07391875
+    },
+    "interpretation": "The deterministic stored-region conditioning shortcut exactly matches fresh re-inference for every tested quantitative observation. Predictive EVSI positively tracks mean realised resolvability gain across controlled true states; realised gains retain substantial truth-dependent spread."
+  }
+}
