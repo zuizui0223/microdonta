@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "primary_target": "Methods in Ecology and Evolution",
   "manuscript_type": "Methods / Practical Tools",
   "claim_spine": [
@@ -13,7 +13,9 @@
   "governance": [
     "docs/mainline.md",
     "paper/g2_frozen_benchmark_protocol.json",
-    "paper/run_g2_frozen_benchmark.py"
+    "paper/run_g2_frozen_benchmark.py",
+    "paper/results/g2_frozen_v2_summary.json",
+    "paper/results/submission_validation_summary.json"
   ],
   "main_text": {
     "manuscript": [
@@ -38,7 +40,12 @@
       "causal_model/generality_sweep.py",
       "causal_model/nov_calibration.py",
       "paper/g2_frozen_benchmark_protocol.json",
-      "paper/run_g2_frozen_benchmark.py"
+      "paper/run_g2_frozen_benchmark.py",
+      "paper/results/g2_frozen_v2_summary.json",
+      "paper/results/submission_validation_summary.json"
+    ],
+    "figures": [
+      "paper/make_g2_figure.py"
     ],
     "projection": [
       "causal_model/colonization_recruitment_factorization.py",
