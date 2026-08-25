@@ -1,0 +1,47 @@
+name: Final manuscript polish
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    if: contains(github.event.head_commit.message, '[submission-polish]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Apply deterministic frozen-result polish
+        run: python scripts/final_manuscript_polish.py
+
+      - name: Verify manuscript boundary
+        run: |
+          grep -q 'Fig. 1)' paper/mee_manuscript_draft.md
+          grep -q 'Fig. 2)' paper/mee_manuscript_draft.md
+          grep -q 'Fig. 3)' paper/mee_manuscript_draft.md
+          grep -q 'Fig. S1)' paper/mee_manuscript_draft.md
+          ! grep -q 'Fig. 4' paper/mee_manuscript_draft.md
+          grep -q 'mean switch-state accuracy 0.6562' paper/mee_manuscript_draft.md
+          grep -q 'maximum absolute difference 0' paper/mee_manuscript_draft.md
+          grep -q 'r=0.7664' paper/mee_manuscript_draft.md
+          python paper/check_submission_bundle.py
+          python scripts/check_repository_boundaries.py
+          git diff --check
+
+      - name: Commit polished manuscript
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add paper/mee_manuscript_draft.md
+          git diff --cached --quiet && { echo 'no manuscript changes'; exit 1; }
+          git commit -m '[manuscript-polished] freeze validation prose and figure numbering'
+          git push origin HEAD:main
