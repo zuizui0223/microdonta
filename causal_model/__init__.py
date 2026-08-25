@@ -11,9 +11,10 @@ For example, ``compute_causal_admissibility`` is the root-level callable while
 ``run_rach_seq`` leaves ``causal_model.rach_seq`` intact.
 
 The publication-level next-observation quantity is ``next_observation_evsi``.
-The older target-switch heuristic remains available only as the explicitly named
-``heuristic_next_observation_value`` compatibility helper and is not advertised
-in ``__all__``.
+Older heuristics, structural scoring helpers, and edge-cut/filter utilities remain
+available as explicitly named compatibility attributes or through their canonical
+submodules, but they are not advertised in ``__all__`` and therefore do not
+define the scientific package surface.
 """
 
 # Keep canonical submodules importable under their own names.
@@ -33,9 +34,8 @@ causal_resolvability = causal_admissibility.causal_resolvability
 observation_contribution = causal_admissibility.observation_contribution
 rach_summary = causal_admissibility.rach_summary
 
-# Legacy heuristic: retained for compatibility but deliberately not primary API.
+# Compatibility attributes: importable by explicit name but not primary API.
 heuristic_next_observation_value = causal_admissibility.next_observation_value
-
 SeqResult = rach_seq.SeqResult
 SeqStep = rach_seq.SeqStep
 expected_edge_cuts = rach_seq.expected_edge_cuts
@@ -52,7 +52,7 @@ from .causal_replaceability import (
 )
 from .mechanism_equivalence import mechanism_equivalence_structure
 
-# General-purpose support schemas retained for backward compatibility.
+# General-purpose support schemas retained as explicit compatibility attributes.
 from .latent_parameters import LatentParameter
 from .pattern_targets import PatternTarget
 from .scoring import (
@@ -78,7 +78,6 @@ install_rule_transition_contracts()
 
 
 __all__ = [
-    # Primary RACH interface.
     "CandidateObservation",
     "CandidateOutcome",
     "CausalAdmissibilityResult",
@@ -95,27 +94,9 @@ __all__ = [
     "causal_resolvability",
     "crc_profile",
     "crc_profile_full",
-    "expected_edge_cuts",
-    "filter_by_outcome",
     "mechanism_equivalence_structure",
     "next_observation_evsi",
     "observation_contribution",
     "run_rach_seq",
     "rach_summary",
-    # Compatibility support schemas.
-    "CausalEdge",
-    "CausalStructure",
-    "GeneratorBridgeInput",
-    "LatentParameter",
-    "PatternTarget",
-    "PathwaySwitches",
-    "apply_latent_overrides",
-    "bridge_inputs_for_structure",
-    "expected_pattern_relations",
-    "score_causal_structure",
-    "score_pattern_match",
-    "score_simulated_relations",
-    "summarize_structure_support",
-    "switches_for_structure",
-    "switches_to_dict",
 ]
