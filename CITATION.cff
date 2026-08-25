@@ -1,34 +1,22 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite both the software and the paper."
+message: "If you use RACH, please cite the software and associated methods manuscript."
 title: "RACH: Restricted Admissible Causal Hypotheses"
-abstract: >-
-  A constraint-aware framework for diagnosing causal degeneracy and prioritising
-  the next observation in ecological mechanism inference. Defines an admissible
-  region over mechanism-switch combinations, reports causal degeneracy instead of
-  collapsing to a single best model, and computes a next-observation value (NOV)
-  as a constructive expected-value-of-sample-information on causal resolvability.
+type: software
 authors:
-  - family-names: "Zhang"
-    given-names: "Ruiqi"
-    affiliation: "Kyoto University"
+  - family-names: Zhang
+    given-names: Ruiqi
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/zuizui0223/microdonta"
+abstract: >-
+  RACH is a constraint-aware framework for retaining ecological mechanisms
+  compatible with declared observations, quantifying residual causal degeneracy,
+  and prioritising the next observation by validated mechanism-observation
+  mutual information.
 keywords:
   - causal admissibility
   - causal degeneracy
-  - pattern-oriented modelling
+  - ecological mechanism inference
   - approximate Bayesian computation
-  - value of information
+  - mutual information
   - observation design
-license: "MIT"
-repository-code: "https://github.com/zuizui0223/microdonta"
-version: "0.1.0"
-date-released: "2026-06-18"
-preferred-citation:
-  type: article
-  title: "RACH: diagnosing causal degeneracy and prioritising the next observation in ecological mechanism inference"
-  authors:
-    - family-names: "Zhang"
-      given-names: "Ruiqi"
-      affiliation: "Kyoto University"
-  journal: "Methods in Ecology and Evolution"
-  year: 2026
-  notes: "Under preparation; details to be completed at submission."

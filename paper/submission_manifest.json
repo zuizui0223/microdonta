@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "primary_target": "Methods in Ecology and Evolution",
   "manuscript_type": "Methods / Practical Tools",
   "claim_spine": [
@@ -16,8 +16,11 @@
     "paper/run_g2_frozen_benchmark.py",
     "paper/results/g2_frozen_v2_summary.json",
     "paper/results/submission_validation_summary.json",
+    "paper/results/g5_reproducibility_summary.json",
     "paper/final_figure_inventory.json",
-    "scripts/check_wheel_boundary.py"
+    "paper/release_readiness.json",
+    "scripts/check_wheel_boundary.py",
+    "CITATION.cff"
   ],
   "main_text": {
     "manuscript": [
@@ -44,7 +47,8 @@
       "paper/g2_frozen_benchmark_protocol.json",
       "paper/run_g2_frozen_benchmark.py",
       "paper/results/g2_frozen_v2_summary.json",
-      "paper/results/submission_validation_summary.json"
+      "paper/results/submission_validation_summary.json",
+      "paper/results/g5_reproducibility_summary.json"
     ],
     "figures": [
       "paper/final_figure_inventory.json",
@@ -63,6 +67,10 @@
       "causal_model/campanula_real_data.py",
       "docs/campanula_channel_protocol.md",
       "docs/inoue_literature_values.md"
+    ],
+    "release": [
+      "paper/release_readiness.json",
+      "CITATION.cff"
     ]
   },
   "supplementary": {

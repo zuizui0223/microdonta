@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "g5_status": "pass",
+  "validated_code_commit_sha": "d67eb2d22387334477e94ca8ecd0d58ac070c4a0",
+  "g5_workflow": {
+    "run_id": 32803339282,
+    "artifact_id": 9547280912,
+    "artifact_name": "g5-reproducibility-d67eb2d22387334477e94ca8ecd0d58ac070c4a0",
+    "artifact_digest": "sha256:ab3049b4bcfb3ce5a7fa965aac3cc7e19596dd5ac12758f62c249d96a093a2ea"
+  },
+  "python_matrix": {
+    "run_id": 32803339284,
+    "3.10": "pass",
+    "3.11": "pass",
+    "3.12": "pass"
+  },
+  "checks": {
+    "submission_bundle": "pass",
+    "repository_boundaries": "pass",
+    "frozen_validation_reproduction": "pass",
+    "final_figure_rebuild": "pass",
+    "wheel_build_and_boundary_audit": "pass",
+    "installed_wheel_public_api": "pass"
+  },
+  "figures": {
+    "figure1_confound.png": {
+      "bytes": 95333,
+      "sha256": "ffc5a63f289cb16074ebec533d58feb4f0380d7b3488777127874d3aee7d7fb3"
+    },
+    "figure2_g2_frozen_v2.png": {
+      "bytes": 200293,
+      "sha256": "a894a9c6ba011494d02b9caa01b0b5299087751f98cfd9c90752b090aaad797f"
+    },
+    "figure3_nov_calibration.png": {
+      "bytes": 88974,
+      "sha256": "46e00bff3ac9cf4db3ecb8177aac97da4ccc298762b1f99f35d2c5d302ab1380"
+    },
+    "figureS1_known_truth.png": {
+      "bytes": 38682,
+      "sha256": "b42cb28b4a150e2cab86988eedadb8cfd32ec7899f167a160ac51001057df739"
+    }
+  },
+  "wheel": {
+    "filename": "rach-0.1.0-py3-none-any.whl",
+    "sha256": "f97308f99caf59a6dd13931e738cee803054c0864b66c4d93db5c944f72f0fa8",
+    "member_count": 85,
+    "forbidden_member_count": 0,
+    "top_levels": [
+      "attraction_trait_model",
+      "causal_model",
+      "rach-0.1.0.dist-info"
+    ]
+  },
+  "figure_inventory": "paper/final_figure_inventory.json",
+  "source": "Exact stable record of the successful G5 artifact and same-commit Python 3.10-3.12 CI. No benchmark values were recomputed for this file."
+}

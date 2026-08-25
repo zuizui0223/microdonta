@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "package": "rach",
+  "version": "0.1.0",
+  "suggested_release_tag": "v0.1.0",
+  "status": "scientific_and_reproducibility_gates_pass",
+  "validated_code_commit_sha": "d67eb2d22387334477e94ca8ecd0d58ac070c4a0",
+  "g2": {
+    "status": "pass",
+    "protocol_id": "rach-g2-truth-peek-free-v2",
+    "protocol_sha256": "3568025f98a671b232e5d6b865063f37baa5bec319a594f831d6b5b953428cb7",
+    "execution_commit": "f343c2361db28c0b3e528b882b3370eda5abf5ed"
+  },
+  "g5": {
+    "status": "pass",
+    "summary": "paper/results/g5_reproducibility_summary.json",
+    "wheel_sha256": "f97308f99caf59a6dd13931e738cee803054c0864b66c4d93db5c944f72f0fa8"
+  },
+  "public_api": "frozen_by_tests/test_public_rach_api.py",
+  "release_metadata": {
+    "license": "MIT",
+    "repository": "https://github.com/zuizui0223/microdonta",
+    "citation_file": "CITATION.cff"
+  },
+  "archival_doi": {
+    "status": "not_minted",
+    "reason": "DOI minting requires an external archival service/repository integration and is not a scientific or reproducibility code gate.",
+    "action_before_formal_release": "Mint archival DOI externally and add it to CITATION.cff/release metadata without changing frozen scientific results."
+  },
+  "manuscript_editorial_followup": [
+    "complete the final primary-source/reference audit for the prospective Campanula prose",
+    "format manuscript and figures to journal submission requirements",
+    "mint and record an archival DOI when the external archive is ready"
+  ],
+  "science_freeze_policy": "Any change to G2 scientific parameters, primary inference semantics, or frozen numerical claims requires a new protocol/version rather than silent replacement of v0.1.0 evidence."
+}
