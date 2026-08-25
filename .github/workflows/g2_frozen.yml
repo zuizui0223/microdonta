@@ -35,7 +35,7 @@ jobs:
           test -z "$(git status --porcelain)"
 
       - name: Run frozen G2 v2 exactly once
-        run: python paper/run_g2_frozen_benchmark.py --output-dir outputs/g2_frozen
+        run: python -m paper.run_g2_frozen_benchmark --output-dir outputs/g2_frozen
 
       - name: Verify provenance snapshot
         run: |
