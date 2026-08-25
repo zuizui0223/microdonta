@@ -96,12 +96,23 @@ a validated EVSI. The older target-switch score is retained only as the explicit
 named compatibility helper `heuristic_next_observation_value` and is not part of
 the primary public API.
 
-RACH-SEQ is slightly broader because it must still be able to rank a declared
-field-design candidate set. At each sequential step it uses
-`Pr(q | current A_epsilon)` when a partition is verified; otherwise it may use a
-predeclared outcome prior as an explicit fallback. Every step records which
-probability source was used. Thus fallback ranking is transparent and is never
-confused with the validated single-shot `I(S;Q|A_epsilon)/K` quantity.
+RACH-SEQ is the sequential closure of the same objective. At every step, a
+candidate whose outcomes form a verified current-region partition is scored by
+
+```text
+NOV(Q | current A_epsilon) = I(S;Q | current A_epsilon) / K,
+```
+
+and the highest-NOV available observation is selected. After its realised outcome
+is observed, `A_epsilon` is conditioned, and all candidate predictive maps and NOV
+values are recomputed from the new current region. A candidate whose predictive
+map is not identifiable from stored rows may remain available only through the
+explicit compatibility fallback `expected_edge_cuts / current_edge_count`; the
+step records that score source as `normalized_edge_cut_fallback`. Declared outcome
+priors may still be used to materialise an unverified candidate outcome when no
+external outcome is supplied, but that quantity is never relabelled as validated
+NOV. Thus single-shot NOV and standard RACH-SEQ share one information-theoretic
+selection objective whenever it is estimable.
 
 ## Validation rule
 
@@ -128,7 +139,8 @@ system and evaluates two policies on the same generated systems, hidden truths,
 candidate sets and budgets:
 
 ```text
-rach_seq      choose by expected confounding-edge cuts
+rach_seq      choose the verified candidate with maximum current NOV;
+              use normalized edge-cut fallback only when NOV is not estimable
 random_order  choose uniformly among remaining candidates
 ```
 
@@ -153,9 +165,9 @@ required by software tests or the protocol to outperform random selection.
 Favourable, null, or adverse frozen differences are all reportable results.
 
 The final runner accepts no scientific parameter overrides; every output is
-tagged with the SHA-256 hash of the exact v2 protocol. Any later change to the
-scientific configuration after execution requires a new protocol id and full
-rerun.
+tagged with the SHA-256 hash of the exact v2 protocol and the clean Git commit
+SHA used for execution. Any later change to the scientific configuration after
+execution requires a new protocol id and full rerun.
 
 ## Exact ecological projection boundary
 
@@ -202,5 +214,5 @@ Package-level callables expose RACH first: `compute_causal_admissibility`,
 `rach_summary`. Canonical submodules such as
 `causal_model.causal_admissibility` and `causal_model.rach_seq` remain importable
 under their own names and are never shadowed by root-level functions. Legacy
-structure-scoring helpers and heuristic NOV may remain for compatibility but must
-not define what the package appears to be.
+structure-scoring helpers, edge-cut diagnostics, and heuristic NOV may remain for
+compatibility but must not define what the package appears to be.
