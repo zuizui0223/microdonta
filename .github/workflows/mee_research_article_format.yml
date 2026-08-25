@@ -1,0 +1,46 @@
+name: MEE Research Article formatting
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: contains(github.event.head_commit.message, '[mee-format]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Apply deterministic MEE Research Article formatting
+        run: python scripts/apply_mee_research_article_format.py
+
+      - name: Verify scientific and journal submission boundaries
+        run: |
+          python paper/check_submission_bundle.py
+          python paper/check_mee_submission.py
+          python scripts/check_repository_boundaries.py
+          git diff --check
+
+      - name: Commit MEE-formatted publication files
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            paper/mee_manuscript_draft.md \
+            paper/submission_manifest.json \
+            paper/README.md \
+            README.md \
+            paper/check_submission_bundle.py \
+            .github/workflows/ci.yml
+          git diff --cached --quiet && { echo 'no MEE formatting changes'; exit 1; }
+          git commit -m '[mee-format-applied] align review manuscript with Research Article requirements'
+          git push origin HEAD:main

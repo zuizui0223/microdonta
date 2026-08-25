@@ -1,0 +1,55 @@
+# Title page — Supplemental Document Not for Review
+
+## Manuscript title
+
+**RACH: from causal non-identifiability to next-observation design in ecological mechanism inference**
+
+Article type: **Research Article**
+
+## Authors and affiliations
+
+**Ruiqi Zhang**
+
+Kyoto University, Kyoto, Japan
+
+## Corresponding author
+
+Ruiqi Zhang  
+Correspondence email: **[to add before submission]**
+
+## Running headline
+
+**RACH for mechanism ambiguity**
+
+## Acknowledgements
+
+**[To complete before submission.]**
+
+## Author contributions
+
+Ruiqi Zhang conceived the framework, implemented the software, ran the analyses,
+and wrote the manuscript. The author reviewed and takes responsibility for all
+scientific claims, code, analyses and text, including material developed with AI
+assistance disclosed in the Methods.
+
+## Data availability
+
+No new empirical data are reported. The algebraic constructions, synthetic
+benchmark generators, frozen result summaries, tests and figure-generation code
+needed to evaluate the method are contained in the project repository. An
+anonymised code-review bundle will be supplied to editors and reviewers with the
+submission. After manuscript and Supporting Information files are frozen, the
+submission release will be archived and the resulting DOI added to the final
+Data Availability and software citation metadata.
+
+## Funding
+
+**[To complete before submission.]**
+
+## Conflict of interest
+
+The author declares no conflict of interest.
+
+## ORCID
+
+Ruiqi Zhang — **[to add before submission]**
