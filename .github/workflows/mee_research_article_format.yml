@@ -39,8 +39,7 @@ jobs:
             paper/submission_manifest.json \
             paper/README.md \
             README.md \
-            paper/check_submission_bundle.py \
-            .github/workflows/ci.yml
+            paper/check_submission_bundle.py
           git diff --cached --quiet && { echo 'no MEE formatting changes'; exit 1; }
           git commit -m '[mee-format-applied] align review manuscript with Research Article requirements'
           git push origin HEAD:main
