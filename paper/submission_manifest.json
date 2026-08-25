@@ -15,7 +15,9 @@
     "paper/g2_frozen_benchmark_protocol.json",
     "paper/run_g2_frozen_benchmark.py",
     "paper/results/g2_frozen_v2_summary.json",
-    "paper/results/submission_validation_summary.json"
+    "paper/results/submission_validation_summary.json",
+    "paper/final_figure_inventory.json",
+    "scripts/check_wheel_boundary.py"
   ],
   "main_text": {
     "manuscript": [
@@ -45,7 +47,11 @@
       "paper/results/submission_validation_summary.json"
     ],
     "figures": [
-      "paper/make_g2_figure.py"
+      "paper/final_figure_inventory.json",
+      "causal_model/confound_demo.py",
+      "paper/make_g2_figure.py",
+      "causal_model/nov_calibration.py",
+      "causal_model/known_truth_benchmark.py"
     ],
     "projection": [
       "causal_model/colonization_recruitment_factorization.py",
