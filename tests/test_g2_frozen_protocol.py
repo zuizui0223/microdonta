@@ -41,13 +41,18 @@ def test_coefficient_sampling_range_satisfies_declared_separability():
     assert ratio_hi < 2.0
 
 
-def test_selection_challenge_is_predeclared():
+def test_selection_challenge_is_predeclared_and_uses_validated_nov():
     protocol, _ = load_protocol()
     distractors = protocol["generator"]["distractor_candidates"]
     selection = protocol["selection_validation"]
     assert distractors["count"] == 2
     assert distractors["intended_mechanism_information"] == "none_by_construction"
     assert selection["policies"] == ["rach_seq", "random_order"]
+    assert selection["rach_seq_objective"] == "validated_nov_normalized_mutual_information"
+    assert selection["rach_seq_verified_candidate_value"] == "I(S;Q_given_current_A_epsilon)/K"
+    assert selection["rach_seq_unverified_candidate_fallback"] == (
+        "expected_edge_cuts_normalized_by_current_edge_count_with_provenance"
+    )
     assert selection["same_systems_truths_candidates_and_budgets_across_policies"] is True
     assert selection["policy_comparison_is_descriptive_not_acceptance_gate"] is True
 
@@ -68,7 +73,5 @@ def test_g2_reporting_requires_full_provenance_without_success_gate():
 
 
 def test_frozen_runner_has_no_scientific_parameter_arguments():
-    # The callable can choose only where to write results. Scientific parameters
-    # must come from the frozen JSON, not analysis-time function arguments.
     signature = inspect.signature(run_protocol)
     assert list(signature.parameters) == ["output_dir"]
