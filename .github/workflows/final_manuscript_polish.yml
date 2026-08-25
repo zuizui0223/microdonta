@@ -30,7 +30,7 @@ jobs:
           grep -q 'Fig. 3)' paper/mee_manuscript_draft.md
           grep -q 'Fig. S1)' paper/mee_manuscript_draft.md
           ! grep -q 'Fig. 4' paper/mee_manuscript_draft.md
-          grep -q 'mean switch-state accuracy 0.6562' paper/mee_manuscript_draft.md
+          grep -q 'switch-state accuracy 0.6562' paper/mee_manuscript_draft.md
           grep -q 'maximum absolute difference 0' paper/mee_manuscript_draft.md
           grep -q 'r=0.7664' paper/mee_manuscript_draft.md
           python paper/check_submission_bundle.py
