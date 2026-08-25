@@ -93,7 +93,7 @@ def main() -> None:
 
     theory = THEORY_PATH.read_text(encoding="utf-8")
     theory_required = [
-        "NOV(Q)=I(S;Q | A_epsilon) / K",
+        "I(S;Q | A_epsilon) / K",
         "heuristic_next_observation_value",
         "next_observation_evsi",
         "There is no favourable-result acceptance threshold",
