@@ -1,0 +1,180 @@
+name: G5 reproducibility
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  reproducibility:
+    if: contains(github.event.head_commit.message, '[g5-final]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install clean-environment dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+          pip install build
+
+      - name: Verify final submission boundary
+        run: |
+          python paper/check_submission_bundle.py
+          python scripts/check_repository_boundaries.py
+          python - <<'PY'
+          import causal_model as rach
+          expected = {
+              'CandidateObservation', 'CandidateOutcome', 'CausalAdmissibilityResult',
+              'CRCResult', 'EVSIResult', 'ObservationContribution', 'RACHSummary',
+              'SeqResult', 'SeqStep', 'compute_causal_admissibility',
+              'causal_degeneracy', 'causal_replaceability_cost',
+              'causal_replaceability_cost_full', 'causal_resolvability',
+              'crc_profile', 'crc_profile_full', 'mechanism_equivalence_structure',
+              'next_observation_evsi', 'observation_contribution', 'run_rach_seq',
+              'rach_summary',
+          }
+          assert set(rach.__all__) == expected
+          PY
+          test -z "$(git status --porcelain)"
+
+      - name: Rebuild final Main and Supplement figures
+        run: |
+          mkdir -p outputs/g5/figures
+          python -m causal_model.confound_demo \
+            --figure outputs/g5/figures/figure1_confound.png
+          python paper/make_g2_figure.py \
+            --output outputs/g5/figures/figure2_g2_frozen_v2.png
+          python -m causal_model.nov_calibration \
+            --figure outputs/g5/figures/figure3_nov_calibration.png
+          python -m causal_model.known_truth_benchmark \
+            --figure outputs/g5/figures/figureS1_known_truth.png
+          for f in \
+            outputs/g5/figures/figure1_confound.png \
+            outputs/g5/figures/figure2_g2_frozen_v2.png \
+            outputs/g5/figures/figure3_nov_calibration.png \
+            outputs/g5/figures/figureS1_known_truth.png; do
+            test -s "$f" || { echo "missing rebuilt figure: $f"; exit 1; }
+          done
+
+      - name: Verify rebuilt validation values against frozen summaries
+        run: |
+          python - <<'PY'
+          import csv, json, math, statistics
+          from pathlib import Path
+          from causal_model.nov_calibration import run_calibration
+
+          frozen = json.loads(Path('paper/results/submission_validation_summary.json').read_text())
+
+          with open('outputs/known_truth_benchmark/recovery_by_noise.csv', newline='', encoding='utf-8') as f:
+              rows = list(csv.DictReader(f))
+          expected = {float(r['noise_rate']): r for r in frozen['known_truth']['by_noise']}
+          assert len(rows) == len(expected) == 3
+          for row in rows:
+              noise = float(row['noise_rate'])
+              target = expected[noise]
+              for csv_key, frozen_key in (
+                  ('mean_accuracy', 'mean_accuracy'),
+                  ('mean_precision', 'mean_precision'),
+                  ('mean_recall', 'mean_recall'),
+                  ('mean_f1', 'mean_f1'),
+                  ('mean_abs_ca_error', 'mean_ca_error'),
+                  ('mean_R_RACH', 'mean_R_RACH'),
+                  ('mean_D_RACH', 'mean_D_RACH'),
+              ):
+                  assert abs(float(row[csv_key]) - float(target[frozen_key])) < 5e-4, (noise, csv_key)
+
+          res = run_calibration()
+          nov = frozen['nov_calibration']
+          assert res.R0 == float(nov['R0'])
+          assert res.n_accepted == int(nov['n_accepted'])
+          max_diff = max(abs(a-b) for _, a, b in res.exactness)
+          assert max_diff == float(nov['filter_vs_fresh_reinference']['max_absolute_difference']) == 0.0
+
+          by_obs = {}
+          evsi = {}
+          for obs, value, _truth, realised in res.calibration:
+              by_obs.setdefault(obs, []).append(realised)
+              evsi[obs] = value
+          xs, ys = [], []
+          for obs, vals in by_obs.items():
+              xs.append(evsi[obs]); ys.append(statistics.mean(vals))
+          mx, my = statistics.mean(xs), statistics.mean(ys)
+          cov = sum((x-mx)*(y-my) for x,y in zip(xs,ys))
+          sx = math.sqrt(sum((x-mx)**2 for x in xs))
+          sy = math.sqrt(sum((y-my)**2 for y in ys))
+          r = cov/(sx*sy)
+          target_r = float(nov['predictive_vs_realised']['pearson_r_evsi_vs_mean_realised_gain'])
+          assert abs(r-target_r) < 1e-12
+          print('frozen validation reproduction OK')
+          PY
+
+      - name: Build and audit rach wheel
+        run: |
+          rm -rf build dist *.egg-info
+          python -m build --wheel
+          python scripts/check_wheel_boundary.py --dist-dir dist --output outputs/g5/wheel_audit.json
+          python -m pip install --force-reinstall --no-deps dist/rach-*.whl
+          cd /tmp
+          python - <<'PY'
+          import causal_model as rach
+          forbidden = {
+              'heuristic_next_observation_value', 'expected_edge_cuts',
+              'filter_by_outcome', 'CausalStructure', 'score_causal_structure',
+              'install_rule_transition_contracts',
+          }
+          assert not (forbidden & set(rach.__all__))
+          assert 'next_observation_evsi' in rach.__all__
+          assert 'run_rach_seq' in rach.__all__
+          print('installed wheel public API OK')
+          PY
+
+      - name: Write G5 reproducibility summary
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, platform
+          from pathlib import Path
+
+          figures = {}
+          for p in sorted(Path('outputs/g5/figures').glob('*.png')):
+              figures[p.name] = {
+                  'bytes': p.stat().st_size,
+                  'sha256': hashlib.sha256(p.read_bytes()).hexdigest(),
+              }
+          wheel_audit = json.loads(Path('outputs/g5/wheel_audit.json').read_text())
+          payload = {
+              'schema_version': 1,
+              'g5_status': 'pass',
+              'code_commit_sha': os.environ['GITHUB_SHA'],
+              'python': platform.python_version(),
+              'figure_inventory': 'paper/final_figure_inventory.json',
+              'figures': figures,
+              'wheel_audit': wheel_audit,
+              'submission_bundle_check': 'pass',
+              'repository_boundary_check': 'pass',
+              'frozen_validation_reproduction': 'pass',
+              'note': 'The separate CI workflow supplies the Python 3.10-3.12 full-test matrix for the same user-triggered G5 commit.'
+          }
+          out = Path('outputs/g5/g5_reproducibility_summary.json')
+          out.write_text(json.dumps(payload, indent=2, sort_keys=True)+'\n')
+          print(out.read_text())
+          PY
+
+      - name: Upload clean G5 bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: g5-reproducibility-${{ github.sha }}
+          path: |
+            outputs/g5/
+            dist/rach-*.whl
+          if-no-files-found: error
+          retention-days: 90
