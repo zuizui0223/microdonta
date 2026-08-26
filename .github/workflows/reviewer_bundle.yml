@@ -1,0 +1,73 @@
+name: MEE anonymous reviewer bundle
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build-review-bundle:
+    if: contains(github.event.head_commit.message, '[reviewer-bundle]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install reviewer-build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pandas matplotlib pytest
+
+      - name: Verify scientific, MEE and repository boundaries
+        run: |
+          python paper/check_submission_bundle.py
+          python paper/check_mee_submission.py
+          python scripts/check_repository_boundaries.py
+
+      - name: Rebuild final reviewer figures
+        run: |
+          mkdir -p outputs/g5/figures
+          python -m causal_model.confound_demo \
+            --figure outputs/g5/figures/figure1_confound.png
+          python paper/make_g2_figure.py \
+            --output outputs/g5/figures/figure2_g2_frozen_v2.png
+          python -m causal_model.nov_calibration \
+            --figure outputs/g5/figures/figure3_nov_calibration.png
+          python -m causal_model.known_truth_benchmark \
+            --figure outputs/g5/figures/figureS1_known_truth.png
+
+      - name: Build anonymous reviewer bundle
+        run: |
+          python paper/build_reviewer_bundle.py \
+            --output-dir outputs/mee/reviewer_bundle \
+            --figures-dir outputs/g5/figures
+
+      - name: Test extracted reviewer code snapshot
+        run: |
+          cd outputs/mee/reviewer_bundle
+          PYTHONPATH=. pytest -q tests
+
+      - name: Verify anonymity and write archive digest
+        run: |
+          ! grep -R -i -E 'Ruiqi Zhang|Kyoto University|rachelzhang0223|github.com/zuizui0223' outputs/mee/reviewer_bundle
+          ! grep -R -E '\b[0-9a-fA-F]{40}\b' outputs/mee/reviewer_bundle --include='*.md' --include='*.txt' --include='*.json' --include='*.py'
+          sha256sum outputs/mee/reviewer_bundle.zip | tee outputs/mee/reviewer_bundle_zip.sha256
+          test -s outputs/mee/reviewer_bundle/bundle_manifest.json
+
+      - name: Upload anonymous reviewer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mee-anonymous-reviewer-bundle-${{ github.sha }}
+          path: |
+            outputs/mee/reviewer_bundle.zip
+            outputs/mee/reviewer_bundle_zip.sha256
+          if-no-files-found: error
+          retention-days: 90
