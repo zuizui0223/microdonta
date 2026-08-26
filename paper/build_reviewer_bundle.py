@@ -124,13 +124,13 @@ def test_reviewer_api_is_exact_primary_rach_surface():
     assert all(hasattr(rach, name) for name in EXPECTED)
 
 
-def test_excluded_compatibility_programs_are_absent_from_reviewer_root():
+def test_compatibility_helpers_are_not_advertised_as_primary_api():
     forbidden = {
         "install_rule_transition_contracts", "CausalStructure",
         "score_causal_structure", "heuristic_next_observation_value",
         "expected_edge_cuts", "filter_by_outcome",
     }
-    assert not (forbidden & set(rach.__dict__))
+    assert not (forbidden & set(rach.__all__))
 '''
 
 
@@ -197,9 +197,6 @@ def scientific_module_closure() -> list[Path]:
         for dep in dependencies(path):
             dep_rel = dep.relative_to(ROOT).as_posix()
             if any(part in dep_rel for part in DENY_MODULE_PARTS):
-                # A local optional/compatibility import must not widen the review
-                # closure. If it is actually needed by primary tests, pytest will
-                # fail after extraction and expose that dependency explicitly.
                 continue
             if dep not in seen:
                 pending.append(dep)
@@ -246,7 +243,7 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
     copy_text(ROOT / "paper/mee_manuscript_draft.md", output_dir / "review_manuscript.md")
     copy_text(ROOT / "paper/supporting_information.md", output_dir / "supporting_information.md")
 
-    readme = """# Anonymous reviewer code and evidence bundle\n\nThis snapshot contains only the scientific files needed to evaluate the submitted RACH Research Article. Author/title-page metadata, public repository URLs, public Git commit identifiers, apps, provisional ecological-rule programs and structure-discovery code are intentionally excluded for double-anonymous review.\n\n`causal_model/` is the runnable primary RACH/theorem snapshot. `reference_sources/` contains exact source files for auxiliary frozen validations and the one-step ecological projection whose optional broader backend dependencies are intentionally not expanded into the review package.\n\n## Minimal environment\n\n```bash\npython -m pip install -r requirements-review.txt\nPYTHONPATH=. pytest -q tests\n```\n\nThe frozen G2 protocol and result summaries are under `frozen/`. Figure 1–3 and Figure S1 are under `figures/`. `bundle_manifest.json` gives SHA-256 hashes for every included file.\n"""
+    readme = """# Anonymous reviewer code and evidence bundle\n\nThis snapshot contains only the scientific files needed to evaluate the submitted RACH Research Article. Author/title-page metadata, public repository URLs, public Git commit identifiers, apps, provisional ecological-rule programs and structure-discovery code are intentionally excluded for double-anonymous review.\n\n`causal_model/` is the runnable primary RACH/theorem snapshot. `reference_sources/` contains exact source files for auxiliary frozen validations and the one-step ecological projection whose optional broader backend dependencies are intentionally not expanded into the review package.\n\n## Minimal environment\n\n```bash\npython -m pip install -r requirements-review.txt\nPYTHONPATH=. python -m pytest --rootdir=. -q tests\n```\n\nThe frozen G2 protocol and result summaries are under `frozen/`. Figure 1–3 and Figure S1 are under `figures/`. `bundle_manifest.json` gives SHA-256 hashes for every included file.\n"""
     write_review_text(output_dir / "README_FOR_REVIEW.md", readme)
     write_review_text(output_dir / "requirements-review.txt", "numpy>=1.24\npandas>=2.0\nmatplotlib>=3.7\npytest>=7\n")
 
@@ -305,6 +302,10 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
         rel = path.relative_to(output_dir).as_posix()
         if rel == "bundle_manifest.json":
             continue
+        # File-boundary contract: excluded programs may not be present even if
+        # they would not be advertised through the public API.
+        if any(part in rel for part in DENY_MODULE_PARTS):
+            raise SystemExit(f"excluded program file in reviewer bundle: {rel}")
         manifest["files"][rel] = {"bytes": path.stat().st_size, "sha256": sha256(path)}
     manifest_path = output_dir / "bundle_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
