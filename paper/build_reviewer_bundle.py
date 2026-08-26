@@ -17,10 +17,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Do not seed the repository __init__.py: it deliberately retains compatibility
+# imports for old applications, including supplementary rule-transition contracts.
+# The reviewer bundle generates a primary-RACH-only package root below.
 SEED_MODULES = [
-    "causal_model/__init__.py",
     "causal_model/causal_admissibility.py",
     "causal_model/causal_replaceability.py",
+    "causal_model/mechanism_equivalence.py",
     "causal_model/nov_evsi.py",
     "causal_model/rach_seq.py",
     "causal_model/generality_sweep.py",
@@ -32,11 +35,16 @@ SEED_MODULES = [
     "causal_model/colonization_recruitment_factorization.py",
     "causal_model/theorem_projection_ledger.py",
 ]
+
+# Reviewer tests target the claims actually exposed to peer review rather than
+# repository compatibility/history contracts.
 TEST_FILES = [
-    "tests/test_public_rach_api.py",
+    "tests/test_nov_evsi.py",
     "tests/test_rach_seq_predictive_reweighting.py",
-    "tests/test_g2_frozen_protocol.py",
-    "tests/test_rach_imports.py",
+    "tests/test_rach_seq_nov_selection.py",
+    "tests/test_channel_identifiability_theory.py",
+    "tests/test_proxy_calibration_theory.py",
+    "tests/test_causal_replaceability.py",
 ]
 DENY_MODULE_PARTS = {
     "structure_discovery",
@@ -53,6 +61,87 @@ FORBIDDEN_TEXT = (
 )
 COMMIT_SHA_RE = re.compile(r"(?<![0-9a-f])\b[0-9a-f]{40}\b(?![0-9a-f])", re.I)
 
+PRIMARY_INIT = '''"""Primary RACH API snapshot for double-anonymous peer review."""
+from . import causal_admissibility
+from . import rach_seq
+
+CandidateObservation = causal_admissibility.CandidateObservation
+CandidateOutcome = causal_admissibility.CandidateOutcome
+CausalAdmissibilityResult = causal_admissibility.CausalAdmissibilityResult
+ObservationContribution = causal_admissibility.ObservationContribution
+RACHSummary = causal_admissibility.RACHSummary
+compute_causal_admissibility = causal_admissibility.causal_admissibility
+causal_degeneracy = causal_admissibility.causal_degeneracy
+causal_resolvability = causal_admissibility.causal_resolvability
+observation_contribution = causal_admissibility.observation_contribution
+rach_summary = causal_admissibility.rach_summary
+
+SeqResult = rach_seq.SeqResult
+SeqStep = rach_seq.SeqStep
+run_rach_seq = rach_seq.rach_seq
+
+from .nov_evsi import EVSIResult, next_observation_evsi
+from .causal_replaceability import (
+    CRCResult,
+    causal_replaceability_cost,
+    causal_replaceability_cost_full,
+    crc_profile,
+    crc_profile_full,
+)
+from .mechanism_equivalence import mechanism_equivalence_structure
+
+__all__ = [
+    "CandidateObservation",
+    "CandidateOutcome",
+    "CausalAdmissibilityResult",
+    "CRCResult",
+    "EVSIResult",
+    "ObservationContribution",
+    "RACHSummary",
+    "SeqResult",
+    "SeqStep",
+    "compute_causal_admissibility",
+    "causal_degeneracy",
+    "causal_replaceability_cost",
+    "causal_replaceability_cost_full",
+    "causal_resolvability",
+    "crc_profile",
+    "crc_profile_full",
+    "mechanism_equivalence_structure",
+    "next_observation_evsi",
+    "observation_contribution",
+    "run_rach_seq",
+    "rach_summary",
+]
+'''
+
+REVIEW_API_TEST = '''import causal_model as rach
+
+EXPECTED = {
+    "CandidateObservation", "CandidateOutcome", "CausalAdmissibilityResult",
+    "CRCResult", "EVSIResult", "ObservationContribution", "RACHSummary",
+    "SeqResult", "SeqStep", "compute_causal_admissibility",
+    "causal_degeneracy", "causal_replaceability_cost",
+    "causal_replaceability_cost_full", "causal_resolvability", "crc_profile",
+    "crc_profile_full", "mechanism_equivalence_structure",
+    "next_observation_evsi", "observation_contribution", "run_rach_seq",
+    "rach_summary",
+}
+
+def test_reviewer_api_is_exact_primary_rach_surface():
+    assert set(rach.__all__) == EXPECTED
+    assert all(hasattr(rach, name) for name in EXPECTED)
+
+
+def test_excluded_compatibility_programs_are_absent_from_reviewer_root():
+    forbidden = {
+        "install_rule_transition_contracts", "CausalStructure",
+        "score_causal_structure", "heuristic_next_observation_value",
+        "expected_edge_cuts", "filter_by_outcome",
+    }
+    assert not (forbidden & set(rach.__dict__))
+'''
+
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -60,12 +149,13 @@ def sha256(path: Path) -> str:
 
 def local_module_path(module: str) -> Path | None:
     if module == "causal_model":
-        p = ROOT / "causal_model" / "__init__.py"
-    elif module.startswith("causal_model."):
-        p = ROOT / (module.replace(".", "/") + ".py")
-    else:
+        # Importing the package root in repository code must not pull its
+        # compatibility __init__ into the review snapshot.
         return None
-    return p if p.exists() else None
+    if module.startswith("causal_model."):
+        p = ROOT / (module.replace(".", "/") + ".py")
+        return p if p.exists() else None
+    return None
 
 
 def relative_module_path(current: Path, level: int, module: str | None) -> Path | None:
@@ -80,15 +170,16 @@ def relative_module_path(current: Path, level: int, module: str | None) -> Path 
     candidate = ROOT.joinpath(*package_parts).with_suffix(".py")
     if candidate.exists():
         return candidate
-    candidate = ROOT.joinpath(*package_parts, "__init__.py")
-    return candidate if candidate.exists() else None
+    # Do not recurse into repository package __init__.py files. The review root
+    # is generated explicitly and subpackages are not part of the primary RACH
+    # surface used here.
+    return None
 
 
 def dependencies(path: Path) -> set[Path]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     found: set[Path] = set()
     for node in ast.walk(tree):
-        dep: Path | None = None
         if isinstance(node, ast.Import):
             for alias in node.names:
                 dep = local_module_path(alias.name)
@@ -99,6 +190,8 @@ def dependencies(path: Path) -> set[Path]:
                 dep = relative_module_path(path, node.level, node.module)
             elif node.module:
                 dep = local_module_path(node.module)
+            else:
+                dep = None
             if dep:
                 found.add(dep)
     return found
@@ -127,23 +220,28 @@ def redact_result_summary(src: Path) -> dict:
         data.pop(key, None)
     artifact = data.get("artifact")
     if isinstance(artifact, dict):
-        # Keep the content digest and scientific row checks, remove GitHub-facing ids/names.
         artifact.pop("id", None)
         artifact.pop("name", None)
     return data
 
 
-def assert_anonymous_text(label: str, text: str, *, allow_commit_sha: bool = False) -> None:
+def assert_anonymous_text(label: str, text: str) -> None:
     for token in FORBIDDEN_TEXT:
         if token.lower() in text.lower():
             raise SystemExit(f"identifying token in reviewer bundle {label}: {token}")
-    if not allow_commit_sha and COMMIT_SHA_RE.search(text):
+    if COMMIT_SHA_RE.search(text):
         raise SystemExit(f"Git commit-like SHA in reviewer bundle {label}")
 
 
 def copy_text(src: Path, dst: Path) -> None:
     text = src.read_text(encoding="utf-8")
     assert_anonymous_text(str(src.relative_to(ROOT)), text)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_text(text, encoding="utf-8")
+
+
+def write_review_text(dst: Path, text: str) -> None:
+    assert_anonymous_text(str(dst), text)
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(text, encoding="utf-8")
 
@@ -157,27 +255,38 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
     copy_text(ROOT / "paper/supporting_information.md", output_dir / "supporting_information.md")
 
     readme = """# Anonymous reviewer code and evidence bundle\n\nThis snapshot contains only the scientific files needed to evaluate the submitted RACH Research Article. Author/title-page metadata, public repository URLs, public Git commit identifiers, apps, provisional ecological-rule programs and structure-discovery code are intentionally excluded for double-anonymous review.\n\n## Minimal environment\n\n```bash\npython -m pip install -r requirements-review.txt\nPYTHONPATH=. pytest -q tests\n```\n\nThe frozen G2 protocol and result summaries are under `frozen/`. Figure 1–3 and Figure S1 are under `figures/`. `bundle_manifest.json` gives SHA-256 hashes for every file in this bundle.\n"""
-    (output_dir / "README_FOR_REVIEW.md").write_text(readme, encoding="utf-8")
-    (output_dir / "requirements-review.txt").write_text(
-        "numpy>=1.24\npandas>=2.0\nmatplotlib>=3.7\npytest>=7\n", encoding="utf-8"
+    write_review_text(output_dir / "README_FOR_REVIEW.md", readme)
+    write_review_text(
+        output_dir / "requirements-review.txt",
+        "numpy>=1.24\npandas>=2.0\nmatplotlib>=3.7\npytest>=7\n",
     )
 
     for src in scientific_module_closure():
         copy_text(src, output_dir / src.relative_to(ROOT))
+
+    # Generate a publication-surface package root rather than copying the
+    # repository compatibility root.
+    write_review_text(output_dir / "causal_model/__init__.py", PRIMARY_INIT)
+
     for rel in TEST_FILES:
         copy_text(ROOT / rel, output_dir / rel)
+    write_review_text(output_dir / "tests/test_reviewer_public_api.py", REVIEW_API_TEST)
 
     frozen = output_dir / "frozen"
     frozen.mkdir()
     copy_text(ROOT / "paper/g2_frozen_benchmark_protocol.json", frozen / "g2_protocol.json")
-    (frozen / "g2_summary.json").write_text(
-        json.dumps(redact_result_summary(ROOT / "paper/results/g2_frozen_v2_summary.json"), indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    (frozen / "submission_validation_summary.json").write_text(
-        json.dumps(redact_result_summary(ROOT / "paper/results/submission_validation_summary.json"), indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    g2_json = json.dumps(
+        redact_result_summary(ROOT / "paper/results/g2_frozen_v2_summary.json"),
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+    validation_json = json.dumps(
+        redact_result_summary(ROOT / "paper/results/submission_validation_summary.json"),
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+    write_review_text(frozen / "g2_summary.json", g2_json)
+    write_review_text(frozen / "submission_validation_summary.json", validation_json)
     copy_text(ROOT / "paper/final_figure_inventory.json", frozen / "figure_inventory.json")
 
     expected_figures = {
@@ -194,7 +303,6 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
             raise SystemExit(f"missing rebuilt reviewer figure: {src}")
         shutil.copy2(src, out_fig / name)
 
-    # Scan all text files after generated redactions/copies.
     for path in output_dir.rglob("*"):
         if path.is_file() and path.suffix.lower() in {".md", ".py", ".json", ".txt"}:
             assert_anonymous_text(path.relative_to(output_dir).as_posix(), path.read_text(encoding="utf-8"))
