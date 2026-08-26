@@ -1,27 +1,50 @@
 {
-  "schema_version": "1.0",
-  "updated_on": "2026-08-24",
+  "schema_version": "2.0",
+  "updated_on": "2026-08-26",
   "source_programme": "zuizui0223/izu-core",
   "target_framework": "microdonta/RACH",
-  "role": "future_empirical_translation_not_current_izu_core_submission_blocker",
+  "role": "epistemically_resolved_empirically_open_translation_tracks_not_current_submission_blockers",
+  "resolution_semantics": {
+    "epistemic_resolution": "Whether the estimand, identifiability boundary, required observations, forbidden proxy substitutions, and completion condition have been specified well enough to make the question falsifiable.",
+    "empirical_resolution": "Whether a qualifying real system has actually supplied the required observations and established the empirical causal claim.",
+    "paper_boundary": "The current microdonta Methods claim requires epistemic resolution of these inherited questions, not empirical confirmation of all three ecological claims."
+  },
   "tracks": [
     {
       "track_id": "signed_functional_starting_position",
-      "status": "blocked_for_direct_empirical_test",
+      "epistemic_resolution": "closed_as_falsifiable_measurement_contract",
+      "empirical_resolution": "open_no_mapping_ready_real_test",
+      "methods_question_resolved": true,
+      "empirical_claim_established": false,
       "microdonta_role": "next_observation_and_proxy_calibration",
-      "izu_core_submission_blocker": false
+      "closure_object": "signed_position = plant_matching_trait - pollinator_functional_center, with compatible units and outcome-blind sign convention",
+      "empirical_completion_trigger": "A prespecified real comparison supplies plant trait, source-native pollinator functional center, compatible signed mapping, downstream response, hierarchy and uncertainty.",
+      "izu_core_submission_blocker": false,
+      "microdonta_submission_blocker": false
     },
     {
       "track_id": "network_context_effective_service",
-      "status": "partial_empirical_bridges_only_no_mapping_ready_system",
+      "epistemic_resolution": "closed_as_channel_measurement_and_proxy_calibration_problem",
+      "empirical_resolution": "open_partial_bridges_no_mapping_ready_system",
+      "methods_question_resolved": true,
+      "empirical_claim_established": false,
       "microdonta_role": "channel_measurement_and_proxy_calibration",
-      "izu_core_submission_blocker": false
+      "closure_object": "effective_service = sum_k(visitor_rate_k * direct_effectiveness_k); abundance, identity, richness and degree are proxies unless calibrated",
+      "empirical_completion_trigger": "One matched hierarchy supplies visitor-specific rates, direct per-visit effectiveness, local context and downstream reproductive outcome.",
+      "izu_core_submission_blocker": false,
+      "microdonta_submission_blocker": false
     },
     {
       "track_id": "complete_service_dependency_response_bridge",
-      "status": "multiple_partial_bridges_zero_complete_bridge",
+      "epistemic_resolution": "closed_as_sequential_missing_link_observation_problem",
+      "empirical_resolution": "open_zero_complete_bridge_systems",
+      "methods_question_resolved": true,
+      "empirical_claim_established": false,
       "microdonta_role": "RACH_SEQ_observation_package",
-      "izu_core_submission_blocker": false
+      "closure_object": "pollinator functional change -> effective service -> reproductive dependency/autonomous assurance -> downstream response, with every middle link observed rather than inferred",
+      "empirical_completion_trigger": "At least one independent system supplies all four links on the same or prespecified compatible units with hierarchy, uncertainty and provenance.",
+      "izu_core_submission_blocker": false,
+      "microdonta_submission_blocker": false
     }
   ],
   "protected_boundaries": [
@@ -29,6 +52,7 @@
     "do_not_equate_unsigned_matching_with_signed_functional_position",
     "do_not_equate_the_synthetic_ABM_coordinate_with_one_named_empirical_trait_without_a_mapping_gate",
     "do_not_infer_missing_causal_links_from_adjacent_observations",
-    "do_not_treat_these_tracks_as_required_for_the_current_izu_core_island_ecology_submission"
+    "do_not_call_a_track_empirically_solved_merely_because_its_identifiability_and_measurement_contract_is_closed",
+    "do_not_treat_empirical_completion_of_these_tracks_as_required_for_the_current_izu_core_or_microdonta_methods_submission"
   ]
 }
