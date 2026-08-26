@@ -1,9 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "package": "rach",
   "version": "0.1.0",
   "suggested_release_tag": "v0.1.0",
-  "status": "scientific_and_reproducibility_gates_pass",
+  "status": "scientific_reproducibility_and_mee_structure_gates_pass",
   "validated_code_commit_sha": "d67eb2d22387334477e94ca8ecd0d58ac070c4a0",
   "g2": {
     "status": "pass",
@@ -16,6 +16,19 @@
     "summary": "paper/results/g5_reproducibility_summary.json",
     "wheel_sha256": "f97308f99caf59a6dd13931e738cee803054c0864b66c4d93db5c944f72f0fa8"
   },
+  "publication_preparation": {
+    "primary_literature_audit": "pass",
+    "campanula_audit_record": "paper/campanula_primary_literature_audit.md",
+    "journal": "Methods in Ecology and Evolution",
+    "article_type": "Research Article",
+    "mee_format_gate": "paper/check_mee_submission.py",
+    "abstract_words_at_format_freeze": 300,
+    "keywords_at_format_freeze": 7,
+    "conservative_manuscript_words_at_format_freeze": 5780,
+    "double_anonymous_main_manuscript": true,
+    "title_page_separated": true,
+    "ai_assistance_disclosed_in_methods": true
+  },
   "public_api": "frozen_by_tests/test_public_rach_api.py",
   "release_metadata": {
     "license": "MIT",
@@ -24,12 +37,16 @@
   },
   "archival_doi": {
     "status": "not_minted",
-    "reason": "DOI minting requires an external archival service/repository integration and is not a scientific or reproducibility code gate.",
-    "action_before_formal_release": "Mint archival DOI externally and add it to CITATION.cff/release metadata without changing frozen scientific results."
+    "reason": "DOI minting requires an external archival service/repository integration and is not a scientific, reproducibility, or manuscript-structure code gate.",
+    "action_before_formal_release": "Mint archival DOI externally after the exact submission files are frozen, then add it to CITATION.cff/release metadata without changing frozen scientific results."
   },
-  "manuscript_editorial_followup": [
-    "complete the final primary-source/reference audit for the prospective Campanula prose",
-    "format manuscript and figures to journal submission requirements",
+  "remaining_publication_operations": [
+    "prepare an anonymised reviewer code/data bundle from the frozen submission surface",
+    "fill human-supplied title-page metadata: correspondence email, ORCID, funding, and acknowledgements",
+    "complete the full Supporting Information text from the frozen outline without promoting excluded exploratory programs",
+    "export the review manuscript with journal-appropriate line numbering, page numbering, and spacing",
+    "prepare the cover letter",
+    "tag the exact submission commit as v0.1.0 when the submission bundle is frozen",
     "mint and record an archival DOI when the external archive is ready"
   ],
   "science_freeze_policy": "Any change to G2 scientific parameters, primary inference semantics, or frozen numerical claims requires a new protocol/version rather than silent replacement of v0.1.0 evidence."
