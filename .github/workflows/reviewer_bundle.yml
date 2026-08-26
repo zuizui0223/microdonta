@@ -5,7 +5,7 @@ on:
     branches: ["main"]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-review-bundle:
@@ -20,6 +20,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Remove public commit provenance from review manuscript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('paper/mee_manuscript_draft.md')
+          text = p.read_text(encoding='utf-8')
+          old = '; execution commit `f343c2361db28c0b3e528b882b3370eda5abf5ed`'
+          new = '; review-code snapshot included in the anonymised reviewer bundle'
+          assert text.count(old) == 1, text.count(old)
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
 
       - name: Install reviewer-build dependencies
         run: |
@@ -71,3 +83,12 @@ jobs:
             outputs/mee/reviewer_bundle_zip.sha256
           if-no-files-found: error
           retention-days: 90
+
+      - name: Commit anonymous review provenance wording
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add paper/mee_manuscript_draft.md
+          git diff --cached --quiet && { echo 'no anonymisation change'; exit 1; }
+          git commit -m '[review-provenance-anonymised] remove searchable Git commit from review manuscript'
+          git push origin HEAD:main
