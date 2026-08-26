@@ -65,7 +65,15 @@ jobs:
       - name: Test extracted reviewer code snapshot
         run: |
           cd outputs/mee/reviewer_bundle
-          PYTHONPATH=. pytest -q tests
+          python - <<'PY'
+          from pathlib import Path
+          import causal_model
+          root = Path.cwd().resolve()
+          loaded = Path(causal_model.__file__).resolve()
+          print('reviewer causal_model:', loaded)
+          assert root in loaded.parents, (root, loaded)
+          PY
+          PYTHONPATH=. python -m pytest --rootdir=. -q tests
 
       - name: Verify anonymity and write archive digest
         run: |
