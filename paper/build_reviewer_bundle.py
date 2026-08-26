@@ -17,27 +17,31 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Do not seed the repository __init__.py: it deliberately retains compatibility
-# imports for old applications, including supplementary rule-transition contracts.
-# The reviewer bundle generates a primary-RACH-only package root below.
-SEED_MODULES = [
+# Runnable reviewer code: only the primary inference/theorem surface and the
+# frozen synthetic selection benchmark. Repository compatibility/ABM programs
+# are deliberately outside this dependency closure.
+RUNNABLE_SEEDS = [
     "causal_model/causal_admissibility.py",
     "causal_model/causal_replaceability.py",
     "causal_model/mechanism_equivalence.py",
     "causal_model/nov_evsi.py",
     "causal_model/rach_seq.py",
     "causal_model/generality_sweep.py",
-    "causal_model/known_truth_benchmark.py",
-    "causal_model/nov_calibration.py",
-    "causal_model/confound_demo.py",
     "causal_model/channel_identifiability_theory.py",
     "causal_model/proxy_calibration_theory.py",
-    "causal_model/colonization_recruitment_factorization.py",
     "causal_model/theorem_projection_ledger.py",
 ]
 
-# Reviewer tests target the claims actually exposed to peer review rather than
-# repository compatibility/history contracts.
+# These are scientifically relevant source implementations but contain optional
+# local imports into broader proxy/ABM machinery. Reviewers receive the exact
+# source text without recursively importing that non-primary compatibility layer.
+REFERENCE_SOURCES = [
+    "causal_model/known_truth_benchmark.py",
+    "causal_model/nov_calibration.py",
+    "causal_model/confound_demo.py",
+    "causal_model/colonization_recruitment_factorization.py",
+]
+
 TEST_FILES = [
     "tests/test_nov_evsi.py",
     "tests/test_rach_seq_predictive_reweighting.py",
@@ -91,26 +95,13 @@ from .causal_replaceability import (
 from .mechanism_equivalence import mechanism_equivalence_structure
 
 __all__ = [
-    "CandidateObservation",
-    "CandidateOutcome",
-    "CausalAdmissibilityResult",
-    "CRCResult",
-    "EVSIResult",
-    "ObservationContribution",
-    "RACHSummary",
-    "SeqResult",
-    "SeqStep",
-    "compute_causal_admissibility",
-    "causal_degeneracy",
-    "causal_replaceability_cost",
-    "causal_replaceability_cost_full",
-    "causal_resolvability",
-    "crc_profile",
-    "crc_profile_full",
-    "mechanism_equivalence_structure",
-    "next_observation_evsi",
-    "observation_contribution",
-    "run_rach_seq",
+    "CandidateObservation", "CandidateOutcome", "CausalAdmissibilityResult",
+    "CRCResult", "EVSIResult", "ObservationContribution", "RACHSummary",
+    "SeqResult", "SeqStep", "compute_causal_admissibility",
+    "causal_degeneracy", "causal_replaceability_cost",
+    "causal_replaceability_cost_full", "causal_resolvability", "crc_profile",
+    "crc_profile_full", "mechanism_equivalence_structure",
+    "next_observation_evsi", "observation_contribution", "run_rach_seq",
     "rach_summary",
 ]
 '''
@@ -149,8 +140,6 @@ def sha256(path: Path) -> str:
 
 def local_module_path(module: str) -> Path | None:
     if module == "causal_model":
-        # Importing the package root in repository code must not pull its
-        # compatibility __init__ into the review snapshot.
         return None
     if module.startswith("causal_model."):
         p = ROOT / (module.replace(".", "/") + ".py")
@@ -168,12 +157,7 @@ def relative_module_path(current: Path, level: int, module: str | None) -> Path 
     if not package_parts:
         return None
     candidate = ROOT.joinpath(*package_parts).with_suffix(".py")
-    if candidate.exists():
-        return candidate
-    # Do not recurse into repository package __init__.py files. The review root
-    # is generated explicitly and subpackages are not part of the primary RACH
-    # surface used here.
-    return None
+    return candidate if candidate.exists() else None
 
 
 def dependencies(path: Path) -> set[Path]:
@@ -198,7 +182,7 @@ def dependencies(path: Path) -> set[Path]:
 
 
 def scientific_module_closure() -> list[Path]:
-    pending = [ROOT / p for p in SEED_MODULES]
+    pending = [ROOT / p for p in RUNNABLE_SEEDS]
     seen: set[Path] = set()
     while pending:
         path = pending.pop()
@@ -208,9 +192,17 @@ def scientific_module_closure() -> list[Path]:
             raise SystemExit(f"missing reviewer seed/dependency: {path.relative_to(ROOT)}")
         rel = path.relative_to(ROOT).as_posix()
         if any(part in rel for part in DENY_MODULE_PARTS):
-            raise SystemExit(f"excluded module entered reviewer dependency closure: {rel}")
+            raise SystemExit(f"excluded module entered runnable reviewer closure: {rel}")
         seen.add(path)
-        pending.extend(dependencies(path) - seen)
+        for dep in dependencies(path):
+            dep_rel = dep.relative_to(ROOT).as_posix()
+            if any(part in dep_rel for part in DENY_MODULE_PARTS):
+                # A local optional/compatibility import must not widen the review
+                # closure. If it is actually needed by primary tests, pytest will
+                # fail after extraction and expose that dependency explicitly.
+                continue
+            if dep not in seen:
+                pending.append(dep)
     return sorted(seen)
 
 
@@ -254,19 +246,18 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
     copy_text(ROOT / "paper/mee_manuscript_draft.md", output_dir / "review_manuscript.md")
     copy_text(ROOT / "paper/supporting_information.md", output_dir / "supporting_information.md")
 
-    readme = """# Anonymous reviewer code and evidence bundle\n\nThis snapshot contains only the scientific files needed to evaluate the submitted RACH Research Article. Author/title-page metadata, public repository URLs, public Git commit identifiers, apps, provisional ecological-rule programs and structure-discovery code are intentionally excluded for double-anonymous review.\n\n## Minimal environment\n\n```bash\npython -m pip install -r requirements-review.txt\nPYTHONPATH=. pytest -q tests\n```\n\nThe frozen G2 protocol and result summaries are under `frozen/`. Figure 1–3 and Figure S1 are under `figures/`. `bundle_manifest.json` gives SHA-256 hashes for every file in this bundle.\n"""
+    readme = """# Anonymous reviewer code and evidence bundle\n\nThis snapshot contains only the scientific files needed to evaluate the submitted RACH Research Article. Author/title-page metadata, public repository URLs, public Git commit identifiers, apps, provisional ecological-rule programs and structure-discovery code are intentionally excluded for double-anonymous review.\n\n`causal_model/` is the runnable primary RACH/theorem snapshot. `reference_sources/` contains exact source files for auxiliary frozen validations and the one-step ecological projection whose optional broader backend dependencies are intentionally not expanded into the review package.\n\n## Minimal environment\n\n```bash\npython -m pip install -r requirements-review.txt\nPYTHONPATH=. pytest -q tests\n```\n\nThe frozen G2 protocol and result summaries are under `frozen/`. Figure 1–3 and Figure S1 are under `figures/`. `bundle_manifest.json` gives SHA-256 hashes for every included file.\n"""
     write_review_text(output_dir / "README_FOR_REVIEW.md", readme)
-    write_review_text(
-        output_dir / "requirements-review.txt",
-        "numpy>=1.24\npandas>=2.0\nmatplotlib>=3.7\npytest>=7\n",
-    )
+    write_review_text(output_dir / "requirements-review.txt", "numpy>=1.24\npandas>=2.0\nmatplotlib>=3.7\npytest>=7\n")
 
     for src in scientific_module_closure():
         copy_text(src, output_dir / src.relative_to(ROOT))
-
-    # Generate a publication-surface package root rather than copying the
-    # repository compatibility root.
     write_review_text(output_dir / "causal_model/__init__.py", PRIMARY_INIT)
+
+    reference_dir = output_dir / "reference_sources"
+    for rel in REFERENCE_SOURCES:
+        src = ROOT / rel
+        copy_text(src, reference_dir / Path(rel).name)
 
     for rel in TEST_FILES:
         copy_text(ROOT / rel, output_dir / rel)
@@ -275,18 +266,14 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
     frozen = output_dir / "frozen"
     frozen.mkdir()
     copy_text(ROOT / "paper/g2_frozen_benchmark_protocol.json", frozen / "g2_protocol.json")
-    g2_json = json.dumps(
-        redact_result_summary(ROOT / "paper/results/g2_frozen_v2_summary.json"),
-        indent=2,
-        sort_keys=True,
-    ) + "\n"
-    validation_json = json.dumps(
-        redact_result_summary(ROOT / "paper/results/submission_validation_summary.json"),
-        indent=2,
-        sort_keys=True,
-    ) + "\n"
-    write_review_text(frozen / "g2_summary.json", g2_json)
-    write_review_text(frozen / "submission_validation_summary.json", validation_json)
+    write_review_text(
+        frozen / "g2_summary.json",
+        json.dumps(redact_result_summary(ROOT / "paper/results/g2_frozen_v2_summary.json"), indent=2, sort_keys=True) + "\n",
+    )
+    write_review_text(
+        frozen / "submission_validation_summary.json",
+        json.dumps(redact_result_summary(ROOT / "paper/results/submission_validation_summary.json"), indent=2, sort_keys=True) + "\n",
+    )
     copy_text(ROOT / "paper/final_figure_inventory.json", frozen / "figure_inventory.json")
 
     expected_figures = {
