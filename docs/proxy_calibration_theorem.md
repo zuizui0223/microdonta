@@ -1,201 +1,235 @@
-# Proxy calibration is the boundary between useful and useless channel observations
+# Proxy calibration is the boundary between point identification, partial identification and non-identification
 
-## Why this theorem is needed
+## Setup
 
-Theorem N2 in `docs/channel_identifiability_theorem.md` states that, for
-
-```text
-W(z) = F(z) E(z),
-```
-
-observing total performance `W` and one mathematical factor (`F` or `E`) is
-sufficient to recover the other by division.
-
-Field measurements, however, are usually not a mathematical factor itself. A
-visitation rate, pollen-load index, fruit set, or landscape-connectivity score is
-a **proxy**. Let a proxy for `F` be
+Let total performance and a proxy for the fecundity/survival channel be
 
 ```text
-X_i(z) = q_i(z) F_i(z),
+W_i(z) = F_i(z) E_i(z)
+X_i(z) = q_i(z) F_i(z)
 ```
 
-where `q_i(z)>0` is the unknown conversion from proxy units to the factor at
-regime/time `i`.
+for regimes `i in {0,1}`, with all quantities strictly positive. The establishment-proxy case is symmetric.
 
-The question is not merely whether a proxy correlates with `F`. The question is:
-
-> **What assumption on the proxy conversion is required for it to break the
-> net-performance non-identifiability?**
-
-The executable finite-grid construction is
-`causal_model.proxy_calibration_theory`.
+The central empirical question is not whether `X` correlates with `F`. It is whether the proxy-to-channel conversion `q_i(z)` is stable enough across the comparison for the desired directional conclusion to survive.
 
 ---
 
-## Theorem N3 — unknown but time-stable proxy calibration identifies changes
+## N3 — stable calibration gives point identification of relative changes
 
-Assume the proxy conversion is stable between before and after states:
-
-```text
-q_0(z) = q_1(z) = q(z) > 0.
-```
-
-Then
+If
 
 ```text
-X_1(z) / X_0(z)
-= [q(z) F_1(z)] / [q(z) F_0(z)]
-= F_1(z) / F_0(z).
+q_0(z) = q_1(z) = q(z) > 0,
 ```
 
-Hence the relative change in the proxied factor is identified despite an unknown,
-trait-dependent absolute calibration:
+then
 
 ```text
-rho_F(z) = F_1(z)/F_0(z) = X_1(z)/X_0(z).
+rho_F(z) = F_1/F_0 = X_1/X_0
 ```
 
-Because
-
-```text
-W_1(z)/W_0(z) = rho_F(z) rho_E(z),
-```
-
-the other channel's relative change follows:
+and, because `W=FE`,
 
 ```text
 rho_E(z)
 = [W_1(z)/W_0(z)] / [X_1(z)/X_0(z)].
 ```
 
-The same derivation holds symmetrically for a stable proxy of `E`.
+Define the stable-calibration plug-in ratio for the unproxied channel as
 
-### Consequence
+```text
+r_tilde(z) = [W_1/W_0] / [X_1/X_0].
+```
 
-> **A channel proxy need not have known absolute calibration to identify relative
-> channel changes. It must have a conversion that is stable across the compared
-> regimes, or whose change is known.**
-
-This is stronger and more usable than demanding a direct assay of a pure
-mathematical factor.
+Unknown absolute calibration is therefore harmless for relative change only under the cross-regime stability condition.
 
 ---
 
-## Theorem N4 — time-varying calibration restores non-identifiability
+## N3b — bounded calibration drift gives a sharp identified set
 
-Now allow the conversion to vary freely:
-
-```text
-X_0(z) = q_0(z) F_0(z)
-X_1(z) = q_1(z) F_1(z).
-```
-
-Then
+To turn N4 from a warning into a sensitivity analysis, define the cross-regime calibration ratio
 
 ```text
-F_1(z)/F_0(z)
-= [X_1(z)/X_0(z)] [q_0(z)/q_1(z)],
+kappa(z) = q_0(z) / q_1(z).
 ```
 
-and therefore
+Prespecify
 
 ```text
-E_1(z)/E_0(z)
-= [W_1(z)/W_0(z)] [X_0(z)/X_1(z)] [q_1(z)/q_0(z)].
+1-delta <= kappa(z) <= 1+delta,
+0 <= delta < 1.
 ```
 
-The unobserved positive ratio
+This `delta` directly bounds the **ratio** `q_0/q_1`. It does not mean that `q_0` and `q_1` are independently within `+/- delta` of a common reference calibration.
+
+For a fecundity proxy,
 
 ```text
-h(z) = q_1(z)/q_0(z)
+rho_E(z) = r_tilde(z) / kappa(z).
 ```
 
-can be arbitrary. Thus the same observed `W_0,W_1,X_0,X_1` is compatible with a
-family of different latent channel changes.
-
-### Constructive proof
-
-Take an observed series with no apparent change:
+Because the map `kappa -> r_tilde/kappa` is continuous and strictly decreasing, the sharp identified set is
 
 ```text
-W_0(z)=W_1(z)=1,
-X_0(z)=X_1(z)=1.
+I_delta[rho_E(z)]
+= [ r_tilde(z)/(1+delta),
+    r_tilde(z)/(1-delta) ].
 ```
 
-One latent explanation sets `q_0=q_1=1`, yielding no change in either channel.
-Another sets `q_0=1` and `q_1=h(z)`, yielding
+Its multiplicative width is
 
 ```text
-F_1/F_0 = 1/h(z),
-E_1/E_0 = h(z).
+sup(I_delta) / inf(I_delta)
+= (1+delta)/(1-delta).
 ```
 
-For any nonconstant `h`, both channels changed in opposite directions, although
-both observed series are exactly unchanged. ∎
+### Sharpness
 
-### Consequence
+Every point of this interval is attainable. For any admissible `kappa`, choose any `q_1>0`, set `q_0=kappa q_1`, then define
 
-> **An uncalibrated proxy is not automatically a channel observation. If its
-> conversion changes across populations, habitats, or regimes, it can reintroduce
-> the same non-identifiability that N2 was meant to solve.**
+```text
+F_i = X_i/q_i
+E_i = W_i/F_i.
+```
+
+This reconstruction exactly reproduces the observed `W_0,W_1,X_0,X_1` and gives `rho_E=r_tilde/kappa`. Therefore the interval is not merely conservative: it is the exact identified set under the stated drift restriction.
+
+The same construction applies symmetrically when `X` proxies `E`.
+
+### Important alternative parameterization
+
+If instead each regime-specific calibration is independently constrained to lie within `+/- delta` of a common reference, then the induced bound is
+
+```text
+(q_0/q_1) in [ (1-delta)/(1+delta),
+               (1+delta)/(1-delta) ],
+```
+
+and the resulting multiplicative interval width is squared. The manuscript and software therefore define `delta` only as a bound on the **between-regime calibration ratio**.
 
 ---
 
-## Combined observation-design boundary
+## Breakdown points
 
-Within the positive multiplicative model:
+The point `rho_E=1` represents no change. A directional conclusion is identified only while the entire interval remains on one side of one.
+
+For an apparent decline `0 < r_tilde < 1`,
 
 ```text
-W only
-    -> insufficient (N1)
-
-W + F, or W + E
-    -> sufficient (N2)
-
-W + proxy X=qF, q stable across comparison
-    -> sufficient for relative channel changes (N3)
-
-W + proxy X=q_i F, q_i unconstrained across comparison
-    -> insufficient (N4)
+r_tilde/(1-delta) < 1
 ```
 
-This is the exact mathematical condition that needs to be carried into an
-empirical design.
+is equivalent to
+
+```text
+delta < 1-r_tilde.
+```
+
+Hence
+
+```text
+delta*_decline = 1-r_tilde.
+```
+
+For an apparent increase `r_tilde>1`,
+
+```text
+r_tilde/(1+delta) > 1
+```
+
+is equivalent to
+
+```text
+delta < r_tilde-1,
+```
+
+so
+
+```text
+delta*_increase = r_tilde-1.
+```
+
+At the breakdown point the interval first **touches** one. The strict directional conclusion therefore holds for `delta < delta*`, not at equality.
+
+Example: if `r_tilde=0.66`, the decline breakdown point is `0.34`. The reviewer-facing statement is:
+
+> The estimated decline has a calibration-drift breakdown point of 34%: the identified set remains entirely below one for between-regime calibration-ratio drift smaller than 34%.
 
 ---
 
-## Ecological interpretation without overclaiming
+## Sampling uncertainty is separate from identification uncertainty
 
-For floral systems, a visit count could be treated as a proxy for a
-pollination/fecundity channel only under an explicit stability argument, for
-example that the conversion from visits to successful pollen deposition and seed
-set is stable over the comparison. A change in visitor quality, pollen carryover,
-floral handling, resource limitation, or selfing could change `q_i(z)`.
-
-Therefore a useful field design does not merely record visit number. It must
-measure or defend the stability of the path
+Let `[L,U]` be a confidence interval for `r_tilde` obtained from the sampling model. Monotonicity gives the conservative region
 
 ```text
-visit -> pollen transfer -> fertilisation -> seed output,
+C_{alpha,delta}
+= [ L/(1+delta), U/(1-delta) ].
 ```
 
-or directly calibrate that path in each regime. Hand-pollination controls,
-pollen-deposition measurements, and trait-specific seed set are examples of
-measurements that can constrain the conversion. They are not automatically valid
-factors; their role depends on the declared biological factorisation.
+A sampling-aware decline conclusion requires
 
-For spatial establishment proxies, a connectivity index has the same issue. It
-only identifies change in `E` if its mapping to realised establishment/recruitment
-is stable or calibrated across the comparison.
+```text
+U/(1-delta) < 1,
+```
+
+or
+
+```text
+delta < 1-U.
+```
+
+Thus `1-r_tilde` is the point-estimate sensitivity breakpoint, whereas `max(0,1-U)` is the sampling-aware breakpoint. They must not be conflated.
+
+---
+
+## N4 — unrestricted calibration drift removes directional identification
+
+If no finite restriction is placed on `kappa=q_0/q_1`, then
+
+```text
+rho_E = r_tilde/kappa
+```
+
+can take any positive value while the observed `W` and `X` remain unchanged. This is unrestricted non-identification.
+
+N4 is the case where the calibration-ratio restriction is removed. It should not be described as the `delta -> 1` limit of the additive interval above, because that parameterization is only one bounded sensitivity family.
+
+---
+
+## Design Rule 1 — anchor and transport
+
+> Directly measure at least one latent channel in an anchor regime. This estimates the local proxy conversion. For every comparison regime, either revalidate that conversion directly or prespecify an admissible between-regime drift set and report the resulting identified interval and breakdown point.
+
+Operationally:
+
+```text
+anchor + justified stable conversion
+    -> point identification (N3)
+
+anchor + bounded between-regime conversion drift
+    -> partial identification + breakdown point (N3b)
+
+proxy-only comparison + unrestricted conversion drift
+    -> no directional identification (N4)
+```
+
+This is the empirical design rule implied by N2-N4. A single direct assay does not license unqualified transport of the calibration across habitats, years or disturbance regimes.
+
+---
+
+## Ecological interpretation
+
+The assumption is especially vulnerable in the comparisons ecologists most want to make: fragmented versus connected habitat, urban versus rural habitat, warm versus cool years, or pollinator communities that differ in visitor identity. In pollination, for example, a visit count can map differently to successful reproduction when pollen deposition, handling, pollen quality, selfing, resource limitation or seed maturation changes. In dispersal and recruitment, the same connectivity proxy can map differently to realised establishment when safe-site availability or post-dispersal survival changes.
+
+The result therefore converts a vague robustness claim into a prespecified sensitivity analysis: report the allowable drift set, the resulting identified interval and the drift at which the biological conclusion ceases to be identified.
 
 ---
 
 ## Scope
 
-- All quantities are strictly positive and the factorisation is multiplicative.
-- N3 identifies **relative change**, not absolute factor magnitudes.
-- The result does not turn a convenient proxy into a valid biological factor. It
-  states the calibration condition required for a proxy to have identifying power
-  within the model.
-- Measurement error can be handled with a declared tolerance, but unknown
-  regime-specific calibration drift is structural rather than sampling noise.
+- All quantities are strictly positive and the declared factorisation is multiplicative.
+- N3-N3b identify relative changes, not absolute factor magnitudes.
+- The bounded-drift set is structural uncertainty, not ordinary sampling noise.
+- A convenient empirical proxy is not automatically a mathematical channel; its biological mapping must still be justified.
+- The same `kappa` links the two reconstructed channel ratios, so joint channel uncertainty is constrained by that common calibration ratio rather than by an arbitrary Cartesian product of marginal intervals.
