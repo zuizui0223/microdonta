@@ -1,16 +1,16 @@
 # From proxy stability to breakdown points: partial identification of multiplicative ecological channels
 
-> **Boundary-paper draft.** This manuscript is separate from the RACH observation-selection submission. Its contribution is the N1–N4 information boundary, the sharp identified set under bounded proxy-calibration drift, and the observation-design rule implied by that boundary.
+> **Boundary-paper draft.** This manuscript is separate from the RACH observation-selection submission. Its contribution is the N1–N4 information boundary, the sharp joint identified set under bounded proxy-calibration drift, and the observation-design and reporting rules implied by that boundary.
 
 ## Abstract
 
 Proxy-based estimates of relative change identify channel-specific change only when the proxy-to-channel conversion is stable across the compared regimes. That assumption is not testable from the net response and proxy observations alone, and it is especially vulnerable in habitat, climate, fragmentation and community-composition contrasts where relative proxy designs are often treated as safest. We formalise this problem for positive multiplicative ecological channels.
 
-Let total performance be `W_i(z)=F_i(z)E_i(z)` and let a proxy for one channel be `X_i(z)=q_i(z)F_i(z)`. Stable conversion gives point identification of relative channel changes (N3), whereas unrestricted conversion drift makes them non-identified (N4). The practically useful result lies between these extremes. If the between-regime calibration ratio `kappa=q_1/q_0` is restricted to `[1-delta,1+delta]`, the complementary-channel ratio has a **sharp identified interval** of multiplicative width `(1+delta)/(1-delta)`. A directional conclusion survives exactly while this interval excludes one, yielding a directly reportable calibration-drift breakdown point. In the worked illustration, the conclusion that establishment decreased survives calibration-ratio drift below 34%; at 34% the identified set first touches no change.
+Let total performance be `W_i(z)=F_i(z)E_i(z)` and let a proxy for one channel be `X_i(z)=q_i(z)F_i(z)`. Stable conversion gives point identification of relative channel changes (N3), whereas unrestricted conversion drift makes them non-identified (N4). The practically useful result lies between these extremes. If the between-regime calibration ratio `kappa=q_1/q_0` is restricted to `[1-delta,1+delta]`, both channel ratios are partially identified. Their marginal intervals have multiplicative width `(1+delta)/(1-delta)`, but they are not independent: the same `kappa` forces `rho_F rho_E=rho_W`. In log-ratio coordinates the sharp joint identified set is therefore a line segment of slope `-1`. A directional conclusion survives exactly while the relevant marginal projection excludes one, yielding a directly reportable calibration-drift breakdown point. In the worked illustration, the conclusion that establishment decreased survives calibration-ratio drift below 34%; at 34% the identified set first touches no change.
 
-We place this result in a broader identification framework. Even the complete net performance curve, all threshold-feasible sets and every geometry or topology derived from them remain net-only and cannot reveal which latent channel changed (N1). One exact channel measurement breaks that equivalence (N2), but transport through a proxy requires either stable calibration or an explicit drift bound. The resulting **anchor-and-transport rule** converts structural non-identification into a field-design prescription.
+We place this result in a broader identification framework. Even the complete net performance curve, all threshold-feasible sets and every geometry or topology derived from them remain net-only and cannot reveal which latent channel changed (N1). One exact channel measurement breaks that equivalence (N2), but transport through a proxy requires either stable calibration or an explicit drift bound. The resulting **anchor-and-transport rule** converts structural non-identification into a field-design prescription. A second operational rule follows from the joint set: calibration uncertainty for the two latent channels must not be reported as independent error bars because the admissible errors are perfectly negatively linked on the log-ratio scale.
 
-The algebra is elementary and related identification arguments are established in structural-identifiability and partial-identification theory. Our contribution is to apply that logic to a recurring ecological measurement architecture, show that apparently rich net-response objects remain non-identifying, derive an operational sharp interval and breakdown point for proxy drift, and turn the boundary into an explicit observation-design rule.
+The algebra is elementary and related identification arguments are established in structural-identifiability and partial-identification theory. Our contribution is to apply that logic to a recurring ecological measurement architecture, show that apparently rich net-response objects remain non-identifying, derive an operational sharp joint set and breakdown point for proxy drift, and turn the boundary into explicit field-design and reporting rules.
 
 ## 1. Introduction
 
@@ -30,13 +30,15 @@ for regimes `i in {0,1}` and trait or state value `z`. Suppose an empirical assa
 X_i(z)=q_i(z)F_i(z),
 ```
 
-where `q_i(z)>0` converts proxy units into the mathematical channel. We ask three questions. First, how much mechanistic information is retained by arbitrarily rich observations of the net response `W`? Second, what assumptions make a proxy comparison identify relative channel changes? Third, when exact stability is not credible but bounded drift is, what set of channel changes remains compatible with the observations?
+where `q_i(z)>0` converts proxy units into the mathematical channel. We ask four questions. First, how much mechanistic information is retained by arbitrarily rich observations of the net response `W`? Second, what assumptions make a proxy comparison identify relative channel changes? Third, when exact stability is not credible but bounded drift is, what set of channel changes remains compatible with the observations? Fourth, how should that set be reported without inventing impossible combinations of the latent channels?
 
 N1 and N2 establish the endpoints for net-response observations. N1 shows that a broad class of seemingly rich objects—the complete `W(z)` curve, all threshold-feasible sets and every edge, width, component count or topology derived from them—remains invariant to reciprocal reallocations between `F` and `E`. N2 shows that one exact channel observation breaks this invariance by division.
 
 N3 and N4 then locate the practically important proxy boundary. N3 shows that unknown absolute calibration cancels from relative comparisons if `q_1=q_0`. N4 shows that if `q_1/q_0` is unrestricted, channel changes can vary arbitrarily while the observed `W` and `X` remain fixed. The main result fills the gap: a defensible bound on calibration drift generates a sharp identified set and a breakdown point. The output is no longer the unhelpful statement that “the proxy may differ,” but a quantitative statement of how much cross-regime calibration drift is required to overturn the biological conclusion.
 
-This is a partial-identification problem in the sense of Manski: the data and assumptions may restrict a target parameter to a set even when they do not point-identify it. Structural identifiability itself is long established in system identification and compartmental modelling. We therefore do not claim that the algebra of non-identification is new. The contribution is ecological and operational: identifying which common ecological observation classes are net-only, deriving the exact bounded-drift set and its failure threshold, and converting the result into a minimal field-design rule.
+A key consequence has been under-emphasised in ecological reporting. Once `W` is fixed, uncertainty in `F` and `E` generated by a common calibration ratio cannot move independently. One channel rises exactly as the other falls on the log-ratio scale. Reporting two marginal intervals as if any pair of endpoints could occur creates a rectangular uncertainty region that contains impossible latent states. The correct object is one-dimensional.
+
+This is a partial-identification problem in the sense of Manski: the data and assumptions may restrict a target parameter to a set even when they do not point-identify it. Structural identifiability itself is long established in system identification and compartmental modelling. We therefore do not claim that the algebra of non-identification is new. The contribution is ecological and operational: identifying which common ecological observation classes are net-only, deriving the exact bounded-drift joint set and its failure threshold, and converting the result into minimal field-design and reporting rules.
 
 ## 2. Observation model
 
@@ -160,7 +162,7 @@ F_i=W_i/E_i.
 
 Thus both relative channel changes are point identified, and the result can be fecundity-only, establishment-only, mixed or unchanged without assuming in advance that exactly one channel changed.
 
-**Design Rule 1 — Anchor and transport.** Directly measure at least one latent channel in an anchor regime. This anchors the local proxy conversion. For every comparison regime, either revalidate that conversion directly or prespecify an admissible between-regime drift set for `kappa` and report the resulting identified interval and breakdown point.
+**Design Rule 1 — Anchor and transport.** Directly measure at least one latent channel in an anchor regime. This anchors the local proxy conversion. For every comparison regime, either revalidate that conversion directly or prespecify an admissible between-regime drift set for `kappa` and report the resulting identified set and breakdown point.
 
 N2 therefore does not imply that one calibration measurement can be transported without qualification. Exact transport gives N3; bounded transport gives partial identification; unrestricted transport gives N4.
 
@@ -196,7 +198,7 @@ N4 is an information boundary, not a claim that proxies are biologically useless
 
 ## 4. Main result: bounded calibration drift
 
-### 4.1 Sharp identified set
+### 4.1 Sharp marginal intervals
 
 Suppose the cross-regime calibration ratio is prespecified to satisfy
 
@@ -217,11 +219,6 @@ Therefore
 
 ```text
 rho_F in [rho_X/(1+delta), rho_X/(1-delta)]
-```
-
-and
-
-```text
 rho_E in [rho_E_hat(1-delta), rho_E_hat(1+delta)].
 ```
 
@@ -231,13 +228,71 @@ Both marginal intervals have multiplicative width
 (1+delta)/(1-delta).
 ```
 
-The sets are **sharp**. For every admissible `kappa`, choose positive `q_0`, set `q_1=kappa q_0`, then reconstruct `F_i=X_i/q_i` and `E_i=W_i/F_i`. This reproduces the observed `W` and `X` exactly and attains the corresponding channel ratios. Every point in the interval is therefore observationally compatible and no point outside it is compatible with the drift restriction.
+The sets are **sharp**. For every admissible `kappa`, choose positive `q_0`, set `q_1=kappa q_0`, then reconstruct `F_i=X_i/q_i` and `E_i=W_i/F_i`. This reproduces the observed `W` and `X` exactly and attains the corresponding channel ratios. Every point in each marginal interval is therefore observationally compatible and no point outside it is compatible with the drift restriction.
 
-The same `kappa` simultaneously determines both channel ratios, so their joint identified set is a one-parameter curve satisfying `rho_F rho_E=rho_W`; it is not the Cartesian product of the two marginal intervals.
+### 4.2 The sharp joint set is one-dimensional
 
-### 4.2 Directional robustness and breakdown points
+The same `kappa` simultaneously determines both channel ratios. The sharp joint identified set is therefore
 
-A directional claim is identified only when its entire interval lies on one side of one.
+```text
+J_delta = {(rho_X/kappa, rho_E_hat*kappa):
+           kappa in [1-delta,1+delta]}.
+```
+
+Every admissible pair satisfies
+
+```text
+rho_F rho_E = rho_W.
+```
+
+Hence `J_delta` is **not** the Cartesian product of the two marginal intervals. In the original ratio plane it is the relevant segment of the hyperbola
+
+```text
+rho_E = rho_W/rho_F.
+```
+
+The geometry becomes especially transparent after taking logs. Define
+
+```text
+u = log rho_F,
+v = log rho_E.
+```
+
+Because
+
+```text
+u + v = log rho_W,
+```
+
+`J_delta` becomes a straight line segment of slope `-1`. Varying `kappa` gives
+
+```text
+du = - d log kappa,
+dv = + d log kappa,
+```
+
+so one channel log-ratio rises by exactly the amount the other falls. Conditional on the observed `rho_W` and `rho_X`, structural uncertainty arising from calibration drift is therefore perfectly negatively dependent across the two channel log-ratios.
+
+This log-coordinate statement does not change the `delta` parameterisation or the 34% breakpoint below. It is a representation of the same identified set. Sensitivity may additionally be indexed by `eta=log kappa` if a log-symmetric horizontal axis is desirable.
+
+### 4.3 Design Rule 2 — report the joint set, not independent error bars
+
+**Design Rule 2 — Preserve the coupling.** Do not report calibration-drift uncertainty for `rho_F` and `rho_E` as two independently combinable intervals. Report the joint identified set `J_delta`, preferably as the slope-`-1` segment in `(log rho_F, log rho_E)` space; if marginal intervals are also reported, state explicitly that they are linked by `rho_F rho_E=rho_W`.
+
+This rule matters because the upper endpoint of the `rho_F` interval and the upper endpoint of the `rho_E` interval arise from opposite ends of the admissible `kappa` range. They cannot occur together. A conventional presentation such as
+
+```text
+F changed by estimate +/- a
+E changed by estimate +/- b
+```
+
+can therefore be misleading when readers treat the two uncertainties as independent. It creates a rectangular uncertainty region that both exaggerates the apparent two-dimensional uncertainty and includes channel pairs that cannot reproduce the observed net ratio. The correct structural calibration uncertainty is one-dimensional.
+
+This statement concerns calibration uncertainty conditional on the observed net and proxy ratios. Sampling uncertainty in `W` and `X` can add further covariance and should be propagated separately.
+
+### 4.4 Directional robustness and breakdown points
+
+A directional claim is identified only when its relevant marginal projection lies entirely on one side of one.
 
 For the complementary channel,
 
@@ -266,7 +321,7 @@ delta* = 1 - 1/rho_E_hat.
 
 At `delta=delta*` the interval first touches one. A strict directional statement therefore holds for `delta<delta*`, not at equality.
 
-### 4.3 The 34% statement
+### 4.5 The 34% statement
 
 Take the worked value
 
@@ -284,11 +339,11 @@ The directly reportable result is:
 
 > The estimated decline in establishment has a calibration-drift breakdown point of 34%: the identified set remains entirely below one for between-regime calibration-ratio drift smaller than 34%.
 
-This is more useful than the unrestricted N4 statement that the channel ratios may differ arbitrarily. The same theorem has become a sensitivity-analysis procedure.
+At the breakdown point, `kappa=1.34` and the upper establishment endpoint reaches one. On the joint log segment, the corresponding fecundity ratio moves in the opposite direction by exactly the compensating amount needed to keep `rho_F rho_E=rho_W`.
 
-### 4.4 Sampling uncertainty is a separate layer
+### 4.6 Sampling uncertainty is a separate layer
 
-The identified interval above conditions on the observed ratio estimate. Sampling variability should be propagated separately. If a confidence interval for `rho_E_hat` is `[L,U]`, monotonicity gives the conservative union
+The identified set above conditions on the observed ratio estimates. Sampling variability should be propagated separately. If a confidence interval for `rho_E_hat` is `[L,U]`, monotonicity gives the conservative union
 
 ```text
 [L(1-delta), U(1+delta)]
@@ -306,20 +361,23 @@ Identification uncertainty and sampling uncertainty answer different questions a
 
 The theorem applies only when a multiplicative architecture is scientifically declared. The relevance is that such architectures already recur in ecological measurement.
 
-Rader et al. (2012) explicitly define overall pollinator effectiveness as the product of pollen-transfer efficiency and visitation frequency. Ballantyne et al. (2017) measure pollinator importance as visitation frequency multiplied by single-visit pollen deposition effectiveness. Reynolds & Fenster (2008) likewise define pollinator importance as the product of visitation rate and pollinator effectiveness. In seed dispersal, Schupp, Jordano & Gómez (2010) define seed dispersal effectiveness as `Quantity × Quality`, where quantity is the number of seeds dispersed and quality is the probability that a dispersed seed eventually produces a new adult; they also emphasise context dependence of both components.
+Schupp, Jordano & Gómez (2010) provide the clearest cross-domain example. Their seed dispersal effectiveness framework is explicitly `Quantity × Quality`, with quantity defined by the number of seeds dispersed and quality by the probability that a dispersed seed ultimately produces a new adult; both components are context dependent. This is useful here because it shows that the multiplicative measurement problem is not peculiar to pollination.
 
-These papers do not establish the exact `F` and `E` semantics for every ecological application. They establish something narrower and sufficient for our positioning: quantity-by-quality or rate-by-effectiveness products are standard ecological measurement architectures. N1–N4 therefore audit an existing inferential practice rather than introduce multiplication solely to manufacture a theorem. The page- and definition-level source audit is maintained in `paper/multiplicative_measurement_literature_audit.md`.
+Pollination provides an independent family of the same architecture. Rader et al. (2012) define overall pollinator effectiveness as pollen-transfer efficiency multiplied by visitation frequency. Ballantyne et al. (2017) measure pollinator importance as visitation frequency multiplied by single-visit pollen deposition effectiveness. Reynolds & Fenster (2008) likewise define pollinator importance as the product of visitation rate and pollinator effectiveness.
 
-## 6. Observation-design rules
+These papers do not establish the exact `F` and `E` semantics for every ecological application. They establish something narrower and sufficient for our positioning: quantity-by-quality or rate-by-effectiveness products are standard ecological measurement architectures in at least two distinct ecological literatures. N1–N4 therefore audit an existing inferential practice rather than introduce multiplication solely to manufacture a theorem. The page- and definition-level source audit is maintained in `paper/multiplicative_measurement_literature_audit.md`.
 
-The results imply the following operational sequence.
+## 6. Observation-design sequence
+
+The two design rules imply the following operational sequence.
 
 1. **Only net performance observed.** Do not attribute the response to a latent channel. Finer or more precise measurement of `W` cannot break N1.
 2. **Net performance and one exact channel observed.** Reconstruct the other channel under N2 and propagate statistical uncertainty.
 3. **A proxy is transported under defended stable conversion.** Report relative channel changes under N3 and state the stability assumption explicitly.
-4. **Calibration drift is bounded but not fixed.** Report the sharp identified interval, its multiplicative width and the breakdown point. The interval—not the N3 point estimate—is the identified object.
+4. **Calibration drift is bounded but not fixed.** Report the sharp joint set, its marginal projections, multiplicative width and breakdown point. The joint set—not the pair of independent marginals—is the identified object.
 5. **Calibration drift is unrestricted.** Do not make a directional channel claim. Directly measure a channel, revalidate calibration in the comparison regime, or justify a drift bound.
-6. **The interval includes one.** Additional net-outcome sampling cannot recover channel direction. The next observation should target calibration or the channel itself.
+6. **A marginal projection includes one.** Additional net-outcome sampling cannot recover that channel direction. The next observation should target calibration or the channel itself.
+7. **When displaying uncertainty.** Preserve the coupling. A joint log-ratio plot should show the slope-`-1` identified segment; marginal error bars may be secondary annotations but must not imply a rectangular admissible region.
 
 A high within-regime correlation between proxy and channel is not sufficient evidence for transport. The identifying object is the cross-regime conversion ratio `q_1/q_0` on the comparison domain.
 
@@ -327,7 +385,7 @@ A high within-regime correlation between proxy and channel is not sufficient evi
 
 The algebra behind N1–N4 is elementary. Structural identifiability has long asked whether internal model structure can be recovered from input-output observations (Bellman & Åström 1970), and general parametric identification theory is classical (Rothenberg 1971). Partial-identification theory makes explicit that scientifically useful conclusions can be set-valued when assumptions restrict but do not point-identify a target (Manski 2003).
 
-Our novelty claim is therefore deliberately narrow and positive. We contribute three linked ecological results: (i) a broad class of response objects that ecologists may regard as mechanistically rich is shown to be net-only; (ii) regime-specific proxy drift produces a sharp identified set and directly reportable breakdown point; and (iii) the same boundary yields a minimal anchor-and-transport observation-design rule. The contribution is the application, identified set and design consequence, not the invention of identifiability algebra itself.
+Our novelty claim is therefore deliberately narrow and positive. We contribute four linked ecological results: (i) a broad class of response objects that ecologists may regard as mechanistically rich is shown to be net-only; (ii) regime-specific proxy drift produces a sharp identified set and directly reportable breakdown point; (iii) the same boundary yields a minimal anchor-and-transport observation-design rule; and (iv) the joint-set geometry yields a reporting rule that prevents marginal uncertainty from being misrepresented as independent. The contribution is the ecological application, identified set and operational consequences, not the invention of identifiability algebra itself.
 
 ## 8. Scope and extensions
 
@@ -337,17 +395,21 @@ The result is pointwise in `z`. Uniform conclusions over a trait domain require 
 
 The calibration bound is an assumption or externally estimated constraint. The software does not infer `delta` from the same net response and proxy observations whose identifying power is being assessed.
 
+The statement of perfect negative dependence is conditional on the observed `rho_W` and `rho_X` and refers to structural uncertainty from the common calibration ratio. Additional sampling error, process error or uncertainty in the multiplicative factorisation can widen the overall joint uncertainty set beyond this one-dimensional segment.
+
 ## 9. Discussion
 
 The useful boundary is not simply identifiable versus non-identifiable. Stable calibration gives point identification; unrestricted drift gives N4; bounded drift yields an intermediate sharp set whose width and directional failure threshold can be reported. This changes an impossibility theorem into a practical robustness analysis.
 
+The joint-set geometry adds an equally practical reporting consequence. The two latent channels do not inherit two free uncertainty dimensions from one unknown calibration ratio. Their calibration-induced errors move in opposite directions while preserving the observed net ratio. Reporting independent uncertainty for the two channels therefore discards information that the model actually retains. In this sense, partial identification can be more informative than two separately propagated error bars: it preserves the exact dependence structure among the latent quantities.
+
 N1 also clarifies why more detailed net-response geometry cannot substitute for channel information. A complete response curve and all of its threshold geometry may describe the ecological pattern exquisitely while remaining invariant to the latent channel decomposition. The remedy is not automatically more samples of the same object, but a measurement that anchors one factor or its conversion.
 
-The boundary paper is intentionally separate from the RACH observation-selection paper. RACH can rank resolving measurements when the admissible mechanism family is too complex for closed-form identification, but it does not make N1 disappear. Here the contribution is the information boundary itself and the field-design rule it implies.
+The boundary paper is intentionally separate from the RACH observation-selection paper. RACH can rank resolving measurements when the admissible mechanism family is too complex for closed-form identification, but it does not make N1 disappear. Here the contribution is the information boundary itself and the field-design and reporting rules it implies.
 
 ## Code availability
 
-Deterministic bounded-drift calculations are implemented in `causal_model.bounded_proxy_drift`. Stable-proxy and unrestricted-drift constructions are in `causal_model.proxy_calibration_theory`. Regression tests verify zero-drift recovery, interval width, endpoint attainability, joint product consistency and the 34% breakdown illustration. The implementation does not estimate the calibration bound or treat an assumed bound as empirical evidence.
+Deterministic bounded-drift calculations are implemented in `causal_model.bounded_proxy_drift`. Stable-proxy and unrestricted-drift constructions are in `causal_model.proxy_calibration_theory`. Regression tests verify zero-drift recovery, interval width, endpoint attainability, exact joint product consistency, the slope-`-1` log identified segment, rejection of impossible upper-upper marginal combinations, and the 34% breakdown illustration. The implementation does not estimate the calibration bound or treat an assumed bound as empirical evidence.
 
 ## References
 
