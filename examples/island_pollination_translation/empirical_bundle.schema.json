@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/microdonta/empirical_bundle.schema.json",
+  "title": "microdonta izu-core empirical translation bundle",
+  "description": "Evidence-aware input for one of the three nonblocking izu-core to RACH empirical translation tracks.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "track_id",
+    "system_id",
+    "comparison_unit",
+    "compatible_comparison_units",
+    "independent_system",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "bundle_id": {"type": "string", "minLength": 1},
+    "track_id": {
+      "enum": [
+        "signed_functional_starting_position",
+        "network_context_effective_service",
+        "complete_service_dependency_response_bridge"
+      ]
+    },
+    "system_id": {"type": "string", "minLength": 1},
+    "comparison_unit": {"type": "string", "minLength": 1},
+    "compatible_comparison_units": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "independent_system": {"type": ["boolean", "null"]},
+    "notes": {"type": "string"},
+    "evidence": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/evidence"}
+    }
+  },
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "locator"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "locator": {"type": "string", "minLength": 1}
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "scope", "provenance"],
+      "properties": {
+        "status": {"enum": ["stable", "calibrated", "unverified"]},
+        "scope": {"type": "string", "minLength": 1},
+        "provenance": {"$ref": "#/$defs/provenance"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "gate",
+        "status",
+        "evidence_kind",
+        "description",
+        "comparison_unit",
+        "frozen_before_outcome"
+      ],
+      "properties": {
+        "evidence_id": {"type": "string", "minLength": 1},
+        "gate": {"type": "string", "minLength": 1},
+        "status": {"enum": ["present", "missing"]},
+        "evidence_kind": {
+          "enum": [
+            "direct_measurement",
+            "prespecified_definition",
+            "derived_estimand",
+            "calibrated_proxy"
+          ]
+        },
+        "description": {"type": "string", "minLength": 1},
+        "unit": {"type": "string", "minLength": 1},
+        "comparison_unit": {"type": "string", "minLength": 1},
+        "method": {"type": "string", "minLength": 1},
+        "uncertainty": {"type": "string"},
+        "provenance": {"$ref": "#/$defs/provenance"},
+        "formula": {"type": "string", "minLength": 1},
+        "derived_from": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
+        "frozen_before_outcome": {"type": "boolean"},
+        "proxy_target": {"type": "string", "minLength": 1},
+        "calibration": {"$ref": "#/$defs/calibration"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "present"}}},
+          "then": {"required": ["provenance"]}
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {"const": "present"},
+              "evidence_kind": {
+                "enum": [
+                  "direct_measurement",
+                  "derived_estimand",
+                  "calibrated_proxy"
+                ]
+              }
+            },
+            "required": ["status", "evidence_kind"]
+          },
+          "then": {"required": ["unit", "method"]}
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {"const": "present"},
+              "evidence_kind": {"const": "derived_estimand"}
+            },
+            "required": ["status", "evidence_kind"]
+          },
+          "then": {"required": ["formula", "derived_from"]}
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {"const": "present"},
+              "evidence_kind": {"const": "calibrated_proxy"}
+            },
+            "required": ["status", "evidence_kind"]
+          },
+          "then": {"required": ["proxy_target", "calibration"]}
+        },
+        {
+          "if": {
+            "properties": {
+              "gate": {"const": "outcome_blind_signed_position_formula"},
+              "status": {"const": "present"}
+            },
+            "required": ["gate", "status"]
+          },
+          "then": {"required": ["formula"]}
+        }
+      ]
+    }
+  }
+}
