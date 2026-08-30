@@ -17,10 +17,12 @@ def test_delta_zero_recovers_stable_proxy_point_identification():
         delta=0.0,
         proxy_channel="fecundity",
     )
-    assert result.fecundity.lower == result.fecundity.upper == 0.80
-    assert result.establishment.lower == result.establishment.upper == 0.75
-    assert result.fecundity.multiplicative_width == 1.0
-    assert result.establishment.multiplicative_width == 1.0
+    assert isclose(result.fecundity.lower, 0.80)
+    assert isclose(result.fecundity.upper, 0.80)
+    assert isclose(result.establishment.lower, 0.75)
+    assert isclose(result.establishment.upper, 0.75)
+    assert isclose(result.fecundity.multiplicative_width, 1.0)
+    assert isclose(result.establishment.multiplicative_width, 1.0)
 
 
 def test_bounded_drift_interval_has_declared_multiplicative_width():
