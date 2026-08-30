@@ -52,19 +52,21 @@ def budget_row(summary: dict, policy: str, budget: int) -> dict:
 
 def main() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    companion = manifest.get("companion_boundary_program", {})
+    path_inventory = {
+        "governance": manifest.get("governance", []),
+        "main_text": manifest["main_text"],
+        "supplementary": manifest["supplementary"],
+        "companion_boundary_program": {
+            "manuscript": companion.get("manuscript", []),
+            "theory": companion.get("theory", []),
+            "supporting_examples": companion.get("supporting_examples", []),
+        },
+        "archive": manifest["archive"],
+    }
     missing = sorted(
         path
-        for path in set(
-            iter_paths(
-                {
-                    "governance": manifest.get("governance", []),
-                    "main_text": manifest["main_text"],
-                    "supplementary": manifest["supplementary"],
-                    "companion_boundary_program": manifest["companion_boundary_program"],
-                    "archive": manifest["archive"],
-                }
-            )
-        )
+        for path in set(iter_paths(path_inventory))
         if not (ROOT / path).exists()
     )
     if missing:
@@ -81,9 +83,7 @@ def main() -> None:
     ]
     if manifest.get("claim_spine") != expected_spine:
         raise SystemExit("MEE claim spine is not the frozen methods-only sequence")
-    if manifest.get("companion_boundary_program", {}).get(
-        "submission_blocker_for_mee"
-    ) is not False:
+    if companion.get("submission_blocker_for_mee") is not False:
         raise SystemExit("boundary-paper completion may not block the MEE methods paper")
 
     method_paths = set(manifest["main_text"].get("method", []))
@@ -238,7 +238,10 @@ def main() -> None:
     if not isclose(reduction, 0.9880239520958084, rel_tol=0.0, abs_tol=1e-12):
         raise SystemExit(f"budget-4 nuisance reduction changed: {reduction}")
 
-    if any(row["false_exclusion_rate_mean"] != 0.0 for row in summary["policy_budget_aggregate"]):
+    if any(
+        row["false_exclusion_rate_mean"] != 0.0
+        for row in summary["policy_budget_aggregate"]
+    ):
         raise SystemExit("hidden-truth false exclusion is no longer zero in all G2 cells")
 
     print("submission bundle OK")
@@ -246,7 +249,7 @@ def main() -> None:
     print("spine: " + " -> ".join(manifest["claim_spine"]))
     print(f"g2 protocol: {protocol['protocol_id']}")
     print(f"budget-4 nuisance selection ratio: {fold:.1f}-fold")
-    print(f"budget-4 nuisance reduction: {100*reduction:.1f}%")
+    print(f"budget-4 nuisance reduction: {100 * reduction:.1f}%")
     print("boundary paper: separate and non-blocking")
 
 
