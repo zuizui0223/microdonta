@@ -216,8 +216,6 @@ def same_observed_proxy_data(result: ProxySymmetryResult, *, tolerance: float = 
     """Document that N4 alternatives share the observed series by construction."""
     if tolerance < 0:
         raise ValueError("tolerance must be non-negative")
-    # The dataclass carries one observed series by definition; this function exists
-    # as an explicit invariant boundary for callers/tests.
     return all(
         isclose(value, value, rel_tol=tolerance, abs_tol=tolerance)
         for series in (

@@ -34,11 +34,9 @@ def _state_after_fecundity_loss(before: VitalRateState) -> VitalRateState:
 def test_unknown_but_stable_trait_dependent_proxy_identifies_channel_ratios():
     before = _state_before()
     after = _state_after_fecundity_loss(before)
-    # q(z) is unknown and varies strongly among traits, but is stable through time.
     calibration = (0.4, 1.9, 0.7, 2.3, 0.55)
     proxy_before = tuple(q * f for q, f in zip(calibration, before.fecundity))
     proxy_after = tuple(q * f for q, f in zip(calibration, after.fecundity))
-
     inferred = identify_from_net_and_stable_proxy(
         net_before=before.net_performance,
         net_after=after.net_performance,
@@ -47,7 +45,6 @@ def test_unknown_but_stable_trait_dependent_proxy_identifies_channel_ratios():
         proxy_channel="fecundity",
     )
     direct = identify_from_channel_resolved_rates(before, after)
-
     assert inferred.conclusion == "fecundity_only"
     assert _allclose(inferred.fecundity_ratio, direct.fecundity_ratio)
     assert _allclose(inferred.establishment_ratio, direct.establishment_ratio)
@@ -59,7 +56,6 @@ def test_stable_proxy_is_symmetric_for_an_establishment_proxy():
     calibration = (0.6, 1.2, 1.8, 0.5, 2.1)
     proxy_before = tuple(q * e for q, e in zip(calibration, before.establishment))
     proxy_after = tuple(q * e for q, e in zip(calibration, after.establishment))
-
     inferred = identify_from_net_and_stable_proxy(
         net_before=before.net_performance,
         net_after=after.net_performance,
@@ -67,14 +63,11 @@ def test_stable_proxy_is_symmetric_for_an_establishment_proxy():
         proxy_after=proxy_after,
         proxy_channel="establishment",
     )
-
     assert inferred.conclusion == "fecundity_only"
     assert _allclose(inferred.establishment_ratio, (1.0,) * len(before.grid))
 
 
 def test_time_varying_proxy_calibration_restores_nonidentifiability():
-    # W and X are both unchanged. A stable proxy map says unchanged; an unknown
-    # time-varying proxy map says fecundity fell and establishment rose.
     result = construct_time_varying_proxy_symmetry(
         net_before=(1.0, 1.0, 1.0, 1.0),
         net_after=(1.0, 1.0, 1.0, 1.0),
@@ -84,7 +77,6 @@ def test_time_varying_proxy_calibration_restores_nonidentifiability():
         calibration_shift=(0.5, 0.75, 1.25, 2.0),
         proxy_channel="fecundity",
     )
-
     assert result.ratios_a.conclusion == "unchanged"
     assert result.ratios_b.conclusion == "mixed_or_unidentified"
     assert result.ratios_a.fecundity_ratio == (1.0, 1.0, 1.0, 1.0)
