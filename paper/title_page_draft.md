@@ -2,7 +2,7 @@
 
 ## Manuscript title
 
-**RACH: from causal non-identifiability to next-observation design in ecological mechanism inference**
+**RACH: information-theoretic next-observation selection for causally degenerate ecological models**
 
 Article type: **Research Article**
 
@@ -19,7 +19,7 @@ Correspondence email: **[to add before submission]**
 
 ## Running headline
 
-**RACH for mechanism ambiguity**
+**RACH observation selection**
 
 ## Acknowledgements
 
@@ -34,13 +34,15 @@ assistance disclosed in the Methods.
 
 ## Data availability
 
-No new empirical data are reported. The algebraic constructions, synthetic
-benchmark generators, frozen result summaries, tests and figure-generation code
-needed to evaluate the method are contained in the project repository. An
-anonymised code-review bundle will be supplied to editors and reviewers with the
-submission. After manuscript and Supporting Information files are frozen, the
-submission release will be archived and the resulting DOI added to the final
-Data Availability and software citation metadata.
+No new empirical data are reported. Synthetic benchmark generators, frozen result
+summaries, tests and figure-generation code needed to evaluate RACH, NOV and
+RACH-SEQ are contained in the project repository. An anonymised code-review bundle
+will be supplied to editors and reviewers. After the manuscript and Supporting
+Information files are frozen, the submission release will be archived and the
+resulting DOI added to the final Data Availability and software citation metadata.
+
+The separate channel-identifiability and bounded-calibration-drift manuscript is
+not part of this submission's primary evidence package.
 
 ## Funding
 

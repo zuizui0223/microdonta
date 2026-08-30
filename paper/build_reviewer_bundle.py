@@ -1,8 +1,9 @@
-"""Build a deterministic, double-anonymous reviewer bundle for the RACH paper.
+"""Build a deterministic, double-anonymous reviewer bundle for the RACH method paper.
 
-The bundle is intentionally an allowlisted scientific snapshot, not a repository
-archive. Public repository metadata, author metadata, commit SHAs, apps, optional
-backends, structure discovery and provisional ecological-rule programs are omitted.
+The bundle is an allowlisted methods snapshot, not a repository archive. Author
+metadata, public repository metadata, boundary-paper theory, ecological projection,
+apps, optional backends, structure discovery and provisional ecological-rule
+programs are omitted.
 """
 from __future__ import annotations
 
@@ -17,9 +18,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Runnable reviewer code: only the primary inference/theorem surface and the
-# frozen synthetic selection benchmark. Repository compatibility/ABM programs
-# are deliberately outside this dependency closure.
 RUNNABLE_SEEDS = [
     "causal_model/causal_admissibility.py",
     "causal_model/causal_replaceability.py",
@@ -27,36 +25,35 @@ RUNNABLE_SEEDS = [
     "causal_model/nov_evsi.py",
     "causal_model/rach_seq.py",
     "causal_model/generality_sweep.py",
-    "causal_model/channel_identifiability_theory.py",
-    "causal_model/proxy_calibration_theory.py",
-    "causal_model/theorem_projection_ledger.py",
 ]
 
-# These are scientifically relevant source implementations but contain optional
-# local imports into broader proxy/ABM machinery. Reviewers receive the exact
-# source text without recursively importing that non-primary compatibility layer.
 REFERENCE_SOURCES = [
     "causal_model/known_truth_benchmark.py",
     "causal_model/nov_calibration.py",
     "causal_model/confound_demo.py",
-    "causal_model/colonization_recruitment_factorization.py",
 ]
 
 TEST_FILES = [
     "tests/test_nov_evsi.py",
     "tests/test_rach_seq_predictive_reweighting.py",
     "tests/test_rach_seq_nov_selection.py",
-    "tests/test_channel_identifiability_theory.py",
-    "tests/test_proxy_calibration_theory.py",
     "tests/test_causal_replaceability.py",
 ]
+
 DENY_MODULE_PARTS = {
     "structure_discovery",
     "bergmann_worked_example",
     "ecological_rules_validation",
     "converse_bergmann",
     "rule_transition",
+    "channel_identifiability",
+    "proxy_calibration",
+    "bounded_proxy_drift",
+    "colonization_recruitment",
+    "theorem_projection",
+    "campanula",
 }
+
 FORBIDDEN_TEXT = (
     "Ruiqi Zhang",
     "Kyoto University",
@@ -124,11 +121,12 @@ def test_reviewer_api_is_exact_primary_rach_surface():
     assert all(hasattr(rach, name) for name in EXPECTED)
 
 
-def test_compatibility_helpers_are_not_advertised_as_primary_api():
+def test_boundary_and_compatibility_helpers_are_not_primary_api():
     forbidden = {
         "install_rule_transition_contracts", "CausalStructure",
         "score_causal_structure", "heuristic_next_observation_value",
         "expected_edge_cuts", "filter_by_outcome",
+        "identify_under_bounded_proxy_drift",
     }
     assert not (forbidden & set(rach.__all__))
 '''
@@ -142,8 +140,8 @@ def local_module_path(module: str) -> Path | None:
     if module == "causal_model":
         return None
     if module.startswith("causal_model."):
-        p = ROOT / (module.replace(".", "/") + ".py")
-        return p if p.exists() else None
+        path = ROOT / (module.replace(".", "/") + ".py")
+        return path if path.exists() else None
     return None
 
 
@@ -181,8 +179,12 @@ def dependencies(path: Path) -> set[Path]:
     return found
 
 
+def excluded(rel: str) -> bool:
+    return any(part in rel for part in DENY_MODULE_PARTS)
+
+
 def scientific_module_closure() -> list[Path]:
-    pending = [ROOT / p for p in RUNNABLE_SEEDS]
+    pending = [ROOT / path for path in RUNNABLE_SEEDS]
     seen: set[Path] = set()
     while pending:
         path = pending.pop()
@@ -191,12 +193,12 @@ def scientific_module_closure() -> list[Path]:
         if not path.exists():
             raise SystemExit(f"missing reviewer seed/dependency: {path.relative_to(ROOT)}")
         rel = path.relative_to(ROOT).as_posix()
-        if any(part in rel for part in DENY_MODULE_PARTS):
-            raise SystemExit(f"excluded module entered runnable reviewer closure: {rel}")
+        if excluded(rel):
+            raise SystemExit(f"excluded module entered reviewer closure: {rel}")
         seen.add(path)
         for dep in dependencies(path):
             dep_rel = dep.relative_to(ROOT).as_posix()
-            if any(part in dep_rel for part in DENY_MODULE_PARTS):
+            if excluded(dep_rel):
                 continue
             if dep not in seen:
                 pending.append(dep)
@@ -243,9 +245,12 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
     copy_text(ROOT / "paper/mee_manuscript_draft.md", output_dir / "review_manuscript.md")
     copy_text(ROOT / "paper/supporting_information.md", output_dir / "supporting_information.md")
 
-    readme = """# Anonymous reviewer code and evidence bundle\n\nThis snapshot contains only the scientific files needed to evaluate the submitted RACH Research Article. Author/title-page metadata, public repository URLs, public Git commit identifiers, apps, provisional ecological-rule programs and structure-discovery code are intentionally excluded for double-anonymous review.\n\n`causal_model/` is the runnable primary RACH/theorem snapshot. `reference_sources/` contains exact source files for auxiliary frozen validations and the one-step ecological projection whose optional broader backend dependencies are intentionally not expanded into the review package.\n\n## Minimal environment\n\n```bash\npython -m pip install -r requirements-review.txt\nPYTHONPATH=. python -m pytest --rootdir=. -q tests\n```\n\nThe frozen G2 protocol and result summaries are under `frozen/`. Figure 1–3 and Figure S1 are under `figures/`. `bundle_manifest.json` gives SHA-256 hashes for every included file.\n"""
+    readme = """# Anonymous reviewer code and evidence bundle\n\nThis snapshot contains the scientific files needed to evaluate the submitted RACH observation-selection Research Article. Author/title-page metadata, public repository URLs, public Git commit identifiers, the separate channel-identifiability/bounded-drift paper, ecological projection, apps, provisional ecological-rule programs and structure-discovery code are excluded.\n\n`causal_model/` is the runnable primary RACH/NOV/RACH-SEQ snapshot. `reference_sources/` contains exact auxiliary validation sources that are reviewed as source text without expanding optional repository dependencies.\n\n## Minimal environment\n\n```bash\npython -m pip install -r requirements-review.txt\nPYTHONPATH=. python -m pytest --rootdir=. -q tests\n```\n\nFrozen G2 protocol/results are under `frozen/`; Figures 1–3 and Figure S1 are under `figures/`; `bundle_manifest.json` records SHA-256 hashes.\n"""
     write_review_text(output_dir / "README_FOR_REVIEW.md", readme)
-    write_review_text(output_dir / "requirements-review.txt", "numpy>=1.24\npandas>=2.0\nmatplotlib>=3.7\npytest>=7\n")
+    write_review_text(
+        output_dir / "requirements-review.txt",
+        "numpy>=1.24\npandas>=2.0\nmatplotlib>=3.7\npytest>=7\n",
+    )
 
     for src in scientific_module_closure():
         copy_text(src, output_dir / src.relative_to(ROOT))
@@ -253,8 +258,7 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
 
     reference_dir = output_dir / "reference_sources"
     for rel in REFERENCE_SOURCES:
-        src = ROOT / rel
-        copy_text(src, reference_dir / Path(rel).name)
+        copy_text(ROOT / rel, reference_dir / Path(rel).name)
 
     for rel in TEST_FILES:
         copy_text(ROOT / rel, output_dir / rel)
@@ -265,11 +269,23 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
     copy_text(ROOT / "paper/g2_frozen_benchmark_protocol.json", frozen / "g2_protocol.json")
     write_review_text(
         frozen / "g2_summary.json",
-        json.dumps(redact_result_summary(ROOT / "paper/results/g2_frozen_v2_summary.json"), indent=2, sort_keys=True) + "\n",
+        json.dumps(
+            redact_result_summary(ROOT / "paper/results/g2_frozen_v2_summary.json"),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
     )
     write_review_text(
         frozen / "submission_validation_summary.json",
-        json.dumps(redact_result_summary(ROOT / "paper/results/submission_validation_summary.json"), indent=2, sort_keys=True) + "\n",
+        json.dumps(
+            redact_result_summary(
+                ROOT / "paper/results/submission_validation_summary.json"
+            ),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
     )
     copy_text(ROOT / "paper/final_figure_inventory.json", frozen / "figure_inventory.json")
 
@@ -289,33 +305,41 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
 
     for path in output_dir.rglob("*"):
         if path.is_file() and path.suffix.lower() in {".md", ".py", ".json", ".txt"}:
-            assert_anonymous_text(path.relative_to(output_dir).as_posix(), path.read_text(encoding="utf-8"))
+            assert_anonymous_text(
+                path.relative_to(output_dir).as_posix(),
+                path.read_text(encoding="utf-8"),
+            )
 
     manifest = {
-        "schema_version": 1,
-        "bundle_role": "double_anonymous_peer_review",
+        "schema_version": 2,
+        "bundle_role": "double_anonymous_peer_review_methods_only",
         "public_repository_metadata_included": False,
         "title_page_included": False,
+        "boundary_paper_included": False,
         "files": {},
     }
     for path in sorted(p for p in output_dir.rglob("*") if p.is_file()):
         rel = path.relative_to(output_dir).as_posix()
         if rel == "bundle_manifest.json":
             continue
-        # File-boundary contract: excluded programs may not be present even if
-        # they would not be advertised through the public API.
-        if any(part in rel for part in DENY_MODULE_PARTS):
+        if excluded(rel):
             raise SystemExit(f"excluded program file in reviewer bundle: {rel}")
-        manifest["files"][rel] = {"bytes": path.stat().st_size, "sha256": sha256(path)}
+        manifest["files"][rel] = {
+            "bytes": path.stat().st_size,
+            "sha256": sha256(path),
+        }
     manifest_path = output_dir / "bundle_manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
     zip_path = output_dir.parent / (output_dir.name + ".zip")
     if zip_path.exists():
         zip_path.unlink()
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(p for p in output_dir.rglob("*") if p.is_file()):
-            zf.write(path, path.relative_to(output_dir.parent))
+            archive.write(path, path.relative_to(output_dir.parent))
     return manifest_path, zip_path
 
 

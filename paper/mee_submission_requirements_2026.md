@@ -21,11 +21,18 @@ The current journal definitions distinguish:
 - **Practical Tools**: short descriptions of new field techniques, hardware,
   equipment or laboratory protocols, about 3,000–4,000 words.
 
-RACH is an inferential method with mathematical guarantees, controlled
-simulation/benchmark validation and an ecological projection. Its software is an
-implementation of the method, not the sole publication object. `Research Article`
-is therefore the correct category; the earlier working label `Methods / Practical
-Tools` is retired.
+RACH is an inferential and experimental-design method with a formally defined
+information objective, sequential algorithm and controlled truth-peek-free
+selection benchmark. The software is an implementation of the method, not the sole
+publication object. A new natural-system dataset is not required for the primary
+algorithmic claim: the synthetic benchmark is the appropriate validation object
+because mechanism truth, candidate information and outcome timing are known.
+`Research Article` is therefore the intended category; the earlier working label
+`Methods / Practical Tools` is retired.
+
+The separate N1–N4 and bounded-calibration-drift boundary manuscript is not used to
+inflate this submission's primary contribution and is not a prerequisite for MEE
+submission.
 
 ## Initial-submission structure enforced here
 

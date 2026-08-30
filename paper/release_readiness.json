@@ -1,30 +1,45 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "package": "rach",
   "version": "0.1.0",
   "suggested_release_tag": "v0.1.0",
-  "status": "scientific_reproducibility_and_mee_structure_gates_pass",
+  "status": "scientific_evidence_frozen_methods_manuscript_split_pending_final_bundle_validation",
   "validated_code_commit_sha": "d67eb2d22387334477e94ca8ecd0d58ac070c4a0",
   "g2": {
-    "status": "pass",
+    "status": "pass_frozen_unchanged",
     "protocol_id": "rach-g2-truth-peek-free-v2",
     "protocol_sha256": "3568025f98a671b232e5d6b865063f37baa5bec319a594f831d6b5b953428cb7",
-    "execution_commit": "f343c2361db28c0b3e528b882b3370eda5abf5ed"
+    "execution_commit": "f343c2361db28c0b3e528b882b3370eda5abf5ed",
+    "headline_budget_2": {
+      "rach_seq_edge_resolution": 1.0,
+      "random_order_edge_resolution": 0.6045,
+      "rach_seq_convergence": 0.99,
+      "random_order_convergence": 0.435
+    },
+    "headline_budget_4": {
+      "rach_seq_nuisance_measurements": 0.014,
+      "random_order_nuisance_measurements": 1.169,
+      "nuisance_selection_fold_difference": 83.5,
+      "relative_reduction": 0.9880239520958084,
+      "rach_seq_observations_used": 1.518,
+      "random_order_observations_used": 2.673
+    }
   },
   "g5": {
-    "status": "pass",
+    "status": "pass_for_frozen_code_and_figures",
     "summary": "paper/results/g5_reproducibility_summary.json",
     "wheel_sha256": "f97308f99caf59a6dd13931e738cee803054c0864b66c4d93db5c944f72f0fa8"
   },
   "publication_preparation": {
-    "primary_literature_audit": "pass",
-    "campanula_audit_record": "paper/campanula_primary_literature_audit.md",
     "journal": "Methods in Ecology and Evolution",
     "article_type": "Research Article",
+    "primary_product": "RACH information-theoretic observation selection",
+    "real_empirical_data_required_for_primary_claim": false,
+    "primary_validation": "truth-peek-free synthetic observation-selection benchmark",
+    "separate_boundary_paper": "paper/boundary_manuscript_draft.md",
+    "two_paper_governance": "paper/TWO_PAPER_STRATEGY.md",
     "mee_format_gate": "paper/check_mee_submission.py",
-    "abstract_words_at_format_freeze": 300,
-    "keywords_at_format_freeze": 7,
-    "conservative_manuscript_words_at_format_freeze": 5780,
+    "word_counts": "recompute_after_methods_only_split",
     "double_anonymous_main_manuscript": true,
     "title_page_separated": true,
     "ai_assistance_disclosed_in_methods": true
@@ -37,17 +52,17 @@
   },
   "archival_doi": {
     "status": "not_minted",
-    "reason": "DOI minting requires an external archival service/repository integration and is not a scientific, reproducibility, or manuscript-structure code gate.",
-    "action_before_formal_release": "Mint archival DOI externally after the exact submission files are frozen, then add it to CITATION.cff/release metadata without changing frozen scientific results."
+    "reason": "DOI minting is an external archive operation and must follow final submission-file freeze.",
+    "action_before_formal_release": "Mint the DOI externally, then add it to citation/archive metadata without changing frozen G2 results."
   },
   "remaining_publication_operations": [
-    "prepare an anonymised reviewer code/data bundle from the frozen submission surface",
-    "fill human-supplied title-page metadata: correspondence email, ORCID, funding, and acknowledgements",
-    "complete the full Supporting Information text from the frozen outline without promoting excluded exploratory programs",
-    "export the review manuscript with journal-appropriate line numbering, page numbering, and spacing",
-    "prepare the cover letter",
-    "tag the exact submission commit as v0.1.0 when the submission bundle is frozen",
-    "mint and record an archival DOI when the external archive is ready"
+    "validate the methods-only manuscript, Supporting Information and reviewer-bundle allowlist in CI",
+    "rebuild the anonymous reviewer bundle after the split",
+    "fill human-supplied title-page metadata",
+    "export the journal-ready manuscript and Supporting Information",
+    "prepare a cover letter centred on RACH, NOV, RACH-SEQ and G2 selection efficiency",
+    "tag the exact submitted code state as v0.1.0",
+    "mint and record an archival DOI after submission files are frozen"
   ],
-  "science_freeze_policy": "Any change to G2 scientific parameters, primary inference semantics, or frozen numerical claims requires a new protocol/version rather than silent replacement of v0.1.0 evidence."
+  "science_freeze_policy": "Any change to G2 parameters, primary RACH/NOV semantics or frozen numerical claims requires a new protocol/version. Boundary-paper development may proceed separately without retuning MEE evidence."
 }

@@ -1,17 +1,18 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "primary_target": "Methods in Ecology and Evolution",
   "manuscript_type": "Research Article",
+  "primary_product": "RACH information-theoretic observation selection",
   "claim_spine": [
-    "N1-N4 channel-identifiability boundary",
-    "RACH admissible explanation set",
-    "validated NOV EVSI and RACH-SEQ next-observation design",
-    "controlled synthetic selection validation",
-    "exact one-step colonization projection",
-    "prospective Campanula measurement design"
+    "RACH admissible mechanism set and causal degeneracy",
+    "validated NOV equals normalized mechanism-observation mutual information",
+    "RACH-SEQ recomputes and selects maximum current NOV",
+    "truth-peek-free G2 matched-policy selection validation",
+    "reproducible software and reviewer evidence bundle"
   ],
   "governance": [
     "docs/mainline.md",
+    "paper/TWO_PAPER_STRATEGY.md",
     "paper/g2_frozen_benchmark_protocol.json",
     "paper/run_g2_frozen_benchmark.py",
     "paper/results/g2_frozen_v2_summary.json",
@@ -23,28 +24,23 @@
     "CITATION.cff",
     "paper/mee_submission_requirements_2026.md",
     "paper/check_mee_submission.py",
-    "paper/title_page_draft.md",
-    "paper/campanula_primary_literature_audit.md"
+    "paper/title_page_draft.md"
   ],
   "main_text": {
     "manuscript": [
       "paper/mee_manuscript_draft.md"
     ],
-    "theory": [
-      "causal_model/channel_identifiability_theory.py",
-      "causal_model/proxy_calibration_theory.py",
-      "docs/channel_identifiability_theorem.md",
-      "docs/proxy_calibration_theorem.md"
-    ],
     "method": [
       "causal_model/causal_admissibility.py",
       "causal_model/causal_replaceability.py",
+      "causal_model/mechanism_equivalence.py",
       "causal_model/nov_evsi.py",
       "causal_model/rach_seq.py",
       "docs/rach_theory.md",
       "docs/rach_mathematical_foundations.md"
     ],
     "validation": [
+      "causal_model/confound_demo.py",
       "causal_model/known_truth_benchmark.py",
       "causal_model/generality_sweep.py",
       "causal_model/nov_calibration.py",
@@ -61,37 +57,59 @@
       "causal_model/nov_calibration.py",
       "causal_model/known_truth_benchmark.py"
     ],
-    "projection": [
-      "causal_model/colonization_recruitment_factorization.py",
-      "causal_model/theorem_projection_ledger.py",
-      "docs/colonization_recruitment_factorization.md",
-      "docs/theorem_projection_ledger.md"
-    ],
-    "prospective_example": [
-      "causal_model/campanula_real_data.py",
-      "docs/campanula_channel_protocol.md",
-      "docs/inoue_literature_values.md"
-    ],
     "release": [
       "paper/release_readiness.json",
       "CITATION.cff"
     ]
   },
   "supplementary": {
-    "outline": [
-      "paper/supplementary_outline.md"
+    "main": [
+      "paper/supporting_information.md"
     ],
     "protocol": [
-      "paper/supplement/odd_protocol_draft.md"
+      "paper/g2_frozen_benchmark_protocol.json"
     ],
-    "robustness": [
-      "causal_model/spatial_metapopulation_abm.py",
-      "causal_model/colonization_metapopulation_abm.py",
-      "causal_model/defense_metapopulation_abm.py",
-      "causal_model/endpoint_sensitivity_backends.py"
+    "frozen_results": [
+      "paper/results/g2_frozen_v2_summary.json",
+      "paper/results/submission_validation_summary.json",
+      "paper/results/g5_reproducibility_summary.json"
     ]
   },
+  "companion_boundary_program": {
+    "submission_blocker_for_mee": false,
+    "manuscript": [
+      "paper/boundary_manuscript_draft.md"
+    ],
+    "theory": [
+      "causal_model/channel_identifiability_theory.py",
+      "causal_model/proxy_calibration_theory.py",
+      "causal_model/bounded_proxy_drift.py",
+      "docs/channel_identifiability_theorem.md",
+      "docs/proxy_calibration_theorem.md",
+      "docs/bounded_proxy_drift_identification.md"
+    ],
+    "supporting_examples": [
+      "causal_model/colonization_recruitment_factorization.py",
+      "causal_model/theorem_projection_ledger.py",
+      "docs/colonization_recruitment_factorization.md",
+      "docs/theorem_projection_ledger.md",
+      "docs/campanula_channel_protocol.md"
+    ],
+    "status": "separate_boundary_paper_not_primary_mee_evidence"
+  },
   "excluded_from_primary": {
+    "boundary_theory_as_primary_claim": [
+      "paper/boundary_manuscript_draft.md",
+      "causal_model/channel_identifiability_theory.py",
+      "causal_model/proxy_calibration_theory.py",
+      "causal_model/bounded_proxy_drift.py"
+    ],
+    "ecological_projection_and_prospective_case": [
+      "causal_model/colonization_recruitment_factorization.py",
+      "causal_model/theorem_projection_ledger.py",
+      "causal_model/campanula_real_data.py",
+      "paper/campanula_primary_literature_audit.md"
+    ],
     "provisional_rule_panels": [
       "causal_model/bergmann_worked_example.py",
       "causal_model/ecological_rules_validation.py",
@@ -112,6 +130,8 @@
     }
   },
   "archive": [
+    "paper/archive/mee_manuscript_integrated_pre_split_2026-08-30.md",
+    "paper/archive/supporting_information_integrated_pre_split_2026-08-30.md",
     "paper/archive/mee_manuscript_pre_theorem_2026-08-24.md",
     "paper/archive/g2_frozen_benchmark_protocol_v1_pre_execution.json",
     "paper/archive/g2_protocol_v1_supersession.md",

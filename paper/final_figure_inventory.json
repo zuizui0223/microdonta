@@ -1,37 +1,40 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "manuscript": "paper/mee_manuscript_draft.md",
   "figures": [
     {
       "label": "Figure 1",
-      "section": "4.2",
+      "section": "3.1",
       "output": "outputs/g5/figures/figure1_confound.png",
       "command": "python -m causal_model.confound_demo --figure outputs/g5/figures/figure1_confound.png",
-      "role": "controlled model-selection confound versus RACH diagnosis"
+      "role": "controlled model-selection confound versus RACH admissible-set diagnosis"
     },
     {
       "label": "Figure 2",
-      "section": "4.3",
+      "section": "3.3",
       "output": "outputs/g5/figures/figure2_g2_frozen_v2.png",
       "command": "python paper/make_g2_figure.py --output outputs/g5/figures/figure2_g2_frozen_v2.png",
-      "role": "frozen G2 v2 observation-budget and selection benchmark"
+      "role": "frozen G2 v2 observation-budget, convergence and nuisance-selection benchmark"
     },
     {
       "label": "Figure 3",
-      "section": "4.4",
+      "section": "3.4",
       "output": "outputs/g5/figures/figure3_nov_calibration.png",
       "command": "python -m causal_model.nov_calibration --figure outputs/g5/figures/figure3_nov_calibration.png",
-      "role": "stored-region exactness and predictive NOV calibration"
+      "role": "NOV information identity, stored-region exactness and predictive calibration"
     },
     {
       "label": "Figure S1",
-      "section": "S3 / 4.1",
+      "section": "S4.1",
       "output": "outputs/g5/figures/figureS1_known_truth.png",
       "command": "python -m causal_model.known_truth_benchmark --figure outputs/g5/figures/figureS1_known_truth.png",
       "role": "specified-simulator known-truth self-consistency"
     }
   ],
   "excluded_from_figure_rebuild": [
+    "N1-N4 and bounded-drift boundary-paper figures",
+    "exact ecological projection figures",
+    "prospective Campanula figures",
     "provisional ecological rule panels",
     "structure-discovery figures",
     "Streamlit/UI screenshots",

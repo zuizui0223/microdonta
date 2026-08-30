@@ -1,13 +1,12 @@
 # microdonta / RACH mainline
 
-Status: normative development boundary for the MEE submission.
+Status: normative development boundary for the MEE methods submission.
 
-microdonta has one scientific product:
+microdonta has one primary MEE scientific product:
 
-> Given observations that may be compatible with multiple ecological mechanisms,
-> retain the admissible explanations, quantify what remains unresolved, and choose
-> the next observation that is expected to separate them without pretending that a
-> non-identifying pattern has selected a causal winner.
+> Given observations compatible with multiple declared ecological mechanism programs, retain the admissible explanations, quantify residual mechanism uncertainty, and select the next measurement with maximum current information about that uncertainty.
+
+The N1–N4 channel-identifiability theorem family and bounded proxy-drift interval are a separate boundary-paper programme. They may motivate why non-identifiability matters, but they are not primary contributions or required evidence in the MEE manuscript.
 
 ## Product contract
 
@@ -16,59 +15,50 @@ microdonta has one scientific product:
 1. a declared mechanism vocabulary `S`;
 2. a pre-data biological constraint grammar `G(theta)`;
 3. fixed ecological context `x_obs`;
-4. independent observations `y_obs` and their observation map;
-5. a predeclared distance/tolerance defining `A_epsilon`;
-6. candidate future observations whose predictive outcomes are derived without
-   access to benchmark truth or inspected outcomes.
+4. independent observed targets `y_obs` and their observation map;
+5. a predeclared distance and tolerance defining `A_epsilon`;
+6. candidate future measurements whose predictive outcomes are obtained without access to benchmark truth or inspected outcomes.
 
 ### Core computation
 
 ```text
 observation contract
--> N1-N4 identifiability gate where an exact W=F*E projection is available
--> A_epsilon: restricted admissible causal hypotheses
--> CA / D_RACH / R_RACH / CRC
--> mechanism-equivalence structure
--> validated NOV = I(S;Q | A_epsilon)/K
--> RACH-SEQ next-observation selection
+→ A_epsilon: restricted admissible causal hypotheses
+→ CA / D_RACH / R_RACH / CRC
+→ mechanism-equivalence structure
+→ validated NOV = I(S;Q | A_epsilon)/K
+→ RACH-SEQ maximum-current-NOV selection
+→ condition A_epsilon and recompute
 ```
 
 ### Output
 
-The primary output is never "the best mechanism" by default. It is:
+The default output is not a best mechanism. It is:
 
-- the surviving explanation set and causal admissibility profile;
-- degeneracy/resolvability and replaceability diagnostics;
-- unresolved mechanism-equivalence edges;
-- the ranked next measurement and the remaining observation budget;
-- an explicit statement when the observation class cannot identify a channel.
+- the surviving explanation set and causal-admissibility profile;
+- joint degeneracy/resolvability and replaceability diagnostics;
+- unresolved mechanism-equivalence structure;
+- the next candidate measurement and its validated information value;
+- a stopping state when the budget is exhausted, the declared ambiguity is resolved, or no available candidate carries further identified mechanism information.
 
-## Publication spine
-
-The MEE paper is fixed to:
+## MEE publication spine
 
 ```text
-N1-N4 exact channel-identifiability boundary
--> RACH admissible explanation set
--> information-theoretic NOV/EVSI
--> RACH-SEQ observation selection
--> controlled selection and error validation
--> exact one-step colonisation projection
--> prospective Campanula measurement design
+RACH admissible mechanism set
+→ information-theoretic NOV
+→ sequential RACH-SEQ recomputation
+→ controlled truth-peek-free selection challenge
+→ G2 policy and observation-budget results
+→ reproducible software and anonymous reviewer evidence
 ```
 
-Only code needed to support this spine is primary-paper code.
+The active manuscript contains no natural-system causal claim. Synthetic validation is the correct evidence object for the algorithmic selection claim because hidden mechanism truth, candidate information structure and outcome timing can be controlled.
 
-## Predictive-probability and NOV boundary
+## Predictive-probability boundary
 
-Synthetic truth may be used to score an algorithm only after the algorithm has
-made its choice. A candidate observation's predictive distribution is derived
-from the **current** admissible region whenever its listed outcomes form a
-verified mutually exclusive and exhaustive partition. Hidden benchmark truth is
-never a predictive prior.
+A candidate outcome distribution is derived from the **current** admissible region when its outcomes form a verified mutually exclusive and exhaustive partition. Hidden benchmark truth is never used as a predictive prior.
 
-The publication-level single-shot NOV is `next_observation_evsi`. For a verified
-current-region predictive map,
+For a verified candidate,
 
 ```text
 NOV(Q)
@@ -80,139 +70,107 @@ NOV(Q)
 Thus
 
 ```text
-0 <= NOV(Q) <= 1 - R_RACH(A_epsilon).
+0 <= NOV(Q) <= 1-R_RACH(A_epsilon).
 ```
 
-`NOV(Q)=0` exactly when `Q` carries no information about the remaining mechanism
-vector under current `A_epsilon`; the upper bound is attained exactly when the
-observation resolves all remaining switch entropy under the declared system.
-This is the normative meaning of validated NOV in microdonta.
+`NOV(Q)=0` exactly when `Q` carries no information about residual mechanism identity under current `A_epsilon`. If outcomes overlap, are incomplete or require unavailable outputs, validated NOV is non-estimable. The method does not silently substitute a declared prior and relabel it as validated EVSI.
 
-If a candidate's outcomes overlap, are incomplete, or required simulator columns
-are absent, the stored admissible region does not identify the predictive outcome
-distribution. `next_observation_evsi` therefore reports that candidate as **not
-estimable**; it does not silently substitute a declared prior and call the result
-a validated EVSI. The older target-switch score is retained only as the explicitly
-named compatibility helper `heuristic_next_observation_value` and is not part of
-the primary public API.
+The older target-switch score is retained only as `heuristic_next_observation_value`. An explicit normalized edge-cut fallback can remain available for RACH-SEQ steps lacking an estimable predictive partition, but every such step must record the fallback source and must not call the score validated NOV.
 
-RACH-SEQ is the sequential closure of the same objective. At every step, a
-candidate whose outcomes form a verified current-region partition is scored by
+## RACH-SEQ rule
+
+At every step:
+
+1. compute `I(S;Q|current A_epsilon)/K` for each verified remaining candidate;
+2. select the candidate with maximum positive current NOV;
+3. reveal or collect its outcome only after selection;
+4. condition the accepted region;
+5. recompute all candidate probabilities and NOV values.
+
+The algorithm stops when the observation budget is exhausted, the declared confounding structure is resolved, or all available validated NOV values are zero.
+
+## Frozen G2 selection challenge
+
+Protocol `rach-g2-truth-peek-free-v2` contains one or two random confounds, explicit resolving measurements and exactly two mechanism-independent binary nuisance candidates per system. It compares matched policies on identical generated systems, hidden truths, candidate sets and budgets:
 
 ```text
-NOV(Q | current A_epsilon) = I(S;Q | current A_epsilon) / K,
+rach_seq      maximum current validated NOV
+random_order  uniform random remaining candidate
 ```
 
-and the highest-NOV available observation is selected. After its realised outcome
-is observed, `A_epsilon` is conditioned, and all candidate predictive maps and NOV
-values are recomputed from the new current region. A candidate whose predictive
-map is not identifiable from stored rows may remain available only through the
-explicit compatibility fallback `expected_edge_cuts / current_edge_count`; the
-step records that score source as `normalized_edge_cut_fallback`. Declared outcome
-priors may still be used to materialise an unverified candidate outcome when no
-external outcome is supplied, but that quantity is never relabelled as validated
-NOV. Thus single-shot NOV and standard RACH-SEQ share one information-theoretic
-selection objective whenever it is estimable.
+Hidden truth is materialised only after a candidate is selected. The random-order policy is a selection baseline, not an alternative causal model.
 
-## Validation rule
-
-A valid synthetic benchmark must not feed hidden truth into candidate ranking.
-It also must distinguish two different claims:
+The benchmark reports:
 
 ```text
-observation sufficiency:  does a declared observation exist that can break a confound?
-selection efficiency:     does the algorithm choose useful observations under limited budget?
+budget
+→ fraction of initial confounding edges resolved
+→ convergence probability
+→ observations used
+→ nuisance measurements selected
+→ hidden-truth false-exclusion rate
+→ within-seed policy contrasts
 ```
 
-A resolver-only candidate set can test the first claim but not the second. The
-submission benchmark must therefore challenge observation selection itself.
+The comparison is descriptive, not an acceptance gate. Favourable, null or adverse frozen results must all be reported.
 
-### Frozen G2 selection challenge
+### Headline frozen values
 
-The current preregistered protocol is
-`rach-g2-truth-peek-free-v2`. V1 is retained in the archive but was never executed
-as the final benchmark; it was superseded before any final output was inspected
-because it contained only directly resolving candidates.
+At budget two, RACH-SEQ achieved 1.000 edge resolution and 0.990 convergence, versus 0.6045 and 0.435 under random order. Hidden-truth false exclusion was zero.
 
-V2 adds exactly two mechanism-uninformative binary nuisance measurements per
-system and evaluates two policies on the same generated systems, hidden truths,
-candidate sets and budgets:
+At budget four, random order selected 1.169 nuisance measurements per system versus 0.014 for RACH-SEQ:
 
 ```text
-rach_seq      choose the verified candidate with maximum current NOV;
-              use normalized edge-cut fallback only when NOV is not estimable
-random_order  choose uniformly among remaining candidates
+1.169/0.014 = 83.5-fold,
+1-0.014/1.169 = 98.8% reduction.
 ```
 
-For both policies, hidden truth is materialised only after the candidate has been
-selected. The random-order policy is a selection baseline, not an alternative
-causal model.
+The absolute counts must accompany the fold ratio. The phrase `mechanism-independent nuisance measurement` is preferred over `noise observation`, which could be confused with measurement error.
 
-The publication benchmark reports:
+## Separate boundary-paper programme
+
+The non-blocking companion programme is:
 
 ```text
-observation budget
--> policy-specific fraction of confounding edges resolved
--> policy-specific convergence probability
--> observations used
--> nuisance/distractor observations selected
--> false-exclusion rate for the hidden true explanation
--> within-seed RACH-SEQ minus random-order contrasts
+N1 net-only impossibility
+→ N2 exact-channel sufficiency
+→ N3 stable-proxy point identification
+→ bounded calibration-drift partial identification
+→ sign breakdown point and design rules
+→ N4 unbounded-drift non-identifiability
 ```
 
-The policy contrast is **descriptive, not an acceptance gate**. RACH-SEQ is not
-required by software tests or the protocol to outperform random selection.
-Favourable, null, or adverse frozen differences are all reportable results.
+If `q_1/q_0 in [1-delta,1+delta]`, the complementary-channel ratio lies in
 
-The final runner accepts no scientific parameter overrides; every output is
-tagged with the SHA-256 hash of the exact v2 protocol and the clean Git commit
-SHA used for execution. Any later change to the scientific configuration after
-execution requires a new protocol id and full rerun.
+```text
+[rho_hat(1-delta), rho_hat(1+delta)]
+```
 
-## Exact ecological projection boundary
+with multiplicative width `(1+delta)/(1-delta)`. This result belongs to the boundary manuscript, not the primary MEE claim spine. Exact one-step ecological projection and prospective Campanula material support that separate programme.
 
-N1-N4 apply exactly only after a positive factorisation such as `W=F*E` is earned
-for a declared ecological output. The current exact ecological bridge is one-step
-expected retained juvenile recruitment. Multistep invasion growth, persistence,
-endpoint trait-space geometry, and other ABM outputs remain extension-required
-unless separately factorised.
+## What is not the MEE mainline
 
-## What is not the mainline
+The following may remain for a companion paper, Supplement, compatibility or future work, but do not set MEE development priority:
 
-The following may remain in the repository for compatibility, Supplement, or
-future work, but they do not set development priority or support primary claims:
-
-- rule-transition / endpoint ABM panels;
+- N1–N4 proofs and bounded proxy-drift intervals as primary claims;
+- exact ecological channel projection and prospective Campanula application;
+- rule-transition or endpoint ABM panels;
 - provisional ecological-rule discovery;
 - structure discovery;
-- the optional attraction-trait simulator;
+- optional attraction-trait backends;
 - Streamlit/UI work;
-- new ecological case studies beyond the prospective Campanula design;
-- the externally owned eco-genetic-criticality programme.
-
-The three izu-core adapters are translation contracts into the RACH observation
-layer. They do not change the mainline and are not empirical validation of RACH.
-
-## Active development order
-
-1. **Pass G2 — benchmark validity.** Keep candidate ranking truth-peek-free,
-   retain the current-`A_epsilon` predictive semantics, pass the matched-policy v2
-   CI, and run the frozen protocol to produce the final observation-budget/error-
-   control and selection-comparison tables.
-2. **Pass G5 — reproducibility.** Rebuild the complete figure set from a clean
-   environment and verify the submission/boundary gates and wheel.
-3. Freeze the public RACH API and submission release.
-
-No new model family, ecological example, UI feature, or rule-transition result is
-a blocker before these three steps are complete.
+- external eco-genetic-criticality work;
+- the three izu-core empirical translation tracks.
 
 ## Public API boundary
 
-Package-level callables expose RACH first: `compute_causal_admissibility`,
-`causal_degeneracy`, `causal_resolvability`, replaceability/CRC,
-`mechanism_equivalence_structure`, `next_observation_evsi`, `run_rach_seq`, and
-`rach_summary`. Canonical submodules such as
-`causal_model.causal_admissibility` and `causal_model.rach_seq` remain importable
-under their own names and are never shadowed by root-level functions. Legacy
-structure-scoring helpers, edge-cut diagnostics, and heuristic NOV may remain for
-compatibility but must not define what the package appears to be.
+The package-level public API remains RACH-first: `compute_causal_admissibility`, `causal_degeneracy`, `causal_resolvability`, replaceability/CRC, `mechanism_equivalence_structure`, `next_observation_evsi`, `run_rach_seq` and `rach_summary`.
+
+Boundary-theory code may remain importable from explicit submodules but is not added to package-level `__all__` for the MEE release. Legacy structure scoring, edge-cut diagnostics and heuristic NOV remain compatibility utilities rather than the advertised product.
+
+## Active development order
+
+1. Maintain the frozen G2 and G5 evidence without retuning.
+2. Keep the MEE manuscript, Supporting Information, manifest, reviewer bundle and figure captions aligned to the methods-only spine.
+3. Develop bounded-drift theory and its manuscript on the separate boundary track.
+4. Add no empirical mechanism claim to either paper without a new explicit evidence audit.

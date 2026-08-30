@@ -30,8 +30,22 @@ def load_rows(path: Path) -> tuple[dict, dict[tuple[str, int], dict]]:
     return payload, rows
 
 
+def nuisance_contrast(
+    rows: dict[tuple[str, int], dict], *, budget: int = 4
+) -> tuple[float, float, float, float]:
+    """Return frozen absolute values, random/RACH ratio and relative reduction."""
+    rach = float(rows[("rach_seq", budget)]["mean_distractors_selected_mean"])
+    random = float(rows[("random_order", budget)]["mean_distractors_selected_mean"])
+    if rach <= 0 or random <= 0:
+        raise RuntimeError("nuisance-selection fold contrast requires positive means")
+    ratio = random / rach
+    reduction = 1.0 - rach / random
+    return rach, random, ratio, reduction
+
+
 def make_figure(result_path: Path, output_path: Path) -> Path:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -46,7 +60,11 @@ def make_figure(result_path: Path, output_path: Path) -> Path:
         ("frac_converged", "Converged systems", "fraction"),
         ("mean_frac_resolved", "Initial confounding edges resolved", "fraction"),
         ("mean_steps", "Observations used", "count"),
-        ("mean_distractors_selected", "Distractor observations selected", "count"),
+        (
+            "mean_distractors_selected",
+            "Mechanism-independent nuisance measurements",
+            "count",
+        ),
     ]
 
     fig, axes = plt.subplots(2, 2, figsize=(9.0, 7.0), sharex=True)
@@ -72,10 +90,24 @@ def make_figure(result_path: Path, output_path: Path) -> Path:
     axes[3].set_ylabel("Mean count")
     axes[0].legend(frameon=False)
 
+    rach4, random4, ratio4, reduction4 = nuisance_contrast(rows, budget=4)
+    axes[3].text(
+        0.03,
+        0.96,
+        "Budget 4\n"
+        f"random / RACH-SEQ = {random4:.3f} / {rach4:.3f}\n"
+        f"= {ratio4:.1f}×  ({100.0 * reduction4:.1f}% reduction)",
+        transform=axes[3].transAxes,
+        ha="left",
+        va="top",
+        fontsize=8.5,
+        bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "alpha": 0.85},
+    )
+
     protocol_short = payload["protocol_sha256"][:12]
     code_short = payload["code_commit_sha"][:12]
     fig.suptitle(
-        "RACH-SEQ selects resolving observations under a limited budget\n"
+        "RACH-SEQ selects resolving measurements under a limited budget\n"
         "Frozen G2 v2: 5 seeds × 200 systems; error bars = sample SD across seeds",
         y=0.99,
     )
