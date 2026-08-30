@@ -1,41 +1,46 @@
-"""Identifiability boundary for channel proxies.
+"""Identifiability boundary and sensitivity analysis for channel proxies.
 
-This module refines the positive result in
-:mod:`causal_model.channel_identifiability_theory`.  Let total performance be
+Let total performance be
 
     W_i(z) = F_i(z) E_i(z),
 
-and let an observed proxy for the fecundity/survival channel be
+and let an observed proxy for one channel be
 
     X_i(z) = q_i(z) F_i(z),
 
-where ``q_i`` is the unknown conversion between the proxy and the mathematical
-channel at time/regime ``i``.
+with the establishment-proxy case obtained symmetrically.
 
 N3 -- Stable-proxy ratio identification.
-    If q_0(z)=q_1(z)>0, then relative fecundity change is X_1/X_0 and relative
-    establishment change is (W_1/W_0)/(X_1/X_0).  Absolute calibration is not
-    necessary to identify channel *changes*.
+    If q_0(z)=q_1(z)>0, relative changes in both channels are point identified.
+
+N3/N4 bounded bridge -- Partial identification under bounded calibration drift.
+    If kappa(z)=q_1(z)/q_0(z) lies in [1-delta, 1+delta], 0<=delta<1,
+    each channel ratio has a sharp pointwise interval whose multiplicative width
+    is (1+delta)/(1-delta). Directional conclusions remain valid exactly while
+    the relevant interval excludes one; ``calibration_drift_breakpoint`` returns
+    the drift at which it first touches one.
 
 N4 -- Time-varying-proxy non-identifiability.
     If q_0 and q_1 are unconstrained, the same observed W and X are compatible
-    with arbitrary positive q_1/q_0 and therefore different channel-change
-    ratios. A proxy whose conversion changes across regimes does not resolve the
-    channels without calibration or a stability assumption.
+    with arbitrary positive calibration ratios and different channel changes.
 
-The proofs are in ``docs/proxy_calibration_theorem.md``.  Code here provides
-finite-grid constructions and regression checks only.
+The algebraic proofs are in ``docs/proxy_calibration_theorem.md``. Code here
+provides finite-grid calculations, sharp marginal bounds, breakpoint utilities,
+and constructive regression checks.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import isclose
+from math import isclose, isfinite
 from typing import Literal, Sequence
 
-from causal_model.channel_identifiability_theory import Channel, ChannelConclusion
+from causal_model.channel_identifiability_theory import ChannelConclusion
 
 
 ProxyChannel = Literal["fecundity", "establishment"]
+CalibrationEffect = Literal["multiply", "divide"]
+RatioDirection = Literal["decrease", "increase", "unchanged", "not_identified"]
+StableDirection = Literal["decrease", "increase", "unchanged"]
 
 
 @dataclass(frozen=True)
@@ -45,6 +50,44 @@ class ChannelChangeRatios:
     fecundity_ratio: tuple[float, ...]
     establishment_ratio: tuple[float, ...]
     conclusion: ChannelConclusion
+
+
+@dataclass(frozen=True)
+class ChannelRatioIdentificationSet:
+    """Sharp pointwise marginal interval for one channel-change ratio."""
+
+    lower: tuple[float, ...]
+    upper: tuple[float, ...]
+    direction: tuple[RatioDirection, ...]
+
+
+@dataclass(frozen=True)
+class DriftBreakdownPoint:
+    """Calibration drift at which a stable-calibration direction first includes one.
+
+    ``delta_star`` is the exact non-negative solution for the first contact with
+    one. If it is at least one, the directional conclusion is robust for every
+    admissible symmetric drift bound ``0 <= delta < 1``.
+    """
+
+    stable_ratio: float
+    calibration_effect: CalibrationEffect
+    direction: StableDirection
+    delta_star: float
+    robust_for_all_admissible_drift: bool
+
+
+@dataclass(frozen=True)
+class BoundedProxyIdentification:
+    """Partial-identification result under a symmetric calibration-drift bound."""
+
+    delta: float
+    calibration_ratio_bounds: tuple[float, float]
+    multiplicative_width: float
+    fecundity_ratio: ChannelRatioIdentificationSet
+    establishment_ratio: ChannelRatioIdentificationSet
+    fecundity_breakdown: tuple[DriftBreakdownPoint, ...]
+    establishment_breakdown: tuple[DriftBreakdownPoint, ...]
 
 
 @dataclass(frozen=True)
@@ -66,8 +109,8 @@ def _positive(values: Sequence[float], name: str) -> tuple[float, ...]:
     result = tuple(float(value) for value in values)
     if not result:
         raise ValueError(f"{name} must be nonempty")
-    if any(value <= 0 for value in result):
-        raise ValueError(f"{name} must be strictly positive")
+    if any(not isfinite(value) or value <= 0 for value in result):
+        raise ValueError(f"{name} must contain finite, strictly positive values")
     return result
 
 
@@ -102,6 +145,101 @@ def _classify(
     return "unchanged"
 
 
+def _validate_delta(delta: float) -> float:
+    value = float(delta)
+    if not isfinite(value) or not 0.0 <= value < 1.0:
+        raise ValueError("delta must satisfy 0 <= delta < 1")
+    return value
+
+
+def _interval_direction(lower: float, upper: float, *, tolerance: float) -> RatioDirection:
+    if tolerance < 0:
+        raise ValueError("tolerance must be non-negative")
+    if upper < 1.0 - tolerance:
+        return "decrease"
+    if lower > 1.0 + tolerance:
+        return "increase"
+    if abs(lower - 1.0) <= tolerance and abs(upper - 1.0) <= tolerance:
+        return "unchanged"
+    return "not_identified"
+
+
+def _bounded_interval(
+    stable_ratios: Sequence[float],
+    *,
+    delta: float,
+    calibration_effect: CalibrationEffect,
+    tolerance: float,
+) -> ChannelRatioIdentificationSet:
+    if calibration_effect == "multiply":
+        lower = tuple(ratio * (1.0 - delta) for ratio in stable_ratios)
+        upper = tuple(ratio * (1.0 + delta) for ratio in stable_ratios)
+    elif calibration_effect == "divide":
+        lower = tuple(ratio / (1.0 + delta) for ratio in stable_ratios)
+        upper = tuple(ratio / (1.0 - delta) for ratio in stable_ratios)
+    else:
+        raise ValueError(f"unknown calibration_effect: {calibration_effect}")
+    return ChannelRatioIdentificationSet(
+        lower=lower,
+        upper=upper,
+        direction=tuple(
+            _interval_direction(lo, hi, tolerance=tolerance)
+            for lo, hi in zip(lower, upper)
+        ),
+    )
+
+
+def calibration_drift_breakpoint(
+    stable_ratio: float,
+    *,
+    calibration_effect: CalibrationEffect,
+    tolerance: float = 1e-12,
+) -> DriftBreakdownPoint:
+    """Return the symmetric drift bound at which a direction first includes one.
+
+    ``calibration_effect='multiply'`` applies when the target ratio equals its
+    stable-calibration value times ``kappa=q_1/q_0``. Its breakpoint is
+    ``abs(r-1)/r``. ``'divide'`` applies when the target ratio is divided by
+    ``kappa``; its breakpoint is ``abs(r-1)``.
+
+    Robustness is strict: for a breakpoint within ``[0,1)``, the interval excludes
+    one for ``delta < delta_star`` and first touches one at ``delta_star``.
+    """
+    if calibration_effect not in ("multiply", "divide"):
+        raise ValueError(f"unknown calibration_effect: {calibration_effect}")
+    ratio = float(stable_ratio)
+    if not isfinite(ratio) or ratio <= 0:
+        raise ValueError("stable_ratio must be finite and strictly positive")
+    if tolerance < 0:
+        raise ValueError("tolerance must be non-negative")
+    if abs(ratio - 1.0) <= tolerance:
+        direction: StableDirection = "unchanged"
+        delta_star = 0.0
+    elif ratio < 1.0:
+        direction = "decrease"
+        if calibration_effect == "multiply":
+            delta_star = (1.0 - ratio) / ratio
+        elif calibration_effect == "divide":
+            delta_star = 1.0 - ratio
+        else:
+            raise ValueError(f"unknown calibration_effect: {calibration_effect}")
+    else:
+        direction = "increase"
+        if calibration_effect == "multiply":
+            delta_star = (ratio - 1.0) / ratio
+        elif calibration_effect == "divide":
+            delta_star = ratio - 1.0
+        else:
+            raise ValueError(f"unknown calibration_effect: {calibration_effect}")
+    return DriftBreakdownPoint(
+        stable_ratio=ratio,
+        calibration_effect=calibration_effect,
+        direction=direction,
+        delta_star=delta_star,
+        robust_for_all_admissible_drift=(direction != "unchanged" and delta_star >= 1.0),
+    )
+
+
 def identify_from_net_and_stable_proxy(
     *,
     net_before: Sequence[float],
@@ -113,12 +251,12 @@ def identify_from_net_and_stable_proxy(
 ) -> ChannelChangeRatios:
     """Identify relative channel changes under a time-stable positive proxy map.
 
-    If the proxy represents F as X_i=qF_i with the *same* q at both times,
-    F_1/F_0=X_1/X_0.  Since W=FE, E_1/E_0=(W_1/W_0)/(F_1/F_0).
+    If the proxy represents F as X_i=qF_i with the same q at both times,
+    F_1/F_0=X_1/X_0. Since W=FE, E_1/E_0=(W_1/W_0)/(F_1/F_0).
 
-    ``proxy_channel='establishment'`` applies the symmetric argument.
-    The proxy's absolute scale may be unknown and trait-dependent; only temporal
-    stability of its conversion factor is required.
+    ``proxy_channel='establishment'`` applies the symmetric argument. The proxy's
+    absolute scale may be unknown and trait-dependent; only temporal stability of
+    its conversion factor is required.
     """
     w0 = _positive(net_before, "net_before")
     w1 = _positive(net_after, "net_after")
@@ -142,6 +280,83 @@ def identify_from_net_and_stable_proxy(
     )
 
 
+def identify_from_net_and_bounded_proxy_drift(
+    *,
+    net_before: Sequence[float],
+    net_after: Sequence[float],
+    proxy_before: Sequence[float],
+    proxy_after: Sequence[float],
+    proxy_channel: ProxyChannel,
+    delta: float,
+    tolerance: float = 1e-10,
+) -> BoundedProxyIdentification:
+    """Return sharp pointwise channel-ratio bounds under bounded proxy drift.
+
+    Let ``kappa(z)=q_1(z)/q_0(z)`` and assume
+    ``1-delta <= kappa(z) <= 1+delta`` pointwise. For a fecundity proxy,
+
+    ``rho_F = (X_1/X_0)/kappa`` and
+    ``rho_E = [(W_1/W_0)/(X_1/X_0)] * kappa``.
+
+    The establishment-proxy case swaps F and E. The returned marginal intervals
+    are sharp pointwise. The same kappa links the two channels, so the joint set is
+    the one-parameter curve described in the theorem rather than the Cartesian
+    product of the two marginal intervals.
+    """
+    drift = _validate_delta(delta)
+    stable = identify_from_net_and_stable_proxy(
+        net_before=net_before,
+        net_after=net_after,
+        proxy_before=proxy_before,
+        proxy_after=proxy_after,
+        proxy_channel=proxy_channel,
+        tolerance=tolerance,
+    )
+    if proxy_channel == "fecundity":
+        f_effect: CalibrationEffect = "divide"
+        e_effect: CalibrationEffect = "multiply"
+    elif proxy_channel == "establishment":
+        f_effect = "multiply"
+        e_effect = "divide"
+    else:
+        raise ValueError(f"unknown proxy_channel: {proxy_channel}")
+    f_set = _bounded_interval(
+        stable.fecundity_ratio,
+        delta=drift,
+        calibration_effect=f_effect,
+        tolerance=tolerance,
+    )
+    e_set = _bounded_interval(
+        stable.establishment_ratio,
+        delta=drift,
+        calibration_effect=e_effect,
+        tolerance=tolerance,
+    )
+    return BoundedProxyIdentification(
+        delta=drift,
+        calibration_ratio_bounds=(1.0 - drift, 1.0 + drift),
+        multiplicative_width=(1.0 + drift) / (1.0 - drift),
+        fecundity_ratio=f_set,
+        establishment_ratio=e_set,
+        fecundity_breakdown=tuple(
+            calibration_drift_breakpoint(
+                ratio,
+                calibration_effect=f_effect,
+                tolerance=tolerance,
+            )
+            for ratio in stable.fecundity_ratio
+        ),
+        establishment_breakdown=tuple(
+            calibration_drift_breakpoint(
+                ratio,
+                calibration_effect=e_effect,
+                tolerance=tolerance,
+            )
+            for ratio in stable.establishment_ratio
+        ),
+    )
+
+
 def construct_time_varying_proxy_symmetry(
     *,
     net_before: Sequence[float],
@@ -155,15 +370,9 @@ def construct_time_varying_proxy_symmetry(
 ) -> ProxySymmetryResult:
     """Construct two latent explanations with identical observed W and proxy X.
 
-    Model A assumes the proxy calibration is stable, q_1=q_0.  Model B sets
+    Model A assumes the proxy calibration is stable, q_1=q_0. Model B sets
     q_1=h q_0, where ``h`` is any positive trait-dependent calibration shift.
-    For a fecundity proxy:
-
-    ``F_i = X_i/q_i`` and ``E_i = W_i/F_i``.
-
-    Both models reproduce exactly the supplied observed W and X, but their channel
-    ratios can differ whenever h differs from one. This is the constructive form
-    of theorem N4.
+    For a fecundity proxy, ``F_i=X_i/q_i`` and ``E_i=W_i/F_i``.
     """
     w0 = _positive(net_before, "net_before")
     w1 = _positive(net_after, "net_after")
@@ -216,8 +425,6 @@ def same_observed_proxy_data(result: ProxySymmetryResult, *, tolerance: float = 
     """Document that N4 alternatives share the observed series by construction."""
     if tolerance < 0:
         raise ValueError("tolerance must be non-negative")
-    # The dataclass carries one observed series by definition; this function exists
-    # as an explicit invariant boundary for callers/tests.
     return all(
         isclose(value, value, rel_tol=tolerance, abs_tol=tolerance)
         for series in (
