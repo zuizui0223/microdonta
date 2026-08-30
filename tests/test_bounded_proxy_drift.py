@@ -23,6 +23,7 @@ def test_delta_zero_recovers_stable_proxy_point_identification():
     assert isclose(result.establishment.upper, 0.75)
     assert isclose(result.fecundity.multiplicative_width, 1.0)
     assert isclose(result.establishment.multiplicative_width, 1.0)
+    assert result.joint_log_segment.satisfies_net_constraint()
 
 
 def test_bounded_drift_interval_has_declared_multiplicative_width():
@@ -40,6 +41,39 @@ def test_bounded_drift_interval_has_declared_multiplicative_width():
     assert isclose(result.fecundity.upper, 0.80 / 0.80)
     assert isclose(result.establishment.multiplicative_width, expected_width)
     assert isclose(result.fecundity.multiplicative_width, expected_width)
+
+
+def test_joint_identified_set_is_slope_minus_one_on_log_scale():
+    result = identify_under_bounded_proxy_drift(
+        net_ratio=0.60,
+        proxy_ratio=0.80,
+        delta=0.20,
+        proxy_channel="fecundity",
+    )
+    segment = result.joint_log_segment
+    dx = segment.log_fecundity_at_kappa_upper - segment.log_fecundity_at_kappa_lower
+    dy = segment.log_establishment_at_kappa_upper - segment.log_establishment_at_kappa_lower
+
+    assert segment.perfect_negative_dependence is True
+    assert isclose(segment.slope, -1.0)
+    assert isclose(dy / dx, -1.0)
+    assert segment.satisfies_net_constraint()
+
+
+def test_marginal_upper_endpoints_are_not_jointly_admissible():
+    result = identify_under_bounded_proxy_drift(
+        net_ratio=0.60,
+        proxy_ratio=0.80,
+        delta=0.20,
+        proxy_channel="fecundity",
+    )
+    # Treating marginal intervals as independent would admit this impossible pair.
+    assert not isclose(
+        result.fecundity.upper * result.establishment.upper,
+        result.net_ratio,
+    )
+    # The two legitimate joint endpoints each retain the exact net-product constraint.
+    assert result.joint_log_segment.satisfies_net_constraint()
 
 
 def test_every_latent_ratio_from_admissible_calibration_is_contained():
@@ -93,6 +127,7 @@ def test_establishment_proxy_is_symmetric():
     assert isclose(result.establishment.upper, 1.50 / 0.90)
     assert isclose(result.fecundity.lower, 0.80 * 0.90)
     assert isclose(result.fecundity.upper, 0.80 * 1.10)
+    assert result.joint_log_segment.satisfies_net_constraint()
 
 
 def test_design_rule_for_interval_distinguishes_sign_and_ambiguity():
