@@ -1,45 +1,59 @@
-# RACH: Causal Admissibility and Degeneracy Framework
+# RACH: Causal Admissibility and Observation Design
 
 [![CI](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml/badge.svg)](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml)
 
-## Canonical publication path
+## Publication paths
 
-The active submission is the MEE **Research Article** defined in
-[`paper/README.md`](paper/README.md). Its theorem-first spine is N1–N4 →
-RACH → NOV/RACH-SEQ → controlled benchmarks → exact one-step projection →
-prospective Campanula design. The machine-readable boundary is
-[`paper/submission_manifest.json`](paper/submission_manifest.json), and CI
-rejects drift back to provisional ecological-rule or structure-discovery claims.
+microdonta now supports two deliberately separate papers.
 
-The repository-wide program boundary is separate from the paper boundary. See
-[`docs/repository_map.md`](docs/repository_map.md) and
-[`repository_programs.json`](repository_programs.json) for the Graphify-derived
-map of RACH, adapters, optional backends, apps, archives, and external ownership.
-The all-repository audit is in
-[`docs/repository_ecosystem.md`](docs/repository_ecosystem.md); it is a boundary
-registry, not a claim that microdonta owns the other projects.
+### MEE method paper
 
-Run `python paper/check_submission_bundle.py` and
-`python scripts/check_repository_boundaries.py` before manuscript, figure, or
-repository-structure changes.
-
-**RACH** means **Restricted Admissible Causal Hypotheses**. It keeps every causal
-explanation that remains compatible with a declared model family, biological
-constraints, and observed pattern, then states exactly what is still unresolved
-and what observation would reduce that uncertainty.
+The active *Methods in Ecology and Evolution* Research Article is:
 
 ```text
-mathematical theorem
-→ declared model-to-theorem projection
-→ ABM robustness test under extra processes
-→ POM admissibility / competing explanations
-→ next-observation design
+RACH admissible mechanism set
+→ causal degeneracy / resolvability / replaceability
+→ validated NOV = I(S;Q | A_epsilon)/K
+→ sequential RACH-SEQ selection
+→ truth-peek-free G2 benchmark
 ```
 
-RACH is not a best-model selector and does not convert conditional simulation
-results into empirical proof.
+Its validation object is a controlled synthetic observation-selection challenge,
+not a natural-system causal claim. At budget four, the matched random-order policy
+selected 1.169 mechanism-independent nuisance measurements per system versus 0.014
+for RACH-SEQ: an 83.5-fold difference, or approximately 98.8% fewer nuisance
+selections, while using 2.673 versus 1.518 observations.
 
-## Core object
+### Boundary paper
+
+The companion boundary programme is:
+
+```text
+N1 net-only non-identifiability
+→ N2 exact-channel sufficiency
+→ N3 stable-proxy point identification
+→ bounded calibration-drift identified intervals
+→ directional breakdown points and design rules
+→ N4 unbounded-drift non-identifiability
+```
+
+If `q_1/q_0 in [1-delta,1+delta]`, the complementary-channel ratio lies in
+`[rho_hat(1-delta),rho_hat(1+delta)]`, with multiplicative width
+`(1+delta)/(1-delta)`. This theory is maintained separately and does not block the
+MEE method submission.
+
+The normative split is in [`paper/TWO_PAPER_STRATEGY.md`](paper/TWO_PAPER_STRATEGY.md).
+The active MEE evidence boundary is
+[`paper/submission_manifest.json`](paper/submission_manifest.json). Run
+`python paper/check_submission_bundle.py`, `python paper/check_mee_submission.py`
+and `python scripts/check_repository_boundaries.py` before publication changes.
+
+## RACH
+
+**RACH** means **Restricted Admissible Causal Hypotheses**. It keeps every causal
+explanation compatible with a declared model family, biological constraints and
+observed pattern, quantifies what remains unresolved, and identifies which next
+measurement carries the most information about residual mechanism identity.
 
 ```text
 A_epsilon(y_obs, x_obs)
@@ -51,391 +65,149 @@ A_epsilon(y_obs, x_obs)
 
 | symbol | meaning |
 |---|---|
-| `x_obs` | fixed empirical context used as model input |
-| `theta` | parameters sampled over biologically admissible ranges |
-| `s` | causal program or switch state |
-| `G(theta)` | physical, biological, and ecological constraints |
-| `P_sim`, `P_obs` | simulated and observed pattern summaries |
-| `d`, `epsilon` | discrepancy and predeclared acceptance tolerance |
+| `x_obs` | fixed empirical context |
+| `theta` | parameters over biologically admissible ranges |
+| `s` | causal mechanism/switch vector |
+| `G(theta)` | pre-data biological constraints |
+| `P_sim`, `P_obs` | simulated and observed pattern maps |
+| `d`, `epsilon` | predeclared discrepancy and tolerance |
 
-The output is the set of surviving causal explanations, their equivalence or
-replaceability, and observations expected to reduce that uncertainty.
-
-## Position in the repository ecosystem
-
-microdonta owns the inference layer between a declared ecological observation
-contract and the next measurement. It does not own field capture, the source
-island ecology, global comparative analyses, SDMs, eco-genetic mechanisms, or
-ecological-state philosophy.
-
-The merged izu-core bridge contains exactly three nonblocking adapters:
-
-| Source question | Frozen RACH contract | microdonta role |
-|---|---|---|
-| real signed functional starting position | `signed_position = plant_trait - pollinator_functional_center`, fixed before outcome inspection | next observation plus N3/N4 proxy calibration |
-| network context to effective service | `effective_service = sum_k(visitor_rate_k * direct_effectiveness_k)` | channel measurement plus proxy calibration |
-| complete pollinator-change chain | change -> service -> dependency/assurance -> response | RACH-SEQ observation package |
-
-Readiness is conjunctive. Unsigned matching cannot replace signed position;
-visitor rate, identity, richness, or degree cannot replace direct effectiveness;
-and a missing link in the complete chain cannot be inferred from adjacent
-observations. The source results and field contracts remain owned by
-[`izu-core`](https://github.com/zuizui0223/izu-core).
-
-## Mathematical identifiability boundary
-
-The repository's theorem layer begins from a positive trait-specific
-factorisation:
+For a verified predictive partition of the current admissible region,
 
 ```text
-W(z) = F(z) E(z)
+NOV(Q)=I(S;Q | A_epsilon)/K.
 ```
 
-where `F` is a local fecundity/survival channel and `E` is an
-establishment/reachability channel.
+RACH-SEQ selects the maximum-current-NOV candidate, observes its outcome only
+after selection, conditions the admissible region and recomputes all remaining
+candidate values.
 
-### N1 — net-only observations are structurally non-identifying
+RACH is not a best-model selector and does not convert conditional simulation
+results into empirical proof.
 
-For any positive trait-dependent multiplier `a(z)`, the two distinct changes
-
-```text
-(F, E) -> (aF, E)
-(F, E) -> (F, aE)
-```
-
-produce the same net performance:
-
-```text
-W_after(z) = a(z) F(z) E(z).
-```
-
-Therefore **every observation that depends only on `W` is identical** between
-those mechanisms: all thresholded viable sets, their lower and upper edges,
-breadth, connectedness, and any other trait-space geometry. Geometry can be
-informative inside a restricted simulator family, but it cannot generally recover
-the changed vital-rate channel once channels have been collapsed into `W`.
-
-### N2 — net performance plus one exact channel is sufficient
-
-With positive factors, observing `W` and either one factor reconstructs the
-other:
-
-```text
-E = W / F
-F = W / E.
-```
-
-Hence before/after `W` plus before/after `F` (or `E`) identifies the two channel
-change ratios. The implementation keeps `fecundity_only`, `establishment_only`,
-`mixed_or_unidentified`, and `unchanged` as separate conclusions.
-
-### N3/N4 — a proxy helps only under a calibration condition
-
-For a proxy `X_i(z)=q_i(z)F_i(z)`:
-
-```text
-q_0(z) = q_1(z)
-    -> X_1/X_0 = F_1/F_0; relative channel change is identified
-
-q_0(z), q_1(z) unconstrained
-    -> calibration drift restores non-identifiability
-```
-
-Thus a visit count, pollen-load index, or connectivity index is not
-automatically a channel measurement. Its conversion to the mathematical factor
-must be stable across the comparison, or separately calibrated.
-
-These are algebraic theorems under the stated positive multiplicative model.
-Randomised code checks are regression tests, not the proofs.
-
-## Exact life-cycle bridge: colonization recruitment
-
-The full colonization ABM reports a stochastic multi-step invasion growth rate
-`lambda`; that quantity is not yet factorised. The repository now also exposes a
-separate **exact one-step expected retained juvenile-recruitment submodel**:
-
-```text
-W_recruit(z) = F_local(z) E_settlement(z)
-
-F_local = survival_probability * conception_probability
-E_settlement = (1-extinction_rate)
-               * [dispersal_probability * connectivity * expected_target_room
-                  + (1-dispersal_probability) * local_room]
-```
-
-This matches the event order in the colonization life cycle: adult survival,
-conception, mutually exclusive dispersal/local settlement branches, and the
-end-of-step patch-extinction draw. In its strict positive interior, N1–N4 apply
-exactly to `W_recruit`.
-
-It does **not** follow that N1–N4 automatically apply to multistep `lambda`,
-`Omega_inv`, population persistence, or endpoint trait-space geometry. Those are
-the next ABM robustness questions.
-
-## Projection ledger
-
-The theorem-to-model boundary is explicit in
-`causal_model.theorem_projection_ledger`:
-
-| target | current status |
-|---|---|
-| abstract positive `W=FE` model | exact theorem target |
-| colonization one-step recruitment | exact theorem target in its positive interior |
-| spatial pollination ABM | requires a declared `W=FE` factorisation |
-| colonization multistep `lambda` | requires a bridge from one-step factors to multistep dynamics |
-| defense backend | requires a declared factorisation |
-| published *Campanula microdonta* record | not yet a channel-identification observation class |
-
-A model with biologically rich processes is not thereby theorem-exact. The
-factorisation and observation map must be stated and checked.
-
-## Repository structure
+## Repository roles
 
 ```text
 causal_model/
-  causal_admissibility.py               admissible causal regions and causal admissibility
-  causal_replaceability.py              replaceability and causal degeneracy
-  rach_seq.py                           next-observation value (NOV / EVSI)
-  abm_family_adapter.py                 robust / fragile sweep classification
-  rule_transition_invariants.py         conditional necessities across robust programs
-  rule_transition_hardened.py           outcome provenance boundary
-  rule_transition_protocol.py           isolated interventions and assumptions-only motifs
-  rule_transition_diagnostics.py        endpoint sensitivity, Wilson intervals, benchmark reports
-  endpoint_sensitivity_backends.py      defense endpoint sensitivity runner
-  trait_space_theory.py                 restricted comparative statics for costly relationship-rewarded traits
-  channel_identifiability_theory.py     N1/N2 net-performance and one-factor theorems
-  proxy_calibration_theory.py           N3/N4 stable-proxy and calibration-drift theorems
-  theorem_projection_ledger.py          theorem applicability boundary for each backend/data layer
-  colonization_recruitment_factorization.py
-                                        exact one-step juvenile-recruitment factorisation
-  spatial_metapopulation_abm.py         fecundity-mediated individual / patch ABM
-  defense_metapopulation_abm.py         survival-mediated defense ABM
-  colonization_metapopulation_abm.py    establishment-mediated connectivity ABM
-  campanula_real_data.py                published Campanula evidence and study design
+  causal_admissibility.py          admissible regions, CA, D_RACH, R_RACH
+  causal_replaceability.py         causal replaceability / CRC
+  mechanism_equivalence.py         residual equivalence structure
+  nov_evsi.py                      validated NOV / EVSI
+  rach_seq.py                      sequential observation selection
+  generality_sweep.py              frozen G2 policy benchmark generator
+  bounded_proxy_drift.py           separate boundary-paper partial identification
+  channel_identifiability_theory.py
+  proxy_calibration_theory.py      separate N1–N4 boundary theory
 
-attraction_trait_model/                 optional biological simulator backend
-apps/streamlit_app.py                   interactive application, not evidence
-paper/                                  canonical submission workspace
-
-examples/
-  spatial_metapopulation_demo.py
-  endpoint_sensitivity_report.py
-  channel_identifiability_demo.py
-  proxy_calibration_demo.py
-  island_pollination_translation/       three izu-core-to-RACH adapter contracts
+paper/
+  mee_manuscript_draft.md          active RACH method manuscript
+  supporting_information.md        active method SI
+  boundary_manuscript_draft.md     separate boundary-paper draft
+  TWO_PAPER_STRATEGY.md            no-double-counting governance
+  submission_manifest.json         active MEE evidence inventory
 ```
 
-Eco-genetic criticality code, documentation, examples, and tests are owned only
-by [`zuizui0223/eco-genetic-criticality`](https://github.com/zuizui0223/eco-genetic-criticality).
-They are intentionally absent from the current microdonta tree.
+The repository also retains supplementary ABM backends, adapters and archived
+exploratory programmes. They are not primary evidence for the MEE paper unless
+explicitly listed in the submission manifest.
 
-## Campanula microdonta: empirical layer
+## izu-core translation tracks
 
-The Campanula workflow intentionally separates **published observations** from
-planned field data and theory-derived predictions. The present published targets
-are the documented isolation gradients in selfing rate and flower size, together
-with the documented pollinator transition.
+The three izu-core questions remain nonblocking real-system translation tracks:
 
-Those published patterns do **not** currently provide:
+| Source question | RACH observation contract |
+|---|---|
+| signed functional starting position | freeze `plant_trait - pollinator_functional_center` before outcome inspection |
+| network context to effective service | measure `sum_k(visitor_rate_k * direct_effectiveness_k)` rather than treating degree or abundance as service |
+| complete pollinator-change chain | observe change → service → dependency/assurance → response without inferring missing links |
 
-```text
-trait-specific total performance W
-an explicit F/E factorisation
-one direct channel, or a proxy with stable / calibrated conversion
-```
+Their estimands and evidence gates are specified, but they are not yet empirical
+validation of RACH or of the ecological mechanisms.
 
-They therefore cannot identify a fecundity/pollination channel versus an
-establishment/reachability channel under N1–N4. Their correct role is to retain
-competing explanations and specify the missing next observation.
-
-The practical field-design target is not merely a flower-trait mean or a visit
-count. It is a defensible mapping to:
-
-```text
-W(z)  trait-specific performance on a declared life-cycle scale
-F(z)  local reproductive / pollination component, or a stable calibrated proxy
-E(z)  establishment / reachability component inferred or directly measured
-```
-
-```bash
-python -m causal_model.campanula_real_data
-```
-
-This remains a study-design result, not a claim that the published record has
-already identified the causal mechanism.
-
-## Rule-transition ABMs
-
-The ABM layer asks a different, conditional question: after an ecological relation
-changes, how does the set of trait values able to invade and persist change?
-
-```text
-Omega_inv(Z*) = { z' : lambda(z' | Z*) > 0 }
-```
-
-`lambda` is the long-term growth rate of a rare, bred-true invader introduced into
-a stationary resident community `Z*`. The resulting viable trait set may contract,
-shift, fragment, expand, collapse, or remain conserved.
-
-The three mechanistically distinct backends are:
-
-| backend | focal trait reward | relation changed | endpoint status |
-|---|---|---|---|
-| spatial metapopulation | fecundity via mutualistic service | pollination loss | supported when both residents are stationary |
-| defense metapopulation | survival via predator-dependent defense | predator loss | supported when both residents are stationary |
-| colonization metapopulation | establishment via connectivity | corridor loss | excluded when complete loss leaves no stationary after-resident |
-
-### Strict endpoint protocol
-
-For defense and colonization, and for endpoint sensitivity in the spatial backend,
-the comparison is:
-
-```text
-1. Equilibrate the before resident.
-2. Estimate Omega_inv(before) against that resident.
-3. Apply the intervention to the same community.
-4. Re-equilibrate the after resident, including resources and trait composition.
-5. Estimate Omega_inv(after) only if the after resident is stationary.
-```
-
-A non-stationary or extinct after resident is retained as a rejected endpoint; it
-is not converted into an empty viable set. Complete corridor loss can remove
-recolonisation and leave no defensible endpoint. That outcome is a counterexample
-to over-generalisation, not missing data.
-
-### Non-circular rule-transition inference
-
-Program assumptions and simulated outcomes are kept separate.
-
-```text
-ProgramRun.motifs          structural assumptions only
-ProgramRun.outcome_motifs  outcome labels derived from matching simulator metadata
-```
-
-`trait_space_contraction`, `trait_space_shift`, and related labels are never fixed
-program assumptions. They are derived only from matching simulator metadata. Thus
-a caller cannot obtain a contraction invariant merely by placing a contraction
-label into a motif set.
-
-The cross-system result may therefore be a broad
-`trait_space_reconfiguration` rather than a geometry-specific contraction or
-shift. All such claims remain conditional on the declared model family, sampled
-regions, stationarity criterion, and acceptance rule.
-
-### Isolated spatial interventions
-
-The spatial public intervention factory changes exactly one biological channel at
-a time:
-
-| intervention | changed channel | unchanged biological channels |
-|---|---|---|
-| `pollination_loss` | `interaction_scale` | predation, dispersal |
-| `predation_loss` | `predation_scale` | interaction, dispersal |
-| `dispersal_loss` | `dispersal_scale` | interaction, predation |
-
-Alternative compensation is the separate `repro_baseline` parameter. It can be
-zero for a pure intervention or varied independently in counterexample and
-sensitivity analyses.
-
-## Pattern-oriented modelling and classification
-
-Each ABM run becomes a multivariate POM summary. For the spatial backend:
-
-```text
-P_sim = (
-  interaction_network,
-  patch_occupancy,
-  persistence_ne,
-  trait_moments,
-  omega_inv_state
-)
-```
-
-A run is accepted only when its POM is within `epsilon` of its target and its
-focal trait-space outcome satisfies the backend's declared criterion. Sweep
-records are then classified as:
-
-```text
-robust        adequate recurrence across the declared sample
-fragile       a rare or tuning-dependent match
-rejected      insufficient matching support
-insufficient  not enough replicates to judge
-```
-
-The `no_common_rule` result is intended: robust systems then have no shared
-assumption, outcome, or supported minimal clause under the declared design.
-
-## Endpoint sensitivity and uncertainty reports
-
-`examples.endpoint_sensitivity_report` runs spatial-pollination and defense
-endpoint sensitivity cells. It varies invasion-grid density, invasion duration,
-replicate count, invasion threshold, and stationarity window. Every cell retains
-region and stochastic-seed provenance and reports Wilson intervals.
+## Installation and core checks
 
 ```bash
 pip install -e ".[dev]"
-
-# Small local smoke report
-python -m examples.endpoint_sensitivity_report \
-  --profile quick \
-  --output outputs/endpoint_sensitivity_quick.json
-
-# Larger local analysis
-python -m examples.endpoint_sensitivity_report \
-  --profile standard \
-  --backend all \
-  --output outputs/endpoint_sensitivity_standard.json
-```
-
-A manual GitHub Actions workflow, **Endpoint sensitivity report**, can also run
-`quick`, `standard`, or `full` profiles and uploads the resulting JSON as an
-artifact. `full` is intentionally manual because it is a large factorial analysis.
-
-## Running the repository
-
-```bash
-pip install -e ".[dev]"
+python paper/check_submission_bundle.py
+python paper/check_mee_submission.py
 python scripts/check_repository_boundaries.py
 pytest -q
-
-# Mathematical theorem demonstrations
-python -m examples.channel_identifiability_demo
-python -m examples.proxy_calibration_demo
-
-# Spatial individual / patch example
-python -m examples.spatial_metapopulation_demo
-
-# Generic rule-transition example and compact benchmark report
-python -m examples.rule_transition_demo
 ```
+
+## Controlled validation
+
+The frozen G2 protocol compares two policies on identical generated systems,
+hidden truths, candidate sets and budgets:
+
+```text
+RACH-SEQ      choose the verified candidate with maximum current NOV
+random_order  choose uniformly among remaining candidates
+```
+
+Hidden truth is used only after selection to materialise the chosen outcome. The
+comparison is descriptive, not a favourable-result acceptance gate.
+
+At budget two:
+
+| outcome | RACH-SEQ | random order |
+|---|---:|---:|
+| initial confounding edges resolved | 1.000 | 0.6045 |
+| systems converged | 0.990 | 0.435 |
+| observations used | 1.505 | 1.821 |
+| nuisance selections | 0.001 | 0.974 |
+
+At budget four, both policies resolved all initial edges on average, while
+RACH-SEQ selected 0.014 nuisance observations versus 1.169 under random order.
+Hidden-truth false exclusion was zero in every policy-by-budget cell.
+
+Exact frozen values and provenance are in
+[`paper/results/g2_frozen_v2_summary.json`](paper/results/g2_frozen_v2_summary.json).
+
+## Boundary-theory calculation
+
+```python
+from causal_model.bounded_proxy_drift import (
+    design_rule_for_interval,
+    identify_under_bounded_proxy_drift,
+)
+
+result = identify_under_bounded_proxy_drift(
+    net_ratio=0.60,
+    proxy_ratio=0.80,
+    delta=0.20,
+    proxy_channel="fecundity",
+)
+
+print(result.establishment.lower, result.establishment.upper)
+# 0.60, 0.90
+
+rule = design_rule_for_interval(
+    result.establishment,
+    target_channel="establishment",
+)
+print(rule.status)
+# sign_identified
+```
+
+This calculation reports the identified set implied by a declared calibration
+bound. It does not estimate `delta` or certify the proxy.
 
 ## Documentation
 
-- `docs/repository_map.md` — Graphify-derived program topology and physical boundaries
-- `docs/repository_ecosystem.md` — all 23 repositories, sole responsibilities, and allowed handoffs
-- `docs/publication_claim_graph.md` — claim–evidence graph, manuscript boundary, and submission gates
-- `docs/trait_space_contraction_theorem.md` — restricted comparative statics for the simplified viable-set model
-- `docs/theory_corrections.md` — exact edge-retention threshold correction
-- `docs/channel_identifiability_theorem.md` — N1/N2 structural non-identifiability and one-factor recovery
-- `docs/proxy_calibration_theorem.md` — N3/N4 proxy calibration boundary
-- `docs/colonization_recruitment_factorization.md` — exact one-step life-cycle bridge
-- `docs/theorem_projection_ledger.md` — theorem applicability across models and data
-- `docs/rule_transition_hardening.md` — provenance boundary, isolated channels, and uncertainty design
-- `docs/post_intervention_reequilibration.md` — strict after-resident endpoint protocol
-- `examples/campanula_izu/` — observation roles, candidate experiments, and Island Campanula workflow
+- `docs/mainline.md` — normative MEE RACH/NOV/RACH-SEQ boundary
+- `paper/TWO_PAPER_STRATEGY.md` — two-paper split and no-double-counting rules
+- `paper/boundary_manuscript_draft.md` — N1–N4/bounded-drift paper draft
+- `docs/bounded_proxy_drift_identification.md` — identified sets and breakdowns
+- `docs/rach_theory.md` — RACH method definition
+- `docs/rach_mathematical_foundations.md` — NOV information identity and bounds
+- `paper/g2_frozen_benchmark_protocol.json` — frozen selection protocol
+- `paper/results/g2_frozen_v2_summary.json` — final G2 numerical evidence
+- `examples/island_pollination_translation/` — empirical intake and gate audit
 
-## Interpretation boundary
+## Scope
 
-The repository is designed to make limits visible rather than hide them. A result
-should be reported at its actual layer:
-
-> **Theorem layer:** under the stated factorisation and observation map, this
-> identification or non-identification result follows algebraically.
->
-> **ABM layer:** within a specified simulator family, intervention design,
-> admissible parameter region, stationarity criterion, and pattern-acceptance rule,
-> these causal programs remain compatible with the target pattern.
->
-> **Empirical layer:** a channel claim requires field measurements that satisfy the
-> declared mapping and calibration conditions; without them, the result is a
-> next-observation design rather than empirical identification.
+The MEE result is a validated observation-selection method over a declared frozen
+synthetic family. It does not establish universal optimality or a natural-system
+mechanism. The boundary theorem is universal only over declared positive
+multiplicative channel models. Neither scope statement should be weakened during
+submission preparation.
