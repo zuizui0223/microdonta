@@ -8,227 +8,164 @@ Suppose a trait's total performance can be written as
 W(z) = F(z) E(z),
 ```
 
-where:
+with positive channels `F` and `E`. The question is not merely whether the product can be algebraically factorised. It is what mechanistic information survives when an ecological study observes the net response in increasingly rich ways.
 
-- `F(z) > 0` is a local fecundity/survival channel, such as pollinator-mediated
-  seed production, flower-level mating success, or survival; and
-- `E(z) > 0` is an establishment/reachability channel, such as dispersal,
-  colonisation, access to suitable patches, or recruitment.
-
-Can a before/after trait-space geometry identify **which** channel changed?
-
-The answer is no for observations based only on `W`. But in this positive
-two-factor model, observing `W` plus either one of the factors is sufficient to
-reconstruct the other and hence identify the channel changes.
-
-The executable finite-grid form is
-`causal_model.channel_identifiability_theory`.
+The executable finite-grid form is `causal_model.channel_identifiability_theory`; proxy extensions are in `causal_model.proxy_calibration_theory`.
 
 ---
 
-## 1. Observation class
+## 1. What rich net observations still fail to preserve
 
-Let the trait domain be any set `Z`, and let a net-only observation be a
-deterministic function of total performance:
-
-```text
-O = Phi(W).
-```
-
-This includes, for every threshold `t > 0`, the viable set
+A complete net performance curve can look mechanistically rich. It determines every threshold-feasible set
 
 ```text
-Omega_t = {z in Z : W(z) >= t},
+Omega_t = {z : W(z) >= t}
 ```
 
-and therefore all geometry calculated from it:
+for every `t>0`, and therefore every lower and upper edge, width, measure, component count and other geometric or topological summary derived from those sets. More generally, any observation of the form
 
 ```text
-lower edge
-upper edge
-breadth / measure
-number of connected components
-all thresholded trait-space geometries
+O = Phi(W)
 ```
 
-It also includes any other summary that sees only the product `F E`.
+sees only the product.
+
+This class includes:
+
+```text
+the complete performance curve W(z)
+all threshold-feasible sets Omega_t
+all boundaries and widths of those sets
+all connected-component counts
+all geometry or topology computed solely from W
+all summaries or rankings whose input is only W
+```
+
+The non-trivial point of N1 is therefore not that “a product has two factors.” It is that even arbitrarily detailed knowledge of the full response surface and all of its threshold geometry remains net-only.
 
 ---
 
-## 2. Theorem N1 — exact channel non-identifiability from net-only observations
+## 2. Theorem N1 — exact invariance of the complete net-only observation class
 
-Let a baseline system have positive channels `F_0(z)` and `E_0(z)`. Let
-`a(z) > 0` be any trait-dependent multiplier. Consider two distinct causal
-programs:
+For any positive function `c(z)`, define
 
 ```text
-P_F:  F_1(z) = a(z) F_0(z),   E_1(z) = E_0(z)
-P_E:  F_1(z) = F_0(z),        E_1(z) = a(z) E_0(z).
+F_c(z) = c(z) F(z)
+E_c(z) = E(z) / c(z).
 ```
-
-For ecological loss, restrict `0 < a(z) <= 1`; the algebra does not require
-that restriction.
 
 Then
 
 ```text
-W_F,1(z) = [a(z) F_0(z)] E_0(z)
-           = a(z) F_0(z) E_0(z)
-           = F_0(z) [a(z) E_0(z)]
-           = W_E,1(z).
+F_c(z) E_c(z) = W(z)
 ```
 
-Therefore
+pointwise. Consequently every net-only statistic is invariant over the equivalence class
 
 ```text
-Phi(W_F,1) = Phi(W_E,1)
+[(F,E)]_W = { (cF, E/c) : c(z)>0 }.
 ```
 
-for every net-only observation operator `Phi`.
+In particular,
+
+```text
+Phi(F_c E_c) = Phi(W)
+```
+
+for every net-only operator `Phi`, and for every threshold `t`,
+
+```text
+Omega_t(F_c,E_c) = Omega_t(F,E).
+```
 
 ### Consequence
 
-> **No observation that is only a function of total trait performance can
-> distinguish a fecundity/survival-channel change from an
-> establishment/reachability-channel change.**
+> Complete net-response information, including every threshold geometry derived from it, contains no data-based information about how the observed product is allocated between the latent channels.
 
-This is an exact structural symmetry, not a low-power statistical result and not
-a claim that the two biological processes are the same. The underlying channel
-states differ, but their product is identical.
+This is structural non-identification, not low statistical power. External biological restrictions can of course distinguish members of the equivalence class; the claim is specifically that those restrictions are not supplied by a net-only observation.
 
-### Corollary N1.1 — geometry cannot rescue net-only observations
-
-Because `W_F,1 = W_E,1` pointwise, for every threshold `t`,
+A before/after special case follows immediately. For any positive multiplier `a(z)`,
 
 ```text
-Omega_t(F-loss) = Omega_t(E-loss).
+P_F: (F_1,E_1) = (aF_0,E_0)
+P_E: (F_1,E_1) = (F_0,aE_0)
 ```
 
-Thus even complete knowledge of viable trait-space geometry at all thresholds
-cannot identify the changed channel in this model class.
-
-This is stronger than the earlier toy result that two examples happened to share
-an upper-edge contraction. The equivalence holds for **any** positive baseline
-functions and **any** trait-dependent attenuation `a(z)`.
+produce exactly the same `W_1=aF_0E_0`, and hence every `Phi(W_1)` is identical under the two distinct channel-change programs.
 
 ---
 
-## 3. Theorem N2 — one channel plus net performance is sufficient
+## 3. Theorem N2 — one resolved channel plus net performance is sufficient
 
-Observe total performance and one positive channel before and after a transition.
-For example, suppose `W_0`, `W_1`, `F_0`, and `F_1` are observed. Then the
-unobserved establishment channel is uniquely recovered pointwise:
+If `W_i` and one positive mathematical channel are observed, the other is uniquely recovered by division. For example,
 
 ```text
-E_0(z) = W_0(z) / F_0(z)
-E_1(z) = W_1(z) / F_1(z).
+E_i(z) = W_i(z) / F_i(z),
 ```
 
-Symmetrically, observing `W` and `E` yields
+and symmetrically
 
 ```text
-F_i(z) = W_i(z) / E_i(z),  i in {0, 1}.
+F_i(z) = W_i(z) / E_i(z).
 ```
 
-### Proof
-
-All factors are strictly positive, so division is defined. Substitution into
-`W_i = F_i E_i` gives the stated recovery formula and uniqueness: any candidate
-factor compatible with the observed product and observed positive factor must
-equal the quotient. ∎
-
-Thus the ratios
+Therefore the before/after ratios
 
 ```text
-rho_F(z) = F_1(z) / F_0(z)
-rho_E(z) = E_1(z) / E_0(z)
+rho_F = F_1/F_0
+rho_E = E_1/E_0
 ```
 
-are identified from **net performance plus one resolved channel**. They may then
-be classified without falsely forcing a single channel:
+are point identified from net performance plus one resolved channel. Mixed changes are allowed; no exclusive-change assumption is required.
+
+### Design Rule 1 — anchor and transport
+
+> Directly measure at least one latent channel in an anchor regime. This estimates the local mapping between an empirical proxy and the mathematical channel. For every comparison regime, either revalidate that mapping directly or prespecify an admissible between-regime calibration-drift set and report the resulting identified interval and breakdown point.
+
+Thus N2 is not a license to measure a channel once and transport its empirical proxy conversion without qualification. The operational cases are:
 
 ```text
-rho_F != 1 somewhere and rho_E = 1 everywhere  -> fecundity-only change
-rho_E != 1 somewhere and rho_F = 1 everywhere  -> establishment-only change
-both differ from 1                              -> mixed change
-neither differs from 1                           -> unchanged
+W + direct channel in each regime
+    -> point identification (N2)
+
+anchor calibration + justified stable proxy conversion
+    -> point identification of relative change (N3)
+
+anchor calibration + bounded conversion drift
+    -> partial identification + breakdown point (N3b)
+
+proxy comparison + unrestricted conversion drift
+    -> no directional identification (N4)
 ```
 
-No exclusive-change assumption is needed to detect a mixed result. An exclusive
-causal interpretation is warranted only after the reconstructed ratios show that
-one channel is invariant.
-
-### Observation-design contrast
-
-Within this positive two-factor model:
-
-```text
-W only                 -> structurally insufficient (N1)
-W + F, or W + E        -> sufficient to recover both channels (N2)
-```
-
-This is the useful mathematical boundary for field or simulation design. It does
-not say that a particular assay measures an exact mathematical factor; that
-mapping must be justified in the biological model.
+The proxy results are proved in `docs/proxy_calibration_theorem.md`.
 
 ---
 
 ## 4. What follows for trait-space studies
 
-An observed contraction, shift, or fragmentation may still be biologically
-valuable. But it is not a universal causal fingerprint of one vital-rate channel.
+Observed contraction, shift, fragmentation or persistence can be biologically informative without being a unique channel fingerprint. A net-only observation might include a full trait-specific performance curve, a distribution of viable phenotypes, a threshold boundary, mean reproductive output or a declared persistence score. If the quantity depends only on `W=FE`, N1 applies regardless of how finely that net response is measured.
 
-For a flower trait, a net-only observation might be:
-
-```text
-flower size / colour distribution
-trait-space edge
-mean reproductive performance
-population persistence
-```
-
-None can, by itself, separate a loss of pollinator-mediated fecundity from a
-trait-correlated loss of reachability or recruitment, when both act through the
-same net-performance multiplier.
-
-Theorem N2 says that a study need not measure every channel independently. It
-needs total performance plus at least one factor that can be given a defensible
-channel interpretation:
-
-| mathematical quantity | ecological measurements that could inform it |
-|---|---|
-| `W(z)` | trait-specific lifetime performance or a declared demographic-growth proxy |
-| `F(z)` | visitation, pollen deposition, pollen limitation, hand-pollination response, fruit/seed set before recruitment limitation |
-| `E(z)` | seed or pollen movement, dispersal/colonisation, patch reachability, recruitment conditional on seed production, landscape connectivity |
-
-For example, if `W` and a defensible pollination/fecundity factor `F` are
-measured, the model implies an inferred establishment term `E=W/F`. Whether that
-inference is biologically valid depends on whether the factorisation itself is
-valid for the system.
+The practical implication is not “measure everything.” It is “measure one channel in a way whose cross-regime mapping is either validated or sensitivity-bounded.” That is the smallest observation design that breaks the equivalence class under the declared two-factor model.
 
 ---
 
-## 5. Relation to RACH and ABMs
+## 5. Relation to RACH
 
-RACH's role is now clearer:
+N1-N4 define an information boundary before RACH is run. RACH should not be presented as a way to defeat an algebraically non-identifying observation. Its role is downstream:
 
-1. A net-performance POM may retain multiple channel-level causal programs.
-2. Trait-space geometry can sometimes reduce that set in a restricted simulator
-   family, but theorem N1 shows it cannot generally identify the channel when the
-   observation depends only on `W=FE`.
-3. A next-observation design should add one channel-resolved measurement to the
-   net-performance POM, as formalised by theorem N2.
-4. ABMs should test robustness after adding density dependence, stochasticity,
-   frequency dependence, and spatial state -- not serve as proof of N1 or N2.
+1. declare which mechanism programs remain admissible under the available observation map;
+2. retain unresolved programs rather than forcing a winner;
+3. identify which additional measurement would separate them;
+4. apply Design Rule 1 when that measurement is a channel proxy.
+
+The information-theoretic NOV score is therefore a subordinate observation-selection device inside the boundary established by N1-N4, not a competing headline result.
 
 ---
 
 ## 6. Scope
 
-- The factorisation is multiplicative and all channel values are positive.
-- The result applies to any trait domain; one-dimensional geometry is only a
-  convenient representation.
-- Other model structures may introduce additional information, but then that
-  information must be stated explicitly rather than attributed to geometry alone.
-- This is a mathematical identifiability statement. It does not say that any
-  particular organism follows this factorisation.
+- The factorisation is positive and multiplicative.
+- The result applies to any trait domain; one-dimensional geometry is only a convenient representation.
+- Other model structures can introduce identifying information, but that information must be stated explicitly rather than attributed to net geometry alone.
+- N1 is a statement about information in the declared observation map, not a claim that the underlying biological channels are interchangeable.
