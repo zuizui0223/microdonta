@@ -1,4 +1,4 @@
-# Proxy calibration is the boundary between point identification, partial identification and non-identification
+# Proxy calibration is the boundary between useful and useless channel observations
 
 ## Setup
 
@@ -11,11 +11,11 @@ X_i(z) = q_i(z) F_i(z)
 
 for regimes `i in {0,1}`, with all quantities strictly positive. The establishment-proxy case is symmetric.
 
-The central empirical question is not whether `X` correlates with `F`. It is whether the proxy-to-channel conversion `q_i(z)` is stable enough across the comparison for the desired directional conclusion to survive.
+The central question is not merely whether `X` correlates with `F`. It is whether the proxy-to-channel conversion remains stable enough across the comparison for the desired channel conclusion to survive.
 
 ---
 
-## N3 — stable calibration gives point identification of relative changes
+## N3 — stable calibration identifies relative channel changes
 
 If
 
@@ -26,210 +26,192 @@ q_0(z) = q_1(z) = q(z) > 0,
 then
 
 ```text
-rho_F(z) = F_1/F_0 = X_1/X_0
+rho_F = F_1/F_0 = X_1/X_0.
 ```
 
-and, because `W=FE`,
+Because `W=FE`,
 
 ```text
-rho_E(z)
-= [W_1(z)/W_0(z)] / [X_1(z)/X_0(z)].
+rho_E
+= [W_1/W_0] / [X_1/X_0].
 ```
 
-Define the stable-calibration plug-in ratio for the unproxied channel as
-
-```text
-r_tilde(z) = [W_1/W_0] / [X_1/X_0].
-```
-
-Unknown absolute calibration is therefore harmless for relative change only under the cross-regime stability condition.
+Thus unknown absolute calibration is compatible with point identification of relative channel changes when the conversion is stable across regimes.
 
 ---
 
-## N3b — bounded calibration drift gives a sharp identified set
+## N4 — unrestricted calibration drift restores non-identification
 
-To turn N4 from a warning into a sensitivity analysis, define the cross-regime calibration ratio
+Allow
 
 ```text
-kappa(z) = q_0(z) / q_1(z).
+X_0 = q_0 F_0
+X_1 = q_1 F_1
 ```
 
-Prespecify
+and define
 
 ```text
-1-delta <= kappa(z) <= 1+delta,
+kappa = q_1/q_0.
+```
+
+Then
+
+```text
+rho_F = (X_1/X_0) / kappa
+```
+
+and
+
+```text
+rho_E
+= [(W_1/W_0)/(X_1/X_0)] kappa.
+```
+
+If `kappa` is unrestricted over positive values, the same observed `W` and `X` are compatible with arbitrary positive channel-change ratios. A proxy whose conversion changes freely across regimes does not identify the latent channel changes.
+
+---
+
+## Bounded bridge between N3 and N4
+
+The practically useful case is neither exact stability nor unrestricted drift. Suppose
+
+```text
+1-delta <= kappa <= 1+delta,
 0 <= delta < 1.
 ```
 
-This `delta` directly bounds the **ratio** `q_0/q_1`. It does not mean that `q_0` and `q_1` are independently within `+/- delta` of a common reference calibration.
-
-For a fecundity proxy,
+Let
 
 ```text
-rho_E(z) = r_tilde(z) / kappa(z).
+rho_E_hat = (W_1/W_0)/(X_1/X_0)
 ```
 
-Because the map `kappa -> r_tilde/kappa` is continuous and strictly decreasing, the sharp identified set is
+be the N3 value under stable calibration. Retaining `kappa` gives
 
 ```text
-I_delta[rho_E(z)]
-= [ r_tilde(z)/(1+delta),
-    r_tilde(z)/(1-delta) ].
+rho_F = rho_X/kappa
+rho_E = rho_E_hat kappa.
 ```
 
-Its multiplicative width is
+Therefore the sharp marginal identified sets are
 
 ```text
-sup(I_delta) / inf(I_delta)
-= (1+delta)/(1-delta).
+rho_F in [rho_X/(1+delta), rho_X/(1-delta)]
 ```
 
-### Sharpness
-
-Every point of this interval is attainable. For any admissible `kappa`, choose any `q_1>0`, set `q_0=kappa q_1`, then define
+and
 
 ```text
-F_i = X_i/q_i
-E_i = W_i/F_i.
+rho_E in [rho_E_hat(1-delta), rho_E_hat(1+delta)].
 ```
 
-This reconstruction exactly reproduces the observed `W_0,W_1,X_0,X_1` and gives `rho_E=r_tilde/kappa`. Therefore the interval is not merely conservative: it is the exact identified set under the stated drift restriction.
-
-The same construction applies symmetrically when `X` proxies `E`.
-
-### Important alternative parameterization
-
-If instead each regime-specific calibration is independently constrained to lie within `+/- delta` of a common reference, then the induced bound is
+Both have multiplicative width
 
 ```text
-(q_0/q_1) in [ (1-delta)/(1+delta),
-               (1+delta)/(1-delta) ],
+(1+delta)/(1-delta).
 ```
 
-and the resulting multiplicative interval width is squared. The manuscript and software therefore define `delta` only as a bound on the **between-regime calibration ratio**.
+The sets are sharp because every admissible `kappa` can be realised by choosing positive `q_0`, setting `q_1=kappa q_0`, and reconstructing `F_i=X_i/q_i` and `E_i=W_i/F_i`. The same `kappa` links both channels, so the joint identified set is a one-parameter curve satisfying `rho_F rho_E=rho_W`, not the Cartesian product of the marginal intervals.
+
+### Parameterisation warning
+
+Here `delta` directly bounds the **between-regime calibration ratio** `q_1/q_0`. If each `q_i` were independently bounded around a common reference instead, the induced ratio bound would be wider and the interval-width formula would change. The manuscript and software use only the direct ratio-bound definition above.
 
 ---
 
 ## Breakdown points
 
-The point `rho_E=1` represents no change. A directional conclusion is identified only while the entire interval remains on one side of one.
+A directional conclusion is identified only while the entire interval excludes one.
 
-For an apparent decline `0 < r_tilde < 1`,
-
-```text
-r_tilde/(1-delta) < 1
-```
-
-is equivalent to
+For the complementary channel,
 
 ```text
-delta < 1-r_tilde.
+E decreased iff rho_E_hat(1+delta) < 1
+E increased iff rho_E_hat(1-delta) > 1.
 ```
 
-Hence
+Thus, for an apparent decline `rho_E_hat<1`,
 
 ```text
-delta*_decline = 1-r_tilde.
+delta* = 1/rho_E_hat - 1.
 ```
 
-For an apparent increase `r_tilde>1`,
+For an apparent increase `rho_E_hat>1`,
 
 ```text
-r_tilde/(1+delta) > 1
+delta* = 1 - 1/rho_E_hat.
 ```
 
-is equivalent to
+At `delta=delta*` the interval first touches one, so a strict directional statement holds for `delta<delta*`.
+
+For the proxied channel the corresponding inverse-calibration breakpoints are `1-rho_X` for a decline and `rho_X-1` for an increase.
+
+### 34% illustration
+
+If
 
 ```text
-delta < r_tilde-1,
+rho_E_hat = 1/1.34,
 ```
 
-so
+then
 
 ```text
-delta*_increase = r_tilde-1.
+delta* = 0.34.
 ```
 
-At the breakdown point the interval first **touches** one. The strict directional conclusion therefore holds for `delta < delta*`, not at equality.
+The correct reporting sentence is:
 
-Example: if `r_tilde=0.66`, the decline breakdown point is `0.34`. The reviewer-facing statement is:
-
-> The estimated decline has a calibration-drift breakdown point of 34%: the identified set remains entirely below one for between-regime calibration-ratio drift smaller than 34%.
+> The estimated decline in establishment has a calibration-drift breakdown point of 34%: the identified set remains entirely below one for between-regime calibration-ratio drift smaller than 34%.
 
 ---
 
-## Sampling uncertainty is separate from identification uncertainty
+## Sampling uncertainty is separate
 
-Let `[L,U]` be a confidence interval for `r_tilde` obtained from the sampling model. Monotonicity gives the conservative region
-
-```text
-C_{alpha,delta}
-= [ L/(1+delta), U/(1-delta) ].
-```
-
-A sampling-aware decline conclusion requires
+The bounded-drift set describes structural identification uncertainty. Sampling uncertainty in `rho_E_hat` should be propagated separately. If `[L,U]` is a confidence interval for `rho_E_hat`, the conservative union under the present parameterisation is
 
 ```text
-U/(1-delta) < 1,
+[L(1-delta), U(1+delta)].
 ```
 
-or
-
-```text
-delta < 1-U.
-```
-
-Thus `1-r_tilde` is the point-estimate sensitivity breakpoint, whereas `max(0,1-U)` is the sampling-aware breakpoint. They must not be conflated.
-
----
-
-## N4 — unrestricted calibration drift removes directional identification
-
-If no finite restriction is placed on `kappa=q_0/q_1`, then
-
-```text
-rho_E = r_tilde/kappa
-```
-
-can take any positive value while the observed `W` and `X` remain unchanged. This is unrestricted non-identification.
-
-N4 is the case where the calibration-ratio restriction is removed. It should not be described as the `delta -> 1` limit of the additive interval above, because that parameterization is only one bounded sensitivity family.
+A sampling-aware decline requires `U(1+delta)<1`. Larger samples may tighten `[L,U]`; they do not remove uncertainty about `kappa` unless they directly inform calibration.
 
 ---
 
 ## Design Rule 1 — anchor and transport
 
-> Directly measure at least one latent channel in an anchor regime. This estimates the local proxy conversion. For every comparison regime, either revalidate that conversion directly or prespecify an admissible between-regime drift set and report the resulting identified interval and breakdown point.
+> Directly measure at least one latent channel in an anchor regime. This anchors the local proxy conversion. For every comparison regime, either revalidate that conversion directly or prespecify an admissible between-regime drift set and report the resulting identified interval and breakdown point.
 
 Operationally:
 
 ```text
-anchor + justified stable conversion
-    -> point identification (N3)
+W + direct channel in each regime
+    -> point identification (N2)
 
-anchor + bounded between-regime conversion drift
-    -> partial identification + breakdown point (N3b)
+anchor + justified stable proxy conversion
+    -> point identification of relative change (N3)
 
-proxy-only comparison + unrestricted conversion drift
+anchor + bounded calibration drift
+    -> partial identification + breakdown point
+
+proxy comparison + unrestricted drift
     -> no directional identification (N4)
 ```
-
-This is the empirical design rule implied by N2-N4. A single direct assay does not license unqualified transport of the calibration across habitats, years or disturbance regimes.
 
 ---
 
 ## Ecological interpretation
 
-The assumption is especially vulnerable in the comparisons ecologists most want to make: fragmented versus connected habitat, urban versus rural habitat, warm versus cool years, or pollinator communities that differ in visitor identity. In pollination, for example, a visit count can map differently to successful reproduction when pollen deposition, handling, pollen quality, selfing, resource limitation or seed maturation changes. In dispersal and recruitment, the same connectivity proxy can map differently to realised establishment when safe-site availability or post-dispersal survival changes.
+The stability assumption is most vulnerable in comparisons where visitor identity, behaviour, habitat context or post-event survival changes. In pollination, visit counts can map differently to successful reproduction when pollen deposition, handling, selfing, resource limitation or seed maturation changes. In dispersal, the same movement or connectivity proxy can map differently to recruitment when safe-site availability or post-dispersal survival changes.
 
-The result therefore converts a vague robustness claim into a prespecified sensitivity analysis: report the allowable drift set, the resulting identified interval and the drift at which the biological conclusion ceases to be identified.
+The theorem therefore converts a generic warning into a sensitivity analysis: report the admissible drift set, the resulting sharp interval and the drift magnitude at which the biological conclusion fails.
 
 ---
 
 ## Scope
 
-- All quantities are strictly positive and the declared factorisation is multiplicative.
-- N3-N3b identify relative changes, not absolute factor magnitudes.
-- The bounded-drift set is structural uncertainty, not ordinary sampling noise.
-- A convenient empirical proxy is not automatically a mathematical channel; its biological mapping must still be justified.
-- The same `kappa` links the two reconstructed channel ratios, so joint channel uncertainty is constrained by that common calibration ratio rather than by an arbitrary Cartesian product of marginal intervals.
+- All quantities are strictly positive and the factorisation is multiplicative.
+- N3 and the bounded bridge concern relative changes, not absolute factor magnitudes.
+- The drift bound is structural information supplied externally or by a calibration design; it is not inferred from the same net response and proxy alone.
+- A convenient proxy is not automatically a valid mathematical channel; its biological mapping must still be justified.
