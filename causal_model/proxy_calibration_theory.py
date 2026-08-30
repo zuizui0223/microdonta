@@ -1,30 +1,31 @@
 """Identifiability boundary for channel proxies.
 
-This module refines the positive result in
-:mod:`causal_model.channel_identifiability_theory`.  Let total performance be
+Let total performance be
 
     W_i(z) = F_i(z) E_i(z),
 
-and let an observed proxy for the fecundity/survival channel be
+and let an observed proxy for one channel be
 
     X_i(z) = q_i(z) F_i(z),
 
-where ``q_i`` is the unknown conversion between the proxy and the mathematical
-channel at time/regime ``i``.
+where ``q_i`` is the positive proxy-to-channel conversion at regime ``i``.
 
 N3 -- Stable-proxy ratio identification.
-    If q_0(z)=q_1(z)>0, then relative fecundity change is X_1/X_0 and relative
-    establishment change is (W_1/W_0)/(X_1/X_0).  Absolute calibration is not
-    necessary to identify channel *changes*.
+    If q_0(z)=q_1(z)>0, relative channel changes are point identified.
 
-N4 -- Time-varying-proxy non-identifiability.
-    If q_0 and q_1 are unconstrained, the same observed W and X are compatible
-    with arbitrary positive q_1/q_0 and therefore different channel-change
-    ratios. A proxy whose conversion changes across regimes does not resolve the
-    channels without calibration or a stability assumption.
+N3b -- Bounded cross-regime calibration drift.
+    Define kappa=q_0/q_1 and suppose kappa is prespecified to lie in
+    [1-delta, 1+delta], 0 <= delta < 1. Then the unproxied channel ratio has the
+    sharp identified set [r_tilde/(1+delta), r_tilde/(1-delta)], where r_tilde
+    is the stable-calibration plug-in ratio. The first delta at which the set
+    touches one is a directly reportable breakdown point.
 
-The proofs are in ``docs/proxy_calibration_theorem.md``.  Code here provides
-finite-grid constructions and regression checks only.
+N4 -- Unrestricted calibration drift.
+    If q_0/q_1 is unconstrained, the same observed W and X are compatible with
+    arbitrary positive channel-change ratios.
+
+The proofs are in ``docs/proxy_calibration_theorem.md``. Code here provides
+finite-grid constructions, sharp interval calculations and regression checks.
 """
 from __future__ import annotations
 
@@ -32,16 +33,13 @@ from dataclasses import dataclass
 from math import isclose
 from typing import Literal, Sequence
 
-from causal_model.channel_identifiability_theory import Channel, ChannelConclusion
-
+from causal_model.channel_identifiability_theory import ChannelConclusion
 
 ProxyChannel = Literal["fecundity", "establishment"]
 
 
 @dataclass(frozen=True)
 class ChannelChangeRatios:
-    """Pointwise before/after channel ratios and their qualitative classification."""
-
     fecundity_ratio: tuple[float, ...]
     establishment_ratio: tuple[float, ...]
     conclusion: ChannelConclusion
@@ -49,8 +47,6 @@ class ChannelChangeRatios:
 
 @dataclass(frozen=True)
 class ProxySymmetryResult:
-    """Two latent channel transitions with exactly the same observed W and X."""
-
     observed_net_before: tuple[float, ...]
     observed_net_after: tuple[float, ...]
     observed_proxy_before: tuple[float, ...]
@@ -60,6 +56,34 @@ class ProxySymmetryResult:
     calibration_after_b: tuple[float, ...]
     ratios_a: ChannelChangeRatios
     ratios_b: ChannelChangeRatios
+
+
+@dataclass(frozen=True)
+class IdentifiedInterval:
+    """Sharp identified interval for a positive relative channel change."""
+    lower: float
+    upper: float
+    delta: float
+    stable_ratio: float
+
+    @property
+    def multiplicative_width(self) -> float:
+        return self.upper / self.lower
+
+    def excludes_no_change(self, *, tolerance: float = 0.0) -> bool:
+        if tolerance < 0:
+            raise ValueError("tolerance must be non-negative")
+        return self.upper < 1.0 - tolerance or self.lower > 1.0 + tolerance
+
+
+@dataclass(frozen=True)
+class SamplingAwareInterval:
+    """Conservative interval combining sampling and bounded-drift uncertainty."""
+    lower: float
+    upper: float
+    delta: float
+    stable_ci_lower: float
+    stable_ci_upper: float
 
 
 def _positive(values: Sequence[float], name: str) -> tuple[float, ...]:
@@ -83,12 +107,14 @@ def _ratio(after: Sequence[float], before: Sequence[float]) -> tuple[float, ...]
     return tuple(a / b for a, b in zip(after, before))
 
 
-def _classify(
-    fecundity_ratio: Sequence[float],
-    establishment_ratio: Sequence[float],
-    *,
-    tolerance: float,
-) -> ChannelConclusion:
+def _validate_delta(delta: float) -> float:
+    value = float(delta)
+    if value < 0 or value >= 1:
+        raise ValueError("delta must satisfy 0 <= delta < 1")
+    return value
+
+
+def _classify(fecundity_ratio: Sequence[float], establishment_ratio: Sequence[float], *, tolerance: float) -> ChannelConclusion:
     if tolerance < 0:
         raise ValueError("tolerance must be non-negative")
     f_changed = any(abs(value - 1.0) > tolerance for value in fecundity_ratio)
@@ -102,24 +128,8 @@ def _classify(
     return "unchanged"
 
 
-def identify_from_net_and_stable_proxy(
-    *,
-    net_before: Sequence[float],
-    net_after: Sequence[float],
-    proxy_before: Sequence[float],
-    proxy_after: Sequence[float],
-    proxy_channel: ProxyChannel,
-    tolerance: float = 1e-10,
-) -> ChannelChangeRatios:
-    """Identify relative channel changes under a time-stable positive proxy map.
-
-    If the proxy represents F as X_i=qF_i with the *same* q at both times,
-    F_1/F_0=X_1/X_0.  Since W=FE, E_1/E_0=(W_1/W_0)/(F_1/F_0).
-
-    ``proxy_channel='establishment'`` applies the symmetric argument.
-    The proxy's absolute scale may be unknown and trait-dependent; only temporal
-    stability of its conversion factor is required.
-    """
+def identify_from_net_and_stable_proxy(*, net_before: Sequence[float], net_after: Sequence[float], proxy_before: Sequence[float], proxy_after: Sequence[float], proxy_channel: ProxyChannel, tolerance: float = 1e-10) -> ChannelChangeRatios:
+    """Identify relative channel changes under a stable positive proxy map."""
     w0 = _positive(net_before, "net_before")
     w1 = _positive(net_after, "net_after")
     x0 = _positive(proxy_before, "proxy_before")
@@ -135,35 +145,64 @@ def identify_from_net_and_stable_proxy(
         fecundity_ratio = tuple(w / e for w, e in zip(net_ratio, establishment_ratio))
     else:
         raise ValueError(f"unknown proxy_channel: {proxy_channel}")
-    return ChannelChangeRatios(
-        fecundity_ratio=fecundity_ratio,
-        establishment_ratio=establishment_ratio,
-        conclusion=_classify(fecundity_ratio, establishment_ratio, tolerance=tolerance),
-    )
+    return ChannelChangeRatios(fecundity_ratio, establishment_ratio, _classify(fecundity_ratio, establishment_ratio, tolerance=tolerance))
 
 
-def construct_time_varying_proxy_symmetry(
-    *,
-    net_before: Sequence[float],
-    net_after: Sequence[float],
-    proxy_before: Sequence[float],
-    proxy_after: Sequence[float],
-    baseline_calibration: Sequence[float],
-    calibration_shift: Sequence[float],
-    proxy_channel: ProxyChannel = "fecundity",
-    tolerance: float = 1e-10,
-) -> ProxySymmetryResult:
+def bounded_drift_identified_interval(*, stable_ratio: float, delta: float) -> IdentifiedInterval:
+    """Return the sharp N3b interval when kappa=q_0/q_1 is bounded.
+
+    If kappa belongs to [1-delta, 1+delta], true_ratio=stable_ratio/kappa.
+    ``delta`` directly bounds the cross-regime calibration ratio; it does not
+    independently bound q_0 and q_1 around a common reference value.
+    """
+    ratio = float(stable_ratio)
+    if ratio <= 0:
+        raise ValueError("stable_ratio must be strictly positive")
+    d = _validate_delta(delta)
+    return IdentifiedInterval(ratio / (1.0 + d), ratio / (1.0 - d), d, ratio)
+
+
+def sampling_aware_bounded_drift_interval(*, stable_ci_lower: float, stable_ci_upper: float, delta: float) -> SamplingAwareInterval:
+    """Combine a confidence interval for the stable ratio with bounded drift."""
+    lower = float(stable_ci_lower)
+    upper = float(stable_ci_upper)
+    if lower <= 0 or upper <= 0:
+        raise ValueError("confidence interval endpoints must be strictly positive")
+    if lower > upper:
+        raise ValueError("stable_ci_lower must not exceed stable_ci_upper")
+    d = _validate_delta(delta)
+    return SamplingAwareInterval(lower / (1.0 + d), upper / (1.0 - d), d, lower, upper)
+
+
+def decline_breakdown_point(*, stable_ratio: float) -> float:
+    """Direct ratio-drift breakdown point for a point-estimate decline."""
+    ratio = float(stable_ratio)
+    if ratio <= 0:
+        raise ValueError("stable_ratio must be strictly positive")
+    return 0.0 if ratio >= 1 else 1.0 - ratio
+
+
+def increase_breakdown_point(*, stable_ratio: float) -> float:
+    """Direct ratio-drift breakdown point for a point-estimate increase."""
+    ratio = float(stable_ratio)
+    if ratio <= 0:
+        raise ValueError("stable_ratio must be strictly positive")
+    return 0.0 if ratio <= 1 else ratio - 1.0
+
+
+def sampling_aware_decline_breakdown_point(*, stable_ci_upper: float) -> float:
+    """Sampling-aware decline breakdown using the upper CI endpoint."""
+    upper = float(stable_ci_upper)
+    if upper <= 0:
+        raise ValueError("stable_ci_upper must be strictly positive")
+    return max(0.0, 1.0 - upper)
+
+
+def construct_time_varying_proxy_symmetry(*, net_before: Sequence[float], net_after: Sequence[float], proxy_before: Sequence[float], proxy_after: Sequence[float], baseline_calibration: Sequence[float], calibration_shift: Sequence[float], proxy_channel: ProxyChannel = "fecundity", tolerance: float = 1e-10) -> ProxySymmetryResult:
     """Construct two latent explanations with identical observed W and proxy X.
 
-    Model A assumes the proxy calibration is stable, q_1=q_0.  Model B sets
-    q_1=h q_0, where ``h`` is any positive trait-dependent calibration shift.
-    For a fecundity proxy:
-
-    ``F_i = X_i/q_i`` and ``E_i = W_i/F_i``.
-
-    Both models reproduce exactly the supplied observed W and X, but their channel
-    ratios can differ whenever h differs from one. This is the constructive form
-    of theorem N4.
+    Model A assumes q_1=q_0. Model B sets q_1=h q_0. The bounded-drift N3b
+    parameter is kappa=q_0/q_1=1/h.
     """
     w0 = _positive(net_before, "net_before")
     w1 = _positive(net_after, "net_after")
@@ -171,14 +210,7 @@ def construct_time_varying_proxy_symmetry(
     x1 = _positive(proxy_after, "proxy_after")
     q0 = _positive(baseline_calibration, "baseline_calibration")
     h = _positive(calibration_shift, "calibration_shift")
-    _same_length(
-        net_before=w0,
-        net_after=w1,
-        proxy_before=x0,
-        proxy_after=x1,
-        baseline_calibration=q0,
-        calibration_shift=h,
-    )
+    _same_length(net_before=w0, net_after=w1, proxy_before=x0, proxy_after=x1, baseline_calibration=q0, calibration_shift=h)
     q1_a = q0
     q1_b = tuple(shift * q for shift, q in zip(h, q0))
 
@@ -199,32 +231,11 @@ def construct_time_varying_proxy_symmetry(
         er = _ratio(e1, e0)
         return ChannelChangeRatios(fr, er, _classify(fr, er, tolerance=tolerance))
 
-    return ProxySymmetryResult(
-        observed_net_before=w0,
-        observed_net_after=w1,
-        observed_proxy_before=x0,
-        observed_proxy_after=x1,
-        calibration_before=q0,
-        calibration_after_a=q1_a,
-        calibration_after_b=q1_b,
-        ratios_a=rates(q0, q1_a),
-        ratios_b=rates(q0, q1_b),
-    )
+    return ProxySymmetryResult(w0, w1, x0, x1, q0, q1_a, q1_b, rates(q0, q1_a), rates(q0, q1_b))
 
 
 def same_observed_proxy_data(result: ProxySymmetryResult, *, tolerance: float = 1e-12) -> bool:
     """Document that N4 alternatives share the observed series by construction."""
     if tolerance < 0:
         raise ValueError("tolerance must be non-negative")
-    # The dataclass carries one observed series by definition; this function exists
-    # as an explicit invariant boundary for callers/tests.
-    return all(
-        isclose(value, value, rel_tol=tolerance, abs_tol=tolerance)
-        for series in (
-            result.observed_net_before,
-            result.observed_net_after,
-            result.observed_proxy_before,
-            result.observed_proxy_after,
-        )
-        for value in series
-    )
+    return all(isclose(value, value, rel_tol=tolerance, abs_tol=tolerance) for series in (result.observed_net_before, result.observed_net_after, result.observed_proxy_before, result.observed_proxy_after) for value in series)
