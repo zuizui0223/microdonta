@@ -1,146 +1,120 @@
 # Supporting Information
 
-## RACH: from causal non-identifiability to next-observation design in ecological mechanism inference
+## RACH: information-theoretic next-observation selection for causally degenerate ecological models
 
-This Supporting Information accompanies the anonymised Research Article. It is deliberately subordinate to the Main-text claim spine. It supplies algebraic details, frozen validation tables, the boundary between exact ecological projection and unfactorised simulation, and the reproducibility map. It does **not** introduce additional empirical mechanism claims, ecological-rule panels, structure discovery, or new model families.
-
----
-
-## S1. Exact channel-identifiability results
-
-### S1.1 Observation class
-
-Let trait-specific total performance in regime `i` be
-
-`W_i(z) = F_i(z) E_i(z)`, with `F_i(z)>0` and `E_i(z)>0`.
-
-A net-only observation is any deterministic operator `Phi(W_i)`. This class includes the complete performance curve and every thresholded viable set `Omega_t={z: W_i(z)>=t}`, and therefore any edge, breadth, component count, or other geometry calculated only from those sets.
-
-### S1.2 N1: net-only observations cannot identify the changed channel
-
-Let `F_0(z),E_0(z)>0`, and let `a(z)>0`. Compare two distinct programs:
-
-`P_F: (F_1,E_1)=(aF_0,E_0)`
-
-`P_E: (F_1,E_1)=(F_0,aE_0)`.
-
-Both give the same pointwise total performance,
-
-`W_1(z)=a(z)F_0(z)E_0(z)`.
-
-Hence `Phi(W_1)` is identical under the two programs for every net-only observation operator `Phi`. The equivalence is structural rather than a low-power sampling result. Because it holds pointwise, complete thresholded trait-space geometry also cannot break the symmetry.
-
-### S1.3 N2: net performance plus one channel is sufficient
-
-If `W_i` and `F_i` are observed, positivity gives the unique reconstruction
-
-`E_i(z)=W_i(z)/F_i(z)`.
-
-Symmetrically, observing `W_i` and `E_i` gives `F_i=W_i/E_i`. Therefore the before/after ratios
-
-`rho_F=F_1/F_0` and `rho_E=E_1/E_0`
-
-are identified without assuming that only one channel changed. Fecundity-only, establishment-only, mixed and unchanged cases can then be distinguished from the reconstructed ratios.
-
-### S1.4 N3: stable proxy conversion identifies relative channel change
-
-Suppose the field measurement is a proxy `X_i(z)=q_i(z)F_i(z)`. If its conversion is stable across the comparison, `q_0(z)=q_1(z)=q(z)>0`, then
-
-`X_1/X_0 = F_1/F_0 = rho_F`.
-
-Because `W_1/W_0=rho_F rho_E`,
-
-`rho_E = (W_1/W_0)/(X_1/X_0)`.
-
-Thus unknown absolute calibration is compatible with relative channel identification when the conversion is stable.
-
-### S1.5 N4: unconstrained calibration drift restores non-identifiability
-
-If `q_0` and `q_1` may differ freely,
-
-`F_1/F_0 = (X_1/X_0)(q_0/q_1)`
-
-and
-
-`E_1/E_0 = (W_1/W_0)(X_0/X_1)(q_1/q_0)`.
-
-The unobserved positive ratio `q_1/q_0` can therefore generate different latent channel changes for the same observed `W_0,W_1,X_0,X_1`. As a constructive example, set all four observed series to one. Stable calibration yields no channel change, whereas choosing any nonconstant positive `h(z)=q_1/q_0` yields `F_1/F_0=1/h` and `E_1/E_0=h` with exactly the same observations.
-
-### S1.6 Scope of N1–N4
-
-The theorem family is exact only for the declared positive multiplicative two-channel output. Zeros, additional channels, nonmultiplicative interactions, or a different life-cycle output require an explicit extension. Measurement error can be propagated statistically, but unknown regime-specific proxy conversion is structural and cannot be repaired by larger sample size alone.
+This Supporting Information accompanies the anonymised Research Article. It expands the RACH quantities, NOV/RACH-SEQ calculation, frozen controlled benchmarks and reproducibility map. It does not contain the separate channel-identifiability boundary paper, bounded proxy-drift theorem, new ecological mechanism claims, structure discovery or provisional ecological-rule panels.
 
 ---
 
-## S2. RACH quantities and information-theoretic next-observation value
+## S1. RACH admissibility, degeneracy and evidence roles
 
-### S2.1 Admissible region
+### S1.1 Admissible region
 
-For switches `S in {0,1}^K`, parameters `theta`, pre-data constraint grammar `G`, simulator `f`, pattern maps `P_sim,P_obs`, discrepancy `d`, tolerance `epsilon`, observed targets `y_obs` and fixed context `x_obs`, RACH defines
+For switches `S in {0,1}^K`, parameters `theta`, pre-data constraint grammar `G`, simulator `f`, pattern maps `P_sim,P_obs`, discrepancy `d`, tolerance `epsilon`, observed targets `y_obs` and fixed context `x_obs`,
 
-`A_epsilon = {(theta,s): G(theta)=1 and d(P_sim(f(x_obs;theta,s)),P_obs(y_obs))<=epsilon}`.
+```text
+A_epsilon
+= {(theta,s): G(theta)=1 and
+   d(P_sim(f(x_obs;theta,s)),P_obs(y_obs))<=epsilon}.
+```
 
-The finite implementation approximates this restricted region by prior sampling. Observations assigned only to `input_context`, `diagnostic_only`, or `future_observation` are not allowed to enter the acceptance discrepancy as if they were independent observed targets.
+The finite implementation approximates this region by prior sampling and rejection. The retained region, not its modal switch row, is the inferential object.
 
-### S2.2 Causal admissibility, degeneracy and resolvability
+### S1.2 Evidence-role contract
 
-For switch `j`, `CA_j=P(s_j=1 | A_epsilon)`. Let `H(S|A_epsilon)` be the base-2 entropy of the joint switch vector. Then
+Every quantity is assigned one role before inference:
 
-`D_RACH=H(S|A_epsilon)`
+| Role | Use |
+|---|---|
+| `observed_target` | may enter the acceptance discrepancy |
+| `input_context` | conditions the simulator but is not an independent target |
+| `diagnostic_only` | evaluates inference or software behaviour after fitting |
+| `future_observation` | withheld as a candidate measurement |
 
-and
+The same datum may not be silently used as context, acceptance evidence and independent validation.
 
-`R_RACH=1-D_RACH/K`.
+### S1.3 Causal quantities
 
-Because a `K`-bit switch vector has entropy at most `K`, `0<=D_RACH<=K` and `0<=R_RACH<=1`. The normalisation is by maximum possible switch entropy, not by the realised prior entropy. Observation contribution compares joint resolvability with and without a current observation and can be negative; removing one observation can occasionally reduce apparent ambiguity created by another.
+For switch `j`,
 
-### S2.3 Validated NOV is normalised mutual information
+```text
+CA_j=P(s_j=1|A_epsilon).
+```
 
-Let a future candidate observation `Q` have a predictive map whose outcomes form a verified mutually exclusive and exhaustive partition of the current admissible region. Its predictive distribution is the pushforward of the restricted current region. Define
+Joint causal degeneracy and resolvability are
 
-`NOV(Q)=E_Q[R_RACH(A_epsilon | Q)-R_RACH(A_epsilon)]`.
+```text
+D_RACH=H(S|A_epsilon),
+R_RACH=1-D_RACH/K.
+```
+
+A `K`-bit vector has entropy at most `K`, so `0<=D_RACH<=K` and `0<=R_RACH<=1`. Mechanism-equivalence and causal-replaceability summaries are calculated from the same accepted switch rows and are not substitutes for the joint entropy.
+
+---
+
+## S2. Validated NOV and RACH-SEQ
+
+### S2.1 Predictive-partition requirement
+
+For a finite candidate observation `Q`, its outcome maps must be mutually exclusive and exhaustive over the current accepted region. The predictive distribution is then the pushforward
+
+```text
+Pr(Q=q|A_epsilon).
+```
+
+If outcomes overlap, are incomplete or require unavailable simulator columns, validated stored-region NOV is non-estimable. An external outcome prior is not silently substituted and relabelled as validated EVSI.
+
+### S2.2 Information identity
+
+Define expected resolvability gain
+
+```text
+NOV(Q)=E_Q[R_RACH(A_epsilon|Q)-R_RACH(A_epsilon)].
+```
 
 Then
 
-`NOV(Q) = [H(S|A_epsilon)-H(S|A_epsilon,Q)]/K = I(S;Q|A_epsilon)/K`.
+```text
+NOV(Q)
+={H(S|A_epsilon)-H(S|A_epsilon,Q)}/K
+=I(S;Q|A_epsilon)/K.
+```
 
-Consequently,
+Therefore
 
-`0 <= NOV(Q) <= 1-R_RACH(A_epsilon) <= 1`.
+```text
+0<=NOV(Q)<=1-R_RACH(A_epsilon)<=1.
+```
 
-`NOV(Q)=0` exactly when `Q` contains no information about residual mechanism identity under the current region. It reaches all remaining resolvability only when observing `Q` removes all remaining switch entropy. If the outcome maps overlap, are incomplete, or require unavailable simulator columns, the stored region does not identify the predictive pushforward and validated NOV is reported as non-estimable rather than silently substituting a prior.
+`NOV(Q)=0` exactly when the candidate measurement carries no information about residual mechanism identity under the current accepted region.
 
-### S2.4 RACH-SEQ
+### S2.3 Sequential recomputation
 
-RACH-SEQ repeats the same information objective after every realised observation. At step `t`, verified candidates are ranked by current `NOV_t(Q)=I(S;Q|A_{epsilon,t})/K`; after the selected outcome arrives, the admissible region is conditioned and all predictive distributions are recomputed. The sequence stops when the budget is exhausted, confounding is resolved at the declared resolution, or no available candidate carries positive validated NOV. A normalised expected-edge-cut score exists only as an explicitly labelled compatibility fallback for candidates whose predictive map is not estimable; it is not called validated NOV.
+At step `t`, RACH-SEQ scores every verified remaining candidate by
+
+```text
+NOV_t(Q)=I(S;Q|A_t)/K.
+```
+
+It selects the largest positive current value, obtains the realised outcome only after selection, conditions `A_t` on that outcome, and recomputes all remaining predictive probabilities and NOV values. The sequence stops when the budget is exhausted, the declared confounding structure is resolved, or all available validated NOV values are zero.
+
+An explicitly named normalized edge-cut fallback is retained only for candidates whose predictive partition is unavailable. Every step records its score source; fallback scores are not reported as validated NOV.
 
 ---
 
-## S3. Frozen controlled validation
+## S3. Frozen G2 observation-selection benchmark
 
-All numerical values in this section are copied from the frozen submission result summaries. No favourable-result threshold was used to accept or tune these results.
+### S3.1 Protocol
 
-### S3.1 Known-truth specified-simulator self-consistency
+Protocol `rach-g2-truth-peek-free-v2` uses five predeclared seeds, 200 systems per seed, 1,500 prior draws per system, `K in {4,5,6}`, one or two disjoint confounds, random pre-data driver coefficients, two mechanism-independent binary nuisance candidates and budgets 0–4.
 
-The known-truth benchmark uses the unchanged submission defaults: 200 attempts per case, `literature_grounded` preset, `weighted_lax` acceptance, seed 42, and proxy-to-proxy generation/inference. Confounded switches are not required to become unique; the benchmark asks whether generating switches remain admissible.
+RACH-SEQ and `random_order` receive identical systems, hidden truths, candidates and budgets. Hidden truth is used only after candidate selection to materialise the chosen outcome. The policy comparison is descriptive and has no favourable-result acceptance threshold.
 
-**Table S1. Known-truth aggregate results.**
+### S3.2 Policy-specific means
 
-| Pattern noise | Cases | Accuracy | Precision | Recall | F1 | Mean CA error | R_RACH | D_RACH |
-|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0.0 | 8 | 0.6562 | 0.4792 | 1.0000 | 0.6042 | 0.3388 | 0.3699 | 2.5203 |
-| 0.1 | 8 | 0.6875 | 0.5729 | 1.0000 | 0.6667 | 0.3359 | 0.4719 | 2.1123 |
-| 0.2 | 8 | 0.7083 | 0.5417 | 1.0000 | 0.6429 | 0.2868 | 0.4238 | 2.3050 |
+**Table S1. Frozen policy means across five seeds.**
 
-Recall of applicable true-ON switches is 1.0 in every aggregate noise stratum. Accuracy is lower because additional confounded explanations remain admissible; that is the intended signature of a non-identifying benchmark rather than a failure to select a unique model. Figure S1 visualises this benchmark.
-
-### S3.2 Frozen G2 v2 matched-policy selection benchmark
-
-Protocol `rach-g2-truth-peek-free-v2` uses five predeclared seeds, 200 generated systems per seed, 1,500 prior draws per system, `K in {4,5,6}`, one or two disjoint confounds, two mechanism-uninformative binary nuisance candidates, and budgets 0–4. RACH-SEQ and `random_order` receive the same generated systems, hidden truths, candidates and budgets. Hidden truth is materialised only after a candidate is selected.
-
-**Table S2. Policy-specific mean results across the five frozen seeds.**
-
-| Policy | Budget | Converged | Initial edges resolved | Mean observations | Mean distractors | False exclusion |
+| Policy | Budget | Converged | Initial edges resolved | Mean observations | Mean nuisance selections | False exclusion |
 |---|---:|---:|---:|---:|---:|---:|
 | RACH-SEQ | 0 | 0.000 | 0.0000 | 0.000 | 0.000 | 0.000 |
 | RACH-SEQ | 1 | 0.495 | 0.7480 | 1.000 | 0.000 | 0.000 |
@@ -153,83 +127,69 @@ Protocol `rach-g2-truth-peek-free-v2` uses five predeclared seeds, 200 generated
 | random_order | 3 | 0.689 | 0.8650 | 2.386 | 1.152 | 0.000 |
 | random_order | 4 | 0.940 | 1.0000 | 2.673 | 1.169 | 0.000 |
 
-At budget two, the across-seed sample SDs for RACH-SEQ were 0.0079 for convergence, 0 for edge resolution, 0.0302 for observations and 0.00224 for distractor selections; random-order SDs were 0.0355, 0.0231, 0.0243 and 0.0277 respectively. All 10,000 system-policy-budget records retained the hidden true explanation. The policy comparison is descriptive: the protocol contains no requirement that RACH-SEQ outperform random order.
+At budget two, across-seed sample SDs for RACH-SEQ were 0.0079 for convergence, 0 for edge resolution, 0.0302 for observations and 0.00224 for nuisance selections. Random-order SDs were 0.0355, 0.0231, 0.0243 and 0.0277 respectively.
 
-### S3.3 Stored-region exactness and NOV calibration
+At budget four, the nuisance-selection ratio was
 
-The unchanged NOV-calibration defaults use 1,000 attempts, seed 7, `literature_grounded`, and `strict_all`. The initial admissible region contains 597 draws with `R_RACH=0.1071`.
+```text
+1.169/0.014=83.5,
+```
 
-**Table S3. Stored-region filtering versus fresh deterministic re-inference.**
+and the relative reduction was
 
-| Candidate observation | Filter gain | Fresh gain |
-|---|---:|---:|
-| nectar guide, Hachijo | 0.2684 | 0.2684 |
-| selfing rate, Hachijo | 0.1043 | 0.1043 |
-| flower size, Hachijo | 0.2581 | 0.2581 |
-| nectar guide, Oshima | 0.0215 | 0.0215 |
-| selfing rate, Oshima | 0.0672 | 0.0672 |
-| flower size, Oshima | 0.2304 | 0.2304 |
+```text
+1-0.014/1.169=0.9880.
+```
 
-The maximum absolute filter-versus-fresh difference is zero for all six directly checked quantitative observations. Across eight candidate observations and four controlled truths per observation, predictive EVSI has Pearson `r=0.7664` with mean realised resolvability gain; mean absolute EVSI-minus-mean-realised difference is 0.0739. Realised gains vary across truths, so this is a calibration check rather than a claim that EVSI predicts every realised outcome.
+The manuscript reports the absolute counts with the ratio because a fold change is unstable when the denominator approaches zero. All 10,000 system–policy–budget records retained the hidden true explanation.
 
 ---
 
-## S4. Ecological projection and simulation boundary
+## S4. Auxiliary controlled checks
 
-### S4.1 Exact one-step projection
+### S4.1 Known-truth self-consistency
 
-For the declared colonisation life-cycle output, expected juvenile recruits retained after one step for one initial adult factorise exactly as
+Under unchanged defaults, mean switch-state accuracy in the zero pattern-noise stratum was 0.6562 and recall of applicable true-ON switches was 1.000. Recall remained 1.000 in the 0.1 and 0.2 pattern-noise strata. Additional confounded explanations were allowed to survive, so exact-state accuracy was not expected to equal one.
 
-`W_recruit(z)=F_local(z) E_settlement(z)`, where
+**Table S2. Known-truth aggregate results.**
 
-`F_local=P(survive) P(conceive | survive)`
+| Pattern noise | Cases | Accuracy | Precision | Recall | F1 | Mean CA error | R_RACH | D_RACH |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0.0 | 8 | 0.6562 | 0.4792 | 1.0000 | 0.6042 | 0.3388 | 0.3699 | 2.5203 |
+| 0.1 | 8 | 0.6875 | 0.5729 | 1.0000 | 0.6667 | 0.3359 | 0.4719 | 2.1123 |
+| 0.2 | 8 | 0.7083 | 0.5417 | 1.0000 | 0.6429 | 0.2868 | 0.4238 | 2.3050 |
 
-and
+### S4.2 Stored-region conditioning
 
-`E_settlement=(1-p_ext)[D(z)cT + {1-D(z)}L]`.
+For six quantitative observations, gains obtained by filtering the stored deterministic accepted region equalled gains from fresh re-inference; the maximum absolute difference was zero.
 
-Here `D(z)` is dispersal investment, `c` corridor connectivity, `T` expected room in a reachable target, and `L` local settlement room. This equality follows the implemented order of survival, conception, mutually exclusive dispersal/local settlement, and the end-of-step extinction draw. N1–N4 therefore apply to this declared output on its strict positive interior.
+| Candidate observation | Filter gain | Fresh gain |
+|---|---:|---:|
+| quantitative candidate 1 | 0.2684 | 0.2684 |
+| quantitative candidate 2 | 0.1043 | 0.1043 |
+| quantitative candidate 3 | 0.2581 | 0.2581 |
+| quantitative candidate 4 | 0.0215 | 0.0215 |
+| quantitative candidate 5 | 0.0672 | 0.0672 |
+| quantitative candidate 6 | 0.2304 | 0.2304 |
 
-### S4.2 What is not factorised
-
-Long-run invasion growth, persistence and endpoint trait-space geometry additionally contain surviving parents, repeated generations, density dependence, resource feedback, mutation, stochasticity and changing resident composition. They are therefore labelled `requires_factorization_extension` rather than being used as proofs of N1–N4. ABM families are retained only as supplementary robustness/counterexample machinery under this boundary.
-
-### S4.3 ODD model documentation
-
-The supplementary ODD source documents plant-agent, island-environment and pollinator-environment state variables, stochastic reproduction and inheritance, and diagnostic outputs. It also labels planned variables/submodels separately from implemented ones. Those models are not used to infer an empirical Campanula mechanism and are not promoted into the primary theorem chain.
+Across eight candidate observations and four controlled truths per candidate, predictive EVSI correlated with mean realised gain at `r=0.7664`; mean absolute predictive-minus-realised difference was 0.0739.
 
 ---
 
 ## S5. Reproducibility and reviewer bundle
 
-### S5.1 Frozen evidence map
+### S5.1 Frozen evidence
 
-The reviewer bundle carries anonymised copies of the following evidence classes:
+The anonymised reviewer bundle contains the manuscript and Supporting Information, frozen G2 protocol and result summary, frozen auxiliary-validation summary, figure inventory and generated figures, primary RACH/NOV/RACH-SEQ implementation modules, benchmark generators, tests and a per-file SHA-256 manifest.
 
-- the review manuscript and this Supporting Information;
-- the frozen G2 protocol and frozen G2 summary;
-- the frozen known-truth/NOV summary;
-- the final figure inventory and generated Figure 1–3 plus Figure S1;
-- the primary RACH implementation modules required for admissibility, replaceability, validated NOV and RACH-SEQ;
-- the controlled validation generators and figure scripts;
-- tests needed to verify the public RACH interface and the principal mathematical/benchmark invariants.
+### S5.2 Explicit exclusions
 
-Public repository URLs, author metadata, public commit identifiers and archival-service IDs are deliberately omitted from the reviewer-facing copy for double-anonymous review. The bundle instead contains a SHA-256 manifest of every included file. Public release provenance remains preserved separately in the non-anonymous release metadata.
-
-### S5.2 Frozen protocol identifiers
-
-The final G2 protocol identifier is `rach-g2-truth-peek-free-v2`; its protocol SHA-256 is `3568025f98a671b232e5d6b865063f37baa5bec319a594f831d6b5b953428cb7`. This hash identifies the scientific benchmark configuration without exposing repository identity. The known-truth and NOV calibration configurations are recorded verbatim in the frozen validation summary included in the reviewer bundle.
+The methods submission excludes the separate N1–N4/bounded-drift boundary manuscript as a primary contribution, exact ecological channel projection, prospective Campanula claims, provisional ecological-rule panels, causal-structure discovery, externally owned eco-genetic work, optional incubator backends and UI material.
 
 ### S5.3 Software validation
 
-The release-candidate package is version 0.1.0. The clean G5 check rebuilt all four final figures, reproduced the frozen known-truth and NOV values, built and installed the wheel outside the repository, and verified the package boundary. The wheel SHA-256 is `f97308f99caf59a6dd13931e738cee803054c0864b66c4d93db5c944f72f0fa8`. The final test matrix covers Python 3.10, 3.11 and 3.12.
-
-### S5.4 Explicit exclusions
-
-The reviewer bundle and Supporting Information exclude provisional Bergmann/Allen/Foster/Gloger rule panels, causal-structure discovery, externally owned eco-genetic work, the optional attraction-trait incubator, Streamlit/UI material, and unreferenced legacy ABM panels. Their presence elsewhere in development history is not evidence for the submitted claims.
-
----
+The release-candidate package is version 0.1.0. Clean validation rebuilds Figures 1–3 and Figure S1, reproduces frozen values, builds and installs the wheel outside the repository and checks the public API on Python 3.10–3.12.
 
 ## Figure S1 caption
 
-**Figure S1. Known-truth specified-simulator self-consistency.** Recovery summaries under the unchanged frozen proxy-to-proxy benchmark at pattern-noise rates 0, 0.1 and 0.2. The benchmark is designed to retain generating true-ON switches while allowing observationally confounded alternatives to remain admissible; it is not a unique-model recovery target or an empirical mechanism validation.
+**Figure S1. Known-truth self-consistency.** Synthetic switch-state recovery under predeclared pattern-noise strata. The benchmark checks that generating switches remain admissible; confounded alternatives are not required to disappear from a deliberately non-identifying target pattern.
