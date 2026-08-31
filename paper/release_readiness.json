@@ -1,10 +1,23 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "method_name": "Mechanism-Resolving Observation Design",
   "distribution": "mechanism-resolution-design",
   "version": "0.1.0",
   "suggested_release_tag": "v0.1.0",
-  "status": "paper_a_migrated_method_renamed_pending_final_ci_and_reviewer_bundle_validation",
+  "status": "post_rename_ci_pass_pending_tagged_g5_and_reviewer_artifacts",
+  "ci": {
+    "status": "pass_python_3_10_3_12_after_repository_split_and_internal_rename",
+    "validated_main_pre_freeze_sha": "d5d90d3cb81ad58801829b653f2df8070ddc55cb",
+    "checks": [
+      "scientific submission boundary",
+      "MEE Research Article format",
+      "active method naming",
+      "repository program boundaries",
+      "full pytest suite",
+      "controlled figure smoke tests",
+      "frozen G2 CLI smoke tests"
+    ]
+  },
   "g2": {
     "status": "pass_frozen_unchanged",
     "historical_protocol_id": "rach-g2-truth-peek-free-v2",
@@ -26,9 +39,15 @@
     "provenance_note": "Frozen protocol/result files retain their historical machine identifiers and policy keys unchanged."
   },
   "g5": {
-    "status": "rerun_required_after_distribution_and_public_api_rename",
+    "status": "tagged_final_rerun_pending",
+    "trigger_marker": "[g5-final]",
     "previous_frozen_summary": "paper/results/g5_reproducibility_summary.json",
-    "requirement": "rebuild figures, wheel and anonymous reviewer bundle on the submitted rename commit without changing frozen G2 evidence"
+    "requirement": "rebuild publication figures and renamed wheel on the final freeze commit; verify frozen validation values without changing G2 evidence"
+  },
+  "reviewer_bundle": {
+    "status": "ci_self_test_pass_tagged_artifact_pending",
+    "trigger_marker": "[reviewer-bundle]",
+    "requirement": "build and self-test the anonymous methods-only reviewer archive from the same final freeze commit"
   },
   "publication_preparation": {
     "journal": "Methods in Ecology and Evolution",
@@ -57,9 +76,8 @@
     "action_before_formal_release": "Mint the DOI externally, then add it to citation/archive metadata without changing frozen G2 results."
   },
   "remaining_publication_operations": [
-    "pass Python 3.10-3.12 full CI after the repository split and naming migration",
-    "rebuild and self-test the anonymous reviewer bundle",
-    "rerun G5 for the renamed wheel and publication figures",
+    "run tagged G5 reproducibility workflow on the final freeze commit",
+    "run tagged anonymous reviewer-bundle workflow on the same final freeze commit",
     "fill human-supplied title-page metadata",
     "export the journal-ready manuscript and Supporting Information",
     "prepare a cover letter centred on Mechanism-Resolving Observation Design and G2 selection efficiency",
