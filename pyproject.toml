@@ -3,9 +3,9 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "microdonta"
+name = "mechanism-resolution-design"
 version = "0.1.0"
-description = "Information-theoretic observation design for resolving mechanistic ambiguity in ecological models."
+description = "Mechanism-Resolving Observation Design: information-theoretic selection of observations that reduce residual mechanistic ambiguity."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = [
     "mechanism inference",
-    "causal degeneracy",
+    "mechanistic ambiguity",
     "mutual information",
     "value of information",
     "sequential design",
