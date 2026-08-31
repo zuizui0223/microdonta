@@ -71,6 +71,8 @@ future_observation  is withheld and evaluated as a candidate next measurement
 
 This taxonomy prevents the same evidence from defining the simulator context, entering the acceptance distance and then being presented again as an independent validation. The constraint grammar is also applied before observed targets are evaluated, so biological feasibility is not tuned to favour the realised pattern.
 
+An ecological example is a signed functional starting position such as `plant_trait - pollinator_functional_center`. When used, it is fixed before outcome inspection and assigned to `input_context`: it may condition `f`, but it must not re-enter `d` as an independent `observed_target`. This prevents a hypothesis-derived coordinate from being used both to define the mechanism's starting state and to validate the same mechanism.
+
 #### 2.1.2 Admissibility and degeneracy quantities
 
 For switch `j`, causal admissibility is
