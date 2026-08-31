@@ -1,10 +1,10 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "repository": "zuizui0223/microdonta",
-  "primary_program": "rach_method",
+  "primary_program": "mechanism_resolving_observation_design",
   "programs": {
-    "rach_method": {
-      "status": "primary submission and installable method",
+    "mechanism_resolving_observation_design": {
+      "status": "primary MEE submission and installable method",
       "roots": ["causal_model", "paper"]
     },
     "abm_robustness": {
@@ -21,7 +21,7 @@
       "roots": ["causal_model/campanula_real_data.py", "examples/campanula_izu"]
     },
     "island_pollination_translation": {
-      "status": "three external-to-RACH adapter contracts; not empirical evidence",
+      "status": "external adapter contracts; not empirical evidence",
       "source_repository": "zuizui0223/izu-core",
       "roots": ["examples/island_pollination_translation"],
       "track_ids": [
@@ -44,6 +44,25 @@
     }
   },
   "external_programs": {
+    "boundary_perspective": {
+      "owner_repository": "zuizui0223/boundary",
+      "local_policy": "active_paper_a_assets_must_not_be_copied_back",
+      "forbidden_roots": [
+        "paper/boundary_manuscript_submission.md",
+        "paper/boundary_manuscript_draft.md",
+        "paper/boundary_submission_spine.md",
+        "paper/boundary_claim_evidence_matrix.md",
+        "paper/mechanistic_evidence_identification_axis.md",
+        "paper/mechanistic_evidence_literature_audit.md"
+      ],
+      "forbidden_module_names": [
+        "multichannel_identifiability",
+        "calibration_transport_family",
+        "bounded_proxy_drift",
+        "proxy_calibration_theory",
+        "channel_identifiability_theory"
+      ]
+    },
     "eco_genetic_criticality": {
       "owner_repository": "zuizui0223/eco-genetic-criticality",
       "local_policy": "reference_only_no_code_docs_examples_or_tests",
@@ -71,9 +90,10 @@
       ]
     }
   },
-  "rach_distribution_packages": ["causal_model", "attraction_trait_model"],
+  "distribution_packages": ["causal_model", "attraction_trait_model"],
   "forbidden_imports": [
-    {"from_root": "causal_model", "to_module": "eco_genetic_criticality"}
+    {"from_root": "causal_model", "to_module": "eco_genetic_criticality"},
+    {"from_root": "causal_model", "to_module": "boundary_model"}
   ],
   "portfolio_registry": "repository_ecosystem.json"
 }
