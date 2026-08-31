@@ -7,10 +7,19 @@ now governed as separate papers.
 
 Paper A now covers ecological measurement chains generally; the legacy heading is retained verbatim because the MEE submission-boundary checker uses it as a separation marker.
 
-**Core contribution**
+**Conceptual headline**
 
 ```text
-net-only quotient / k-channel equivalence dimension
+mechanistic proximity != mechanistic identification
+```
+
+Paper A argues that ecological evidence has two independent properties: where a measurement sits biologically, and what it identifies among declared competing mechanisms. Molecular/genomic measurements can be highly proximal and highly identifying, but proximity alone does not guarantee identification. Field patterns can be non-identifying, while strategically placed field observations can directly remove mechanism ambiguity. The paper therefore classifies mechanistic evidence by identification strength rather than by biological level alone.
+
+**Quantitative contribution**
+
+```text
+mechanistic evidence as an identification property
+→ net-only quotient / k-channel equivalence dimension
 → channel anchors reduce dimension: k-1-r
 → two-channel proxy calibration-transport family
      Gamma=1          : N3 point identification
@@ -20,10 +29,7 @@ net-only quotient / k-channel equivalence dimension
 → joint-set reporting rule
 ```
 
-This paper is about the boundary between point identification, partial
-identification and non-identification in positive multiplicative ecological
-measurement chains. Its main output is not RACH and not a synthetic policy
-benchmark.
+This paper is about the boundary between mechanistic proximity and mechanistic identification, and about the boundary between point identification, partial identification and non-identification in declared ecological observation maps. Its main output is not RACH and not a synthetic policy benchmark.
 
 For a declared positive chain
 
@@ -35,7 +41,7 @@ net-only observation leaves a `(k-1)`-dimensional product-preserving equivalence
 class in log coordinates. If `r` independent channel values or channel ratios are
 directly anchored, the residual unidentified dimension is `k-1-r`; `k-1`
 independent channel anchors suffice to recover the final channel from the
-product.
+product. The theorem demonstrates that deeper or more precise measurement of the same invariant endpoint does not change identification; additional independent observation channels do.
 
 For the common two-channel proxy case,
 
@@ -89,7 +95,9 @@ The pollination motivation belongs in Paper A: species-specific effective servic
 has the rate-by-effectiveness form `visitor_rate * direct_effectiveness`, whereas
 network degree, abundance or visitation alone are quantity-side descriptors or
 proxies rather than effective service. Community aggregation `sum_m V_m E_m`
-can add a further allocation ambiguity across visitor types.
+can add a further allocation ambiguity across visitor types. Seed dispersal provides an independent Quantity × Quality architecture.
+
+Genomic and molecular examples belong in Paper A only as conceptual motivation for separating mechanistic proximity from identification strength. Paper A must not claim that molecular data are intrinsically less mechanistic, nor imply that all genomic observation maps follow the multiplicative theorem.
 
 ## Paper B — RACH observation-selection method
 
@@ -130,17 +138,27 @@ A signed functional starting position such as
 `input_context`, and never recycle the same hypothesis-derived quantity as an
 independent observed target. It is not natural-system validation of RACH.
 
+The conceptual handoff from Paper A to Paper B is one-way but real:
+
+```text
+Paper A: what can the current observation map identify in principle?
+Paper B: which candidate observation should be acquired next to reduce ambiguity?
+```
+
+Paper B may use this motivation, but it does not inherit Paper A's theorems as its headline contribution.
+
 ## Separation rules
 
 1. The MEE paper may state structural non-identifiability as motivation, but it
-   does not reproduce the boundary-paper quotient, `k-1-r` dimension theorem,
-   Gamma family or breakdown results.
-2. The boundary paper may use RACH only as a downstream design implication; it
-   does not claim the G2 policy benchmark as theorem evidence.
+   does not reproduce the boundary-paper two-axis evidentiary argument, quotient,
+   `k-1-r` dimension theorem, Gamma family or breakdown results.
+2. The boundary paper may mention observation selection only as a downstream design implication; it
+   does not claim RACH, NOV, RACH-SEQ or the G2 policy benchmark as theorem evidence.
 3. Pollinator effective-service decomposition and complete measurement-chain
    examples are Paper A motivation/design consequences, not Paper B validation.
-4. Signed functional starting position is a Paper B evidence-role illustration,
+4. Genomic/molecular examples in Paper A illustrate the proximity/identification distinction; they are not anti-molecular claims and not additional product-theorem domains unless an appropriate observation map is declared.
+5. Signed functional starting position is a Paper B evidence-role illustration,
    not an empirical validation result unless independent natural-system data are
    later collected.
-5. Frozen G2/G5 values and software provenance remain unchanged.
-6. No result is counted in both papers as a primary contribution.
+6. Frozen G2/G5 values and software provenance remain unchanged.
+7. No result is counted in both papers as a primary contribution.
