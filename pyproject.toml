@@ -3,9 +3,9 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rach"
+name = "microdonta"
 version = "0.1.0"
-description = "RACH: a constraint-aware framework for diagnosing causal degeneracy and prioritising the next observation in ecological mechanism inference."
+description = "Information-theoretic observation design for resolving mechanistic ambiguity in ecological models."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -13,11 +13,11 @@ authors = [
     { name = "Ruiqi Zhang" },
 ]
 keywords = [
-    "causal admissibility",
+    "mechanism inference",
     "causal degeneracy",
-    "pattern-oriented modelling",
-    "approximate Bayesian computation",
+    "mutual information",
     "value of information",
+    "sequential design",
     "observation design",
 ]
 classifiers = [
@@ -32,12 +32,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Figure generation and the interactive app.
 viz = [
     "matplotlib>=3.7",
     "streamlit>=1.40",
 ]
-# Everything needed to run the test suite and reproduce every figure/CLI.
 dev = [
     "pytest>=7.0",
     "matplotlib>=3.7",
@@ -46,13 +44,11 @@ dev = [
 
 [project.urls]
 Repository = "https://github.com/zuizui0223/microdonta"
+BoundaryPerspective = "https://github.com/zuizui0223/boundary"
 
 [tool.setuptools]
-# RACH plus its optional biological simulator backend. Eco-genetic criticality
-# is externally owned and intentionally absent from this repository and wheel.
 packages = ["causal_model", "attraction_trait_model"]
 
 [tool.pytest.ini_options]
-# Tests live under tests/, plus a few co-located with the package and example.
 testpaths = ["tests", "causal_model", "examples"]
 addopts = "-q"
