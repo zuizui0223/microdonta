@@ -1,7 +1,7 @@
 {
   "upload_type": "software",
-  "title": "microdonta: information-theoretic observation design for ecological mechanism inference",
-  "description": "A mechanism-resolving observation-design framework that retains all declared mechanism programs compatible with observations and biological constraints, quantifies residual mechanism ambiguity, and ranks candidate measurements by normalized mechanism-observation mutual information with sequential recomputation after each observation. Companion software to the Methods in Ecology and Evolution methods manuscript.",
+  "title": "Mechanism-Resolving Observation Design",
+  "description": "An information-theoretic observation-design framework that retains all declared mechanism programs compatible with observations and biological constraints, quantifies residual mechanism ambiguity, and ranks candidate measurements by normalized mechanism-observation mutual information with sequential recomputation after each observation. Companion software to the Methods in Ecology and Evolution methods manuscript.",
   "license": "MIT",
   "creators": [
     {
@@ -11,7 +11,7 @@
   ],
   "keywords": [
     "mechanism inference",
-    "causal degeneracy",
+    "mechanistic ambiguity",
     "mutual information",
     "value of information",
     "sequential design",
