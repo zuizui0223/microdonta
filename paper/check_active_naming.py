@@ -104,6 +104,9 @@ def main() -> None:
     ):
         if token not in figure_source:
             raise SystemExit(f"Figure 1 source missing canonical marker: {token}")
+    for token in ("next_observation_value(", "heuristic_observation_value"):
+        if token in figure_source:
+            raise SystemExit(f"Figure 1 source returned to heuristic ranking: {token}")
 
     inventory = (ROOT / "paper" / "final_figure_inventory.json").read_text(encoding="utf-8")
     if "figure1_controlled_confounding.png" not in inventory:
@@ -115,7 +118,7 @@ def main() -> None:
     print(f"method: {OFFICIAL}")
     print("distribution: mechanism-resolution-design")
     print("retired backend/test/Figure-1 filenames: absent")
-    print("Figure 1 information-value source: canonical")
+    print("Figure 1 information-value source: canonical and non-heuristic")
     print("historical frozen identifiers: permitted only as machine-level provenance")
 
 
