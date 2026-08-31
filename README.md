@@ -1,16 +1,16 @@
-# microdonta: information-theoretic observation design for ecological mechanism inference
+# Mechanism-Resolving Observation Design
 
 [![CI](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml/badge.svg)](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml)
 
-`microdonta` is the standalone software and reproducibility repository for the *Methods in Ecology and Evolution* methods paper on **mechanism-resolving observation design**.
+**Mechanism-Resolving Observation Design** is the software and reproducibility project for a *Methods in Ecology and Evolution* methods paper on choosing the next observation that best reduces unresolved ecological mechanism ambiguity.
 
-The separate mechanistic-evidence / identification-boundary Perspective now lives in **[zuizui0223/boundary](https://github.com/zuizui0223/boundary)**. Active boundary theory, manuscripts, figures and reviewer assets do not belong in this repository.
+The separate mechanistic-evidence / identification-boundary Perspective lives in **[zuizui0223/boundary](https://github.com/zuizui0223/boundary)**. Its active theory, manuscript, figures and reviewer assets are not part of this project.
 
 ## Scientific question
 
 When several ecological mechanisms remain compatible with the observations already collected,
 
-> **which measurement should be acquired next to reduce the remaining mechanism ambiguity?**
+> **Which measurement should be acquired next to reduce the remaining mechanism ambiguity?**
 
 The workflow is deliberately set-valued rather than winner-first:
 
@@ -39,7 +39,7 @@ A_epsilon(y_obs, x_obs)
 
 The inferential object is the retained region, not its modal mechanism row.
 
-For binary mechanism vector `S in {0,1}^K`, define
+For a binary mechanism vector `S in {0,1}^K`, define
 
 ```text
 D = H(S | A_epsilon)
@@ -56,7 +56,7 @@ For a candidate observation `Q` whose outcomes form a verified mutually exclusiv
 V(Q) = I(S;Q | A_epsilon) / K.
 ```
 
-This is the publication-level **observation information value**. It is zero exactly when the candidate carries no information about the residual mechanism identity represented in the current region.
+This is the publication-level **observation information value**. It is zero exactly when the candidate carries no information about residual mechanism identity represented in the current region.
 
 A candidate whose predictive outcome partition is unavailable is reported as non-estimable for this quantity. An external outcome prior is not silently substituted and relabelled as validated information value.
 
@@ -100,13 +100,13 @@ causal_model/mechanism_equivalence.py
 causal_model/causal_replaceability.py
 ```
 
-Historical implementation modules remain private compatibility backends while the frozen benchmark provenance is preserved; they are not the advertised scientific API.
+Historical implementation labels are retained only where needed for compatibility or frozen benchmark provenance; they are not the advertised scientific vocabulary.
 
 ## Controlled validation
 
 The frozen G2 benchmark evaluates an **information-guided sequential policy** against uniform random ordering on identical generated systems, hidden truths, candidate sets and observation budgets. Hidden truth is used only after a policy has selected a candidate, solely to materialise the realised outcome.
 
-The frozen protocol identifier and stored policy key retain their historical labels for byte-level provenance. In active prose, figures and software documentation the policy is called **information-guided sequential design**.
+The frozen protocol identifier and stored policy key retain their historical labels for exact provenance. Active prose, figures and public software documentation use **information-guided sequential design**.
 
 At budget two:
 
@@ -146,7 +146,7 @@ causal_model/
   generality_sweep.py            frozen G2 benchmark generator
 
 paper/
-  mee_manuscript_draft.md        active methods manuscript
+  manuscript.md                  active methods manuscript
   supporting_information.md      active SI
   submission_manifest.json       active evidence inventory
   g2_frozen_benchmark_protocol.json
@@ -156,7 +156,7 @@ paper/
 
 Supplementary ABM backends, adapters and archived exploratory material are not primary evidence unless explicitly listed in the submission manifest.
 
-## Reproduce
+## Installation and checks
 
 ```bash
 pip install -e ".[dev]"
@@ -168,4 +168,4 @@ pytest -q
 
 ## Scope
 
-The methods paper validates observation selection over a declared frozen family of controlled confounded systems. It does not establish universal optimality, superiority to every Bayesian design method, or a natural-system causal mechanism. Admissibility and observation value are always conditional on the declared mechanism vocabulary, parameter/prior structure, constraints, observation map, discrepancy and tolerance.
+The methods paper validates observation selection over a declared frozen family of controlled confounded systems. It does not establish universal optimality, superiority to every Bayesian design method, or a natural-system causal mechanism. Admissibility and observation information value are always conditional on the declared mechanism vocabulary, parameter/prior structure, constraints, observation map, discrepancy and tolerance.
