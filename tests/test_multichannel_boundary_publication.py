@@ -84,7 +84,7 @@ def test_ecology_letters_proposal_stays_within_300_words_and_keeps_distinct_axes
     proposal = text.split("## Proposal", 1)[1].split("## Venue-fit notes", 1)[0].strip()
     words = proposal.split()
     assert len(words) <= 300
-    assert "proximity to biological machinery" in proposal
+    assert "measurements close to biological machinery" in proposal
     assert "identification axis" in proposal
     assert "k-1-r" in proposal
     assert "Gamma" in proposal
