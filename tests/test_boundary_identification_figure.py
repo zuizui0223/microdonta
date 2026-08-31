@@ -1,4 +1,6 @@
+from importlib.util import module_from_spec, spec_from_file_location
 from math import isclose
+from pathlib import Path
 
 from causal_model.bounded_proxy_drift import identify_under_bounded_proxy_drift
 
@@ -27,3 +29,17 @@ def test_joint_log_geometry_and_breakdown_values_used_by_boundary_figure():
     # The actual joint endpoints preserve the observed net ratio exactly.
     for rho_f, rho_e in result.joint_ratio_endpoints:
         assert isclose(rho_f * rho_e, rho_w)
+
+
+def test_boundary_figure_generator_writes_png(tmp_path):
+    script = Path(__file__).resolve().parents[1] / "paper" / "make_boundary_identification_figure.py"
+    spec = spec_from_file_location("boundary_figure", script)
+    assert spec is not None and spec.loader is not None
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    output = tmp_path / "boundary_identification_geometry.png"
+    written = module.build_figure(output)
+    assert written == output
+    assert output.exists()
+    assert output.stat().st_size > 0
