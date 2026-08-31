@@ -81,7 +81,7 @@ def main() -> None:
     # Conceptual headline plus the quantitative and operational consequences.
     for token, label in (
         ("These properties need not coincide", "two-axis problem statement"),
-        ("proximity to biological machinery", "mechanistic-proximity axis"),
+        ("measurements close to biological machinery", "mechanistic-proximity axis"),
         ("identification axis", "identification-strength axis"),
         ("k-1-r", "quantitative anchor consequence"),
         ("breakdown factor", "calibration consequence"),
@@ -104,14 +104,11 @@ def main() -> None:
     ):
         forbid(proposal_body, token, "forbidden Perspective-proposal framing")
 
-    # The send-ready email must target both current Editorial Office addresses
-    # and carry the exact current proposal prose rather than a stale copy.
     require(proposal_email, "ecolets@cefe.cnrs.fr", "first Editorial Office recipient")
     require(proposal_email, "ecolets2@cefe.cnrs.fr", "second Editorial Office recipient")
     if normalized(proposal_body) not in normalized(proposal_email):
         raise SystemExit("send-ready email does not contain the current proposal text")
 
-    # Preserve the explicit editorial risk audit as part of the send gate.
     for token in (
         "Why is this a Perspective rather than a Method?",
         "What is genuinely new if the algebra is elementary?",
@@ -124,8 +121,6 @@ def main() -> None:
     ):
         require(editorial_audit, token, "editorial desk-rejection audit")
 
-    # The conceptual governance note must retain both the positive claim and the
-    # scope guard against ranking biological levels intrinsically.
     for token in (
         "Mechanistic evidence should be classified partly by what it identifies",
         "Measurement level and identification strength are distinct properties",
@@ -136,7 +131,6 @@ def main() -> None:
         require(evidence_axis, token, "mechanistic-evidence governance")
     forbid(evidence_axis, "orthogonal properties", "overstrong axis-independence claim")
 
-    # The source audit must explicitly carry the two-sided literature position.
     for token in (
         "does **not** justify claiming that ecology formally endorses a universal one-dimensional hierarchy",
         "genomic data alone are not sufficient",
@@ -145,7 +139,6 @@ def main() -> None:
     ):
         require(literature_audit, token, "mechanistic-evidence literature audit")
 
-    # Boundary-paper scientific and conceptual spine.
     for token, label in (
         ("Mechanistic evidence should be evaluated by what it identifies", "conceptual headline"),
         ("two **distinct** axes", "distinct evidence axes"),
@@ -167,8 +160,6 @@ def main() -> None:
     ):
         require(manuscript, token, label)
 
-    # Reject regressions to either extreme: molecular-level triumphalism or an
-    # anti-molecular framing that the Perspective does not support.
     for token in (
         "molecular data are not mechanistic",
         "genomics cannot identify mechanisms",
@@ -178,7 +169,6 @@ def main() -> None:
     ):
         forbid(manuscript, token, "intrinsic biological-level ranking or overclaim")
 
-    # The boundary candidate must not become a second copy of the RACH methods paper.
     for token in (
         "RACH-SEQ",
         "NOV(Q)=I(S;Q",
