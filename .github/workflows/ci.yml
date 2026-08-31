@@ -1,15 +1,10 @@
 name: CI
 
 on:
-  # Feature branches are validated by pull_request. Running both push and
-  # pull_request on the same branch duplicates the complete 3-version matrix.
   push:
     branches: ["main"]
   pull_request:
 
-# A PR only needs validation for its newest head. This prevents rapid scientific
-# review commits from leaving obsolete Python 3.10-3.12 matrices queued behind
-# the current code under review.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -34,14 +29,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Check submission bundle
+      - name: Check scientific submission boundary
         run: python paper/check_submission_bundle.py
 
       - name: Check MEE Research Article format
         run: python paper/check_mee_submission.py
 
-      - name: Check boundary-paper submission candidate
-        run: python paper/check_boundary_submission.py
+      - name: Check active method naming
+        run: python paper/check_active_naming.py
 
       - name: Check repository program boundaries
         run: python scripts/check_repository_boundaries.py
@@ -49,57 +44,54 @@ jobs:
       - name: Run test suite
         run: pytest -q
 
-      - name: Build and self-test boundary reviewer bundle
+      - name: Build publication figures and anonymous reviewer bundle
         if: matrix.python-version == '3.11'
         run: |
-          python paper/make_mechanistic_evidence_axis_figure.py
-          python paper/make_boundary_identification_figure.py
-          python paper/make_multichannel_anchor_figure.py
-          python paper/build_boundary_reviewer_bundle.py
-          cd outputs/boundary/reviewer_bundle
+          mkdir -p outputs/g5/figures
+          python -m causal_model.confound_demo --figure outputs/g5/figures/figure1_confound.png
+          python paper/make_g2_figure.py --output outputs/g5/figures/figure2_g2_frozen_v2.png
+          python -m causal_model.observation_value_calibration --figure outputs/g5/figures/figure3_information_value_calibration.png
+          python -m causal_model.known_truth_benchmark --figure outputs/g5/figures/figureS1_known_truth.png
+          python paper/build_reviewer_bundle.py
+          cd outputs/mee/reviewer_bundle
           PYTHONPATH=. python -m pytest --rootdir=. -q tests
           python - <<'PY'
           import json
           from pathlib import Path
-
           manifest = json.loads(Path('bundle_manifest.json').read_text())
-          assert manifest['boundary_manuscript_included'] is True
-          assert manifest['mee_manuscript_included'] is False
-          assert manifest['rach_method_code_included'] is False
+          assert manifest['method_name'] == 'Mechanism-Resolving Observation Design'
+          assert manifest['boundary_paper_included'] is False
           assert manifest['public_repository_metadata_included'] is False
+          assert manifest['historical_frozen_labels_preserved'] is True
           files = set(manifest['files'])
-          assert 'figures/mechanistic_evidence_axes.png' in files
-          assert 'figures/boundary_identification_geometry.png' in files
-          assert 'figures/multichannel_anchor_dimension.png' in files
-          assert 'reference_notes/mechanistic_evidence_identification_axis.md' in files
-          assert not any('mee_manuscript' in path for path in files)
-          assert not any('nov_evsi.py' in path for path in files)
-          assert not any('rach_seq.py' in path for path in files)
-          assert not any('g2_frozen' in path for path in files)
-          print('boundary reviewer bundle isolation OK')
+          assert 'figures/figure3_information_value_calibration.png' in files
+          assert 'review_manuscript.md' in files
+          assert not any('boundary_manuscript' in path for path in files)
+          print('methods reviewer bundle isolation OK')
           PY
 
-      - name: Smoke-test figure and G2 v2 benchmark CLIs
+      - name: Smoke-test controlled figure and frozen G2 CLIs
         run: |
           mkdir -p outputs/ci
-          python -m causal_model.confound_demo  --n-attempts 200 --figure outputs/ci/confound.png
+          python -m causal_model.confound_demo --n-attempts 200 --figure outputs/ci/confound.png
           python -m causal_model.synthetic_demo --n-attempts 800 --figure outputs/ci/synthetic.png
-          python -m causal_model.nov_calibration --n-attempts 400 --figure outputs/ci/nov.png
+          python -m causal_model.observation_value_calibration --n-attempts 400 --figure outputs/ci/information_value.png
           python -m causal_model.known_truth_benchmark \
             --n-attempts 100 --noise-rates 0.0,0.1 \
             --figure outputs/ci/known_truth.png
+          # Historical policy key retained by the frozen benchmark CLI.
           python -m causal_model.generality_sweep \
             --n-systems 20 --n-attempts 300 --n-distractors 2 \
             --budget-sweep 0,1,2 \
             --policies rach_seq,random_order \
-            --budget-table outputs/ci/rach_seq_budget.csv
+            --budget-table outputs/ci/information_guided_budget.csv
 
       - name: Check outputs were written
         run: |
-          for f in confound synthetic nov known_truth; do
+          for f in confound synthetic information_value known_truth; do
             test -s "outputs/ci/$f.png" || { echo "missing outputs/ci/$f.png"; exit 1; }
           done
-          test -s outputs/ci/rach_seq_budget.csv || { echo "missing G2 v2 policy table"; exit 1; }
-          grep -q '^rach_seq,' outputs/ci/rach_seq_budget.csv || { echo "missing rach_seq rows"; exit 1; }
-          grep -q '^random_order,' outputs/ci/rach_seq_budget.csv || { echo "missing random_order rows"; exit 1; }
-          echo "all smoke-test figures and G2 v2 policy rows generated"
+          test -s outputs/ci/information_guided_budget.csv || { echo "missing frozen G2 policy table"; exit 1; }
+          grep -q '^rach_seq,' outputs/ci/information_guided_budget.csv || { echo "missing historical guided-policy rows"; exit 1; }
+          grep -q '^random_order,' outputs/ci/information_guided_budget.csv || { echo "missing random-order rows"; exit 1; }
+          echo "all controlled outputs generated"
