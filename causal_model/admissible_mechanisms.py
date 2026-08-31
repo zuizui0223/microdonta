@@ -1,8 +1,8 @@
-"""Descriptive public interface for admissible mechanism-region inference.
+"""Public interface for admissible mechanism-region inference.
 
 The scientific object is the full parameter–mechanism region compatible with a
-predeclared model family, biological constraints and observed targets. The
-interface deliberately uses role names rather than a method acronym.
+predeclared model family, biological constraints and observed targets. Public
+names are descriptive rather than acronym-based.
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from . import causal_admissibility as _backend
 
 CandidateObservation = _backend.CandidateObservation
 CandidateOutcome = _backend.CandidateOutcome
-CausalAdmissibilityResult = _backend.CausalAdmissibilityResult
+MechanismAdmissibilityResult = _backend.CausalAdmissibilityResult
 ObservationContribution = _backend.ObservationContribution
 CandidateInformationValueResult = _backend.NextObservationValueResult
 MechanismResolutionSummary = _backend.RACHSummary
@@ -21,15 +21,15 @@ mechanism_resolvability = _backend.causal_resolvability
 observation_contribution = _backend.observation_contribution
 mechanism_resolution_summary = _backend.rach_summary
 
-# The older heuristic is retained only as an explicitly labelled compatibility
-# calculation. Publication-level candidate value is defined in observation_value.
+# Retained only as an explicitly labelled compatibility calculation. The
+# publication-level candidate quantity is defined in observation_value.py.
 heuristic_observation_value = _backend.next_observation_value
 
 __all__ = [
     "CandidateInformationValueResult",
     "CandidateObservation",
     "CandidateOutcome",
-    "CausalAdmissibilityResult",
+    "MechanismAdmissibilityResult",
     "MechanismResolutionSummary",
     "ObservationContribution",
     "compute_admissible_mechanisms",
