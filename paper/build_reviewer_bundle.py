@@ -18,6 +18,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 RUNNABLE_SEEDS = [
+    "causal_model/mechanism_region.py",
+    "causal_model/mechanism_replaceability_core.py",
+    "causal_model/sequential_observation.py",
+    "causal_model/observation_information.py",
     "causal_model/admissible_mechanisms.py",
     "causal_model/observation_value.py",
     "causal_model/sequential_design.py",
@@ -39,6 +43,16 @@ FORBIDDEN_TEXT = (
 COMMIT_SHA_RE = re.compile(r"(?<![0-9a-f])\b[0-9a-f]{40}\b(?![0-9a-f])", re.I)
 
 PRIMARY_INIT = '''"""Mechanism-Resolving Observation Design reviewer API."""
+import sys
+from . import mechanism_region as _mechanism_region_backend
+sys.modules.setdefault(__name__ + ".causal_admissibility", _mechanism_region_backend)
+from . import mechanism_replaceability_core as _replaceability_backend
+sys.modules.setdefault(__name__ + ".causal_replaceability", _replaceability_backend)
+from . import sequential_observation as _sequential_backend
+sys.modules.setdefault(__name__ + ".rach_seq", _sequential_backend)
+from . import observation_information as _information_backend
+sys.modules.setdefault(__name__ + ".nov_evsi", _information_backend)
+
 from .admissible_mechanisms import (
     CandidateInformationValueResult, CandidateObservation, CandidateOutcome,
     MechanismAdmissibilityResult, MechanismResolutionSummary,
@@ -257,13 +271,14 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
             assert_anonymous_text(path.relative_to(output_dir).as_posix(), path.read_text(encoding="utf-8"))
 
     manifest = {
-        "schema_version": 3,
+        "schema_version": 4,
         "bundle_role": "double_anonymous_peer_review_methods_only",
         "method_name": "Mechanism-Resolving Observation Design",
         "public_repository_metadata_included": False,
         "title_page_included": False,
         "boundary_paper_included": False,
         "historical_frozen_labels_preserved": True,
+        "retired_backend_filenames_included": False,
         "files": {},
     }
     for path in sorted(p for p in output_dir.rglob("*") if p.is_file()):
