@@ -1,6 +1,6 @@
 """Submission-facing checks for the boundary-paper candidate.
 
-This checker is intentionally separate from the frozen MEE submission gate.  It
+This checker is intentionally separate from the frozen MEE submission gate. It
 validates the current Ecology Letters Perspective route without changing the
 RACH methods-paper evidence boundary.
 """
@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MANUSCRIPT = ROOT / "paper/boundary_manuscript_submission.md"
 PROPOSAL = ROOT / "paper/ecology_letters_perspective_proposal.md"
+PROPOSAL_EMAIL = ROOT / "paper/ecology_letters_perspective_email.md"
 STRATEGY = ROOT / "paper/TWO_PAPER_STRATEGY.md"
 
 WORD_RE = re.compile(r"\b[\w*<>/=+.-]+\b", re.UNICODE)
@@ -41,9 +42,14 @@ def forbid(text: str, token: str, label: str) -> None:
         raise SystemExit(f"forbidden {label}: {token}")
 
 
+def normalized(text: str) -> str:
+    return " ".join(text.split())
+
+
 def main() -> None:
     manuscript = MANUSCRIPT.read_text(encoding="utf-8")
     proposal = PROPOSAL.read_text(encoding="utf-8")
+    proposal_email = PROPOSAL_EMAIL.read_text(encoding="utf-8")
     strategy = STRATEGY.read_text(encoding="utf-8")
 
     abstract = section(manuscript, "Abstract")
@@ -53,15 +59,35 @@ def main() -> None:
             f"Ecology Letters Perspective abstract exceeds 200 words: {abstract_words}"
         )
 
-    proposal_body = proposal.split("## Proposal", 1)[1].split("## Venue-fit notes", 1)[0]
-    proposal_lines = proposal_body.strip().splitlines()
-    if proposal_lines and proposal_lines[0].startswith("(") and proposal_lines[0].endswith(")"):
-        proposal_body = "\n".join(proposal_lines[1:])
+    proposal_body = proposal.split("## Proposal", 1)[1].split("## Venue-fit notes", 1)[0].strip()
+    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", proposal_body) if part.strip()]
+    if len(paragraphs) != 1:
+        raise SystemExit(
+            f"Ecology Letters Perspective proposal must be one paragraph; found {len(paragraphs)}"
+        )
+    proposal_body = paragraphs[0]
     proposal_words = word_count(proposal_body)
     if proposal_words > 300:
         raise SystemExit(
             f"Ecology Letters Perspective proposal exceeds 300 words: {proposal_words}"
         )
+
+    # Current proposal guidance: nature, novelty, disciplinary contribution, and
+    # editorial guidance to state author qualifications.
+    for token, label in (
+        ("identification lens for ecological measurement design", "nature of proposed Perspective"),
+        ("k-1-r", "quantitative novelty"),
+        ("across ecological systems", "disciplinary contribution"),
+        ("The author has developed", "author qualification"),
+    ):
+        require(proposal_body, token, label)
+
+    # The send-ready email must target both current Editorial Office addresses
+    # and carry the exact current proposal prose rather than a stale copy.
+    require(proposal_email, "ecolets@cefe.cnrs.fr", "first Editorial Office recipient")
+    require(proposal_email, "ecolets2@cefe.cnrs.fr", "second Editorial Office recipient")
+    if normalized(proposal_body) not in normalized(proposal_email):
+        raise SystemExit("send-ready email does not contain the current proposal text")
 
     # Boundary-paper scientific spine.
     for token, label in (
@@ -92,6 +118,8 @@ def main() -> None:
     print("candidate venue: Ecology Letters Perspective")
     print(f"abstract words: {abstract_words}")
     print(f"proposal words: {proposal_words}")
+    print("proposal paragraphs: 1")
+    print("proposal email recipients: 2")
     print("paper separation: pass")
 
 
