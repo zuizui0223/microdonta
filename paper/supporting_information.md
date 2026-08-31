@@ -1,12 +1,12 @@
 # Supporting Information
 
-## RACH: information-theoretic next-observation selection for causally degenerate ecological models
+## Mechanism-Resolving Observation Design: information-theoretic selection of observations under ecological mechanism ambiguity
 
-This Supporting Information accompanies the anonymised Research Article. It expands the RACH quantities, NOV/RACH-SEQ calculation, frozen controlled benchmarks and reproducibility map. It does not contain the separate channel-identifiability boundary paper, bounded proxy-drift theorem, new ecological mechanism claims, structure discovery or provisional ecological-rule panels.
+This Supporting Information accompanies the anonymised Research Article. It expands the admissible-region quantities, observation-information calculation, sequential design, frozen controlled benchmarks and reproducibility map. The separate mechanistic-evidence / identification-boundary Perspective is owned by the `boundary` repository and is not part of this submission.
 
 ---
 
-## S1. RACH admissibility, degeneracy and evidence roles
+## S1. Admissible mechanism regions and evidence roles
 
 ### S1.1 Admissible region
 
@@ -33,7 +33,7 @@ Every quantity is assigned one role before inference:
 
 The same datum may not be silently used as context, acceptance evidence and independent validation.
 
-### S1.3 Causal quantities
+### S1.3 Mechanism quantities
 
 For switch `j`,
 
@@ -41,18 +41,18 @@ For switch `j`,
 CA_j=P(s_j=1|A_epsilon).
 ```
 
-Joint causal degeneracy and resolvability are
+Joint mechanism entropy and resolvability are
 
 ```text
-D_RACH=H(S|A_epsilon),
-R_RACH=1-D_RACH/K.
+D=H(S|A_epsilon),
+R=1-D/K.
 ```
 
-A `K`-bit vector has entropy at most `K`, so `0<=D_RACH<=K` and `0<=R_RACH<=1`. Mechanism-equivalence and causal-replaceability summaries are calculated from the same accepted switch rows and are not substitutes for the joint entropy.
+A `K`-bit vector has entropy at most `K`, so `0<=D<=K` and `0<=R<=1`. Mechanism-equivalence and replaceability summaries are calculated from the same accepted switch rows and are not substitutes for the joint entropy.
 
 ---
 
-## S2. Validated NOV and RACH-SEQ
+## S2. Observation information value and sequential design
 
 ### S2.1 Predictive-partition requirement
 
@@ -62,20 +62,20 @@ For a finite candidate observation `Q`, its outcome maps must be mutually exclus
 Pr(Q=q|A_epsilon).
 ```
 
-If outcomes overlap, are incomplete or require unavailable simulator columns, validated stored-region NOV is non-estimable. An external outcome prior is not silently substituted and relabelled as validated EVSI.
+If outcomes overlap, are incomplete or require unavailable simulator columns, validated stored-region observation information value is non-estimable. An external outcome prior is not silently substituted and relabelled as validated information value.
 
 ### S2.2 Information identity
 
 Define expected resolvability gain
 
 ```text
-NOV(Q)=E_Q[R_RACH(A_epsilon|Q)-R_RACH(A_epsilon)].
+V(Q)=E_Q[R(A_epsilon|Q)-R(A_epsilon)].
 ```
 
 Then
 
 ```text
-NOV(Q)
+V(Q)
 ={H(S|A_epsilon)-H(S|A_epsilon,Q)}/K
 =I(S;Q|A_epsilon)/K.
 ```
@@ -83,32 +83,34 @@ NOV(Q)
 Therefore
 
 ```text
-0<=NOV(Q)<=1-R_RACH(A_epsilon)<=1.
+0<=V(Q)<=1-R(A_epsilon)<=1.
 ```
 
-`NOV(Q)=0` exactly when the candidate measurement carries no information about residual mechanism identity under the current accepted region.
+`V(Q)=0` exactly when the candidate measurement carries no information about residual mechanism identity under the current accepted region.
 
 ### S2.3 Sequential recomputation
 
-At step `t`, RACH-SEQ scores every verified remaining candidate by
+At step `t`, the information-guided policy scores every verified remaining candidate by
 
 ```text
-NOV_t(Q)=I(S;Q|A_t)/K.
+V_t(Q)=I(S;Q|A_t)/K.
 ```
 
-It selects the largest positive current value, obtains the realised outcome only after selection, conditions `A_t` on that outcome, and recomputes all remaining predictive probabilities and NOV values. The sequence stops when the budget is exhausted, the declared confounding structure is resolved, or all available validated NOV values are zero.
+It selects the largest positive current value, obtains the realised outcome only after selection, conditions `A_t` on that outcome, and recomputes all remaining predictive probabilities and information values. The sequence stops when the budget is exhausted, the declared confounding structure is resolved, or all available validated values are zero.
 
-An explicitly named normalized edge-cut fallback is retained only for candidates whose predictive partition is unavailable. Every step records its score source; fallback scores are not reported as validated NOV.
+An explicitly named normalized edge-cut fallback is retained only for candidates whose predictive partition is unavailable. Every step records its score source; fallback scores are not reported as validated observation information values.
 
 ---
 
 ## S3. Frozen G2 observation-selection benchmark
 
-### S3.1 Protocol
+### S3.1 Protocol and historical labels
 
-Protocol `rach-g2-truth-peek-free-v2` uses five predeclared seeds, 200 systems per seed, 1,500 prior draws per system, `K in {4,5,6}`, one or two disjoint confounds, random pre-data driver coefficients, two mechanism-independent binary nuisance candidates and budgets 0–4.
+The frozen machine-readable protocol retains the historical identifier `rach-g2-truth-peek-free-v2` and stored policy key `rach_seq` to preserve exact provenance. These strings are legacy record identifiers, not the active method name. In this manuscript and current software documentation the policy is called **information-guided sequential design**.
 
-RACH-SEQ and `random_order` receive identical systems, hidden truths, candidates and budgets. Hidden truth is used only after candidate selection to materialise the chosen outcome. The policy comparison is descriptive and has no favourable-result acceptance threshold.
+The protocol uses five predeclared seeds, 200 systems per seed, 1,500 prior draws per system, `K in {4,5,6}`, one or two disjoint confounds, random pre-data driver coefficients, two mechanism-independent binary nuisance candidates and budgets 0–4.
+
+The information-guided and `random_order` policies receive identical systems, hidden truths, candidates and budgets. Hidden truth is used only after candidate selection to materialise the chosen outcome. The policy comparison is descriptive and has no favourable-result acceptance threshold.
 
 ### S3.2 Policy-specific means
 
@@ -116,18 +118,18 @@ RACH-SEQ and `random_order` receive identical systems, hidden truths, candidates
 
 | Policy | Budget | Converged | Initial edges resolved | Mean observations | Mean nuisance selections | False exclusion |
 |---|---:|---:|---:|---:|---:|---:|
-| RACH-SEQ | 0 | 0.000 | 0.0000 | 0.000 | 0.000 | 0.000 |
-| RACH-SEQ | 1 | 0.495 | 0.7480 | 1.000 | 0.000 | 0.000 |
-| RACH-SEQ | 2 | 0.990 | 1.0000 | 1.505 | 0.001 | 0.000 |
-| RACH-SEQ | 3 | 0.997 | 1.0000 | 1.515 | 0.011 | 0.000 |
-| RACH-SEQ | 4 | 0.999 | 1.0000 | 1.518 | 0.014 | 0.000 |
+| information-guided | 0 | 0.000 | 0.0000 | 0.000 | 0.000 | 0.000 |
+| information-guided | 1 | 0.495 | 0.7480 | 1.000 | 0.000 | 0.000 |
+| information-guided | 2 | 0.990 | 1.0000 | 1.505 | 0.001 | 0.000 |
+| information-guided | 3 | 0.997 | 1.0000 | 1.515 | 0.011 | 0.000 |
+| information-guided | 4 | 0.999 | 1.0000 | 1.518 | 0.014 | 0.000 |
 | random_order | 0 | 0.000 | 0.0000 | 0.000 | 0.000 | 0.000 |
 | random_order | 1 | 0.179 | 0.2995 | 1.000 | 0.580 | 0.000 |
 | random_order | 2 | 0.435 | 0.6045 | 1.821 | 0.974 | 0.000 |
 | random_order | 3 | 0.689 | 0.8650 | 2.386 | 1.152 | 0.000 |
 | random_order | 4 | 0.940 | 1.0000 | 2.673 | 1.169 | 0.000 |
 
-At budget two, across-seed sample SDs for RACH-SEQ were 0.0079 for convergence, 0 for edge resolution, 0.0302 for observations and 0.00224 for nuisance selections. Random-order SDs were 0.0355, 0.0231, 0.0243 and 0.0277 respectively.
+At budget two, across-seed sample SDs for the information-guided policy were 0.0079 for convergence, 0 for edge resolution, 0.0302 for observations and 0.00224 for nuisance selections. Random-order SDs were 0.0355, 0.0231, 0.0243 and 0.0277 respectively.
 
 At budget four, the nuisance-selection ratio was
 
@@ -153,7 +155,7 @@ Under unchanged defaults, mean switch-state accuracy in the zero pattern-noise s
 
 **Table S2. Known-truth aggregate results.**
 
-| Pattern noise | Cases | Accuracy | Precision | Recall | F1 | Mean CA error | R_RACH | D_RACH |
+| Pattern noise | Cases | Accuracy | Precision | Recall | F1 | Mean admissibility error | R | D |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 0.0 | 8 | 0.6562 | 0.4792 | 1.0000 | 0.6042 | 0.3388 | 0.3699 | 2.5203 |
 | 0.1 | 8 | 0.6875 | 0.5729 | 1.0000 | 0.6667 | 0.3359 | 0.4719 | 2.1123 |
@@ -172,7 +174,7 @@ For six quantitative observations, gains obtained by filtering the stored determ
 | quantitative candidate 5 | 0.0672 | 0.0672 |
 | quantitative candidate 6 | 0.2304 | 0.2304 |
 
-Across eight candidate observations and four controlled truths per candidate, predictive EVSI correlated with mean realised gain at `r=0.7664`; mean absolute predictive-minus-realised difference was 0.0739.
+Across eight candidate observations and four controlled truths per candidate, predicted information value correlated with mean realised gain at `r=0.7664`; mean absolute predictive-minus-realised difference was 0.0739.
 
 ---
 
@@ -180,15 +182,15 @@ Across eight candidate observations and four controlled truths per candidate, pr
 
 ### S5.1 Frozen evidence
 
-The anonymised reviewer bundle contains the manuscript and Supporting Information, frozen G2 protocol and result summary, frozen auxiliary-validation summary, figure inventory and generated figures, primary RACH/NOV/RACH-SEQ implementation modules, benchmark generators, tests and a per-file SHA-256 manifest.
+The anonymised reviewer bundle contains the manuscript and Supporting Information, frozen G2 protocol and result summary, frozen auxiliary-validation summary, figure inventory and generated figures, publication-facing observation-design implementation modules, benchmark generators, tests and a per-file SHA-256 manifest.
 
 ### S5.2 Explicit exclusions
 
-The methods submission excludes the separate N1–N4/bounded-drift boundary manuscript as a primary contribution, exact ecological channel projection, prospective Campanula claims, provisional ecological-rule panels, causal-structure discovery, externally owned eco-genetic work, optional incubator backends and UI material.
+The methods submission excludes the separate mechanistic-evidence / identification-boundary Perspective, prospective natural-system mechanism claims, provisional ecological-rule panels, causal-structure discovery, externally owned eco-genetic work, optional incubator backends and UI material.
 
 ### S5.3 Software validation
 
-The release-candidate package is version 0.1.0. Clean validation rebuilds Figures 1–3 and Figure S1, reproduces frozen values, builds and installs the wheel outside the repository and checks the public API on Python 3.10–3.12.
+The release-candidate distribution is `mechanism-resolution-design` version 0.1.0. Clean validation rebuilds Figures 1–3 and Figure S1, reproduces frozen values, builds and installs the wheel outside the repository and checks the public API on Python 3.10–3.12.
 
 ## Figure S1 caption
 
