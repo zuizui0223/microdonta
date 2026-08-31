@@ -11,7 +11,7 @@ import math
 import os
 import statistics
 
-from .nov_calibration import CalibrationResult, run_calibration
+from .information_value_calibration_core import CalibrationResult, run_calibration
 
 
 def print_report(res: CalibrationResult) -> None:
