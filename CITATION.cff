@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-message: "If you use microdonta's observation-design method, please cite the software and associated methods manuscript."
-title: "microdonta: information-theoretic observation design for ecological mechanism inference"
+message: "If you use Mechanism-Resolving Observation Design, please cite the software and associated methods manuscript."
+title: "Mechanism-Resolving Observation Design"
 type: software
 authors:
   - family-names: Zhang
@@ -9,13 +9,14 @@ version: 0.1.0
 license: MIT
 repository-code: "https://github.com/zuizui0223/microdonta"
 abstract: >-
-  microdonta retains ecological mechanism programs compatible with declared
-  observations and constraints, quantifies residual mechanism ambiguity, and
-  prioritises candidate measurements by normalized mechanism-observation mutual
-  information with sequential recomputation after each realised observation.
+  Mechanism-Resolving Observation Design retains ecological mechanism programs
+  compatible with declared observations and constraints, quantifies residual
+  mechanism ambiguity, and prioritises candidate measurements by normalized
+  mechanism-observation mutual information with sequential recomputation after
+  each realised observation.
 keywords:
   - mechanism inference
-  - causal degeneracy
+  - mechanistic ambiguity
   - ecological models
   - mutual information
   - sequential design
