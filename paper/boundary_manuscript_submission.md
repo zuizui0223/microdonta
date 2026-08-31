@@ -1,32 +1,42 @@
-# From ecological products to mechanisms: identification and calibration transport in multiplicative chains
+# Mechanistic evidence is an identification property: measurement boundaries in ecological chains
 
 ## Abstract
 
-Ecologists often infer mechanism from quantities that multiply several biological stages. Such products can be measured precisely while remaining structurally uninformative about how performance is allocated among their latent channels. We formalise this problem for positive multiplicative ecological chains. For `W=prod_j F_j`, net-only observations are invariant under product-preserving reallocations of the factors; in log coordinates the observational equivalence class has dimension `k-1` for a `k`-channel chain. Each independent direct channel anchor removes one dimension, so `r` anchors leave `k-1-r` unresolved dimensions and `k-1` anchors point-identify the final channel from the product. We then treat the common two-channel proxy case `W_i=F_iE_i`, `X_i=q_iF_i`. Stable, bounded and unrestricted proxy transport form one family under `1/Gamma <= q_1/q_0 <= Gamma`. Finite `Gamma` yields a sharp joint identified set and a reference-invariant breakdown factor; the same calibration ratio couples the two latent channel ratios exactly, producing a slope-`-1` segment in log-ratio coordinates. Direct calibration creates a separate 0/1/2 calibration-anchor ladder, and the joint geometry implies that channel uncertainties must not be reported as independently combinable error bars. The algebra is elementary; the contribution is to close a recurring ecological measurement architecture from information boundary through partial identification to field-design and reporting rules.
+Ecological evidence is often described as increasingly mechanistic when measurement moves closer to biological machinery, from field patterns toward physiological, genomic or molecular processes. We argue that biological proximity and mechanism identification are different properties. A proximal measurement can remain compatible with several competing mechanisms, whereas a simple field observation can be strongly mechanistic evidence when it excludes alternatives. We make this distinction exact for recurring multiplicative ecological measurements. For `W=prod_j F_j`, net-only observations leave a `k-1` dimensional product-preserving equivalence class; `r` independent channel anchors leave `k-1-r` unresolved dimensions. In the common proxy case `W_i=F_iE_i`, `X_i=q_iF_i`, stable, bounded and unrestricted proxy transport form one family under `1/Gamma <= q_1/q_0 <= Gamma`. Finite `Gamma` yields a sharp joint identified set and a reference-invariant breakdown factor, while direct calibration creates a separate 0/1/2 anchor ladder. The result is a measurement principle: mechanistic evidence should be classified by what it identifies, not by the biological level at which it is measured.
 
 ## 1. Introduction
 
-Ecological performance is frequently assembled from multiple biological stages. Pollination offers a concrete example. At visitor-type `m`, effective contribution can be written as
+Ecologists seek mechanisms, not only patterns. In practice, however, *mechanistic* is often used in more than one sense. Measurements taken close to biological machinery—physiology, gene expression, genomic variation or molecular interactions—are naturally described as mechanistically proximal. Ecological genomics, for example, has explicitly been motivated by identifying genetic mechanisms underlying organismal responses to natural environments (Ungerer, Johnson & Herman 2008), and genomic data are often expected to provide more mechanistic understanding of ecological and eco-evolutionary change (Rudman et al. 2018). This aspiration is valuable. But proximity to a mechanism is not the same as identification of a mechanism.
+
+The distinction matters whenever several mechanisms can generate the same observation. A molecular profile may be biologically close to the relevant machinery yet remain compatible with multiple upstream explanations. Conversely, a field-level measurement can be strongly mechanistic evidence if explicit competing mechanisms make different predictions for it. Recent discussion of causal effects and causal mechanisms in ecology likewise emphasizes that mechanistic understanding has evidentiary requirements beyond the mere observation of a net effect (Grace et al. 2025). We therefore propose two orthogonal axes for ecological evidence: **biological measurement level or proximity**, and **identification strength**—non-identifying, partially identifying or point-identifying relative to declared competing mechanisms.
+
+The governing principle is simple:
+
+> **Mechanistic evidence should be classified by what it identifies, not by the biological level at which it is measured.**
+
+This principle does not imply that molecular scale is irrelevant, that genomics is non-mechanistic, or that all field observations are equally informative. Molecular and genomic measurements can provide causal perturbations, physical constraints and close access to biological machinery. The narrower claim is that none of these properties alone guarantees identification among the particular competing mechanisms under study. Likewise, field observations need not remain merely descriptive when their observation map separates explicit alternatives.
+
+We formalise this distinction using a recurring ecological measurement architecture in which several positive biological stages combine multiplicatively. Pollination provides a concrete example. At visitor type `m`, effective contribution can be written as
 
 ```text
 S_m = V_m E_m,
 ```
 
-where `V_m` is interaction quantity (for example visitation rate) and `E_m` is per-interaction effectiveness. Community service then aggregates those contributions,
+where `V_m` is interaction quantity, such as visitation rate, and `E_m` is per-interaction effectiveness. Community service then aggregates those contributions,
 
 ```text
 S = sum_m V_m E_m.
 ```
 
-Network degree, visitor abundance or visitation alone may describe or proxy the quantity side of this architecture, but they are not effective service unless the effectiveness term is fixed or otherwise known. The product problem therefore occurs within each interaction type, while summation across types can add a second allocation ambiguity. This is not a special construction for our theorem: pollination studies explicitly combine visitation with per-visit effectiveness, and seed-dispersal theory explicitly combines quantity with post-dispersal quality.
+Network degree, visitor abundance or visitation alone may describe or proxy the quantity side of this architecture, but they are not effective service unless the effectiveness term is fixed or otherwise known. The product problem occurs within each interaction type, while summation across types can add a second allocation ambiguity. This is not a construction invented for the theorem: pollination studies explicitly combine visitation with per-visit effectiveness, and seed-dispersal theory explicitly combines quantity with post-dispersal quality.
 
 The same logic appears in longer ecological measurement chains. A pollinator-change study may wish to connect change in the visitor community to effective service, dependency or reproductive assurance, and finally a demographic or trait response. Observing only an endpoint does not, by itself, identify which unobserved intermediate stage changed. If a declared endpoint factorises as a product of positive stages, the number of unresolved stages has a precise structural meaning.
 
 A second problem appears when one stage is observed only through a proxy. Relative comparisons are commonly used to avoid unknown absolute calibration. If the proxy is `X_i=q_iF_i`, an unknown constant scale indeed cancels when `q_1=q_0`. But the scientifically relevant question is not whether absolute calibration is known. It is whether calibration transports across the regimes being compared. Fragmented versus connected habitat, urban versus rural sites, warm versus cool years, or communities with different visitor identities are precisely the contrasts in which the proxy-to-channel conversion may change.
 
-We develop three linked results. First, net-only observations define an equivalence class rather than a unique mechanism decomposition. For a `k`-channel product this class has `k-1` free dimensions; each independent direct channel anchor removes one. Second, in the common two-channel proxy case, stable, bounded and unrestricted proxy transport form one calibration family that yields point identification, sharp partial identification and non-identification as limiting cases, together with a reference-invariant breakdown factor. Third, these boundaries generate operational rules: distinguish channel anchors from calibration anchors, match direct measurement effort to the desired identification strength, and report calibration-induced uncertainty as the coupled joint set rather than as independent marginal error bars.
+We develop three linked quantitative results. First, net-only observations define an equivalence class rather than a unique mechanism decomposition. For a `k`-channel product this class has `k-1` free dimensions; each independent direct channel anchor removes one. Second, in the common two-channel proxy case, stable, bounded and unrestricted proxy transport form one calibration family that yields point identification, sharp partial identification and non-identification as limiting cases, together with a reference-invariant breakdown factor. Third, these boundaries generate operational rules: distinguish channel anchors from calibration anchors, match direct measurement effort to the desired identification strength, and report calibration-induced uncertainty as the coupled joint set rather than as independent marginal error bars.
 
-The argument belongs to the established traditions of structural identifiability and partial identification. We do not claim new identifiability algebra. The contribution is ecological and operational: to identify a recurring measurement architecture, quantify the dimension of its unresolved mechanism space, derive a sharp transport-sensitive identified set, and carry those boundaries through sensitivity analysis to concrete field-design and reporting consequences.
+The argument belongs to the established traditions of structural identifiability and partial identification. We do not claim new identifiability algebra. The contribution is ecological and evidentiary: to separate measurement depth from identification strength, make that distinction exact for a recurring ecological observation class, and carry the resulting information boundaries through sensitivity analysis to field-design and reporting consequences.
 
 ## 2. Observation models
 
@@ -98,6 +108,8 @@ Then `F_cE_c=FE=W` pointwise. Consequently every deterministic net-only observat
 
 The positive functions form a multiplicative group acting on latent decompositions, and `W=FE` is invariant under that action. Every net-only observable therefore factors through the quotient by these orbits. Complete performance curves, all threshold-feasible sets and every boundary, width, connected-component count or topological summary derived from them belong to the same invariant class. They can describe the net ecological pattern arbitrarily well while containing no data-based information about how the product is allocated between latent channels.
 
+This result illustrates why measurement sophistication and mechanistic identification cannot be ranked on one scale. An arbitrarily precise, high-dimensional or technologically sophisticated observation of `W` remains non-identifying if it is invariant along the same mechanism-equivalence orbit. Identification changes when the observation map changes, not merely when the same invariant is measured more precisely.
+
 ### Theorem N1-k — a `k`-channel chain leaves `k-1` unresolved dimensions
 
 For
@@ -126,7 +138,7 @@ sum_{j=1}^k d_j = 0,
 
 which is a `(k-1)`-dimensional subspace. Hence net-only observation of a positive `k`-channel product leaves a `(k-1)`-dimensional mechanism-equivalence class.
 
-The result has an immediate anchor corollary. If `r` independent channel values (or, in a before/after analysis, `r` independent channel ratios) are directly observed, each anchor fixes one independent coordinate. The residual unidentified dimension is
+The result has an immediate anchor corollary. If `r` independent channel values, or in a before/after analysis `r` independent channel ratios, are directly observed, each anchor fixes one independent coordinate. The residual unidentified dimension is
 
 ```text
 k - 1 - r,    0 <= r <= k-1.
@@ -246,7 +258,7 @@ The word *anchor* can refer to two distinct measurements and they should not be 
 
 ### 7.1 Channel anchors reduce the dimension of a `k`-stage chain
 
-A channel anchor directly observes one latent stage (or one stage ratio in a before/after comparison). For `W=prod_j F_j`, `r` independent channel anchors leave `k-1-r` unresolved dimensions. This is the quantitative extension of the instruction to observe missing links rather than inferring them from endpoints.
+A channel anchor directly observes one latent stage, or one stage ratio in a before/after comparison. For `W=prod_j F_j`, `r` independent channel anchors leave `k-1-r` unresolved dimensions. This is the quantitative extension of the instruction to observe missing links rather than inferring them from endpoints.
 
 A change -> service -> dependency/assurance -> response study, for example, should first declare which stages enter the endpoint map. If the declared map is multiplicative and contains `k` positive stages, endpoint-only observation leaves `k-1` free dimensions. Each directly measured intermediate stage removes one. If the biological map is not multiplicative, the same design question remains but requires the appropriate observation map rather than the product theorem.
 
@@ -284,19 +296,25 @@ These studies do not imply identical channel semantics across ecological systems
 
 The pollinator-service example also clarifies the relation between product and aggregation. The present theorems apply directly to each positive contribution `V_m E_m`. If only the aggregate `sum_m V_mE_m` is observed, attribution among visitor types adds further ambiguity that is not removed by the within-type product theorem. Treating network degree or abundance as service therefore risks two distinct collapses: a proxy can replace the quantity channel, and aggregation can hide which visitor types supplied the measured service.
 
-## 9. Relation to identification theory and scope
+## 9. Relation to mechanistic ecology and identification theory
 
-Structural identifiability has long studied whether internal model components are recoverable from input-output observations (Bellman & Åström 1970), and general parametric identification theory is classical (Rothenberg 1971). Partial-identification theory formalises the case in which data and assumptions restrict a target to a set rather than a point (Manski 2003). The algebra used here is elementary relative to those literatures.
+Ecology already contains multiple traditions of mechanistic explanation. Mechanistic models may encode processes explicitly; molecular and genomic studies may measure components close to biological machinery; and causal-mechanistic investigations may assemble evidence about structures and processes linking causes to responses. These are important forms of mechanistic proximity and mechanistic modelling. Our distinction is complementary: **given a declared set of competing mechanisms, does the observation map distinguish them?**
 
-The contribution has three parts: a net-only ecological observation class whose `k`-channel equivalence dimension is explicitly quantified; a calibration-transport family that supplies a sharp joint set and reference-invariant breakdown factor; and operational consequences that connect both channel and calibration anchors to identification strength while preserving the exact dependence structure when uncertainty is reported. The paper is therefore about coverage and closure—from information boundary to sensitivity, field design and reporting—rather than mathematical depth.
+This question cannot be answered from biological level alone. A genomic observation can be highly informative when alternatives predict different genomic states, but non-identifying when the same state is downstream of several alternatives. A field observation can be weak when it records only an invariant endpoint, but strongly identifying when it directly anchors a missing channel. The evidentiary classification is therefore conditional on the candidate mechanism set and the mapping from mechanisms to observations.
+
+Structural identifiability has long studied whether internal model components are recoverable from input-output observations (Bellman & Åström 1970), and general parametric identification theory is classical (Rothenberg 1971). Partial-identification theory formalises the case in which data and assumptions restrict a target to a set rather than a point (Manski 2003). Recent ecological discussion also distinguishes causal-effect estimation from mechanistic investigation and stresses the evidentiary requirements of the latter (Grace et al. 2025). The algebra used here is elementary relative to those literatures.
+
+The contribution has three quantitative parts: a net-only ecological observation class whose `k`-channel equivalence dimension is explicitly quantified; a calibration-transport family that supplies a sharp joint set and reference-invariant breakdown factor; and operational consequences that connect both channel and calibration anchors to identification strength while preserving the exact dependence structure when uncertainty is reported. The broader conceptual contribution is to separate mechanistic proximity from mechanistic identification. The paper is therefore about coverage and closure—from evidentiary classification to information boundary, sensitivity, field design and reporting—rather than mathematical depth.
 
 The results assume positive multiplicative stages where the product map is declared. Zeros require separate treatment because ratios and division fail. Sum-of-products architectures, additive interactions and other nonlinear maps can create additional equivalence structures and require their own observation maps. The transport result is pointwise in `z`; uniform statements over a trait domain require a predeclared aggregate estimand or exclusion of one throughout the domain. Transport bounds must be prespecified or externally informed rather than chosen after seeing the desired conclusion.
 
 ## 10. Discussion
 
-The practical problem is not merely that a product has several factors. It is that ecological measurement routinely collapses mechanistically distinct stages into products, proxies and aggregates, then asks those collapsed quantities to support channel-specific conclusions. The `k`-channel theorem makes the information loss quantitative: endpoint-only observation of a positive `k`-stage product leaves `k-1` structural degrees of freedom, and each independent direct channel measurement removes one.
+The main distinction is not between field data and molecular data. It is between **where an observation sits in a biological chain** and **what that observation identifies among competing mechanisms**. These properties can be related, but they are not the same axis. Mechanistic proximity may improve biological interpretation and constrain plausible models; identification strength determines whether the available observation map actually separates the alternatives relevant to the inference.
 
-This dimension rule gives a precise version of a common field recommendation. A complete change -> service -> dependency/assurance -> response chain cannot be reconstructed simply because its endpoints covary. The investigator must either observe enough intermediate stages, impose scientifically defended restrictions, or report the remaining equivalence set rather than silently filling missing links.
+This distinction changes how familiar evidence should be described. A molecular or genomic signature is not automatically weak evidence—nor automatically decisive evidence—because of its scale. Its mechanistic value depends on whether competing explanations imply distinguishable observations. Likewise, an ecological pattern is not condemned to remain descriptive. A strategically placed field measurement can eliminate an equivalence dimension or directly measure a calibration parameter, making it more discriminating for a particular mechanistic question than a much higher-dimensional observation that all alternatives share.
+
+The product theorems make this point exact in one recurring ecological architecture. Endpoint-only observation of a positive `k`-stage product leaves `k-1` structural degrees of freedom, and measuring the endpoint more precisely does not change that dimension. Each independent direct channel measurement removes one. Thus a complete change -> service -> dependency/assurance -> response chain cannot be reconstructed simply because its endpoints covary or because one endpoint has been measured at high resolution. The investigator must change the observation map: observe enough intermediate stages, impose scientifically defended restrictions, or report the remaining equivalence set.
 
 Relative proxy comparisons add a different identification problem. They are not automatically protected by taking ratios; they are protected only by transport of the proxy-to-channel conversion. Once that hidden assumption is written as `kappa=q_1/q_0`, stable calibration, bounded uncertainty and unrestricted drift become one identification family rather than three disconnected cases.
 
@@ -304,7 +322,7 @@ The partial-identification region is useful precisely because it does not preten
 
 The same algebra constrains how uncertainty should be communicated. Because one calibration ratio moves the two channel ratios in opposite directions while preserving the observed net ratio, structural calibration uncertainty is one-dimensional. Two independently drawn error bars throw away that information and admit impossible channel combinations. The correct object is the joint identified set.
 
-The resulting workflow is therefore: identify the declared observation map; count the unresolved dimensions or transport parameters it leaves; measure channel or calibration anchors according to the strength of inference required; report the corresponding sharp set or point estimate; and preserve the identified dependence structure when results are communicated. Better description of an ecological product is not automatically better identification of the mechanisms that generated it.
+The resulting workflow is therefore: declare the competing mechanisms and observation map; ask which distinctions that map preserves; classify the current evidence by identification strength rather than measurement level; count unresolved dimensions or transport parameters; acquire channel or calibration anchors according to the inference required; and report the corresponding sharp set or point estimate while preserving the identified dependence structure. Better biological proximity can strengthen mechanistic understanding, but proximity alone is not identification.
 
 ## Figure 1 caption
 
@@ -318,8 +336,11 @@ The `k`-channel quotient dimension and channel-anchor rule are implemented in `c
 
 - Ballantyne, G., Baldock, K.C.R., Rendell, L. & Willmer, P.G. 2017. Pollinator importance networks illustrate the crucial value of bees in a highly speciose plant community. *Scientific Reports* 7:8383. doi:10.1038/s41598-017-08798-x.
 - Bellman, R. & Åström, K.J. 1970. On structural identifiability. *Mathematical Biosciences* 7:329–339. doi:10.1016/0025-5564(70)90132-X.
+- Grace, J.B., Huntington-Klein, N., Schweiger, E.W. et al. 2025. Causal effects versus causal mechanisms: two traditions with different requirements and contributions towards causal understanding. *Ecology Letters* 28:e70029. doi:10.1111/ele.70029.
 - Manski, C.F. 2003. *Partial Identification of Probability Distributions*. Springer, New York. doi:10.1007/b97478.
 - Rader, R. et al. 2012. Spatial and temporal variation in pollinator effectiveness: do unmanaged insects provide consistent pollination services to mass flowering crops? *Journal of Applied Ecology*. doi:10.1111/j.1365-2664.2011.02066.x.
 - Reynolds, R.J. & Fenster, C.B. 2008. Point and interval estimation of pollinator importance: a study using pollination data of *Silene caroliniana*. *Oecologia* 156:325–332. doi:10.1007/s00442-008-0982-5.
 - Rothenberg, T.J. 1971. Identification in parametric models. *Econometrica* 39:577–591.
+- Rudman, S.M., Barbour, M.A., Csilléry, K. et al. 2018. What genomic data can reveal about eco-evolutionary dynamics. *Nature Ecology & Evolution* 2:9–15. doi:10.1038/s41559-017-0385-2.
 - Schupp, E.W., Jordano, P. & Gómez, J.M. 2010. Seed dispersal effectiveness revisited: a conceptual review. *New Phytologist* 188:333–353. doi:10.1111/j.1469-8137.2010.03402.x.
+- Ungerer, M.C., Johnson, L.C. & Herman, M.A. 2008. Ecological genomics: understanding gene and genome function in the natural environment. *Heredity* 100:178–183. doi:10.1038/sj.hdy.6800992.
