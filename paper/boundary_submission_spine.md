@@ -86,10 +86,12 @@ k-1 channel anchors            -> point identification
 
 **Calibration anchors — resolve proxy transport across two regimes**
 
+For compatibility with the earlier two-channel design-rule wording, these are also referred to as the **0 anchors / 1 anchor / 2 anchors** calibration ladder when the context is unambiguous:
+
 ```text
-0 calibration anchors -> unrestricted transport: non-identification
-1 calibration anchor  -> local q + external Gamma/eta: sharp set + breakdown
-2 calibration anchors -> observe q0,q1 and kappa directly: point identification
+0 anchors = 0 calibration anchors -> unrestricted transport: non-identification
+1 anchor  = 1 calibration anchor  -> local q + external Gamma/eta: sharp set + breakdown
+2 anchors = 2 calibration anchors -> observe q0,q1 and kappa directly: point identification
 ```
 
 **Design Rule 1 — Measure the missing identification information.** Use channel anchors to reduce unresolved mechanism dimensions and calibration anchors to replace transport assumptions with measurement.
