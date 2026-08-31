@@ -138,10 +138,10 @@ def main() -> None:
 
     # The source audit must explicitly carry the two-sided literature position.
     for token in (
-        "does not justify claiming that ecology formally endorses a universal one-dimensional hierarchy",
+        "does **not** justify claiming that ecology formally endorses a universal one-dimensional hierarchy",
         "genomic data alone are not sufficient",
         "Field-level evidence can become mechanistic through observation design",
-        "Avoid orthogonal as the primary adjective",
+        "Avoid **orthogonal** as the primary adjective",
     ):
         require(literature_audit, token, "mechanistic-evidence literature audit")
 
