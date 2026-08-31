@@ -1,54 +1,55 @@
 {
-  "schema_version": 3,
-  "package": "rach",
+  "schema_version": 4,
+  "method_name": "Mechanism-Resolving Observation Design",
+  "distribution": "mechanism-resolution-design",
   "version": "0.1.0",
   "suggested_release_tag": "v0.1.0",
-  "status": "scientific_evidence_frozen_methods_manuscript_split_pending_final_bundle_validation",
-  "validated_code_commit_sha": "d67eb2d22387334477e94ca8ecd0d58ac070c4a0",
+  "status": "paper_a_migrated_method_renamed_pending_final_ci_and_reviewer_bundle_validation",
   "g2": {
     "status": "pass_frozen_unchanged",
-    "protocol_id": "rach-g2-truth-peek-free-v2",
+    "historical_protocol_id": "rach-g2-truth-peek-free-v2",
     "protocol_sha256": "3568025f98a671b232e5d6b865063f37baa5bec319a594f831d6b5b953428cb7",
-    "execution_commit": "f343c2361db28c0b3e528b882b3370eda5abf5ed",
     "headline_budget_2": {
-      "rach_seq_edge_resolution": 1.0,
+      "information_guided_edge_resolution": 1.0,
       "random_order_edge_resolution": 0.6045,
-      "rach_seq_convergence": 0.99,
+      "information_guided_convergence": 0.99,
       "random_order_convergence": 0.435
     },
     "headline_budget_4": {
-      "rach_seq_nuisance_measurements": 0.014,
+      "information_guided_nuisance_measurements": 0.014,
       "random_order_nuisance_measurements": 1.169,
       "nuisance_selection_fold_difference": 83.5,
       "relative_reduction": 0.9880239520958084,
-      "rach_seq_observations_used": 1.518,
+      "information_guided_observations_used": 1.518,
       "random_order_observations_used": 2.673
-    }
+    },
+    "provenance_note": "Frozen protocol/result files retain their historical machine identifiers and policy keys unchanged."
   },
   "g5": {
-    "status": "pass_for_frozen_code_and_figures",
-    "summary": "paper/results/g5_reproducibility_summary.json",
-    "wheel_sha256": "f97308f99caf59a6dd13931e738cee803054c0864b66c4d93db5c944f72f0fa8"
+    "status": "rerun_required_after_distribution_and_public_api_rename",
+    "previous_frozen_summary": "paper/results/g5_reproducibility_summary.json",
+    "requirement": "rebuild figures, wheel and anonymous reviewer bundle on the submitted rename commit without changing frozen G2 evidence"
   },
   "publication_preparation": {
     "journal": "Methods in Ecology and Evolution",
     "article_type": "Research Article",
-    "primary_product": "RACH information-theoretic observation selection",
+    "primary_product": "Mechanism-Resolving Observation Design",
     "real_empirical_data_required_for_primary_claim": false,
     "primary_validation": "truth-peek-free synthetic observation-selection benchmark",
-    "separate_boundary_paper": "paper/boundary_manuscript_draft.md",
-    "two_paper_governance": "paper/TWO_PAPER_STRATEGY.md",
+    "external_companion_repository": "zuizui0223/boundary",
+    "repository_scope": "paper/REPOSITORY_SCOPE.md",
     "mee_format_gate": "paper/check_mee_submission.py",
-    "word_counts": "recompute_after_methods_only_split",
+    "active_naming_gate": "paper/check_active_naming.py",
     "double_anonymous_main_manuscript": true,
     "title_page_separated": true,
     "ai_assistance_disclosed_in_methods": true
   },
-  "public_api": "frozen_by_tests/test_public_rach_api.py",
+  "public_api": "locked_by_tests/test_mechanism_resolution_public_api.py",
   "release_metadata": {
     "license": "MIT",
     "repository": "https://github.com/zuizui0223/microdonta",
-    "citation_file": "CITATION.cff"
+    "citation_file": "CITATION.cff",
+    "distribution": "mechanism-resolution-design"
   },
   "archival_doi": {
     "status": "not_minted",
@@ -56,13 +57,14 @@
     "action_before_formal_release": "Mint the DOI externally, then add it to citation/archive metadata without changing frozen G2 results."
   },
   "remaining_publication_operations": [
-    "validate the methods-only manuscript, Supporting Information and reviewer-bundle allowlist in CI",
-    "rebuild the anonymous reviewer bundle after the split",
+    "pass Python 3.10-3.12 full CI after the repository split and naming migration",
+    "rebuild and self-test the anonymous reviewer bundle",
+    "rerun G5 for the renamed wheel and publication figures",
     "fill human-supplied title-page metadata",
     "export the journal-ready manuscript and Supporting Information",
-    "prepare a cover letter centred on RACH, NOV, RACH-SEQ and G2 selection efficiency",
+    "prepare a cover letter centred on Mechanism-Resolving Observation Design and G2 selection efficiency",
     "tag the exact submitted code state as v0.1.0",
     "mint and record an archival DOI after submission files are frozen"
   ],
-  "science_freeze_policy": "Any change to G2 parameters, primary RACH/NOV semantics or frozen numerical claims requires a new protocol/version. Boundary-paper development may proceed separately without retuning MEE evidence."
+  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics or frozen numerical claims requires a new protocol/version. Naming, packaging and repository separation must not retune frozen evidence."
 }
