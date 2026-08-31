@@ -1,5 +1,5 @@
 {
-  "schema_version": 7,
+  "schema_version": 8,
   "primary_target": "Methods in Ecology and Evolution",
   "manuscript_type": "Research Article",
   "primary_product": "Mechanism-Resolving Observation Design",
@@ -47,7 +47,7 @@
       "causal_model/replaceability_observation_value.py"
     ],
     "validation": [
-      "causal_model/confound_demo.py",
+      "causal_model/controlled_confounding_demo.py",
       "causal_model/known_truth_benchmark.py",
       "causal_model/generality_sweep.py",
       "causal_model/observation_value_calibration.py",
@@ -59,7 +59,7 @@
     ],
     "figures": [
       "paper/final_figure_inventory.json",
-      "causal_model/confound_demo.py",
+      "causal_model/controlled_confounding_demo.py",
       "paper/make_g2_figure.py",
       "causal_model/observation_value_calibration.py",
       "causal_model/known_truth_benchmark.py"

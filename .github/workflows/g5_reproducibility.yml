@@ -58,12 +58,12 @@ jobs:
       - name: Rebuild final Main and Supplement figures
         run: |
           mkdir -p outputs/g5/figures
-          python -m causal_model.confound_demo --figure outputs/g5/figures/figure1_confound.png
+          python -m causal_model.controlled_confounding_demo --figure outputs/g5/figures/figure1_controlled_confounding.png
           python paper/make_g2_figure.py --output outputs/g5/figures/figure2_g2_frozen_v2.png
           python -m causal_model.observation_value_calibration --figure outputs/g5/figures/figure3_information_value_calibration.png
           python -m causal_model.known_truth_benchmark --figure outputs/g5/figures/figureS1_known_truth.png
           for f in \
-            outputs/g5/figures/figure1_confound.png \
+            outputs/g5/figures/figure1_controlled_confounding.png \
             outputs/g5/figures/figure2_g2_frozen_v2.png \
             outputs/g5/figures/figure3_information_value_calibration.png \
             outputs/g5/figures/figureS1_known_truth.png; do

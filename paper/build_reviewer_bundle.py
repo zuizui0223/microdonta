@@ -32,7 +32,7 @@ REFERENCE_SOURCES = [
     "causal_model/generality_sweep.py",
     "causal_model/known_truth_benchmark.py",
     "causal_model/observation_value_calibration.py",
-    "causal_model/confound_demo.py",
+    "causal_model/controlled_confounding_demo.py",
 ]
 FORBIDDEN_TEXT = (
     "Ruiqi Zhang",
@@ -253,7 +253,7 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
     copy_text(ROOT / "paper/final_figure_inventory.json", frozen / "figure_inventory.json")
 
     expected_figures = {
-        "figure1_confound.png",
+        "figure1_controlled_confounding.png",
         "figure2_g2_frozen_v2.png",
         "figure3_information_value_calibration.png",
         "figureS1_known_truth.png",

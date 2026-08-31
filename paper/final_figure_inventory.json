@@ -1,13 +1,13 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "manuscript": "paper/manuscript.md",
   "figures": [
     {
       "label": "Figure 1",
       "section": "3.1",
-      "output": "outputs/g5/figures/figure1_confound.png",
-      "command": "python -m causal_model.confound_demo --figure outputs/g5/figures/figure1_confound.png",
-      "role": "controlled model-selection confound versus admissible-region diagnosis"
+      "output": "outputs/g5/figures/figure1_controlled_confounding.png",
+      "command": "python -m causal_model.controlled_confounding_demo --figure outputs/g5/figures/figure1_controlled_confounding.png",
+      "role": "controlled model-ranking ambiguity, canonical observation information value and quantitative resolution"
     },
     {
       "label": "Figure 2",

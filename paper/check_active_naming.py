@@ -18,13 +18,16 @@ ACTIVE = [
     ROOT / "paper" / "README.md",
     ROOT / "paper" / "REPOSITORY_SCOPE.md",
     ROOT / "paper" / "submission_manifest.json",
+    ROOT / "paper" / "final_figure_inventory.json",
     ROOT / "docs" / "mainline.md",
+    ROOT / "docs" / "tutorial.md",
     ROOT / "docs" / "mechanism_resolution_theory.md",
     ROOT / "docs" / "observation_information_foundations.md",
     ROOT / "causal_model" / "__init__.py",
     ROOT / "causal_model" / "admissible_mechanisms.py",
     ROOT / "causal_model" / "observation_value.py",
     ROOT / "causal_model" / "sequential_design.py",
+    ROOT / "causal_model" / "controlled_confounding_demo.py",
 ]
 RETIRED_PATHS = [
     "causal_model/causal_admissibility.py",
@@ -34,6 +37,7 @@ RETIRED_PATHS = [
     "causal_model/rach_seq.py",
     "causal_model/rach_set.py",
     "causal_model/replaceability_nov.py",
+    "causal_model/confound_demo.py",
     "tests/test_causal_replaceability.py",
     "tests/test_nov_evsi.py",
     "tests/test_nov_calibration.py",
@@ -42,6 +46,7 @@ RETIRED_PATHS = [
     "tests/test_rach_seq_predictive_reweighting.py",
     "tests/test_rach_set.py",
     "tests/test_replaceability_nov.py",
+    "tests/test_confound_demo.py",
 ]
 
 
@@ -64,6 +69,9 @@ def main() -> None:
         "NOV(Q)",
         "# RACH",
         "RACH: ",
+        "(B) RACH",
+        "(C) NOV",
+        "expected ΔR (NOV)",
         "microdonta: information-theoretic",
         "microdonta's observation-design method",
     )
@@ -87,10 +95,30 @@ def main() -> None:
         if token.casefold() not in manuscript:
             raise SystemExit(f"active manuscript missing descriptive term: {token}")
 
+    figure_source = (ROOT / "causal_model" / "controlled_confounding_demo.py").read_text(encoding="utf-8")
+    for token in (
+        "V(Q)=I(S;Q|A_epsilon)/K",
+        "six-bin",
+        "mechanism-independent nuisance",
+        "controlled_confounding_demo",
+    ):
+        if token not in figure_source:
+            raise SystemExit(f"Figure 1 source missing canonical marker: {token}")
+    for token in ("next_observation_value(", "heuristic_observation_value"):
+        if token in figure_source:
+            raise SystemExit(f"Figure 1 source returned to heuristic ranking: {token}")
+
+    inventory = (ROOT / "paper" / "final_figure_inventory.json").read_text(encoding="utf-8")
+    if "figure1_controlled_confounding.png" not in inventory:
+        raise SystemExit("Figure 1 inventory did not adopt the controlled-confounding filename")
+    if "causal_model.controlled_confounding_demo" not in inventory:
+        raise SystemExit("Figure 1 inventory did not adopt the canonical generator")
+
     print("active naming OK")
     print(f"method: {OFFICIAL}")
     print("distribution: mechanism-resolution-design")
-    print("retired backend/test filenames: absent")
+    print("retired backend/test/Figure-1 filenames: absent")
+    print("Figure 1 information-value source: canonical and non-heuristic")
     print("historical frozen identifiers: permitted only as machine-level provenance")
 
 
