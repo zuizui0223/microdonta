@@ -6,7 +6,7 @@ names are descriptive rather than acronym-based.
 """
 from __future__ import annotations
 
-from . import causal_admissibility as _backend
+from . import mechanism_region as _backend
 
 CandidateObservation = _backend.CandidateObservation
 CandidateOutcome = _backend.CandidateOutcome

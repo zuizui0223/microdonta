@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "primary_target": "Methods in Ecology and Evolution",
   "manuscript_type": "Research Article",
   "primary_product": "Mechanism-Resolving Observation Design",
@@ -27,28 +27,30 @@
     "paper/title_page_draft.md"
   ],
   "main_text": {
-    "manuscript": [
-      "paper/manuscript.md"
-    ],
+    "manuscript": ["paper/manuscript.md"],
     "method": [
       "causal_model/admissible_mechanisms.py",
       "causal_model/observation_value.py",
       "causal_model/sequential_design.py",
       "causal_model/mechanism_equivalence.py",
-      "causal_model/causal_replaceability.py",
+      "causal_model/mechanism_replaceability.py",
       "docs/mechanism_resolution_theory.md",
       "docs/observation_information_foundations.md"
     ],
-    "compatibility_backends": [
-      "causal_model/causal_admissibility.py",
-      "causal_model/nov_evsi.py",
-      "causal_model/rach_seq.py"
+    "private_backends": [
+      "causal_model/mechanism_region.py",
+      "causal_model/mechanism_replaceability_core.py",
+      "causal_model/observation_information.py",
+      "causal_model/sequential_observation.py",
+      "causal_model/information_value_calibration_core.py",
+      "causal_model/joint_observation_set.py",
+      "causal_model/replaceability_observation_value.py"
     ],
     "validation": [
       "causal_model/confound_demo.py",
       "causal_model/known_truth_benchmark.py",
       "causal_model/generality_sweep.py",
-      "causal_model/nov_calibration.py",
+      "causal_model/observation_value_calibration.py",
       "paper/g2_frozen_benchmark_protocol.json",
       "paper/run_g2_frozen_benchmark.py",
       "paper/results/g2_frozen_v2_summary.json",
@@ -59,22 +61,14 @@
       "paper/final_figure_inventory.json",
       "causal_model/confound_demo.py",
       "paper/make_g2_figure.py",
-      "causal_model/nov_calibration.py",
+      "causal_model/observation_value_calibration.py",
       "causal_model/known_truth_benchmark.py"
     ],
-    "release": [
-      "paper/release_readiness.json",
-      "CITATION.cff",
-      ".zenodo.json"
-    ]
+    "release": ["paper/release_readiness.json", "CITATION.cff", ".zenodo.json"]
   },
   "supplementary": {
-    "main": [
-      "paper/supporting_information.md"
-    ],
-    "protocol": [
-      "paper/g2_frozen_benchmark_protocol.json"
-    ],
+    "main": ["paper/supporting_information.md"],
+    "protocol": ["paper/g2_frozen_benchmark_protocol.json"],
     "frozen_results": [
       "paper/results/g2_frozen_v2_summary.json",
       "paper/results/submission_validation_summary.json",
@@ -97,15 +91,9 @@
       "causal_model/ecological_rules_validation.py",
       "causal_model/converse_bergmann.py"
     ],
-    "future_method_extension": [
-      "causal_model/structure_discovery.py"
-    ],
-    "support_backend_not_evidence": [
-      "attraction_trait_model"
-    ],
-    "application_not_evidence": [
-      "apps/streamlit_app.py"
-    ],
+    "future_method_extension": ["causal_model/structure_discovery.py"],
+    "support_backend_not_evidence": ["attraction_trait_model"],
+    "application_not_evidence": ["apps/streamlit_app.py"],
     "external_program": {
       "owner_repository": "zuizui0223/eco-genetic-criticality",
       "local_policy": "reference_only_no_code_docs_examples_or_tests"

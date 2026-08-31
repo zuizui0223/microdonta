@@ -7,9 +7,37 @@ Publication-facing vocabulary is deliberately descriptive:
     -> observation information value
     -> sequential observation design
 
-Historical implementation modules remain compatibility backends for frozen
-validation provenance, but they do not define the advertised API.
+Historical import paths are mapped privately to descriptive backend modules so
+frozen validation code remains reproducible without keeping retired filenames.
+They do not define the advertised API.
 """
+from __future__ import annotations
+
+import sys
+
+# Descriptive backend modules are canonical.  Private aliases preserve imports
+# embedded in frozen validation/support code while retired source filenames are
+# removed from the repository.
+from . import mechanism_region as _mechanism_region_backend
+sys.modules.setdefault(__name__ + ".causal_admissibility", _mechanism_region_backend)
+
+from . import mechanism_replaceability_core as _replaceability_backend
+sys.modules.setdefault(__name__ + ".causal_replaceability", _replaceability_backend)
+
+from . import sequential_observation as _sequential_backend
+sys.modules.setdefault(__name__ + ".rach_seq", _sequential_backend)
+
+from . import observation_information as _information_backend
+sys.modules.setdefault(__name__ + ".nov_evsi", _information_backend)
+
+from . import information_value_calibration_core as _calibration_backend
+sys.modules.setdefault(__name__ + ".nov_calibration", _calibration_backend)
+
+from . import joint_observation_set as _joint_set_backend
+sys.modules.setdefault(__name__ + ".rach_set", _joint_set_backend)
+
+from . import replaceability_observation_value as _replaceability_value_backend
+sys.modules.setdefault(__name__ + ".replaceability_nov", _replaceability_value_backend)
 
 from .admissible_mechanisms import (
     CandidateInformationValueResult,
