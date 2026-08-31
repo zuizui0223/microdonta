@@ -26,6 +26,7 @@ def test_boundary_reviewer_bundle_is_isolated_and_self_contained(tmp_path):
     figures = tmp_path / "figures"
     figures.mkdir()
     for name in (
+        "mechanistic_evidence_axes.png",
         "boundary_identification_geometry.png",
         "multichannel_anchor_dimension.png",
     ):
@@ -45,8 +46,10 @@ def test_boundary_reviewer_bundle_is_isolated_and_self_contained(tmp_path):
 
     paths = set(manifest["files"])
     assert "review_manuscript.md" in paths
+    assert "figures/mechanistic_evidence_axes.png" in paths
     assert "figures/boundary_identification_geometry.png" in paths
     assert "figures/multichannel_anchor_dimension.png" in paths
+    assert "reference_notes/mechanistic_evidence_identification_axis.md" in paths
     assert "causal_model/multichannel_identifiability.py" in paths
     assert "causal_model/calibration_transport_family.py" in paths
     assert not any("mee_manuscript" in path for path in paths)
