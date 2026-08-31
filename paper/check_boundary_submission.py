@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MANUSCRIPT = ROOT / "paper/boundary_manuscript_submission.md"
 PROPOSAL = ROOT / "paper/ecology_letters_perspective_proposal.md"
 PROPOSAL_EMAIL = ROOT / "paper/ecology_letters_perspective_email.md"
+EDITORIAL_AUDIT = ROOT / "paper/EL_PERSPECTIVE_EDITORIAL_AUDIT.md"
 STRATEGY = ROOT / "paper/TWO_PAPER_STRATEGY.md"
 
 WORD_RE = re.compile(r"\b[\w*<>/=+.-]+\b", re.UNICODE)
@@ -50,6 +51,7 @@ def main() -> None:
     manuscript = MANUSCRIPT.read_text(encoding="utf-8")
     proposal = PROPOSAL.read_text(encoding="utf-8")
     proposal_email = PROPOSAL_EMAIL.read_text(encoding="utf-8")
+    editorial_audit = EDITORIAL_AUDIT.read_text(encoding="utf-8")
     strategy = STRATEGY.read_text(encoding="utf-8")
 
     abstract = section(manuscript, "Abstract")
@@ -72,15 +74,23 @@ def main() -> None:
             f"Ecology Letters Perspective proposal exceeds 300 words: {proposal_words}"
         )
 
-    # Current proposal guidance: nature, novelty, disciplinary contribution, and
-    # editorial guidance to state author qualifications.
+    # Current proposal guidance plus the desk-rejection audit: nature, novelty,
+    # broad disciplinary contribution, author qualification, Perspective-vs-Method
+    # distinction, cross-domain scope and direct operational consequences.
     for token, label in (
-        ("identification lens for ecological measurement design", "nature of proposed Perspective"),
-        ("k-1-r", "quantitative novelty"),
-        ("across ecological systems", "disciplinary contribution"),
-        ("The author has developed", "author qualification"),
+        ("structural measurement boundary", "nature of proposed Perspective"),
+        ("The novelty is not new identifiability algebra", "positive novelty positioning"),
+        ("k-1-r", "quantitative anchor consequence"),
+        ("breakdown factor", "calibration consequence"),
+        ("cannot be reported independently", "joint reporting consequence"),
+        ("seed dispersal", "independent cross-domain architecture"),
+        ("before any estimator is chosen", "Perspective-vs-Method distinction"),
+        ("The author works on ecological measurement", "author qualification"),
     ):
         require(proposal_body, token, label)
+
+    for token in ("RACH-SEQ", "NOV(Q)=I(S;Q", "83.5-fold", "g2_frozen"):
+        forbid(proposal_body, token, "RACH/MEE claim in Perspective proposal")
 
     # The send-ready email must target both current Editorial Office addresses
     # and carry the exact current proposal prose rather than a stale copy.
@@ -88,6 +98,15 @@ def main() -> None:
     require(proposal_email, "ecolets2@cefe.cnrs.fr", "second Editorial Office recipient")
     if normalized(proposal_body) not in normalized(proposal_email):
         raise SystemExit("send-ready email does not contain the current proposal text")
+
+    # Preserve the explicit editorial risk audit as part of the send gate.
+    for token in (
+        "Why is this a Perspective rather than a Method?",
+        "What is genuinely new if the algebra is elementary?",
+        "Is the scope broad enough for general ecology?",
+        "What changes for a field ecologist tomorrow?",
+    ):
+        require(editorial_audit, token, "editorial desk-rejection audit")
 
     # Boundary-paper scientific spine.
     for token, label in (
@@ -119,6 +138,7 @@ def main() -> None:
     print(f"abstract words: {abstract_words}")
     print(f"proposal words: {proposal_words}")
     print("proposal paragraphs: 1")
+    print("proposal editorial audit: pass")
     print("proposal email recipients: 2")
     print("paper separation: pass")
 
