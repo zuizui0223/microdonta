@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-message: "If you use RACH, please cite the software and associated methods manuscript."
-title: "RACH: Restricted Admissible Causal Hypotheses"
+message: "If you use microdonta's observation-design method, please cite the software and associated methods manuscript."
+title: "microdonta: information-theoretic observation design for ecological mechanism inference"
 type: software
 authors:
   - family-names: Zhang
@@ -9,14 +9,14 @@ version: 0.1.0
 license: MIT
 repository-code: "https://github.com/zuizui0223/microdonta"
 abstract: >-
-  RACH is a constraint-aware framework for retaining ecological mechanisms
-  compatible with declared observations, quantifying residual causal degeneracy,
-  and prioritising the next observation by validated mechanism-observation
-  mutual information.
+  microdonta retains ecological mechanism programs compatible with declared
+  observations and constraints, quantifies residual mechanism ambiguity, and
+  prioritises candidate measurements by normalized mechanism-observation mutual
+  information with sequential recomputation after each realised observation.
 keywords:
-  - causal admissibility
+  - mechanism inference
   - causal degeneracy
-  - ecological mechanism inference
-  - approximate Bayesian computation
+  - ecological models
   - mutual information
+  - sequential design
   - observation design
