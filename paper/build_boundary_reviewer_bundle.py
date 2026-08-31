@@ -29,12 +29,12 @@ FIGURE_SOURCES = [
     "paper/make_multichannel_anchor_figure.py",
 ]
 
+# Reviewer tests must run inside the allowlisted snapshot without depending on
+# repository governance files or original repository paths.
 TEST_FILES = [
     "tests/test_multichannel_identifiability.py",
-    "tests/test_multichannel_boundary_publication.py",
     "tests/test_calibration_transport_family.py",
     "tests/test_bounded_proxy_drift.py",
-    "tests/test_boundary_identification_figure.py",
 ]
 
 REFERENCE_NOTES = [
@@ -58,6 +58,36 @@ FORBIDDEN_BUNDLE_PATHS = (
 )
 
 COMMIT_SHA_RE = re.compile(r"(?<![0-9a-f])\b[0-9a-f]{40}\b(?![0-9a-f])", re.I)
+
+REVIEW_COUPLING_TEST = '''from math import isclose
+
+from causal_model.bounded_proxy_drift import identify_under_bounded_proxy_drift
+from causal_model.calibration_transport_family import breakdown_factor
+from causal_model.multichannel_identifiability import residual_equivalence_dimension
+
+
+def test_review_snapshot_keeps_the_three_boundary_claims():
+    chain = residual_equivalence_dimension(channels=5, independent_anchors=2)
+    assert chain.residual_dimension == 2
+
+    gamma_star, _ = breakdown_factor(1.0 / 1.34)
+    assert isclose(gamma_star, 1.34)
+
+    rho_e_hat = 1.0 / 1.34
+    rho_x = 0.8
+    result = identify_under_bounded_proxy_drift(
+        net_ratio=rho_x * rho_e_hat,
+        proxy_ratio=rho_x,
+        delta=0.2,
+        proxy_channel="fecundity",
+    )
+    assert result.joint_log_segment.slope == -1.0
+    assert result.joint_log_segment.satisfies_net_constraint()
+    assert not isclose(
+        result.fecundity.upper * result.establishment.upper,
+        result.net_ratio,
+    )
+'''
 
 
 def sha256(path: Path) -> str:
@@ -116,6 +146,7 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
 
     for rel in TEST_FILES:
         copy_text(ROOT / rel, output_dir / rel)
+    write_text(output_dir / "tests/test_boundary_reviewer_core.py", REVIEW_COUPLING_TEST)
 
     for rel in REFERENCE_NOTES:
         copy_text(ROOT / rel, output_dir / "reference_notes" / Path(rel).name)
