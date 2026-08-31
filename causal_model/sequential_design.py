@@ -7,7 +7,7 @@ outcome, and all remaining candidate values are recomputed.
 """
 from __future__ import annotations
 
-from . import rach_seq as _backend
+from . import sequential_observation as _backend
 
 PredictiveOutcomeDistribution = _backend.PredictiveOutcomeDistribution
 SequentialDesignStep = _backend.SeqStep
