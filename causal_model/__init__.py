@@ -1,4 +1,4 @@
-"""Public API for microdonta's mechanism-resolving observation design.
+"""Public API for Mechanism-Resolving Observation Design.
 
 Publication-facing vocabulary is deliberately descriptive:
 
@@ -7,15 +7,15 @@ Publication-facing vocabulary is deliberately descriptive:
     -> observation information value
     -> sequential observation design
 
-Historical implementation modules remain internal compatibility backends for the
-frozen validation record, but they do not define the advertised API.
+Historical implementation modules remain compatibility backends for frozen
+validation provenance, but they do not define the advertised API.
 """
 
 from .admissible_mechanisms import (
     CandidateInformationValueResult,
     CandidateObservation,
     CandidateOutcome,
-    CausalAdmissibilityResult,
+    MechanismAdmissibilityResult,
     MechanismResolutionSummary,
     ObservationContribution,
     compute_admissible_mechanisms,
@@ -41,16 +41,17 @@ from .sequential_design import (
     sequential_observation_design,
     validated_information_value,
 )
-from .causal_replaceability import (
-    CRCResult,
-    causal_replaceability_cost,
-    causal_replaceability_cost_full,
-    crc_profile,
-    crc_profile_full,
+from .mechanism_replaceability import (
+    ReplaceabilityResult,
+    mechanism_replaceability_cost,
+    mechanism_replaceability_cost_full,
+    mechanism_replaceability_profile,
+    mechanism_replaceability_profile_full,
 )
 from .mechanism_equivalence import mechanism_equivalence_structure
 
-# General-purpose support schemas retained for simulator/application compatibility.
+# General simulator/application schemas retained for compatibility, but not part
+# of the publication-facing scientific surface below.
 from .latent_parameters import LatentParameter
 from .pattern_targets import PatternTarget
 from .scoring import (
@@ -74,25 +75,25 @@ __all__ = [
     "CandidateInformationValueResult",
     "CandidateObservation",
     "CandidateOutcome",
-    "CausalAdmissibilityResult",
-    "CRCResult",
     "InformationValueResult",
+    "MechanismAdmissibilityResult",
     "MechanismResolutionSummary",
     "ObservationContribution",
     "PredictiveOutcomeDistribution",
+    "ReplaceabilityResult",
     "SequentialDesignResult",
     "SequentialDesignStep",
     "candidate_mutual_information_bits",
-    "causal_replaceability_cost",
-    "causal_replaceability_cost_full",
     "compute_admissible_mechanisms",
-    "crc_profile",
-    "crc_profile_full",
     "expected_edge_cuts",
     "filter_by_outcome",
     "heuristic_observation_value",
     "mechanism_entropy",
     "mechanism_equivalence_structure",
+    "mechanism_replaceability_cost",
+    "mechanism_replaceability_cost_full",
+    "mechanism_replaceability_profile",
+    "mechanism_replaceability_profile_full",
     "mechanism_resolvability",
     "mechanism_resolution_summary",
     "observation_contribution",
