@@ -6,9 +6,9 @@ The purpose of this file is not to inflate the novelty claim. It is to force eve
 
 ## 1. “The product non-identifiability is trivial.”
 
-**Response required in manuscript:** concede the algebra. The claim is not that products have multiple factorizations. The contribution is the ecological observation class that remains net-only even when apparently rich, the bounded-drift sharp joint set and breakdown point, and the two operational design/reporting rules.
+**Response required in manuscript:** concede the algebra. The claim is not that products have multiple factorizations. The contribution is the ecological observation class that remains net-only even when apparently rich, the calibration-transport family, the sharp joint set and breakdown factor under finite transport bounds, and the operational design/reporting rules.
 
-**Pass criterion:** N1 is introduced through the complete performance curve, all threshold-feasible sets and their geometry/topology, not through `W=FE` alone. Bellman–Åström, Rothenberg and Manski are acknowledged before the novelty sentence.
+**Pass criterion:** N1 is introduced through the complete performance curve, all threshold-feasible sets and their geometry/topology, not through `W=FE` alone. Immediately after the concrete examples, note that positive functions act by `(F,E)->(cF,E/c)` and that every net-only statistic factors through the quotient. Bellman–Åström, Rothenberg and Manski are acknowledged before the novelty sentence.
 
 ## 2. “The multiplicative model was chosen to manufacture the theorem.”
 
@@ -22,13 +22,21 @@ The purpose of this file is not to inflate the novelty claim. It is to force eve
 
 **Pass criterion:** the abstract and Introduction state that relative proxy designs are safe only under stable conversion and that this assumption is not testable from `W` and `X` alone.
 
-## 4. “Why should delta be believed?”
+## 4. “Why should the calibration bound be believed?”
 
-**Response:** `delta` is not inferred from the same `W` and `X` observations. It is prespecified from external calibration evidence, validation data, design knowledge, or a scientific sensitivity grid.
+**Response:** neither the canonical `Gamma`/`eta` bound nor the legacy `delta` is inferred from the same `W` and `X` observations. A finite transport tolerance comes from external calibration evidence, validation data, instrument/design knowledge, biological prior information, or a declared sensitivity grid. The purpose is not to claim that the bound is known; it is to expose the dependence of the ecological conclusion on that bound.
 
-**Pass criterion:** the software and paper explicitly state that they do not estimate `delta` from the observations whose identifying power is being assessed.
+The breakdown factor reverses the burden of specification: report the smallest calibration distortion sufficient to overturn the conclusion, then let readers compare that threshold with knowledge of their own system.
 
-## 5. “The identified intervals for F and E can be reported independently.”
+**Pass criterion:** the software and paper explicitly state that they do not estimate `Gamma`, `eta` or `delta` from the observations whose identifying power is being assessed.
+
+## 5. “You have only replaced one untestable stability assumption with a family of untestable assumptions.”
+
+**Response:** yes, in the precise partial-identification sense. The analysis does not transform an untestable assumption into empirical knowledge. It indexes the conclusion over an assumption family and reports the failure threshold. This makes assumption dependence visible rather than hiding it at `kappa=1`.
+
+**Pass criterion:** manuscript says explicitly that bounded-drift analysis is a sensitivity analysis / partial-identification device, not an estimator of transportability.
+
+## 6. “The identified intervals for F and E can be reported independently.”
 
 **Response:** no. The same `kappa` generates both ratios. The joint set satisfies `rho_F rho_E=rho_W` exactly. In log-ratio coordinates,
 
@@ -40,48 +48,84 @@ so the set is a line segment of slope `-1`. Pairing both marginal upper endpoint
 
 **Pass criterion:** Design Rule 2 is explicit: report the joint identified set as the primary uncertainty object; marginal intervals are projections only and must not be treated as independently combinable error bars.
 
-## 6. “Calling the errors perfectly negatively correlated is too statistical.”
+## 7. “Calling the errors perfectly negatively correlated is too statistical.”
 
 **Response:** distinguish structural coupling from a stochastic correlation coefficient. Conditional on the observed net ratio and with calibration drift as the only uncertainty dimension, log-channel deviations induced by `kappa` are exactly opposite: `d log rho_E = - d log rho_F`. If sampling uncertainty is also present, the full stochastic covariance need not equal `-1`.
 
 **Pass criterion:** manuscript uses “exactly coupled along a slope-minus-one joint identified set” as the primary wording; “perfect negative dependence” is restricted to the calibration-drift dimension, not generalized to all uncertainty sources.
 
-## 7. “The 34% claim is imprecise at the boundary.”
+## 8. “The 34% claim changes if I reverse the reference regime.”
 
-**Response:** the directional decline holds for `delta<0.34`. At `delta=0.34`, the identified set first touches one; strict decline is no longer identified.
+**Response:** this is why the canonical robustness scale is now the multiplicatively symmetric factor
 
-**Pass criterion:** never say “through 34%” or “up to and including 34%.” Use “breakdown point 34%” and “survives drift smaller than 34%.”
+```text
+1/Gamma <= kappa <= Gamma.
+```
 
-## 8. “Why not define drift symmetrically on the log scale?”
+The breakdown factor is
 
-**Response:** the current scientific sensitivity parameter is the direct bound `kappa in [1-delta,1+delta]`, retained because the 34% breakpoint and field interpretation are already expressed in that scale. Log-ratio coordinates are used for the geometry of the joint set. A supplementary sensitivity parameter `eta=log kappa` may be reported when a multiplicatively symmetric drift bound is scientifically preferable.
+```text
+Gamma_star=max(rho_hat,1/rho_hat),
+eta_star=|log rho_hat|,
+```
 
-**Pass criterion:** do not silently replace the definition of `delta`. Clearly distinguish the geometry coordinate transformation from an alternative drift parameterization.
+so `rho_hat=1/1.34` and `rho_hat=1.34` both have `Gamma_star=1.34`. The 34% statement is retained only as the directional translation of the decline example (`kappa=1.34` at failure), not as the invariant cross-study robustness scale.
 
-## 9. “Sampling uncertainty is being confused with identification uncertainty.”
+**Pass criterion:** primary theory and cross-contrast reporting use `Gamma_star` or `eta_star`; the legacy `delta` language is clearly identified as directional/additive-around-one.
 
-**Response:** they are separate layers. For a sampling interval `[L,U]` on the stable-calibration complementary ratio, the conservative bounded-drift union is `[L(1-delta), U(1+delta)]`; the sign claim requires `U(1+delta)<1`.
+## 9. “Why not define drift symmetrically on the log scale?”
+
+**Response:** we now do. The canonical bound is `1/Gamma <= kappa <= Gamma`, equivalently `|log kappa|<=eta` with `eta=log Gamma`. The old `kappa in [1-delta,1+delta]` implementation remains for reproducibility and the reader-facing 34% worked example.
+
+**Pass criterion:** do not silently reinterpret `delta`; state the conversion in words and keep `Gamma/eta` as the canonical family.
+
+## 10. “Sampling uncertainty is being confused with identification uncertainty.”
+
+**Response:** they are separate layers. A calibration identified set is conditional on the observed or estimated net/proxy ratios. Sampling uncertainty in those ratios should be propagated around the structural set, not substituted for it.
 
 **Pass criterion:** standard errors do not replace the identified set, and calibration sensitivity does not replace sampling uncertainty.
 
-## 10. “N4 is just the delta→1 limit.”
+## 11. “N3 and N4 are unrelated endpoint statements.”
 
-**Response:** no. In the additive ratio-bound family, `delta<1` implies `kappa<2`; letting `delta` approach one does not span all positive calibration ratios. N4 is obtained by removing the restriction on `kappa`, not by taking that limit.
+**Response:** under the symmetric transport family they are exact endpoints:
 
-**Pass criterion:** this distinction appears wherever N3 → bounded drift → N4 is diagrammed.
+```text
+Gamma=1          -> N3 point identification
+1<Gamma<infinity -> sharp partial identification
+Gamma->infinity  -> N4 unrestricted-drift non-identification.
+```
 
-## 11. “One anchor calibration is insufficient if the system changes.”
+**Pass criterion:** N4 is never described as the `delta->1` limit of the legacy additive bound. It is the `Gamma->infinity` endpoint of the canonical multiplicative family.
 
-**Response:** agreed; that is exactly Design Rule 1. An anchor fixes local conversion. Comparison regimes require revalidation or an externally defended transport bound.
+## 12. “One anchor calibration is insufficient if the system changes.”
 
-## 12. “What is the minimum publishable claim?”
+**Response:** agreed. Design Rule 1 is therefore graded rather than binary. One anchor identifies local conversion but not cross-regime transport; finite `Gamma/eta` remains external. Two direct anchors measure both `q_0` and `q_1`, hence `kappa=q_1/q_0`, and remove the need for a sensitivity bound for that comparison.
+
+**Pass criterion:** include the anchor ladder:
+
+```text
+0 anchors -> unrestricted transport: non-identification
+1 anchor  -> external finite transport bound: partial identification + breakdown
+2 anchors -> observed kappa: point identification
+```
+
+Clarify that this ladder concerns direct transport calibration; an analyst can always *assume* stable transport without anchors, but that assumption is not validated by the net/proxy data.
+
+## 13. “Two anchors do not identify anything unless the true channel is actually measured.”
+
+**Response:** correct. An anchor means the proxy `X_i` and its corresponding mathematical channel are both directly measured on the same scale/domain, so `q_i=X_i/F_i` (or the symmetric establishment form) is observed. Merely having two proxy observations is not two anchors.
+
+**Pass criterion:** define an anchor operationally in Methods.
+
+## 14. “What is the minimum publishable claim?”
 
 The manuscript should survive even if reviewers reject broader rhetoric. The minimum defensible contribution is:
 
-1. a formal ecological audit showing that complete net-response geometry remains invariant to reciprocal channel reallocation;
-2. the sharp **joint** identified set under bounded between-regime proxy drift, including its marginal width and sign breakdown point;
-3. **Design Rule 1 — Anchor and transport**;
-4. **Design Rule 2 — Preserve the coupling**.
+1. a structural ecological audit showing that complete net-response geometry is invariant under the positive-function group action and therefore factors through a quotient;
+2. one calibration-transport family whose stable, bounded and unrestricted cases recover N3, sharp partial identification, and N4;
+3. a reference-invariant breakdown factor `Gamma_star` / `eta_star` plus the sharp **joint** identified set;
+4. **Design Rule 1 — graded anchor and transport**;
+5. **Design Rule 2 — Preserve the coupling**.
 
 RACH, NOV, synthetic benchmark performance, Campanula causal claims and any claim that multiplicative decomposition is universal are not required for this paper.
 
@@ -89,10 +133,13 @@ RACH, NOV, synthetic benchmark performance, Campanula causal claims and any clai
 
 Do not submit if any of the following is true:
 
-- `delta` is described as estimated from the same net/proxy data;
+- `Gamma`, `eta` or `delta` is described as estimated from the same net/proxy data;
+- the manuscript implies bounded-drift analysis proves transportability rather than indexing sensitivity to it;
 - the 34% statement includes equality as a strict decline;
+- 34% is used as the canonical reversal-invariant robustness metric instead of `Gamma_star=1.34` / `eta_star`;
 - marginal F/E intervals are visually or verbally presented as independent uncertainty;
 - N4 is described as the `delta -> 1` limit;
+- “anchor” is used for a proxy-only observation without direct measurement of the corresponding mathematical channel;
 - the literature paragraph implies identical channel semantics across pollination and seed dispersal;
 - the manuscript presents elementary identifiability algebra itself as the primary novelty;
 - the boundary paper drifts back into the RACH/MEE methods claim spine.
