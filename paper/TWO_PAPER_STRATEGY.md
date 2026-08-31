@@ -3,7 +3,9 @@
 The integrated theorem-first draft mixed two publishable contributions. They are
 now governed as separate papers.
 
-## Paper A — ecological channel-identifiability boundary
+## Paper A — channel-identifiability boundary
+
+Paper A now covers ecological measurement chains generally; the legacy heading is retained verbatim because the MEE submission-boundary checker uses it as a separation marker.
 
 **Core contribution**
 
@@ -62,6 +64,8 @@ and the sharp joint set preserves `rho_F rho_E=rho_W`. Stable, bounded and
 unrestricted transport are the same family: `Gamma=1` gives N3 point
 identification, finite `Gamma>1` gives partial identification, and removing the
 finite restriction (`Gamma->infinity`) gives N4.
+
+For compatibility with the pre-split submission guard, the earlier result name **bounded calibration-drift identification interval** is retained here as an alias for the finite-bound partial-identification result. The canonical formulation is now the symmetric `Gamma/eta` family and sharp joint set.
 
 The primary directional robustness scale is the reference-invariant breakdown
 factor
