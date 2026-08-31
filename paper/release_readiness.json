@@ -1,22 +1,41 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "method_name": "Mechanism-Resolving Observation Design",
   "distribution": "mechanism-resolution-design",
   "version": "0.1.0",
   "suggested_release_tag": "v0.1.0",
-  "status": "final_reproducibility_and_reviewer_artifacts_pass",
-  "artifact_validation_sha": "4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
-  "metadata_note": "This record is governance metadata written after the validated freeze. It does not change scientific parameters, package algorithms, manuscript claims or the artifacts produced from artifact_validation_sha.",
-  "ci": {
-    "status": "pass_python_3_10_3_12_on_final_freeze_sha",
-    "workflow_run_id": 33383402222,
+  "status": "canonical_figure1_pending_ci_and_new_artifact_freeze",
+  "current_change": {
+    "reason": "The former Figure 1 displayed retired project terminology and ranked candidate measurements with a heuristic approximation rather than the publication quantity V(Q)=I(S;Q|A_epsilon)/K.",
+    "replacement_source": "causal_model/controlled_confounding_demo.py",
+    "replacement_output": "outputs/g5/figures/figure1_controlled_confounding.png",
+    "information_value_definition": "V(Q)=I(S;Q|A_epsilon)/K",
+    "candidate_partition": "six equal-width, mutually exclusive and exhaustive predictive bins over the current admissible region",
+    "negative_control": "fixed-seed mechanism-independent continuous nuisance measurement scored by the same partition rule",
+    "science_scope": "Figure-1 analysis and reporting correction only; frozen G2 protocol, systems, policies and numerical results are unchanged"
+  },
+  "superseded_artifact_freeze": {
     "validated_sha": "4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
-    "checks": [
+    "status": "superseded_for_submission_by_figure1_correction",
+    "g5_artifact_id": 9754631345,
+    "g5_artifact_sha256": "8f6c8900658614825455c2f82ce9f87a73f3fc5b624e5320ce77a81ba2c89f47",
+    "reviewer_bundle_artifact_id": 9754628125,
+    "reviewer_bundle_artifact_sha256": "665686e83f2e6d1636c4ce7561e846201d31fe9ebbddb4e16643c13fd582eede",
+    "superseded_figure1": {
+      "filename": "figure1_confound.png",
+      "sha256": "ffc5a63f289cb16074ebec533d58feb4f0380d7b3488777127874d3aee7d7fb3"
+    },
+    "provenance_note": "These artifacts remain valid records of the earlier code state but are not the final submission artifacts after the Figure-1 information-value correction."
+  },
+  "ci": {
+    "status": "pending_on_canonical_figure1_branch",
+    "required_checks": [
       "scientific submission boundary",
       "MEE Research Article format",
-      "active method naming",
+      "active method and Figure-1 naming",
       "repository program boundaries",
-      "full pytest suite",
+      "full Python 3.10, 3.11 and 3.12 pytest suites",
+      "canonical Figure-1 behavioural regression",
       "publication figure and anonymous reviewer-bundle self-test on Python 3.11",
       "controlled figure smoke tests",
       "frozen G2 CLI smoke tests"
@@ -26,12 +45,6 @@
     "status": "pass_frozen_unchanged",
     "historical_protocol_id": "rach-g2-truth-peek-free-v2",
     "protocol_sha256": "3568025f98a671b232e5d6b865063f37baa5bec319a594f831d6b5b953428cb7",
-    "final_freeze_dedicated_workflow": {
-      "workflow_run_id": 33383402278,
-      "status": "skipped_by_design",
-      "required_trigger_marker": "[g2-frozen-v2]",
-      "reason": "The final packaging freeze did not request a new execution of the frozen scientific benchmark. Frozen G2 CLI/protocol checks passed in CI and the stored validation summaries were reproduced in G5."
-    },
     "headline_budget_2": {
       "information_guided_edge_resolution": 1.0,
       "random_order_edge_resolution": 0.6045,
@@ -49,43 +62,25 @@
     "provenance_note": "Frozen protocol/result files retain their historical machine identifiers and policy keys unchanged."
   },
   "g5": {
-    "status": "pass",
-    "validated_sha": "4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
-    "workflow_run_id": 33383402344,
-    "artifact_id": 9754631345,
-    "artifact_name": "g5-reproducibility-4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
-    "artifact_sha256": "8f6c8900658614825455c2f82ce9f87a73f3fc5b624e5320ce77a81ba2c89f47",
-    "python": "3.11.16",
-    "submission_bundle_check": "pass",
-    "repository_boundary_check": "pass",
-    "frozen_validation_reproduction": "pass",
-    "wheel": {
-      "filename": "mechanism_resolution_design-0.1.0-py3-none-any.whl",
-      "sha256": "fd5332a83b1c74a309b0a824e1c8a996a7fa67e9ca6da6346b1da8fc99975e6e",
-      "forbidden_member_count": 0,
-      "member_count": 85
-    },
-    "figures": {
-      "figure1_confound.png": "ffc5a63f289cb16074ebec533d58feb4f0380d7b3488777127874d3aee7d7fb3",
-      "figure2_g2_frozen_v2.png": "03c8de922301b2952bfff82b1ee0382e2fc0db8741654ca5caac8045dbc7201f",
-      "figure3_information_value_calibration.png": "ef851e0d8b13003a1833c36d8005e1820dabd001801b075d754b36afb796148b",
-      "figureS1_known_truth.png": "b42cb28b4a150e2cab86988eedadb8cfd32ec7899f167a160ac51001057df739"
-    }
+    "status": "new_run_required_after_canonical_figure1_merge",
+    "trigger_marker": "[g5-final]",
+    "requirements": [
+      "rebuild figure1_controlled_confounding.png from the canonical information-value source",
+      "rebuild all remaining publication figures",
+      "reproduce stored frozen-validation summaries",
+      "build and audit the mechanism-resolution-design wheel",
+      "upload one clean artifact tied to the exact final main SHA"
+    ]
   },
   "reviewer_bundle": {
-    "status": "pass",
-    "validated_sha": "4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
-    "workflow_run_id": 33383402336,
-    "artifact_id": 9754628125,
-    "artifact_name": "mee-anonymous-mechanism-resolution-design-4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
-    "artifact_sha256": "665686e83f2e6d1636c4ce7561e846201d31fe9ebbddb4e16643c13fd582eede",
-    "checks": [
-      "scientific, naming and repository boundaries",
-      "reviewer figure rebuild",
-      "methods-only allowlisted bundle build",
-      "extracted reviewer snapshot pytest",
-      "author/commit-SHA anonymity scan",
-      "archive digest and artifact upload"
+    "status": "new_run_required_after_canonical_figure1_merge",
+    "trigger_marker": "[reviewer-bundle]",
+    "requirements": [
+      "include figure1_controlled_confounding.png",
+      "include controlled_confounding_demo.py as the Figure-1 reference source",
+      "exclude the retired heuristic Figure-1 source",
+      "self-test the extracted methods-only code snapshot",
+      "pass author and commit-SHA anonymity scans"
     ]
   },
   "publication_preparation": {
@@ -116,18 +111,21 @@
   },
   "archival_doi": {
     "status": "not_minted",
-    "reason": "DOI minting is an external archive operation and must follow final submission-file freeze.",
-    "action_before_formal_release": "Mint the DOI externally, then add it to citation/archive metadata without changing frozen G2 results."
+    "reason": "DOI minting is an external archive operation and must follow the corrected final submission-file freeze."
   },
   "remaining_publication_operations": [
+    "pass canonical Figure-1 pull-request CI",
+    "merge the Figure-1 correction",
+    "run tagged G5 and anonymous reviewer-bundle workflows from one exact corrected main SHA",
+    "record new artifact and figure hashes",
     "fill human-supplied title-page metadata",
     "export the journal-ready manuscript and Supporting Information",
     "add the corresponding-author signature to the optional cover letter if it is used",
-    "tag artifact_validation_sha 4e1c0360cd913ddc2db0179fc5c9feeac7d1daec as v0.1.0 when the submitted files are fixed",
+    "tag the corrected final artifact-validation SHA as v0.1.0 when submitted files are fixed",
     "mint and record an archival DOI after submission files are frozen"
   ],
   "nonblocking_maintenance": [
     "Update pyproject.toml project.license from the deprecated TOML-table form to an SPDX string before the setuptools 2027-02-18 removal deadline; do this outside the validated submission freeze unless a new G5 artifact is intentionally generated."
   ],
-  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics or frozen numerical claims requires a new protocol/version. Naming, packaging and repository separation must not retune frozen evidence."
+  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics or frozen numerical claims requires a new protocol/version. Figure-generation and reporting corrections require a new G5/reviewer artifact freeze but do not authorize retuning frozen G2 evidence."
 }
