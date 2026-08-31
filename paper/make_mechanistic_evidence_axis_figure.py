@@ -2,7 +2,9 @@
 
 The figure separates biological measurement level / mechanistic proximity from
 identification strength. Example positions are illustrative and explicitly
-conditional on the declared candidate mechanisms and observation map.
+conditional on the declared candidate mechanisms and observation map. The two
+axes are distinct; the figure does not claim statistical independence or a
+universal monotone relationship between them.
 """
 from __future__ import annotations
 
@@ -36,13 +38,13 @@ def build_figure(output: Path = OUT) -> Path:
     ax.set_yticks([0.12, 0.50, 0.88], ["field / endpoint", "organismal / physiological", "genomic / molecular"])
     ax.set_xlabel("Identification strength among declared competing mechanisms")
     ax.set_ylabel("Biological measurement level / mechanistic proximity")
-    ax.set_title("Measurement level and identification strength are different axes")
+    ax.set_title("Biological proximity does not determine identification strength")
     ax.grid(True, linewidth=0.5, alpha=0.35)
 
     fig.text(
         0.5,
         0.01,
-        "Illustrative positions only: identification strength is conditional on the candidate mechanism set and observation map.",
+        "Illustrative only: positions depend on the candidate mechanisms and observation map; no statistical independence is implied.",
         ha="center",
         fontsize=8.5,
     )
