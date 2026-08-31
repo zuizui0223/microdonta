@@ -1,7 +1,7 @@
 """Publication-facing mechanism-replaceability interface."""
 from __future__ import annotations
 
-from . import causal_replaceability as _backend
+from . import mechanism_replaceability_core as _backend
 
 ReplaceabilityResult = _backend.CRCResult
 mechanism_replaceability_cost = _backend.causal_replaceability_cost
