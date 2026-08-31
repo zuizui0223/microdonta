@@ -75,7 +75,7 @@ jobs:
           python - <<'PY'
           import csv, json, math, statistics
           from pathlib import Path
-          from causal_model.nov_calibration import run_calibration
+          from causal_model.information_value_calibration_core import run_calibration
 
           frozen = json.loads(Path('paper/results/submission_validation_summary.json').read_text())
           with open('outputs/known_truth_benchmark/recovery_by_noise.csv', newline='', encoding='utf-8') as f:
