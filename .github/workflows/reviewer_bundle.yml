@@ -37,7 +37,7 @@ jobs:
       - name: Rebuild final reviewer figures
         run: |
           mkdir -p outputs/g5/figures
-          python -m causal_model.confound_demo --figure outputs/g5/figures/figure1_confound.png
+          python -m causal_model.controlled_confounding_demo --figure outputs/g5/figures/figure1_controlled_confounding.png
           python paper/make_g2_figure.py --output outputs/g5/figures/figure2_g2_frozen_v2.png
           python -m causal_model.observation_value_calibration --figure outputs/g5/figures/figure3_information_value_calibration.png
           python -m causal_model.known_truth_benchmark --figure outputs/g5/figures/figureS1_known_truth.png
@@ -64,6 +64,7 @@ jobs:
           manifest=json.loads(Path('bundle_manifest.json').read_text())
           assert manifest['method_name']=='Mechanism-Resolving Observation Design'
           assert manifest['boundary_paper_included'] is False
+          assert 'figures/figure1_controlled_confounding.png' in manifest['files']
           PY
 
       - name: Verify anonymity and write archive digest
