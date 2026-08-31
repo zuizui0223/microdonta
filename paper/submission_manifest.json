@@ -1,18 +1,19 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "primary_target": "Methods in Ecology and Evolution",
   "manuscript_type": "Research Article",
-  "primary_product": "RACH information-theoretic observation selection",
+  "primary_product": "information-theoretic observation design for resolving mechanistic ambiguity",
   "claim_spine": [
-    "RACH admissible mechanism set and causal degeneracy",
-    "validated NOV equals normalized mechanism-observation mutual information",
-    "RACH-SEQ recomputes and selects maximum current NOV",
+    "retain the admissible mechanism region rather than forcing a single winner",
+    "quantify residual mechanism entropy, resolvability and replaceability",
+    "validated observation information value equals I(S;Q|A_epsilon)/K",
+    "sequential observation design recomputes and selects maximum current information value",
     "truth-peek-free G2 matched-policy selection validation",
     "reproducible software and reviewer evidence bundle"
   ],
   "governance": [
     "docs/mainline.md",
-    "paper/TWO_PAPER_STRATEGY.md",
+    "BOUNDARY_REPOSITORY.md",
     "paper/g2_frozen_benchmark_protocol.json",
     "paper/run_g2_frozen_benchmark.py",
     "paper/results/g2_frozen_v2_summary.json",
@@ -27,17 +28,14 @@
     "paper/title_page_draft.md"
   ],
   "main_text": {
-    "manuscript": [
-      "paper/mee_manuscript_draft.md"
-    ],
+    "manuscript": ["paper/mee_manuscript_draft.md"],
     "method": [
+      "causal_model/admissible_mechanisms.py",
       "causal_model/causal_admissibility.py",
       "causal_model/causal_replaceability.py",
       "causal_model/mechanism_equivalence.py",
-      "causal_model/nov_evsi.py",
-      "causal_model/rach_seq.py",
-      "docs/rach_theory.md",
-      "docs/rach_mathematical_foundations.md"
+      "causal_model/observation_value.py",
+      "causal_model/sequential_design.py"
     ],
     "validation": [
       "causal_model/confound_demo.py",
@@ -57,56 +55,24 @@
       "causal_model/nov_calibration.py",
       "causal_model/known_truth_benchmark.py"
     ],
-    "release": [
-      "paper/release_readiness.json",
-      "CITATION.cff"
-    ]
+    "release": ["paper/release_readiness.json", "CITATION.cff"]
   },
   "supplementary": {
-    "main": [
-      "paper/supporting_information.md"
-    ],
-    "protocol": [
-      "paper/g2_frozen_benchmark_protocol.json"
-    ],
+    "main": ["paper/supporting_information.md"],
+    "protocol": ["paper/g2_frozen_benchmark_protocol.json"],
     "frozen_results": [
       "paper/results/g2_frozen_v2_summary.json",
       "paper/results/submission_validation_summary.json",
       "paper/results/g5_reproducibility_summary.json"
     ]
   },
-  "companion_boundary_program": {
-    "submission_blocker_for_mee": false,
-    "manuscript": [
-      "paper/boundary_manuscript_draft.md"
-    ],
-    "theory": [
-      "causal_model/channel_identifiability_theory.py",
-      "causal_model/proxy_calibration_theory.py",
-      "causal_model/bounded_proxy_drift.py",
-      "docs/channel_identifiability_theorem.md",
-      "docs/proxy_calibration_theorem.md",
-      "docs/bounded_proxy_drift_identification.md"
-    ],
-    "supporting_examples": [
-      "causal_model/colonization_recruitment_factorization.py",
-      "causal_model/theorem_projection_ledger.py",
-      "docs/colonization_recruitment_factorization.md",
-      "docs/theorem_projection_ledger.md",
-      "docs/campanula_channel_protocol.md"
-    ],
-    "status": "separate_boundary_paper_not_primary_mee_evidence"
+  "external_companion": {
+    "repository": "https://github.com/zuizui0223/boundary",
+    "role": "separate mechanistic-evidence identification-boundary Perspective",
+    "submission_dependency": false
   },
   "excluded_from_primary": {
-    "boundary_theory_as_primary_claim": [
-      "paper/boundary_manuscript_draft.md",
-      "causal_model/channel_identifiability_theory.py",
-      "causal_model/proxy_calibration_theory.py",
-      "causal_model/bounded_proxy_drift.py"
-    ],
     "ecological_projection_and_prospective_case": [
-      "causal_model/colonization_recruitment_factorization.py",
-      "causal_model/theorem_projection_ledger.py",
       "causal_model/campanula_real_data.py",
       "paper/campanula_primary_literature_audit.md"
     ],
@@ -115,15 +81,9 @@
       "causal_model/ecological_rules_validation.py",
       "causal_model/converse_bergmann.py"
     ],
-    "future_method_extension": [
-      "causal_model/structure_discovery.py"
-    ],
-    "support_backend_not_evidence": [
-      "attraction_trait_model"
-    ],
-    "application_not_evidence": [
-      "apps/streamlit_app.py"
-    ],
+    "future_method_extension": ["causal_model/structure_discovery.py"],
+    "support_backend_not_evidence": ["attraction_trait_model"],
+    "application_not_evidence": ["apps/streamlit_app.py"],
     "external_program": {
       "owner_repository": "zuizui0223/eco-genetic-criticality",
       "local_policy": "reference_only_no_code_docs_examples_or_tests"
