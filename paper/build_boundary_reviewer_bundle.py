@@ -26,8 +26,8 @@ THEORY_FILES = [
 
 FIGURE_SOURCES = [
     "paper/make_mechanistic_evidence_axis_figure.py",
-    "paper/make_boundary_identification_figure.py",
     "paper/make_multichannel_anchor_figure.py",
+    "paper/make_boundary_identification_figure.py",
 ]
 
 # Reviewer tests must run inside the allowlisted snapshot without depending on
@@ -40,6 +40,7 @@ TEST_FILES = [
 
 REFERENCE_NOTES = [
     "paper/mechanistic_evidence_identification_axis.md",
+    "paper/mechanistic_evidence_literature_audit.md",
     "paper/multiplicative_measurement_literature_audit.md",
 ]
 
@@ -129,7 +130,7 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
         output_dir / "review_manuscript.md",
     )
 
-    readme = """# Anonymous reviewer code and evidence bundle\n\nThis snapshot contains the scientific files needed to evaluate the submitted ecological mechanism-identification boundary paper. The separate RACH/NOV/RACH-SEQ manuscript and benchmark are not included. Public repository metadata, author metadata and Git commit identifiers are also excluded.\n\nThe main theory sources are under `causal_model/`; figure generators are under `figure_sources/`; direct theorem tests are under `tests/`; and `reference_notes/` contains the mechanistic-evidence framing plus the primary-literature measurement-architecture audit.\n\n## Minimal environment\n\n```bash\npython -m pip install -r requirements-review.txt\nPYTHONPATH=. python -m pytest --rootdir=. -q tests\n```\n\nThe supplied figures are under `figures/`. `bundle_manifest.json` records SHA-256 hashes for every file.\n"""
+    readme = """# Anonymous reviewer code and evidence bundle\n\nThis snapshot contains the scientific files needed to evaluate the submitted ecological mechanism-identification boundary paper. The separate RACH/NOV/RACH-SEQ manuscript and benchmark are not included. Public repository metadata, author metadata and Git commit identifiers are also excluded.\n\nThe main theory sources are under `causal_model/`; figure generators are under `figure_sources/`; direct theorem tests are under `tests/`; and `reference_notes/` contains the mechanistic-evidence scope/literature audits plus the primary-literature measurement-architecture audit.\n\n## Minimal environment\n\n```bash\npython -m pip install -r requirements-review.txt\nPYTHONPATH=. python -m pytest --rootdir=. -q tests\n```\n\nThe supplied figures are under `figures/`. `bundle_manifest.json` records SHA-256 hashes for every file.\n"""
     write_text(output_dir / "README_FOR_REVIEW.md", readme)
     write_text(
         output_dir / "requirements-review.txt",
@@ -155,8 +156,8 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
 
     expected_figures = {
         "mechanistic_evidence_axes.png",
-        "boundary_identification_geometry.png",
         "multichannel_anchor_dimension.png",
+        "boundary_identification_geometry.png",
     }
     out_fig = output_dir / "figures"
     out_fig.mkdir()
