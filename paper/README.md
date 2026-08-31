@@ -1,12 +1,12 @@
-# Publication workspace — mechanism-resolving observation design
+# Publication workspace — Mechanism-Resolving Observation Design
 
 This directory contains the single active *Methods in Ecology and Evolution* methods submission.
 
-The former companion identification-boundary Perspective has moved to:
+The separate mechanistic-evidence / identification-boundary Perspective lives at:
 
 **https://github.com/zuizui0223/boundary**
 
-No active boundary manuscript, theorem implementation, figure generator or reviewer bundle should remain here.
+No active Paper A manuscript, theorem implementation, figure generator or reviewer bundle belongs here.
 
 ## Active claim spine
 
@@ -25,11 +25,13 @@ The methods paper validates an observation-selection procedure under controlled 
 
 | Path | Role |
 |---|---|
-| `mee_manuscript_draft.md` | active Research Article manuscript |
+| `manuscript.md` | active Research Article manuscript |
 | `supporting_information.md` | active SI |
+| `REPOSITORY_SCOPE.md` | methods-only ownership rule |
 | `submission_manifest.json` | machine-readable evidence boundary |
 | `check_submission_bundle.py` | scientific claim/provenance gate |
 | `check_mee_submission.py` | journal-format gate |
+| `check_active_naming.py` | retired-name guard |
 | `build_reviewer_bundle.py` | anonymous methods-only reviewer snapshot |
 | `g2_frozen_benchmark_protocol.json` | immutable benchmark protocol/provenance |
 | `results/g2_frozen_v2_summary.json` | immutable primary validation numbers |
@@ -39,7 +41,7 @@ The methods paper validates an observation-selection procedure under controlled 
 
 ## Naming
 
-Publication-facing vocabulary is descriptive rather than acronym-based:
+The formal method/software name is **Mechanism-Resolving Observation Design**. Publication-facing vocabulary is descriptive rather than acronym-based:
 
 ```text
 admissible mechanism region
@@ -55,9 +57,10 @@ The historical frozen G2 protocol identifier and stored policy key are retained 
 ## Reproduce
 
 ```bash
-python check_submission_bundle.py
-python check_mee_submission.py
-python build_reviewer_bundle.py
+python paper/check_submission_bundle.py
+python paper/check_mee_submission.py
+python paper/check_active_naming.py
+python paper/build_reviewer_bundle.py
 pytest -q
 ```
 
