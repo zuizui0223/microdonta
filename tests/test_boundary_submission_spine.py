@@ -4,11 +4,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_boundary_submission_spine_keeps_two_axis_frame_and_three_quantitative_pillars():
+def test_boundary_submission_spine_keeps_distinct_axis_frame_and_three_quantitative_pillars():
     text = (ROOT / "paper" / "boundary_submission_spine.md").read_text(encoding="utf-8")
 
-    # The Perspective headline is now the evidentiary distinction, while the
-    # existing identification results remain the three quantitative pillars.
+    # The Perspective headline is the evidentiary distinction, while the
+    # identification results remain the three quantitative pillars.
     assert "Governing conceptual distinction" in text
     assert "mechanistic proximity" in text
     assert "identification strength" in text
@@ -17,15 +17,23 @@ def test_boundary_submission_spine_keeps_two_axis_frame_and_three_quantitative_p
     assert "Pillar 2 — Calibration-transport family and breakdown" in text
     assert "Pillar 3 — Operational consequences" in text
 
-    # The reframe must remain explicitly non-hierarchical and non-anti-molecular.
-    assert "does **not** assert a monotone relation between the axes" in text
+    # The framing must remain explicitly non-hierarchical and non-anti-molecular
+    # without making an unnecessary statistical-independence claim.
+    assert "does **not** assert a monotone relation or statistical independence" in text
     assert "molecular/genomic data can be highly proximal and highly identifying" in text
     assert "candidate mechanism set and observation map" in text
+    assert "mechanistic_evidence_literature_audit.md" in text
+    assert "orthogonal axes" not in text
 
     assert "1/Gamma <= kappa <= Gamma" in text
     assert "Gamma* = max(rho_hat, 1/rho_hat)" in text
     assert "0 anchors" in text and "1 anchor" in text and "2 anchors" in text
     assert "Design Rule 2 — Preserve the coupling" in text
+
+    # Figure ordering follows the Perspective argument: concept -> dimension -> transport.
+    assert "Figure 1 — conceptual evidence axes" in text
+    assert "Figure 2 — channel-anchor dimension" in text
+    assert "Figure 3 — Gamma transport family" in text
 
     # The legacy percentage parameterization must not be promoted back to the
     # canonical robustness scale.
