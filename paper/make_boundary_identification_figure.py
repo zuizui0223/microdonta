@@ -10,6 +10,14 @@ from __future__ import annotations
 
 from math import log
 from pathlib import Path
+import sys
+
+# Support the documented direct invocation `python paper/make_...py` as well as
+# import-based use in tests.  Direct script execution otherwise places `paper/`
+# rather than the repository root on sys.path.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import matplotlib.pyplot as plt
 import numpy as np

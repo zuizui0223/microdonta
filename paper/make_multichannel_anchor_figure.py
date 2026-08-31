@@ -11,6 +11,11 @@ which shows the two-channel proxy-calibration Gamma family.
 from __future__ import annotations
 
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import matplotlib.pyplot as plt
 

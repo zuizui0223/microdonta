@@ -40,11 +40,41 @@ jobs:
       - name: Check MEE Research Article format
         run: python paper/check_mee_submission.py
 
+      - name: Check boundary-paper submission candidate
+        run: python paper/check_boundary_submission.py
+
       - name: Check repository program boundaries
         run: python scripts/check_repository_boundaries.py
 
       - name: Run test suite
         run: pytest -q
+
+      - name: Build and self-test boundary reviewer bundle
+        if: matrix.python-version == '3.11'
+        run: |
+          python paper/make_boundary_identification_figure.py
+          python paper/make_multichannel_anchor_figure.py
+          python paper/build_boundary_reviewer_bundle.py
+          cd outputs/boundary/reviewer_bundle
+          PYTHONPATH=. python -m pytest --rootdir=. -q tests
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path('bundle_manifest.json').read_text())
+          assert manifest['boundary_manuscript_included'] is True
+          assert manifest['mee_manuscript_included'] is False
+          assert manifest['rach_method_code_included'] is False
+          assert manifest['public_repository_metadata_included'] is False
+          files = set(manifest['files'])
+          assert 'figures/boundary_identification_geometry.png' in files
+          assert 'figures/multichannel_anchor_dimension.png' in files
+          assert not any('mee_manuscript' in path for path in files)
+          assert not any('nov_evsi.py' in path for path in files)
+          assert not any('rach_seq.py' in path for path in files)
+          assert not any('g2_frozen' in path for path in files)
+          print('boundary reviewer bundle isolation OK')
+          PY
 
       - name: Smoke-test figure and G2 v2 benchmark CLIs
         run: |
