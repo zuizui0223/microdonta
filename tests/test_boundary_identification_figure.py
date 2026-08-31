@@ -7,6 +7,15 @@ import numpy as np
 from causal_model.calibration_transport_family import breakdown_factor, symmetric_interval
 
 
+def _load_script(name: str):
+    script = Path(__file__).resolve().parents[1] / "paper" / name
+    spec = spec_from_file_location(name.replace(".py", ""), script)
+    assert spec is not None and spec.loader is not None
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_gamma_geometry_and_breakdown_values_used_by_boundary_figure():
     rho_e_hat = 1.0 / 1.34
     rho_x = 0.80
@@ -53,14 +62,27 @@ def test_reference_reversal_keeps_figure_breakdown_factor():
 
 
 def test_boundary_figure_generator_writes_png(tmp_path):
-    script = Path(__file__).resolve().parents[1] / "paper" / "make_boundary_identification_figure.py"
-    spec = spec_from_file_location("boundary_figure", script)
-    assert spec is not None and spec.loader is not None
-    module = module_from_spec(spec)
-    spec.loader.exec_module(module)
-
+    module = _load_script("make_boundary_identification_figure.py")
     output = tmp_path / "boundary_identification_geometry.png"
     written = module.build_figure(output)
     assert written == output
     assert output.exists()
     assert output.stat().st_size > 0
+
+
+def test_mechanistic_evidence_axis_figure_writes_png_and_keeps_scope_guard(tmp_path):
+    module = _load_script("make_mechanistic_evidence_axis_figure.py")
+    output = tmp_path / "mechanistic_evidence_axes.png"
+    written = module.build_figure(output)
+    assert written == output
+    assert output.exists()
+    assert output.stat().st_size > 0
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "paper"
+        / "make_mechanistic_evidence_axis_figure.py"
+    ).read_text(encoding="utf-8")
+    assert "identification strength" in source.lower()
+    assert "biological measurement level" in source.lower()
+    assert "conditional on the declared candidate mechanisms" in source
