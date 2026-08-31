@@ -48,7 +48,7 @@ jobs:
         if: matrix.python-version == '3.11'
         run: |
           mkdir -p outputs/g5/figures
-          python -m causal_model.confound_demo --figure outputs/g5/figures/figure1_confound.png
+          python -m causal_model.controlled_confounding_demo --figure outputs/g5/figures/figure1_controlled_confounding.png
           python paper/make_g2_figure.py --output outputs/g5/figures/figure2_g2_frozen_v2.png
           python -m causal_model.observation_value_calibration --figure outputs/g5/figures/figure3_information_value_calibration.png
           python -m causal_model.known_truth_benchmark --figure outputs/g5/figures/figureS1_known_truth.png
@@ -64,6 +64,7 @@ jobs:
           assert manifest['public_repository_metadata_included'] is False
           assert manifest['historical_frozen_labels_preserved'] is True
           files = set(manifest['files'])
+          assert 'figures/figure1_controlled_confounding.png' in files
           assert 'figures/figure3_information_value_calibration.png' in files
           assert 'review_manuscript.md' in files
           assert not any('boundary_manuscript' in path for path in files)
@@ -73,7 +74,7 @@ jobs:
       - name: Smoke-test controlled figure and frozen G2 CLIs
         run: |
           mkdir -p outputs/ci
-          python -m causal_model.confound_demo --n-attempts 200 --figure outputs/ci/confound.png
+          python -m causal_model.controlled_confounding_demo --n-attempts 200 --figure outputs/ci/controlled_confounding.png
           python -m causal_model.synthetic_demo --n-attempts 800 --figure outputs/ci/synthetic.png
           python -m causal_model.observation_value_calibration --n-attempts 400 --figure outputs/ci/information_value.png
           python -m causal_model.known_truth_benchmark \
@@ -88,7 +89,7 @@ jobs:
 
       - name: Check outputs were written
         run: |
-          for f in confound synthetic information_value known_truth; do
+          for f in controlled_confounding synthetic information_value known_truth; do
             test -s "outputs/ci/$f.png" || { echo "missing outputs/ci/$f.png"; exit 1; }
           done
           test -s outputs/ci/information_guided_budget.csv || { echo "missing frozen G2 policy table"; exit 1; }
