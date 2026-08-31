@@ -1,19 +1,23 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "method_name": "Mechanism-Resolving Observation Design",
   "distribution": "mechanism-resolution-design",
   "version": "0.1.0",
   "suggested_release_tag": "v0.1.0",
-  "status": "post_rename_ci_pass_pending_tagged_g5_and_reviewer_artifacts",
+  "status": "final_reproducibility_and_reviewer_artifacts_pass",
+  "artifact_validation_sha": "4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
+  "metadata_note": "This record is governance metadata written after the validated freeze. It does not change scientific parameters, package algorithms, manuscript claims or the artifacts produced from artifact_validation_sha.",
   "ci": {
-    "status": "pass_python_3_10_3_12_after_repository_split_and_internal_rename",
-    "validated_main_pre_freeze_sha": "d5d90d3cb81ad58801829b653f2df8070ddc55cb",
+    "status": "pass_python_3_10_3_12_on_final_freeze_sha",
+    "workflow_run_id": 33383402222,
+    "validated_sha": "4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
     "checks": [
       "scientific submission boundary",
       "MEE Research Article format",
       "active method naming",
       "repository program boundaries",
       "full pytest suite",
+      "publication figure and anonymous reviewer-bundle self-test on Python 3.11",
       "controlled figure smoke tests",
       "frozen G2 CLI smoke tests"
     ]
@@ -22,6 +26,12 @@
     "status": "pass_frozen_unchanged",
     "historical_protocol_id": "rach-g2-truth-peek-free-v2",
     "protocol_sha256": "3568025f98a671b232e5d6b865063f37baa5bec319a594f831d6b5b953428cb7",
+    "final_freeze_dedicated_workflow": {
+      "workflow_run_id": 33383402278,
+      "status": "skipped_by_design",
+      "required_trigger_marker": "[g2-frozen-v2]",
+      "reason": "The final packaging freeze did not request a new execution of the frozen scientific benchmark. Frozen G2 CLI/protocol checks passed in CI and the stored validation summaries were reproduced in G5."
+    },
     "headline_budget_2": {
       "information_guided_edge_resolution": 1.0,
       "random_order_edge_resolution": 0.6045,
@@ -39,15 +49,44 @@
     "provenance_note": "Frozen protocol/result files retain their historical machine identifiers and policy keys unchanged."
   },
   "g5": {
-    "status": "tagged_final_rerun_pending",
-    "trigger_marker": "[g5-final]",
-    "previous_frozen_summary": "paper/results/g5_reproducibility_summary.json",
-    "requirement": "rebuild publication figures and renamed wheel on the final freeze commit; verify frozen validation values without changing G2 evidence"
+    "status": "pass",
+    "validated_sha": "4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
+    "workflow_run_id": 33383402344,
+    "artifact_id": 9754631345,
+    "artifact_name": "g5-reproducibility-4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
+    "artifact_sha256": "8f6c8900658614825455c2f82ce9f87a73f3fc5b624e5320ce77a81ba2c89f47",
+    "python": "3.11.16",
+    "submission_bundle_check": "pass",
+    "repository_boundary_check": "pass",
+    "frozen_validation_reproduction": "pass",
+    "wheel": {
+      "filename": "mechanism_resolution_design-0.1.0-py3-none-any.whl",
+      "sha256": "fd5332a83b1c74a309b0a824e1c8a996a7fa67e9ca6da6346b1da8fc99975e6e",
+      "forbidden_member_count": 0,
+      "member_count": 85
+    },
+    "figures": {
+      "figure1_confound.png": "ffc5a63f289cb16074ebec533d58feb4f0380d7b3488777127874d3aee7d7fb3",
+      "figure2_g2_frozen_v2.png": "03c8de922301b2952bfff82b1ee0382e2fc0db8741654ca5caac8045dbc7201f",
+      "figure3_information_value_calibration.png": "ef851e0d8b13003a1833c36d8005e1820dabd001801b075d754b36afb796148b",
+      "figureS1_known_truth.png": "b42cb28b4a150e2cab86988eedadb8cfd32ec7899f167a160ac51001057df739"
+    }
   },
   "reviewer_bundle": {
-    "status": "ci_self_test_pass_tagged_artifact_pending",
-    "trigger_marker": "[reviewer-bundle]",
-    "requirement": "build and self-test the anonymous methods-only reviewer archive from the same final freeze commit"
+    "status": "pass",
+    "validated_sha": "4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
+    "workflow_run_id": 33383402336,
+    "artifact_id": 9754628125,
+    "artifact_name": "mee-anonymous-mechanism-resolution-design-4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
+    "artifact_sha256": "665686e83f2e6d1636c4ce7561e846201d31fe9ebbddb4e16643c13fd582eede",
+    "checks": [
+      "scientific, naming and repository boundaries",
+      "reviewer figure rebuild",
+      "methods-only allowlisted bundle build",
+      "extracted reviewer snapshot pytest",
+      "author/commit-SHA anonymity scan",
+      "archive digest and artifact upload"
+    ]
   },
   "publication_preparation": {
     "journal": "Methods in Ecology and Evolution",
@@ -76,13 +115,14 @@
     "action_before_formal_release": "Mint the DOI externally, then add it to citation/archive metadata without changing frozen G2 results."
   },
   "remaining_publication_operations": [
-    "run tagged G5 reproducibility workflow on the final freeze commit",
-    "run tagged anonymous reviewer-bundle workflow on the same final freeze commit",
     "fill human-supplied title-page metadata",
     "export the journal-ready manuscript and Supporting Information",
-    "prepare a cover letter centred on Mechanism-Resolving Observation Design and G2 selection efficiency",
-    "tag the exact submitted code state as v0.1.0",
+    "prepare the MEE cover letter",
+    "tag artifact_validation_sha 4e1c0360cd913ddc2db0179fc5c9feeac7d1daec as v0.1.0 when the submitted files are fixed",
     "mint and record an archival DOI after submission files are frozen"
+  ],
+  "nonblocking_maintenance": [
+    "Update pyproject.toml project.license from the deprecated TOML-table form to an SPDX string before the setuptools 2027-02-18 removal deadline; do this outside the validated submission freeze unless a new G5 artifact is intentionally generated."
   ],
   "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics or frozen numerical claims requires a new protocol/version. Naming, packaging and repository separation must not retune frozen evidence."
 }
