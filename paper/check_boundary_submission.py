@@ -79,7 +79,7 @@ def main() -> None:
     # distinction, cross-domain scope and direct operational consequences.
     for token, label in (
         ("structural measurement boundary", "nature of proposed Perspective"),
-        ("The novelty is not new identifiability algebra", "positive novelty positioning"),
+        ("The novelty is a quantitative ecological measurement framework", "positive novelty positioning"),
         ("k-1-r", "quantitative anchor consequence"),
         ("breakdown factor", "calibration consequence"),
         ("cannot be reported independently", "joint reporting consequence"),
