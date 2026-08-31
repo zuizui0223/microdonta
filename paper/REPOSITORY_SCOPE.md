@@ -19,7 +19,7 @@ Active content in this repository may support:
 - controlled truth-peek-free validation;
 - methods-paper figures, reviewer bundle and software release.
 
-Active content in this repository must not contain the standalone Paper A manuscript, its Ecology Letters proposal, calibration-transport theory, multichannel identification theorem, Paper A figures or Paper A reviewer bundle.
+There must be **no local active copy** of Paper A. Active content in this repository must not contain the standalone Paper A manuscript, its Ecology Letters proposal, calibration-transport theory, multichannel identification theorem, Paper A figures or Paper A reviewer bundle.
 
 ## Historical material
 
