@@ -6,7 +6,7 @@ Status: pre-submission proposal candidate. Current Ecology Letters guidance requ
 
 **When ecological products hide mechanism: identification and measurement design for ecological chains**
 
-## Proposal (271 words)
+## Proposal (263 words)
 
 Ecologists routinely infer mechanism from composite quantities: visitation multiplied by per-visit effectiveness, seed number multiplied by post-dispersal quality, or endpoint responses linked through several unobserved stages. Yet a well-measured product can be structurally uninformative about how change is allocated among its components. We propose a Perspective that imports a simple identification lens into ecological measurement design and develops its consequences quantitatively.
 
