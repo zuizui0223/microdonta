@@ -13,12 +13,12 @@ Paper A now covers ecological measurement chains generally; the legacy heading i
 mechanistic proximity != mechanistic identification
 ```
 
-Paper A argues that ecological evidence has two independent properties: where a measurement sits biologically, and what it identifies among declared competing mechanisms. Molecular/genomic measurements can be highly proximal and highly identifying, but proximity alone does not guarantee identification. Field patterns can be non-identifying, while strategically placed field observations can directly remove mechanism ambiguity. The paper therefore classifies mechanistic evidence by identification strength rather than by biological level alone.
+Paper A argues that ecological evidence has two distinct properties: where a measurement sits biologically, and what it identifies among declared competing mechanisms. Molecular/genomic measurements can be highly proximal and highly identifying, but proximity alone does not guarantee identification. Field patterns can be non-identifying, while strategically placed field observations can directly remove mechanism ambiguity. No monotone relationship or statistical independence between the two axes is assumed. The paper therefore adds an explicit identification axis to mechanistic evidence rather than ranking biological levels intrinsically.
 
 **Quantitative contribution**
 
 ```text
-mechanistic evidence as an identification property
+mechanistic evidence needs an identification axis
 → net-only quotient / k-channel equivalence dimension
 → channel anchors reduce dimension: k-1-r
 → two-channel proxy calibration-transport family
@@ -29,7 +29,7 @@ mechanistic evidence as an identification property
 → joint-set reporting rule
 ```
 
-This paper is about the boundary between mechanistic proximity and mechanistic identification, and about the boundary between point identification, partial identification and non-identification in declared ecological observation maps. Its main output is not RACH and not a synthetic policy benchmark.
+This paper is about the distinction between mechanistic proximity and mechanistic identification, and about the boundary between point identification, partial identification and non-identification in declared ecological observation maps. Its main output is not RACH and not a synthetic policy benchmark.
 
 For a declared positive chain
 
@@ -97,7 +97,7 @@ network degree, abundance or visitation alone are quantity-side descriptors or
 proxies rather than effective service. Community aggregation `sum_m V_m E_m`
 can add a further allocation ambiguity across visitor types. Seed dispersal provides an independent Quantity × Quality architecture.
 
-Genomic and molecular examples belong in Paper A only as conceptual motivation for separating mechanistic proximity from identification strength. Paper A must not claim that molecular data are intrinsically less mechanistic, nor imply that all genomic observation maps follow the multiplicative theorem.
+Genomic and molecular examples belong in Paper A only as conceptual motivation for separating mechanistic proximity from identification strength. Ungerer et al. (2008) and Rudman et al. (2018) should be treated as allies to mechanistic integration; the latter explicitly notes that genomic data alone are not sufficient for the eco-evolutionary questions considered. Smith et al. (2020) supplies a field-level example of mechanistic testing under natural conditions. Paper A must not claim that molecular data are intrinsically less mechanistic, nor imply that all genomic observation maps follow the multiplicative theorem. The exact literature claims are governed by `paper/mechanistic_evidence_literature_audit.md`.
 
 ## Paper B — RACH observation-selection method
 

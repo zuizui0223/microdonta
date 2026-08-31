@@ -5,8 +5,9 @@ The figure visualises the theorem
     residual dimension = k - 1 - r,
 
 where k is the number of positive multiplicative channels and r is the number of
-independent direct channel anchors.  It is deliberately separate from Figure 1,
-which shows the two-channel proxy-calibration Gamma family.
+independent direct channel anchors.  In the submission narrative this is Figure
+2: Figure 1 is the mechanistic-proximity versus identification-strength concept
+figure, and Figure 3 is the two-channel proxy-calibration Gamma family.
 """
 from __future__ import annotations
 

@@ -34,22 +34,18 @@ def test_gamma_geometry_and_breakdown_values_used_by_boundary_figure():
     rho_f = rho_x / kappas
     rho_e = rho_e_hat * kappas
 
-    # The same kappa couples both channels and preserves the net ratio exactly.
     assert np.allclose(rho_f * rho_e, rho_w)
     assert np.allclose(np.log(rho_f) + np.log(rho_e), log(rho_w))
 
-    # The joint set has exact slope -1 in log-ratio coordinates.
     slope = (np.log(rho_e[-1]) - np.log(rho_e[0])) / (
         np.log(rho_f[-1]) - np.log(rho_f[0])
     )
     assert isclose(float(slope), -1.0)
 
-    # Independent marginal-upper reporting would admit an impossible pair.
     rho_f_upper = rho_x * gamma
     rho_e_upper = rho_e_hat * gamma
     assert not isclose(rho_f_upper * rho_e_upper, rho_w)
 
-    # At the reference-invariant breakdown factor, the relevant endpoint hits 1.
     assert isclose(rho_e_hat * gamma_star, 1.0)
 
 
@@ -86,3 +82,6 @@ def test_mechanistic_evidence_axis_figure_writes_png_and_keeps_scope_guard(tmp_p
     assert "identification strength" in source.lower()
     assert "biological measurement level" in source.lower()
     assert "conditional on the declared candidate mechanisms" in source
+    assert "distinct" in source
+    assert "no statistical independence" in source
+    assert "orthogonal" not in source.lower()

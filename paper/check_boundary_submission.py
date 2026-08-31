@@ -16,6 +16,7 @@ PROPOSAL = ROOT / "paper/ecology_letters_perspective_proposal.md"
 PROPOSAL_EMAIL = ROOT / "paper/ecology_letters_perspective_email.md"
 EDITORIAL_AUDIT = ROOT / "paper/EL_PERSPECTIVE_EDITORIAL_AUDIT.md"
 EVIDENCE_AXIS = ROOT / "paper/mechanistic_evidence_identification_axis.md"
+LITERATURE_AUDIT = ROOT / "paper/mechanistic_evidence_literature_audit.md"
 STRATEGY = ROOT / "paper/TWO_PAPER_STRATEGY.md"
 
 WORD_RE = re.compile(r"\b[\w*<>/=+.-]+\b", re.UNICODE)
@@ -54,6 +55,7 @@ def main() -> None:
     proposal_email = PROPOSAL_EMAIL.read_text(encoding="utf-8")
     editorial_audit = EDITORIAL_AUDIT.read_text(encoding="utf-8")
     evidence_axis = EVIDENCE_AXIS.read_text(encoding="utf-8")
+    literature_audit = LITERATURE_AUDIT.read_text(encoding="utf-8")
     strategy = STRATEGY.read_text(encoding="utf-8")
 
     abstract = section(manuscript, "Abstract")
@@ -76,58 +78,71 @@ def main() -> None:
             f"Ecology Letters Perspective proposal exceeds 300 words: {proposal_words}"
         )
 
-    # Conceptual headline plus the quantitative and operational consequences.
     for token, label in (
-        ("conflates two different properties", "two-axis problem statement"),
-        ("proximity to biological machinery", "mechanistic-proximity axis"),
-        ("identification among competing mechanisms", "identification-strength axis"),
-        ("The novelty is a quantitative ecological framework", "positive novelty positioning"),
+        ("These properties need not coincide", "two-axis problem statement"),
+        ("measurements close to biological machinery", "mechanistic-proximity axis"),
+        ("identification axis", "identification-strength axis"),
         ("k-1-r", "quantitative anchor consequence"),
         ("breakdown factor", "calibration consequence"),
         ("cannot be reported independently", "joint reporting consequence"),
         ("seed dispersal", "independent cross-domain architecture"),
+        ("field experiments and ecological genomics", "cross-level conceptual support"),
         ("before any estimator is chosen", "Perspective-vs-Method distinction"),
-        ("two axes", "explicit replacement of one-dimensional hierarchy"),
+        ("distinct dimensions", "explicit non-equivalence of evidence axes"),
         ("The author works on ecological measurement", "author qualification"),
     ):
         require(proposal_body, token, label)
 
-    for token in ("RACH-SEQ", "NOV(Q)=I(S;Q", "83.5-fold", "g2_frozen"):
-        forbid(proposal_body, token, "RACH/MEE claim in Perspective proposal")
+    for token in (
+        "RACH-SEQ",
+        "NOV(Q)=I(S;Q",
+        "83.5-fold",
+        "g2_frozen",
+        "orthogonal axes",
+        "ecology formally endorses",
+    ):
+        forbid(proposal_body, token, "forbidden Perspective-proposal framing")
 
-    # The send-ready email must target both current Editorial Office addresses
-    # and carry the exact current proposal prose rather than a stale copy.
     require(proposal_email, "ecolets@cefe.cnrs.fr", "first Editorial Office recipient")
     require(proposal_email, "ecolets2@cefe.cnrs.fr", "second Editorial Office recipient")
     if normalized(proposal_body) not in normalized(proposal_email):
         raise SystemExit("send-ready email does not contain the current proposal text")
 
-    # Preserve the explicit editorial risk audit as part of the send gate.
     for token in (
         "Why is this a Perspective rather than a Method?",
         "What is genuinely new if the algebra is elementary?",
         "Is the scope broad enough for general ecology?",
+        "Are we inventing a straw-man pattern-to-molecule hierarchy?",
         "Does this attack molecular or genomic ecology?",
+        "Are the two axes really “orthogonal”?",
         "What changes for a field ecologist tomorrow?",
         "Is this just causal-inference relabelling?",
     ):
         require(editorial_audit, token, "editorial desk-rejection audit")
 
-    # The conceptual governance note must retain both the positive claim and the
-    # scope guard against ranking biological levels intrinsically.
     for token in (
-        "Mechanistic evidence should be classified by what it identifies",
-        "Measurement level and identification strength are orthogonal properties",
+        "Mechanistic evidence should be classified partly by what it identifies",
+        "Measurement level and identification strength are distinct properties",
+        "No monotone relation between these axes is assumed",
         "molecular and genomic measurements can provide mechanistic proximity",
         "field observations need not remain merely descriptive",
     ):
         require(evidence_axis, token, "mechanistic-evidence governance")
+    forbid(evidence_axis, "orthogonal properties", "overstrong axis-independence claim")
 
-    # Boundary-paper scientific and conceptual spine.
+    for token in (
+        "does **not** justify claiming that ecology formally endorses a universal one-dimensional hierarchy",
+        "genomic data alone are not sufficient",
+        "Field-level evidence can become mechanistic through observation design",
+        "Avoid **orthogonal** as the primary adjective",
+    ):
+        require(literature_audit, token, "mechanistic-evidence literature audit")
+
     for token, label in (
-        ("Mechanistic evidence should be classified by what it identifies", "conceptual headline"),
-        ("biological measurement level or proximity", "measurement-level axis"),
-        ("identification strength", "identification-strength axis"),
+        ("Mechanistic evidence should be evaluated by what it identifies", "conceptual headline"),
+        ("two **distinct** axes", "distinct evidence axes"),
+        ("No monotone relation between these axes is assumed", "non-monotone scope guard"),
+        ("We do not claim that ecology has adopted a formal one-dimensional hierarchy", "explicit hierarchy non-claim"),
         ("Theorem N1-k", "k-channel theorem"),
         ("k - 1 - r", "anchor dimension rule"),
         ("1/Gamma <= kappa <= Gamma", "Gamma transport family"),
@@ -136,19 +151,23 @@ def main() -> None:
         ("Channel anchors", "channel-anchor distinction"),
         ("Calibration anchors", "calibration-anchor distinction"),
         ("S_m = V_m E_m", "pollination effective-service example"),
+        ("Figure 1. Biological proximity and identification strength are distinct dimensions", "conceptual first figure"),
+        ("Figure 2. Direct channel measurements reduce the unresolved dimension", "multichannel figure"),
+        ("Figure 3. Calibration transport determines identification strength", "Gamma figure"),
+        ("Correia, H.E., Dee, L.E. & Ferraro, P.J. 2025", "intermediary-process reference"),
+        ("Smith, J.A., Suraci, J.P., Hunter, J.S. et al. 2020", "field-mechanism reference"),
+        ("Siegel, K. & Dee, L.E. 2025", "observational causal-design reference"),
     ):
         require(manuscript, token, label)
 
-    # Reject regressions to either extreme: molecular-level triumphalism or an
-    # anti-molecular framing that the Perspective does not support.
     for token in (
         "molecular data are not mechanistic",
         "genomics cannot identify mechanisms",
         "biological scale is irrelevant",
+        "two orthogonal axes",
     ):
-        forbid(manuscript, token, "intrinsic biological-level ranking")
+        forbid(manuscript, token, "intrinsic biological-level ranking or overclaim")
 
-    # The boundary candidate must not become a second copy of the RACH methods paper.
     for token in (
         "RACH-SEQ",
         "NOV(Q)=I(S;Q",
@@ -166,7 +185,8 @@ def main() -> None:
     print(f"proposal words: {proposal_words}")
     print("proposal paragraphs: 1")
     print("proposal email recipients: 2")
-    print("mechanistic evidence axes: pass")
+    print("mechanistic evidence axes: distinct/non-monotone")
+    print("mechanistic evidence literature audit: pass")
     print("paper separation: pass")
 
 
