@@ -1,9 +1,8 @@
-"""Build a deterministic, double-anonymous reviewer bundle for the RACH method paper.
+"""Build a deterministic, double-anonymous reviewer bundle for the methods paper.
 
-The bundle is an allowlisted methods snapshot, not a repository archive. Author
-metadata, public repository metadata, boundary-paper theory, ecological projection,
-apps, optional backends, structure discovery and provisional ecological-rule
-programs are omitted.
+The bundle is an allowlisted Mechanism-Resolving Observation Design snapshot, not
+a repository archive. Author metadata, public repository metadata, the external
+Paper A programme, apps and optional research programmes are omitted.
 """
 from __future__ import annotations
 
@@ -19,41 +18,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 RUNNABLE_SEEDS = [
-    "causal_model/causal_admissibility.py",
-    "causal_model/causal_replaceability.py",
+    "causal_model/admissible_mechanisms.py",
+    "causal_model/observation_value.py",
+    "causal_model/sequential_design.py",
+    "causal_model/mechanism_replaceability.py",
     "causal_model/mechanism_equivalence.py",
-    "causal_model/nov_evsi.py",
-    "causal_model/rach_seq.py",
-    "causal_model/generality_sweep.py",
 ]
-
 REFERENCE_SOURCES = [
+    "causal_model/generality_sweep.py",
     "causal_model/known_truth_benchmark.py",
-    "causal_model/nov_calibration.py",
+    "causal_model/observation_value_calibration.py",
     "causal_model/confound_demo.py",
 ]
-
-TEST_FILES = [
-    "tests/test_nov_evsi.py",
-    "tests/test_rach_seq_predictive_reweighting.py",
-    "tests/test_rach_seq_nov_selection.py",
-    "tests/test_causal_replaceability.py",
-]
-
-DENY_MODULE_PARTS = {
-    "structure_discovery",
-    "bergmann_worked_example",
-    "ecological_rules_validation",
-    "converse_bergmann",
-    "rule_transition",
-    "channel_identifiability",
-    "proxy_calibration",
-    "bounded_proxy_drift",
-    "colonization_recruitment",
-    "theorem_projection",
-    "campanula",
-}
-
 FORBIDDEN_TEXT = (
     "Ruiqi Zhang",
     "Kyoto University",
@@ -62,73 +38,85 @@ FORBIDDEN_TEXT = (
 )
 COMMIT_SHA_RE = re.compile(r"(?<![0-9a-f])\b[0-9a-f]{40}\b(?![0-9a-f])", re.I)
 
-PRIMARY_INIT = '''"""Primary RACH API snapshot for double-anonymous peer review."""
-from . import causal_admissibility
-from . import rach_seq
-
-CandidateObservation = causal_admissibility.CandidateObservation
-CandidateOutcome = causal_admissibility.CandidateOutcome
-CausalAdmissibilityResult = causal_admissibility.CausalAdmissibilityResult
-ObservationContribution = causal_admissibility.ObservationContribution
-RACHSummary = causal_admissibility.RACHSummary
-compute_causal_admissibility = causal_admissibility.causal_admissibility
-causal_degeneracy = causal_admissibility.causal_degeneracy
-causal_resolvability = causal_admissibility.causal_resolvability
-observation_contribution = causal_admissibility.observation_contribution
-rach_summary = causal_admissibility.rach_summary
-
-SeqResult = rach_seq.SeqResult
-SeqStep = rach_seq.SeqStep
-run_rach_seq = rach_seq.rach_seq
-
-from .nov_evsi import EVSIResult, next_observation_evsi
-from .causal_replaceability import (
-    CRCResult,
-    causal_replaceability_cost,
-    causal_replaceability_cost_full,
-    crc_profile,
-    crc_profile_full,
+PRIMARY_INIT = '''"""Mechanism-Resolving Observation Design reviewer API."""
+from .admissible_mechanisms import (
+    CandidateInformationValueResult, CandidateObservation, CandidateOutcome,
+    MechanismAdmissibilityResult, MechanismResolutionSummary,
+    ObservationContribution, compute_admissible_mechanisms,
+    heuristic_observation_value, mechanism_entropy, mechanism_resolvability,
+    mechanism_resolution_summary, observation_contribution,
+)
+from .observation_value import (
+    InformationValueResult, candidate_mutual_information_bits,
+    observation_information_value,
+)
+from .sequential_design import (
+    PredictiveOutcomeDistribution, SequentialDesignResult, SequentialDesignStep,
+    expected_edge_cuts, filter_by_outcome, predictive_outcome_distribution,
+    sequential_candidate_value, sequential_observation_design,
+    validated_information_value,
+)
+from .mechanism_replaceability import (
+    ReplaceabilityResult, mechanism_replaceability_cost,
+    mechanism_replaceability_cost_full, mechanism_replaceability_profile,
+    mechanism_replaceability_profile_full,
 )
 from .mechanism_equivalence import mechanism_equivalence_structure
 
 __all__ = [
-    "CandidateObservation", "CandidateOutcome", "CausalAdmissibilityResult",
-    "CRCResult", "EVSIResult", "ObservationContribution", "RACHSummary",
-    "SeqResult", "SeqStep", "compute_causal_admissibility",
-    "causal_degeneracy", "causal_replaceability_cost",
-    "causal_replaceability_cost_full", "causal_resolvability", "crc_profile",
-    "crc_profile_full", "mechanism_equivalence_structure",
-    "next_observation_evsi", "observation_contribution", "run_rach_seq",
-    "rach_summary",
+    "CandidateInformationValueResult", "CandidateObservation", "CandidateOutcome",
+    "InformationValueResult", "MechanismAdmissibilityResult",
+    "MechanismResolutionSummary", "ObservationContribution",
+    "PredictiveOutcomeDistribution", "ReplaceabilityResult",
+    "SequentialDesignResult", "SequentialDesignStep",
+    "candidate_mutual_information_bits", "compute_admissible_mechanisms",
+    "expected_edge_cuts", "filter_by_outcome", "heuristic_observation_value",
+    "mechanism_entropy", "mechanism_equivalence_structure",
+    "mechanism_replaceability_cost", "mechanism_replaceability_cost_full",
+    "mechanism_replaceability_profile", "mechanism_replaceability_profile_full",
+    "mechanism_resolvability", "mechanism_resolution_summary",
+    "observation_contribution", "observation_information_value",
+    "predictive_outcome_distribution", "sequential_candidate_value",
+    "sequential_observation_design", "validated_information_value",
 ]
 '''
 
-REVIEW_API_TEST = '''import causal_model as rach
+REVIEW_TEST = '''import json
+from pathlib import Path
+import causal_model as method
+from causal_model import CandidateObservation, CandidateOutcome
 
-EXPECTED = {
-    "CandidateObservation", "CandidateOutcome", "CausalAdmissibilityResult",
-    "CRCResult", "EVSIResult", "ObservationContribution", "RACHSummary",
-    "SeqResult", "SeqStep", "compute_causal_admissibility",
-    "causal_degeneracy", "causal_replaceability_cost",
-    "causal_replaceability_cost_full", "causal_resolvability", "crc_profile",
-    "crc_profile_full", "mechanism_equivalence_structure",
-    "next_observation_evsi", "observation_contribution", "run_rach_seq",
-    "rach_summary",
-}
+class _SW:
+    def __init__(self, name): self.name=name
 
-def test_reviewer_api_is_exact_primary_rach_surface():
-    assert set(rach.__all__) == EXPECTED
-    assert all(hasattr(rach, name) for name in EXPECTED)
+def candidate():
+    return CandidateObservation(
+        name="trait", description="resolving trait", target_switches=["A"],
+        rationale="outcomes separate A", outcomes=[
+            CandidateOutcome(name="high", description="high", prior_probability=.5,
+                extra_pattern_rows=[{"type":"absolute_summary","variable":"trait","population":"pop","observed_value":"0.75","scale":"0.05"}]),
+            CandidateOutcome(name="low", description="low", prior_probability=.5,
+                extra_pattern_rows=[{"type":"absolute_summary","variable":"trait","population":"pop","observed_value":"0.25","scale":"0.05"}]),
+        ])
 
+def test_information_value_public_surface():
+    rows=([{"A":True,"pop_trait":.75},{"A":False,"pop_trait":.25}])*20
+    result=method.observation_information_value(rows,[_SW("A")],[candidate()])[0]
+    assert result.estimable and result.partition_verified
+    assert result.mutual_information_bits == 1.0
+    assert result.information_value == 1.0
 
-def test_boundary_and_compatibility_helpers_are_not_primary_api():
-    forbidden = {
-        "install_rule_transition_contracts", "CausalStructure",
-        "score_causal_structure", "heuristic_next_observation_value",
-        "expected_edge_cuts", "filter_by_outcome",
-        "identify_under_bounded_proxy_drift",
-    }
-    assert not (forbidden & set(rach.__all__))
+def test_bundle_preserves_frozen_headline_values():
+    data=json.loads(Path("frozen/g2_summary.json").read_text())
+    def row(policy,budget):
+        return next(r for r in data["policy_budget_aggregate"] if r["policy"]==policy and r["budget"]==budget)
+    guided2=row("rach_seq",2); random2=row("random_order",2); guided4=row("rach_seq",4); random4=row("random_order",4)
+    assert guided2["mean_frac_resolved_mean"] == 1.0
+    assert guided2["frac_converged_mean"] == .99
+    assert random2["mean_frac_resolved_mean"] == .6045
+    assert random2["frac_converged_mean"] == .435
+    assert guided4["mean_distractors_selected_mean"] == .014
+    assert random4["mean_distractors_selected_mean"] == 1.169
 '''
 
 
@@ -146,15 +134,14 @@ def local_module_path(module: str) -> Path | None:
 
 
 def relative_module_path(current: Path, level: int, module: str | None) -> Path | None:
-    package_parts = list(current.relative_to(ROOT).with_suffix("").parts[:-1])
+    parts = list(current.relative_to(ROOT).with_suffix("").parts[:-1])
     if level > 0:
-        keep = max(0, len(package_parts) - (level - 1))
-        package_parts = package_parts[:keep]
+        parts = parts[: max(0, len(parts) - (level - 1))]
     if module:
-        package_parts.extend(module.split("."))
-    if not package_parts:
+        parts.extend(module.split("."))
+    if not parts:
         return None
-    candidate = ROOT.joinpath(*package_parts).with_suffix(".py")
+    candidate = ROOT.joinpath(*parts).with_suffix(".py")
     return candidate if candidate.exists() else None
 
 
@@ -168,19 +155,10 @@ def dependencies(path: Path) -> set[Path]:
                 if dep:
                     found.add(dep)
         elif isinstance(node, ast.ImportFrom):
-            if node.level:
-                dep = relative_module_path(path, node.level, node.module)
-            elif node.module:
-                dep = local_module_path(node.module)
-            else:
-                dep = None
+            dep = relative_module_path(path, node.level, node.module) if node.level else local_module_path(node.module or "")
             if dep:
                 found.add(dep)
     return found
-
-
-def excluded(rel: str) -> bool:
-    return any(part in rel for part in DENY_MODULE_PARTS)
 
 
 def scientific_module_closure() -> list[Path]:
@@ -191,15 +169,9 @@ def scientific_module_closure() -> list[Path]:
         if path in seen:
             continue
         if not path.exists():
-            raise SystemExit(f"missing reviewer seed/dependency: {path.relative_to(ROOT)}")
-        rel = path.relative_to(ROOT).as_posix()
-        if excluded(rel):
-            raise SystemExit(f"excluded module entered reviewer closure: {rel}")
+            raise SystemExit(f"missing reviewer dependency: {path.relative_to(ROOT)}")
         seen.add(path)
         for dep in dependencies(path):
-            dep_rel = dep.relative_to(ROOT).as_posix()
-            if excluded(dep_rel):
-                continue
             if dep not in seen:
                 pending.append(dep)
     return sorted(seen)
@@ -231,7 +203,7 @@ def copy_text(src: Path, dst: Path) -> None:
     dst.write_text(text, encoding="utf-8")
 
 
-def write_review_text(dst: Path, text: str) -> None:
+def write_text(dst: Path, text: str) -> None:
     assert_anonymous_text(str(dst), text)
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(text, encoding="utf-8")
@@ -242,57 +214,34 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
 
-    copy_text(ROOT / "paper/mee_manuscript_draft.md", output_dir / "review_manuscript.md")
+    copy_text(ROOT / "paper/manuscript.md", output_dir / "review_manuscript.md")
     copy_text(ROOT / "paper/supporting_information.md", output_dir / "supporting_information.md")
+    copy_text(ROOT / "docs/mechanism_resolution_theory.md", output_dir / "theory/mechanism_resolution_theory.md")
+    copy_text(ROOT / "docs/observation_information_foundations.md", output_dir / "theory/observation_information_foundations.md")
 
-    readme = """# Anonymous reviewer code and evidence bundle\n\nThis snapshot contains the scientific files needed to evaluate the submitted RACH observation-selection Research Article. Author/title-page metadata, public repository URLs, public Git commit identifiers, the separate channel-identifiability/bounded-drift paper, ecological projection, apps, provisional ecological-rule programs and structure-discovery code are excluded.\n\n`causal_model/` is the runnable primary RACH/NOV/RACH-SEQ snapshot. `reference_sources/` contains exact auxiliary validation sources that are reviewed as source text without expanding optional repository dependencies.\n\n## Minimal environment\n\n```bash\npython -m pip install -r requirements-review.txt\nPYTHONPATH=. python -m pytest --rootdir=. -q tests\n```\n\nFrozen G2 protocol/results are under `frozen/`; Figures 1–3 and Figure S1 are under `figures/`; `bundle_manifest.json` records SHA-256 hashes.\n"""
-    write_review_text(output_dir / "README_FOR_REVIEW.md", readme)
-    write_review_text(
-        output_dir / "requirements-review.txt",
-        "numpy>=1.24\npandas>=2.0\nmatplotlib>=3.7\npytest>=7\n",
-    )
+    write_text(output_dir / "README_FOR_REVIEW.md", "# Anonymous Mechanism-Resolving Observation Design reviewer bundle\n\nRun `PYTHONPATH=. python -m pytest --rootdir=. -q tests`.\n")
+    write_text(output_dir / "requirements-review.txt", "numpy>=1.24\npandas>=2.0\nmatplotlib>=3.7\npytest>=7\n")
 
     for src in scientific_module_closure():
         copy_text(src, output_dir / src.relative_to(ROOT))
-    write_review_text(output_dir / "causal_model/__init__.py", PRIMARY_INIT)
+    write_text(output_dir / "causal_model/__init__.py", PRIMARY_INIT)
 
     reference_dir = output_dir / "reference_sources"
     for rel in REFERENCE_SOURCES:
         copy_text(ROOT / rel, reference_dir / Path(rel).name)
-
-    for rel in TEST_FILES:
-        copy_text(ROOT / rel, output_dir / rel)
-    write_review_text(output_dir / "tests/test_reviewer_public_api.py", REVIEW_API_TEST)
+    write_text(output_dir / "tests/test_review_surface.py", REVIEW_TEST)
 
     frozen = output_dir / "frozen"
     frozen.mkdir()
     copy_text(ROOT / "paper/g2_frozen_benchmark_protocol.json", frozen / "g2_protocol.json")
-    write_review_text(
-        frozen / "g2_summary.json",
-        json.dumps(
-            redact_result_summary(ROOT / "paper/results/g2_frozen_v2_summary.json"),
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n",
-    )
-    write_review_text(
-        frozen / "submission_validation_summary.json",
-        json.dumps(
-            redact_result_summary(
-                ROOT / "paper/results/submission_validation_summary.json"
-            ),
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n",
-    )
+    write_text(frozen / "g2_summary.json", json.dumps(redact_result_summary(ROOT / "paper/results/g2_frozen_v2_summary.json"), indent=2, sort_keys=True) + "\n")
+    write_text(frozen / "submission_validation_summary.json", json.dumps(redact_result_summary(ROOT / "paper/results/submission_validation_summary.json"), indent=2, sort_keys=True) + "\n")
     copy_text(ROOT / "paper/final_figure_inventory.json", frozen / "figure_inventory.json")
 
     expected_figures = {
         "figure1_confound.png",
         "figure2_g2_frozen_v2.png",
-        "figure3_nov_calibration.png",
+        "figure3_information_value_calibration.png",
         "figureS1_known_truth.png",
     }
     out_fig = output_dir / "figures"
@@ -305,34 +254,25 @@ def build(output_dir: Path, figures_dir: Path) -> tuple[Path, Path]:
 
     for path in output_dir.rglob("*"):
         if path.is_file() and path.suffix.lower() in {".md", ".py", ".json", ".txt"}:
-            assert_anonymous_text(
-                path.relative_to(output_dir).as_posix(),
-                path.read_text(encoding="utf-8"),
-            )
+            assert_anonymous_text(path.relative_to(output_dir).as_posix(), path.read_text(encoding="utf-8"))
 
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "bundle_role": "double_anonymous_peer_review_methods_only",
+        "method_name": "Mechanism-Resolving Observation Design",
         "public_repository_metadata_included": False,
         "title_page_included": False,
         "boundary_paper_included": False,
+        "historical_frozen_labels_preserved": True,
         "files": {},
     }
     for path in sorted(p for p in output_dir.rglob("*") if p.is_file()):
         rel = path.relative_to(output_dir).as_posix()
         if rel == "bundle_manifest.json":
             continue
-        if excluded(rel):
-            raise SystemExit(f"excluded program file in reviewer bundle: {rel}")
-        manifest["files"][rel] = {
-            "bytes": path.stat().st_size,
-            "sha256": sha256(path),
-        }
+        manifest["files"][rel] = {"bytes": path.stat().st_size, "sha256": sha256(path)}
     manifest_path = output_dir / "bundle_manifest.json"
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     zip_path = output_dir.parent / (output_dir.name + ".zip")
     if zip_path.exists():

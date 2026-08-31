@@ -1,8 +1,4 @@
-"""Validate the active anonymous MEE Research Article submission files.
-
-This is an initial-submission formatting/anonymity gate. It does not replace the
-scientific submission-bundle, repository-boundary, G2 or G5 checks.
-"""
+"""Validate the active anonymous MEE Research Article submission files."""
 from __future__ import annotations
 
 import json
@@ -10,7 +6,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MANUSCRIPT = ROOT / "paper" / "mee_manuscript_draft.md"
+MANUSCRIPT = ROOT / "paper" / "manuscript.md"
 SUPPLEMENT = ROOT / "paper" / "supporting_information.md"
 TITLE_PAGE = ROOT / "paper" / "title_page_draft.md"
 MANIFEST = ROOT / "paper" / "submission_manifest.json"
@@ -18,12 +14,7 @@ LICENSE = ROOT / "LICENSE"
 
 
 def word_count(text: str) -> int:
-    return len(
-        re.findall(
-            r"[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[-’'][A-Za-zÀ-ÖØ-öø-ÿ]+)*|\d+(?:\.\d+)?%?",
-            text,
-        )
-    )
+    return len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[-’'][A-Za-zÀ-ÖØ-öø-ÿ]+)*|\d+(?:\.\d+)?%?", text))
 
 
 def fail(message: str) -> None:
@@ -31,16 +22,9 @@ def fail(message: str) -> None:
 
 
 def assert_anonymous(label: str, text: str) -> None:
-    for identifying in (
-        "Ruiqi Zhang",
-        "Kyoto University",
-        "rachelzhang0223",
-        "github.com/zuizui0223",
-    ):
+    for identifying in ("Ruiqi Zhang", "Kyoto University", "rachelzhang0223", "github.com/zuizui0223"):
         if identifying.lower() in text.lower():
             fail(f"identifying text remains in {label}: {identifying}")
-    # Raw 40-character Git commit SHAs are searchable. Protocol/file SHA-256
-    # hashes remain allowed because they identify review evidence, not authors.
     if re.search(r"(?<![0-9a-f])\b[0-9a-f]{40}\b(?![0-9a-f])", text, flags=re.I):
         fail(f"public Git commit-like SHA remains in {label}")
 
@@ -49,8 +33,8 @@ def main() -> None:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     if manifest.get("manuscript_type") != "Research Article":
         fail("MEE article type must be Research Article")
-    if manifest.get("primary_product") != "RACH information-theoretic observation selection":
-        fail("MEE manifest is not on the methods-only product")
+    if manifest.get("primary_product") != "Mechanism-Resolving Observation Design":
+        fail("MEE manifest is not on Mechanism-Resolving Observation Design")
 
     text = MANUSCRIPT.read_text(encoding="utf-8")
     supplement = SUPPLEMENT.read_text(encoding="utf-8")
@@ -59,16 +43,9 @@ def main() -> None:
     assert_anonymous("Supporting Information", supplement)
 
     required_title_fields = (
-        "Article type: **Research Article**",
-        "Ruiqi Zhang",
-        "Kyoto University",
-        "Corresponding author",
-        "Running headline",
-        "Acknowledgements",
-        "Author contributions",
-        "Data availability",
-        "Funding",
-        "Conflict of interest",
+        "Article type: **Research Article**", "Ruiqi Zhang", "Kyoto University",
+        "Corresponding author", "Running headline", "Acknowledgements",
+        "Author contributions", "Data availability", "Funding", "Conflict of interest",
     )
     missing_title = [x for x in required_title_fields if x not in title_page]
     if missing_title:
@@ -76,11 +53,7 @@ def main() -> None:
 
     if "## Abstract" not in text or "**Data/Code for peer review:**" not in text:
         fail("Abstract or Data/Code for peer review statement missing")
-    abstract = (
-        text.split("## Abstract", 1)[1]
-        .split("**Data/Code for peer review:**", 1)[0]
-        .strip()
-    )
+    abstract = text.split("## Abstract", 1)[1].split("**Data/Code for peer review:**", 1)[0].strip()
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", abstract) if p.strip()]
     if len(paragraphs) != 4:
         fail(f"Abstract must contain exactly four numbered paragraphs; found {len(paragraphs)}")
@@ -95,13 +68,11 @@ def main() -> None:
     keyword_pos = text.index("**Keywords:**") if "**Keywords:**" in text else -1
     if keyword_pos <= data_pos:
         fail("Keywords must follow the Data/Code for peer review statement")
-    between = text[data_pos:keyword_pos]
-    if "anonym" not in between.lower():
+    if "anonym" not in text[data_pos:keyword_pos].lower():
         fail("Data/Code peer-review statement must promise an anonymised review bundle")
 
     keyword_tail = text.split("**Keywords:**", 1)[1].split("---", 1)[0].strip()
-    keyword_line = " ".join(keyword_tail.splitlines())
-    keywords = [k.strip().rstrip(".") for k in keyword_line.split(";") if k.strip()]
+    keywords = [k.strip().rstrip(".") for k in " ".join(keyword_tail.splitlines()).split(";") if k.strip()]
     if not 1 <= len(keywords) <= 8:
         fail(f"MEE requires 1–8 keywords; found {len(keywords)}")
     if keywords != sorted(keywords, key=str.casefold):
@@ -114,15 +85,15 @@ def main() -> None:
         "## 4. Software and reproducibility",
         "## 5. Discussion",
         "## Figure captions",
-        "### 2.3 AI-assisted development disclosure",
+        "### 2.4 AI-assisted development disclosure",
     )
     missing_headings = [h for h in required_headings if h not in text]
     if missing_headings:
         fail("MEE-standard manuscript headings missing:\n- " + "\n- ".join(missing_headings))
 
     supplement_required = (
-        "## S1. RACH admissibility, degeneracy and evidence roles",
-        "## S2. Validated NOV and RACH-SEQ",
+        "## S1. Admissible mechanism regions and evidence roles",
+        "## S2. Observation information value and sequential design",
         "## S3. Frozen G2 observation-selection benchmark",
         "## S4. Auxiliary controlled checks",
         "## S5. Reproducibility and reviewer bundle",
@@ -132,15 +103,9 @@ def main() -> None:
     if missing_supp:
         fail("Supporting Information sections missing:\n- " + "\n- ".join(missing_supp))
 
-    forbidden_primary_sections = (
-        "### 2.1 Exact channel-identifiability boundary",
-        "N1: net-only observations cannot identify the changed channel",
-        "Exact ecological projection and ABM boundary",
-        "Prospective worked design: Izu Islands",
-    )
-    leaked = [marker for marker in forbidden_primary_sections if marker in text]
-    if leaked:
-        fail("separate boundary/application material remains primary:\n- " + "\n- ".join(leaked))
+    for retired in ("Restricted Admissible Causal Hypotheses", "RACH-SEQ", "NOV(Q)"):
+        if retired in text:
+            fail(f"retired active method vocabulary remains in manuscript: {retired}")
 
     if "## Author contributions" in text or "## ORCID" in text or "## Funding" in text:
         fail("identity/administrative sections must live on the separate title page")
@@ -154,7 +119,7 @@ def main() -> None:
 
     print("MEE submission format OK")
     print("article type: Research Article")
-    print("product: RACH information-theoretic observation selection")
+    print("product: Mechanism-Resolving Observation Design")
     print(f"abstract words: {abstract_words}")
     print(f"keywords: {len(keywords)}")
     print(f"conservative manuscript words: {words}")

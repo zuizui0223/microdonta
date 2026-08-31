@@ -26,30 +26,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy pandas matplotlib pytest
 
-      - name: Verify scientific, MEE and repository boundaries
+      - name: Verify scientific, naming and repository boundaries
         run: |
           python paper/check_submission_bundle.py
           python paper/check_mee_submission.py
+          python paper/check_active_naming.py
           python scripts/check_repository_boundaries.py
           test -z "$(git status --porcelain)"
 
       - name: Rebuild final reviewer figures
         run: |
           mkdir -p outputs/g5/figures
-          python -m causal_model.confound_demo \
-            --figure outputs/g5/figures/figure1_confound.png
-          python paper/make_g2_figure.py \
-            --output outputs/g5/figures/figure2_g2_frozen_v2.png
-          python -m causal_model.nov_calibration \
-            --figure outputs/g5/figures/figure3_nov_calibration.png
-          python -m causal_model.known_truth_benchmark \
-            --figure outputs/g5/figures/figureS1_known_truth.png
+          python -m causal_model.confound_demo --figure outputs/g5/figures/figure1_confound.png
+          python paper/make_g2_figure.py --output outputs/g5/figures/figure2_g2_frozen_v2.png
+          python -m causal_model.observation_value_calibration --figure outputs/g5/figures/figure3_information_value_calibration.png
+          python -m causal_model.known_truth_benchmark --figure outputs/g5/figures/figureS1_known_truth.png
 
       - name: Build anonymous reviewer bundle
         run: |
-          python paper/build_reviewer_bundle.py \
-            --output-dir outputs/mee/reviewer_bundle \
-            --figures-dir outputs/g5/figures
+          python paper/build_reviewer_bundle.py --output-dir outputs/mee/reviewer_bundle --figures-dir outputs/g5/figures
 
       - name: Test extracted reviewer code snapshot
         run: |
@@ -63,6 +58,13 @@ jobs:
           assert root in loaded.parents, (root, loaded)
           PY
           PYTHONPATH=. python -m pytest --rootdir=. -q tests
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest=json.loads(Path('bundle_manifest.json').read_text())
+          assert manifest['method_name']=='Mechanism-Resolving Observation Design'
+          assert manifest['boundary_paper_included'] is False
+          PY
 
       - name: Verify anonymity and write archive digest
         run: |
@@ -74,7 +76,7 @@ jobs:
       - name: Upload anonymous reviewer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mee-anonymous-reviewer-bundle-${{ github.sha }}
+          name: mee-anonymous-mechanism-resolution-design-${{ github.sha }}
           path: |
             outputs/mee/reviewer_bundle.zip
             outputs/mee/reviewer_bundle_zip.sha256

@@ -27,9 +27,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Verify submission boundary
+      - name: Verify submission boundary and naming
         run: |
           python paper/check_submission_bundle.py
+          python paper/check_mee_submission.py
+          python paper/check_active_naming.py
           python scripts/check_repository_boundaries.py
           test -z "$(git status --porcelain)"
 
@@ -46,23 +48,24 @@ jobs:
             --figure outputs/submission_validation/known_truth.png \
             | tee outputs/submission_validation/known_truth.log
 
-      - name: Run NOV calibration defaults
+      - name: Run observation information-value calibration defaults
         run: |
           python - <<'PY'
           import json, os
           from dataclasses import asdict
-          from causal_model.nov_calibration import run_calibration, make_figure
-          res = run_calibration(
+          from causal_model.nov_calibration import run_calibration
+          from causal_model.observation_value_calibration import make_figure
+          result = run_calibration(
               preset_name='literature_grounded',
               acceptance_rule='strict_all',
               n_attempts=1000,
               seed=7,
           )
           os.makedirs('outputs/submission_validation', exist_ok=True)
-          with open('outputs/submission_validation/nov_calibration.json', 'w') as f:
-              json.dump(asdict(res), f, indent=2)
-          make_figure(res, 'outputs/submission_validation/nov_calibration.png')
-          print(res)
+          with open('outputs/submission_validation/information_value_calibration.json', 'w') as f:
+              json.dump(asdict(result), f, indent=2)
+          make_figure(result, 'outputs/submission_validation/information_value_calibration.png')
+          print(result)
           PY
 
       - name: Write provenance
@@ -70,6 +73,7 @@ jobs:
           python - <<'PY'
           import json, os
           payload = {
+            'method_name': 'Mechanism-Resolving Observation Design',
             'code_commit_sha': os.environ['GITHUB_SHA'],
             'known_truth': {
               'n_attempts': 200,
@@ -80,7 +84,7 @@ jobs:
               'generator_backend': 'proxy',
               'inference_backend': 'proxy'
             },
-            'nov_calibration': {
+            'observation_information_value_calibration': {
               'n_attempts': 1000,
               'preset': 'literature_grounded',
               'rule': 'strict_all',
@@ -97,14 +101,14 @@ jobs:
           test -s outputs/submission_validation/known_truth/known_truth_summary.csv
           test -s outputs/submission_validation/known_truth/recovery_by_noise.csv
           test -s outputs/submission_validation/known_truth.png
-          test -s outputs/submission_validation/nov_calibration.json
-          test -s outputs/submission_validation/nov_calibration.png
+          test -s outputs/submission_validation/information_value_calibration.json
+          test -s outputs/submission_validation/information_value_calibration.png
           test -s outputs/submission_validation/provenance.json
 
       - name: Upload validation artifact
         uses: actions/upload-artifact@v4
         with:
-          name: submission-validation-${{ github.sha }}
+          name: mechanism-resolution-design-validation-${{ github.sha }}
           path: outputs/submission_validation/
           if-no-files-found: error
           retention-days: 90
