@@ -1,45 +1,55 @@
 from importlib.util import module_from_spec, spec_from_file_location
-from math import exp, isclose
+from math import isclose, log
 from pathlib import Path
 
-from causal_model.bounded_proxy_drift import identify_under_bounded_proxy_drift
+import numpy as np
+
+from causal_model.calibration_transport_family import breakdown_factor, symmetric_interval
 
 
-def test_joint_log_geometry_and_breakdown_values_used_by_boundary_figure():
+def test_gamma_geometry_and_breakdown_values_used_by_boundary_figure():
     rho_e_hat = 1.0 / 1.34
     rho_x = 0.80
     rho_w = rho_x * rho_e_hat
+    gamma = 1.20
 
-    result = identify_under_bounded_proxy_drift(
-        net_ratio=rho_w,
-        proxy_ratio=rho_x,
-        delta=0.20,
-        proxy_channel="fecundity",
+    interval = symmetric_interval(rho_e_hat, gamma=gamma)
+    assert isclose(interval.lower, rho_e_hat / gamma)
+    assert isclose(interval.upper, rho_e_hat * gamma)
+
+    gamma_star, eta_star = breakdown_factor(rho_e_hat)
+    assert isclose(gamma_star, 1.34)
+    assert isclose(eta_star, log(1.34))
+
+    kappas = np.geomspace(1.0 / gamma, gamma, 51)
+    rho_f = rho_x / kappas
+    rho_e = rho_e_hat * kappas
+
+    # The same kappa couples both channels and preserves the net ratio exactly.
+    assert np.allclose(rho_f * rho_e, rho_w)
+    assert np.allclose(np.log(rho_f) + np.log(rho_e), log(rho_w))
+
+    # The joint set has exact slope -1 in log-ratio coordinates.
+    slope = (np.log(rho_e[-1]) - np.log(rho_e[0])) / (
+        np.log(rho_f[-1]) - np.log(rho_f[0])
     )
-
-    segment = result.joint_log_segment
-    assert isclose(segment.slope, -1.0)
-    assert segment.satisfies_net_constraint()
-    assert isclose(result.establishment.breakdown_delta, 0.34)
+    assert isclose(float(slope), -1.0)
 
     # Independent marginal-upper reporting would admit an impossible pair.
-    impossible_product = result.fecundity.upper * result.establishment.upper
-    assert not isclose(impossible_product, rho_w)
+    rho_f_upper = rho_x * gamma
+    rho_e_upper = rho_e_hat * gamma
+    assert not isclose(rho_f_upper * rho_e_upper, rho_w)
 
-    # The two actual joint endpoints are the exponentiated log-segment endpoints
-    # and preserve the observed net ratio exactly.
-    endpoints = (
-        (
-            exp(segment.log_fecundity_at_kappa_lower),
-            exp(segment.log_establishment_at_kappa_lower),
-        ),
-        (
-            exp(segment.log_fecundity_at_kappa_upper),
-            exp(segment.log_establishment_at_kappa_upper),
-        ),
-    )
-    for rho_f, rho_e in endpoints:
-        assert isclose(rho_f * rho_e, rho_w)
+    # At the reference-invariant breakdown factor, the relevant endpoint hits 1.
+    assert isclose(rho_e_hat * gamma_star, 1.0)
+
+
+def test_reference_reversal_keeps_figure_breakdown_factor():
+    down_gamma, down_eta = breakdown_factor(1.0 / 1.34)
+    up_gamma, up_eta = breakdown_factor(1.34)
+    assert isclose(down_gamma, up_gamma)
+    assert isclose(down_eta, up_eta)
+    assert isclose(down_gamma, 1.34)
 
 
 def test_boundary_figure_generator_writes_png(tmp_path):
