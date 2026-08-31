@@ -23,12 +23,29 @@ At budget two, RACH-SEQ resolved all initial confounding edges on average and co
 
 At budget four, random order selected 1.169 mechanism-independent nuisance measurements per system versus 0.014 for RACH-SEQ while using 2.673 observations versus 1.518. The manuscript reports absolute values beside any fold comparison.
 
-## Separate boundary paper
+## Separate boundary Perspective
 
-The companion manuscript is explicitly headed by the ecological measurement boundary rather than by the elementary two-factor product symmetry. Its submission-facing spine is:
+The companion manuscript is now headed by an evidentiary distinction:
 
 ```text
-k-channel net-only quotient / equivalence dimension
+mechanistic proximity != mechanistic identification
+```
+
+Ecological measurements have two independent properties:
+
+```text
+Axis 1: biological measurement level / proximity
+Axis 2: identification strength
+        non-identifying -> partially identifying -> point-identifying
+```
+
+The manuscript does not rank molecular/genomic and field evidence intrinsically. Molecular measurements can be proximal and highly identifying; they can also be shared by several competing mechanisms. Field patterns can be non-identifying; strategically placed field measurements can also remove mechanism ambiguity directly. The evidentiary status of a measurement is conditional on the candidate mechanism set and observation map.
+
+The quantitative submission-facing spine is:
+
+```text
+mechanistic evidence as an identification property
+→ k-channel net-only quotient / equivalence dimension
 → channel anchors reduce residual dimension: k-1-r
 → two-channel proxy calibration-transport family
      Gamma = 1       : stable-proxy point identification
@@ -38,7 +55,7 @@ k-channel net-only quotient / equivalence dimension
 → joint-set reporting rule
 ```
 
-For a positive product `W=prod_j F_j`, endpoint-only observation leaves `k-1` product-preserving degrees of freedom in log coordinates. `r` independent direct channel anchors leave `k-1-r`; `k-1` anchors recover the final channel from the product.
+For a positive product `W=prod_j F_j`, endpoint-only observation leaves `k-1` product-preserving degrees of freedom in log coordinates. `r` independent direct channel anchors leave `k-1-r`; `k-1` anchors recover the final channel from the product. Measuring the same endpoint more deeply or precisely does not change that dimension; changing the observation map does.
 
 For the two-channel proxy special case, the canonical symmetric transport restriction is
 
@@ -88,9 +105,9 @@ k-1 channel anchors            -> point identification
 
 A finite `Gamma`, `eta`, or legacy `delta` is not estimated from the same net/proxy observations whose identifying power is being assessed. Partial identification exposes sensitivity to an external transport tolerance; direct calibration can replace that assumption with measurement.
 
-### Ecological motivation recovered from izu-core
+### Ecological motivation
 
-The effective-service question is now part of the boundary-paper motivation rather than a deferred translation track. At visitor type `m`,
+The effective-service question is part of the boundary-paper motivation. At visitor type `m`,
 
 ```text
 service_m = visitor_rate_m * direct_effectiveness_m
@@ -98,22 +115,28 @@ service_m = visitor_rate_m * direct_effectiveness_m
 
 and community service is `sum_m service_m`. Network degree, abundance or visitation alone can describe or proxy the quantity side but are not effective service without an effectiveness term. Aggregation across visitor types adds an allocation ambiguity beyond the within-type product.
 
-The complete change -> service -> dependency/assurance -> response question motivates the `k`-channel design theorem. If a declared endpoint map is a positive `k`-stage product, endpoint-only observation leaves `k-1` free dimensions and each independent channel anchor removes one. If the biological map is not multiplicative, the same missing-link design question remains but requires the appropriate observation map.
+Seed dispersal supplies an independent `Quantity × Quality` architecture. The complete change -> service -> dependency/assurance -> response question motivates the `k`-channel design theorem. If a declared endpoint map is a positive `k`-stage product, endpoint-only observation leaves `k-1` free dimensions and each independent channel anchor removes one. If the biological map is not multiplicative, the same missing-link design question remains but requires the appropriate observation map.
 
-The boundary paper also contains a primary-literature audit showing that rate-by-effectiveness and quantity-by-quality products are established ecological measurement architectures rather than assumptions introduced only for this theorem. Schupp, Jordano & Gómez (2010) is the lead cross-domain example; the independent pollination lineage is provided by Rader, Ballantyne, and Reynolds & Fenster.
+Genomic and molecular examples are used only for the broader evidentiary distinction: biological proximity can be valuable without being equivalent to identification among alternatives. They are not claimed to obey the multiplicative theorem unless the relevant observation map is actually multiplicative.
+
+The primary-literature audit shows that rate-by-effectiveness and quantity-by-quality products are established ecological measurement architectures rather than assumptions introduced only for the theorem. Schupp, Jordano & Gómez (2010) is the lead cross-domain example; the independent pollination lineage is provided by Rader, Ballantyne, and Reynolds & Fenster.
 
 ### Boundary-paper submission assets
 
 ```text
 boundary_manuscript_submission.md
+→ mechanistic_evidence_identification_axis.md
 → boundary_submission_spine.md
 → boundary_reviewer_objection_audit.md
 → calibration_transport_family.md
 → multiplicative_measurement_literature_audit.md
 → ecology_letters_perspective_proposal.md
+→ ecology_letters_perspective_email.md
+→ EL_PERSPECTIVE_EDITORIAL_AUDIT.md
 → EL_PERSPECTIVE_VENUE_CHECK.md
 → check_boundary_submission.py
 → build_boundary_reviewer_bundle.py
+→ make_mechanistic_evidence_axis_figure.py
 → make_boundary_identification_figure.py
 → make_multichannel_anchor_figure.py
 → causal_model/multichannel_identifiability.py
@@ -121,15 +144,16 @@ boundary_manuscript_submission.md
 → tests/test_multichannel_identifiability.py
 → tests/test_multichannel_boundary_publication.py
 → tests/test_calibration_transport_family.py
+→ tests/test_boundary_identification_figure.py
 → tests/test_boundary_reviewer_bundle.py
 → tests/test_boundary_submission_gate.py
 ```
 
-`boundary_manuscript_draft.md` remains the longer audit draft. `boundary_manuscript_submission.md` is the compressed submission-facing candidate. `ecology_letters_perspective_proposal.md` is a <=300-word pre-submission proposal candidate; journal requirements must be rechecked immediately before sending.
+`boundary_manuscript_draft.md` remains the longer audit draft. `boundary_manuscript_submission.md` is the compressed submission-facing candidate. `mechanistic_evidence_identification_axis.md` is the normative conceptual framing and scope guard. `ecology_letters_perspective_proposal.md` is the <=300-word pre-submission proposal candidate; journal requirements must be rechecked immediately before sending.
 
-`check_boundary_submission.py` is the boundary-paper analogue of the MEE submission gate: it checks the Perspective abstract/proposal length, the `k-1-r` theorem, the `Gamma` family, the channel/calibration-anchor distinction, and the absence of RACH/NOV/G2 primary claims.
+`check_boundary_submission.py` is the boundary-paper analogue of the MEE submission gate: it checks the Perspective abstract/proposal length, the mechanistic-proximity versus identification-strength distinction, the `k-1-r` theorem, the `Gamma` family, the channel/calibration-anchor distinction, and the absence of RACH/NOV/G2 primary claims.
 
-`build_boundary_reviewer_bundle.py` is the reverse-direction anonymity gate. It builds an allowlisted boundary-only snapshot containing the boundary manuscript, direct theory code/tests, two boundary figures and the measurement-literature audit. Its manifest must report `boundary_manuscript_included: true`, `mee_manuscript_included: false`, and `rach_method_code_included: false`. CI then runs the copied theorem tests *inside the generated bundle* to verify that the anonymous snapshot is self-contained.
+`build_boundary_reviewer_bundle.py` is the reverse-direction anonymity gate. It builds an allowlisted boundary-only snapshot containing the boundary manuscript, direct theory code/tests, three boundary figures and the conceptual/literature notes. Its manifest must report `boundary_manuscript_included: true`, `mee_manuscript_included: false`, and `rach_method_code_included: false`. CI then runs the copied theorem tests *inside the generated bundle* to verify that the anonymous snapshot is self-contained.
 
 ## File roles
 
@@ -137,17 +161,21 @@ boundary_manuscript_submission.md
 |---|---|---|
 | `mee_manuscript_draft.md` | RACH/NOV/RACH-SEQ/G2 methods manuscript | active MEE main text |
 | `supporting_information.md` | methods validation and reproducibility | active MEE SI |
-| `boundary_manuscript_submission.md` | multichannel quotient + Gamma family + design/reporting rules | active boundary submission candidate |
+| `boundary_manuscript_submission.md` | mechanistic-evidence framing + multichannel quotient + Gamma family + design/reporting rules | active boundary submission candidate |
+| `mechanistic_evidence_identification_axis.md` | two-axis evidentiary framing and scope guard | active boundary governance |
 | `boundary_manuscript_draft.md` | longer theorem/audit draft | boundary audit |
-| `boundary_submission_spine.md` | three-pillar claim governance | active boundary governance |
+| `boundary_submission_spine.md` | conceptual + three-pillar claim governance | active boundary governance |
 | `calibration_transport_family.md` | canonical Gamma/eta family and calibration anchors | boundary theory bridge |
-| `make_boundary_identification_figure.py` | two-channel Gamma/joint-set figure | boundary Figure 1 source |
+| `make_mechanistic_evidence_axis_figure.py` | biological-level versus identification-strength concept figure | boundary/proposal conceptual figure source |
+| `make_boundary_identification_figure.py` | two-channel Gamma/joint-set figure | boundary quantitative figure source |
 | `make_multichannel_anchor_figure.py` | `k-1-r` anchor-dimension figure | boundary/proposal figure source |
-| `check_boundary_submission.py` | boundary venue/claim/word-count gate | active boundary CI gate |
+| `check_boundary_submission.py` | boundary venue/claim/word-count/concept gate | active boundary CI gate |
 | `build_boundary_reviewer_bundle.py` | anonymous boundary-only reviewer snapshot | active boundary review gate |
 | `boundary_reviewer_objection_audit.md` | adversarial reviewer-response and submission stop audit | boundary governance |
+| `EL_PERSPECTIVE_EDITORIAL_AUDIT.md` | desk-rejection audit for the Perspective proposal | venue governance |
 | `multiplicative_measurement_literature_audit.md` | primary-source audit of recurring multiplicative ecological measurements | boundary evidence audit |
 | `ecology_letters_perspective_proposal.md` | <=300-word Perspective proposal candidate | venue pitch |
+| `ecology_letters_perspective_email.md` | send-ready proposal email template | venue pitch |
 | `EL_PERSPECTIVE_VENUE_CHECK.md` | dated journal-requirement check | venue governance |
 | `TWO_PAPER_STRATEGY.md` | normative separation and no-double-counting rules | active governance |
 | `submission_manifest.json` | machine-readable MEE evidence boundary | active governance |
@@ -162,6 +190,7 @@ python paper/check_submission_bundle.py
 python paper/check_mee_submission.py
 python paper/check_boundary_submission.py
 python scripts/check_repository_boundaries.py
+python paper/make_mechanistic_evidence_axis_figure.py
 python paper/make_boundary_identification_figure.py
 python paper/make_multichannel_anchor_figure.py
 python paper/build_boundary_reviewer_bundle.py
