@@ -1,48 +1,45 @@
-# Mechanistic evidence is an identification property
+# Mechanistic evidence needs an identification axis
 
 Status: normative conceptual framing for the boundary paper.
 
 ## Core distinction
 
-Ecology often speaks as if biological measurement level and mechanistic strength lie on one axis: field patterns are treated as descriptive, while genomic, molecular or physiological measurements are treated as increasingly mechanistic. The boundary paper should not deny the value of mechanistic proximity. It should separate two properties that are often conflated:
+Ecological work uses *mechanistic* in more than one legitimate sense. Genomic, molecular and physiological measurements can be close to biological machinery and therefore mechanistically proximal. A different question is whether an observation distinguishes the competing mechanisms relevant to a particular claim.
+
+The boundary paper separates these properties:
 
 ```text
 biological proximity to a mechanism  !=  identification of a mechanism
 ```
 
-A molecular or genomic observation can be close to the machinery of a process yet remain compatible with several competing causal mechanisms. Conversely, a field-level observation can be strongly mechanistic evidence if, relative to explicit alternatives, it excludes all but one mechanism or sharply contracts the admissible mechanism set.
+A molecular or genomic observation can be close to the machinery of a process yet remain compatible with several competing causal mechanisms. Conversely, a field-level observation can be strong mechanistic evidence if, relative to explicit alternatives, it excludes mechanisms or sharply contracts the admissible mechanism set.
 
 The governing sentence is:
 
-> Mechanistic evidence should be classified by what it identifies, not by the biological level at which it is measured.
+> Mechanistic evidence should be classified partly by what it identifies, not by biological measurement level alone.
 
-A safer equivalent for contexts where point identification is too strong is:
+A compact equivalent is:
 
-> Measurement level and identification strength are orthogonal properties of ecological evidence.
+> Measurement level and identification strength are distinct properties of ecological evidence.
 
-## Replace the implicit hierarchy with two axes
+## Replace one ranking with two distinct axes
 
-The implicit one-dimensional hierarchy is
+Do not claim that ecology has formally adopted a universal hierarchy from field pattern to molecular mechanism. The safer observation is that biological depth and mechanistic strength are often discussed together, while their inferential roles are not the same.
 
-```text
-field pattern -> organismal process -> physiology -> genome/molecule
-                         increasingly "mechanistic"
-```
-
-The proposed framework uses two independent axes:
+Use two axes:
 
 ```text
-Axis 1: biological measurement level / proximity
+Axis 1: biological measurement level / mechanistic proximity
 Axis 2: identification strength
         non-identifying -> partially identifying -> point-identifying
 ```
 
-Nothing in the theory requires a monotone relation between these axes.
+No monotone relation between these axes is assumed.
 
 Examples:
 
 - a high-dimensional gene-expression profile shared by several candidate mechanisms can be biologically proximal but non-identifying;
-- a direct molecular intervention that uniquely separates declared alternatives can be both proximal and strongly identifying;
+- a direct molecular intervention or measurement that uniquely separates declared alternatives can be both proximal and strongly identifying;
 - a net field pattern such as total effective service can be distal and non-identifying;
 - a simple field measurement of a missing channel can be distal but highly identifying because it collapses an equivalence dimension.
 
@@ -50,7 +47,7 @@ The labels "distal" and "proximal" describe where a measurement sits in a biolog
 
 ## What the current theorems establish
 
-The multiplicative-chain and proxy-calibration results are not the whole claim; they are worked identification theorems that make the distinction exact in a recurring ecological architecture.
+The multiplicative-chain and proxy-calibration results are not the whole conceptual claim; they are worked identification theorems that make the distinction exact in a recurring ecological architecture.
 
 For
 
@@ -77,14 +74,17 @@ Do not write:
 - molecular data are not mechanistic;
 - genomics cannot identify mechanisms;
 - field observations are as mechanistic as molecular measurements in general;
-- biological scale is irrelevant.
+- biological scale is irrelevant;
+- ecology explicitly endorses one universal pattern-to-molecule hierarchy;
+- measurement level and identification strength are statistically independent.
 
 Write instead:
 
 - molecular and genomic measurements can provide mechanistic proximity, causal perturbations and strong biological constraints;
 - none of those properties alone guarantees identification among the particular competing mechanisms under study;
 - field observations need not remain merely descriptive when they are selected or designed to discriminate explicit alternatives;
-- the evidentiary status of a measurement is therefore conditional on the candidate mechanism set and observation map.
+- the evidentiary status of a measurement is conditional on the candidate mechanism set and observation map;
+- the two axes are distinct, but they may be correlated in particular research programmes.
 
 ## Consequence for Paper A
 
@@ -101,7 +101,7 @@ measurement level is not identification strength
 
 The main question is no longer only "when does a product hide its factors?" It is:
 
-> When does an ecological observation count as evidence about mechanism rather than only evidence about a pattern or net effect?
+> When does an ecological observation discriminate among explicit mechanisms rather than only characterise a pattern or net effect?
 
 ## Boundary with Paper B / RACH
 
@@ -123,6 +123,15 @@ The conceptual handoff is real, but RACH, NOV and RACH-SEQ remain non-headline a
 
 ## Literature positioning
 
-Use the literature carefully. Ecological genomics has explicitly been motivated by identifying genetic mechanisms underlying responses in natural environments, and genomic data are often described as offering more mechanistic understanding of ecological or eco-evolutionary change. At the same time, reviews also note that genomic data alone need not resolve the relevant ecological questions. Recent Ecology Letters discussion distinguishes causal effects from mechanistic investigations and emphasizes evidentiary requirements for mechanistic understanding.
+The literature is supportive but should be used without caricature.
 
-The paper therefore does not attack molecular ecology. It formalises a missing distinction within a broader mechanistic aspiration: proximity to machinery is one source of evidence; identification among alternatives is another.
+- Ungerer, Johnson & Herman (2008) define ecological genomics around genetic mechanisms in natural environments, establishing the legitimacy of the mechanistic-proximity axis.
+- Rudman et al. (2018) argue that genomic data can deepen mechanistic understanding while explicitly noting that genomic data alone are not sufficient to resolve the eco-evolutionary questions they discuss.
+- Grace et al. (2025) distinguish causal-effect estimation from mechanistic investigation and emphasise different evidentiary requirements.
+- Correia, Dee & Ferraro (2025) show that inference about intermediary ecological processes requires explicit definitions, assumptions, design and sensitivity analysis.
+- Smith et al. (2020) show that field experiments can reveal mechanistic drivers under natural conditions, demonstrating that field-level evidence is not intrinsically restricted to pattern description.
+- Siegel & Dee (2025) reinforce the broader design-first point that observational ecological data can support causal inference when the target and assumptions are explicit.
+
+The paper therefore does not attack molecular ecology. It formalises a missing distinction within a broader mechanistic aspiration: proximity to machinery is one source of mechanistic insight; identification among alternatives is another.
+
+See `paper/mechanistic_evidence_literature_audit.md` for the source-by-source claim audit and submission stop conditions.
