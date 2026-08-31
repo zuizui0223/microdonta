@@ -78,7 +78,6 @@ def main() -> None:
             f"Ecology Letters Perspective proposal exceeds 300 words: {proposal_words}"
         )
 
-    # Conceptual headline plus the quantitative and operational consequences.
     for token, label in (
         ("These properties need not coincide", "two-axis problem statement"),
         ("measurements close to biological machinery", "mechanistic-proximity axis"),
@@ -143,6 +142,7 @@ def main() -> None:
         ("Mechanistic evidence should be evaluated by what it identifies", "conceptual headline"),
         ("two **distinct** axes", "distinct evidence axes"),
         ("No monotone relation between these axes is assumed", "non-monotone scope guard"),
+        ("We do not claim that ecology has adopted a formal one-dimensional hierarchy", "explicit hierarchy non-claim"),
         ("Theorem N1-k", "k-channel theorem"),
         ("k - 1 - r", "anchor dimension rule"),
         ("1/Gamma <= kappa <= Gamma", "Gamma transport family"),
@@ -165,7 +165,6 @@ def main() -> None:
         "genomics cannot identify mechanisms",
         "biological scale is irrelevant",
         "two orthogonal axes",
-        "ecology has adopted a formal one-dimensional hierarchy",
     ):
         forbid(manuscript, token, "intrinsic biological-level ranking or overclaim")
 
