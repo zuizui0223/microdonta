@@ -24,12 +24,33 @@ ACTIVE = [
     ROOT / "causal_model" / "observation_value.py",
     ROOT / "causal_model" / "sequential_design.py",
 ]
+RETIRED_PATHS = [
+    "causal_model/causal_admissibility.py",
+    "causal_model/causal_replaceability.py",
+    "causal_model/nov_evsi.py",
+    "causal_model/nov_calibration.py",
+    "causal_model/rach_seq.py",
+    "causal_model/rach_set.py",
+    "causal_model/replaceability_nov.py",
+    "tests/test_causal_replaceability.py",
+    "tests/test_nov_evsi.py",
+    "tests/test_nov_calibration.py",
+    "tests/test_rach_seq.py",
+    "tests/test_rach_seq_nov_selection.py",
+    "tests/test_rach_seq_predictive_reweighting.py",
+    "tests/test_rach_set.py",
+    "tests/test_replaceability_nov.py",
+]
 
 
 def main() -> None:
     missing = [str(path.relative_to(ROOT)) for path in ACTIVE if not path.exists()]
     if missing:
         raise SystemExit("active naming surface missing:\n- " + "\n- ".join(missing))
+
+    stale_paths = [path for path in RETIRED_PATHS if (ROOT / path).exists()]
+    if stale_paths:
+        raise SystemExit("retired backend/test filenames remain:\n- " + "\n- ".join(stale_paths))
 
     combined = "\n".join(path.read_text(encoding="utf-8") for path in ACTIVE)
     if OFFICIAL not in combined:
@@ -67,7 +88,8 @@ def main() -> None:
     print("active naming OK")
     print(f"method: {OFFICIAL}")
     print("distribution: mechanism-resolution-design")
-    print("historical frozen identifiers: permitted only outside active branding surface")
+    print("retired backend/test filenames: absent")
+    print("historical frozen identifiers: permitted only as machine-level provenance")
 
 
 if __name__ == "__main__":
