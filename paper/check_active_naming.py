@@ -13,6 +13,8 @@ ACTIVE = [
     ROOT / "paper" / "manuscript.md",
     ROOT / "paper" / "supporting_information.md",
     ROOT / "paper" / "title_page_draft.md",
+    ROOT / "paper" / "cover_letter_draft.md",
+    ROOT / "paper" / "mee_submission_requirements_2026.md",
     ROOT / "paper" / "README.md",
     ROOT / "paper" / "REPOSITORY_SCOPE.md",
     ROOT / "paper" / "submission_manifest.json",
