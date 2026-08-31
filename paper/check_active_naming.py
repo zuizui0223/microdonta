@@ -59,9 +59,9 @@ def main() -> None:
     if 'name = "microdonta"' in pyproject or 'name = "rach"' in pyproject:
         raise SystemExit("retired distribution name remains")
 
-    manuscript = (ROOT / "paper" / "manuscript.md").read_text(encoding="utf-8")
+    manuscript = (ROOT / "paper" / "manuscript.md").read_text(encoding="utf-8").casefold()
     for token in ("admissible mechanism region", "observation information value", "sequential observation design"):
-        if token not in manuscript:
+        if token.casefold() not in manuscript:
             raise SystemExit(f"active manuscript missing descriptive term: {token}")
 
     print("active naming OK")
