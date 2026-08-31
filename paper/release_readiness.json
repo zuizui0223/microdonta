@@ -100,6 +100,11 @@
     "active_naming_gate": "paper/check_active_naming.py",
     "double_anonymous_main_manuscript": true,
     "title_page_separated": true,
+    "optional_cover_letter": {
+      "status": "draft_ready",
+      "path": "paper/cover_letter_draft.md",
+      "policy": "optional_editor_facing_not_for_peer_review"
+    },
     "ai_assistance_disclosed_in_methods": true
   },
   "public_api": "locked_by_tests/test_mechanism_resolution_public_api.py",
@@ -117,7 +122,7 @@
   "remaining_publication_operations": [
     "fill human-supplied title-page metadata",
     "export the journal-ready manuscript and Supporting Information",
-    "prepare the MEE cover letter",
+    "add the corresponding-author signature to the optional cover letter if it is used",
     "tag artifact_validation_sha 4e1c0360cd913ddc2db0179fc5c9feeac7d1daec as v0.1.0 when the submitted files are fixed",
     "mint and record an archival DOI after submission files are frozen"
   ],
