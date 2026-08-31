@@ -6,13 +6,12 @@ current admissible region A_epsilon, the publication quantity is
     V(Q) = I(S; Q | A_epsilon) / K,
 
 where S is the residual mechanism vector and K is the number of binary mechanism
-coordinates. The older implementation is reused as a numerical backend, while
-this module defines the publication-facing vocabulary.
+coordinates.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from .nov_evsi import candidate_mutual_information_bits, next_observation_evsi
+from .observation_information import candidate_mutual_information_bits, next_observation_evsi
 
 @dataclass(frozen=True)
 class InformationValueResult:
@@ -32,7 +31,7 @@ class InformationValueResult:
 
 def observation_information_value(accepted_rows, switches, candidates, *, min_sub_size: int = 1):
     """Return publication-facing information-value records for candidates."""
-    legacy = next_observation_evsi(
+    backend_rows = next_observation_evsi(
         accepted_rows,
         switches,
         candidates,
@@ -53,7 +52,7 @@ def observation_information_value(accepted_rows, switches, candidates, *, min_su
             information_identity_error=row.information_identity_error,
             reason=row.reason,
         )
-        for row in legacy
+        for row in backend_rows
     ]
 
 __all__ = [
