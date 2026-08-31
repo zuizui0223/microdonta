@@ -1,13 +1,13 @@
 {
-  "schema_version": 2,
-  "manuscript": "paper/mee_manuscript_draft.md",
+  "schema_version": 3,
+  "manuscript": "paper/manuscript.md",
   "figures": [
     {
       "label": "Figure 1",
       "section": "3.1",
       "output": "outputs/g5/figures/figure1_confound.png",
       "command": "python -m causal_model.confound_demo --figure outputs/g5/figures/figure1_confound.png",
-      "role": "controlled model-selection confound versus RACH admissible-set diagnosis"
+      "role": "controlled model-selection confound versus admissible-region diagnosis"
     },
     {
       "label": "Figure 2",
@@ -19,9 +19,9 @@
     {
       "label": "Figure 3",
       "section": "3.4",
-      "output": "outputs/g5/figures/figure3_nov_calibration.png",
-      "command": "python -m causal_model.nov_calibration --figure outputs/g5/figures/figure3_nov_calibration.png",
-      "role": "NOV information identity, stored-region exactness and predictive calibration"
+      "output": "outputs/g5/figures/figure3_information_value_calibration.png",
+      "command": "python -m causal_model.observation_value_calibration --figure outputs/g5/figures/figure3_information_value_calibration.png",
+      "role": "observation-information identity, stored-region exactness and predictive calibration"
     },
     {
       "label": "Figure S1",
@@ -31,10 +31,10 @@
       "role": "specified-simulator known-truth self-consistency"
     }
   ],
+  "external_companion": "zuizui0223/boundary",
   "excluded_from_figure_rebuild": [
-    "N1-N4 and bounded-drift boundary-paper figures",
-    "exact ecological projection figures",
-    "prospective Campanula figures",
+    "mechanistic-evidence and identification-boundary figures owned by the external companion repository",
+    "prospective natural-system mechanism figures",
     "provisional ecological rule panels",
     "structure-discovery figures",
     "Streamlit/UI screenshots",
