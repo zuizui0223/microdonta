@@ -2,15 +2,15 @@
 
 Status: normative claim-compression note for `paper/boundary_manuscript_submission.md`.
 
-The paper should be sold as a **Perspective on ecological evidence** with quantitative identification theorems, not as deep new algebra and not as a critique of molecular ecology.
+The paper should be sold as a **Perspective on ecological evidence** with quantitative identification theorems, not as deep new algebra, not as a critique of molecular ecology and not as a claim that ecology formally endorses one universal pattern-to-molecule hierarchy.
 
 ## One-sentence claim
 
-Mechanistic evidence is an identification property, not a biological-level label: measurements that are close to biological machinery can remain non-identifying, while strategically chosen field observations can strongly identify mechanism; recurring ecological product and proxy architectures make this distinction quantitatively exact.
+Mechanistic evidence needs an explicit identification axis in addition to biological proximity: measurements close to biological machinery can remain non-identifying, while strategically chosen field observations can strongly discriminate among mechanisms; recurring ecological product and proxy architectures make this distinction quantitatively exact.
 
 ## Governing conceptual distinction
 
-Keep these two axes separate:
+Keep these two axes distinct:
 
 ```text
 Axis 1: biological measurement level / mechanistic proximity
@@ -18,18 +18,21 @@ Axis 2: identification strength
         non-identifying -> partially identifying -> point-identifying
 ```
 
-The theory does **not** assert a monotone relation between the axes.
+The theory does **not** assert a monotone relation or statistical independence between the axes.
 
 Use the sentence:
 
-> Mechanistic evidence should be classified by what it identifies, not by the biological level at which it is measured.
+> Mechanistic evidence should be evaluated by what it identifies, not by biological measurement level alone.
 
 Also keep the scope guard visible:
 
 - molecular/genomic data can be highly proximal and highly identifying;
 - proximity alone does not guarantee identification among the declared alternatives;
 - field patterns can be non-identifying, but a field measurement can be strongly identifying when it separates alternatives or anchors a missing channel;
-- the evidentiary status of any measurement is conditional on the candidate mechanism set and observation map.
+- the evidentiary status of any measurement is conditional on the candidate mechanism set and observation map;
+- the paper separates two legitimate uses of *mechanistic* rather than attributing a formal hierarchy to the whole field.
+
+The literature basis for these statements is governed by `paper/mechanistic_evidence_literature_audit.md`.
 
 ## Three quantitative pillars
 
@@ -139,13 +142,15 @@ and community service is `sum_m service_m`. Degree, abundance or visitation alon
 
 Seed dispersal supplies an independent quantity-by-quality architecture and prevents the paper from reading as a pollination-specific critique.
 
-A declared change -> service -> dependency/assurance -> response chain illustrates the `k`-channel dimension rule: endpoint observation does not license inference of missing links. If the declared endpoint map is multiplicative with `k` positive stages, `k-1` independent channel anchors suffice for point identification; fewer leave an explicit residual dimension.
+A declared change -> service -> dependency/assurance -> response chain illustrates the `k`-channel dimension rule: endpoint observation does not license inference of missing links. If the declared endpoint map is multiplicative with `k` positive stages, `k-1` independent channel anchors suffice for point identification; fewer leave an explicit residual dimension. Correia, Dee & Ferraro (2025) is adjacent support for treating intermediary-process inference as a design-and-assumptions problem, not as proof that all ecological chains are products.
 
-Genomic/molecular examples belong only in the conceptual framing. Their role is to show why *proximity* should not be conflated with *identification*, not to claim that molecular data follow the multiplicative theorem.
+Genomic/molecular examples belong only in the conceptual framing. Their role is to show why *proximity* should not be conflated with *identification*, not to claim that molecular data follow the multiplicative theorem. Ungerer et al. (2008) and Rudman et al. (2018) should be cited as allies to mechanistic integration; Smith et al. (2020) supplies a field-level example of mechanistic testing under natural conditions; Grace et al. (2025) provides the adjacent causal-mechanism evidence discussion.
 
 ## Figure messages
 
-The Perspective ultimately benefits from a conceptual first figure with two orthogonal axes:
+### Figure 1 — conceptual evidence axes
+
+Use two **distinct** axes:
 
 ```text
 vertical: biological measurement level / proximity
@@ -160,9 +165,15 @@ Illustrative placements should include both directions:
 - distal net pattern that is non-identifying;
 - field channel anchor that is strongly identifying.
 
-The figure must state that positions are conditional on the candidate mechanism set and observation map.
+The figure must state that positions are conditional on the candidate mechanism set and observation map, and that no statistical independence between axes is claimed.
 
-The existing Gamma figure then carries the quantitative proxy theorem:
+### Figure 2 — channel-anchor dimension
+
+Show `k-1-r` versus the number of independent channel anchors for representative chain lengths. Its job is to convert the abstract equivalence dimension into a direct measurement-budget rule.
+
+### Figure 3 — Gamma transport family
+
+The Gamma figure carries the quantitative proxy theorem:
 
 - `Gamma=1`: one stable-calibration point;
 - finite `Gamma`: a sharp segment on `rho_F rho_E=rho_W`;
@@ -171,13 +182,11 @@ The existing Gamma figure then carries the quantitative proxy theorem:
 - worked directional breakdown at `Gamma*=1.34`;
 - legacy `delta=0.34` appears, if at all, only as “34% upward drift”.
 
-A compact dimension graphic may show `k-1-r` versus the number of independent channel anchors for a representative chain.
-
 ## Abstract compression target
 
 The abstract should do only five jobs:
 
-1. separate mechanistic proximity from identification strength;
+1. separate mechanistic proximity from identification strength without asserting a universal field-wide hierarchy;
 2. state the `k-1-r` dimension rule as the exact product-chain demonstration;
 3. give the Gamma family, joint set and breakdown factor for the two-channel proxy case;
 4. distinguish channel anchors from calibration anchors and give the joint-reporting consequence;
@@ -199,7 +208,7 @@ mechanistic proximity != mechanistic identification
 -> joint geometry converts theorem into reporting rule
 ```
 
-The paper is strongest when described as **evidentiary reclassification plus coverage and closure**: elementary algebra is carried through from ecological measurement collapse to partial identification, robustness, field design and reporting.
+The paper is strongest when described as **an added identification axis plus coverage and closure**: elementary algebra is carried through from ecological measurement collapse to partial identification, robustness, field design and reporting.
 
 ## Boundary with the RACH paper
 
@@ -221,8 +230,10 @@ Do not merge these claims. RACH/NOV/RACH-SEQ remain non-headline and non-require
 
 Do not submit if any of the following reappears:
 
+- the paper says ecology formally endorses a universal field-to-molecule hierarchy;
 - the paper intrinsically ranks molecular/genomic evidence above or below field evidence;
 - “molecular data are not mechanistic” or an equivalent claim appears;
+- `orthogonal` is used to imply statistical independence of the two evidence axes;
 - the conceptual headline loses the distinction between mechanistic proximity and identification strength;
 - the broad two-axis claim is presented as a theorem for all ecological observation maps rather than a Perspective supported by worked theorems;
 - `delta` is the primary robustness scale rather than a directional translation;
