@@ -2,18 +2,17 @@
   "schema_version": 6,
   "primary_target": "Methods in Ecology and Evolution",
   "manuscript_type": "Research Article",
-  "primary_product": "information-theoretic observation design for resolving mechanistic ambiguity",
+  "primary_product": "Mechanism-Resolving Observation Design",
   "claim_spine": [
-    "retain the admissible mechanism region rather than forcing a single winner",
-    "quantify residual mechanism entropy, resolvability and replaceability",
-    "validated observation information value equals I(S;Q|A_epsilon)/K",
+    "admissible mechanism region and residual mechanism ambiguity",
+    "observation information value equals normalized mechanism-observation mutual information",
     "sequential observation design recomputes and selects maximum current information value",
     "truth-peek-free G2 matched-policy selection validation",
     "reproducible software and reviewer evidence bundle"
   ],
   "governance": [
     "docs/mainline.md",
-    "BOUNDARY_REPOSITORY.md",
+    "paper/REPOSITORY_SCOPE.md",
     "paper/g2_frozen_benchmark_protocol.json",
     "paper/run_g2_frozen_benchmark.py",
     "paper/results/g2_frozen_v2_summary.json",
@@ -28,14 +27,22 @@
     "paper/title_page_draft.md"
   ],
   "main_text": {
-    "manuscript": ["paper/mee_manuscript_draft.md"],
+    "manuscript": [
+      "paper/manuscript.md"
+    ],
     "method": [
       "causal_model/admissible_mechanisms.py",
-      "causal_model/causal_admissibility.py",
-      "causal_model/causal_replaceability.py",
-      "causal_model/mechanism_equivalence.py",
       "causal_model/observation_value.py",
-      "causal_model/sequential_design.py"
+      "causal_model/sequential_design.py",
+      "causal_model/mechanism_equivalence.py",
+      "causal_model/causal_replaceability.py",
+      "docs/mechanism_resolution_theory.md",
+      "docs/observation_information_foundations.md"
+    ],
+    "compatibility_backends": [
+      "causal_model/causal_admissibility.py",
+      "causal_model/nov_evsi.py",
+      "causal_model/rach_seq.py"
     ],
     "validation": [
       "causal_model/confound_demo.py",
@@ -55,11 +62,19 @@
       "causal_model/nov_calibration.py",
       "causal_model/known_truth_benchmark.py"
     ],
-    "release": ["paper/release_readiness.json", "CITATION.cff"]
+    "release": [
+      "paper/release_readiness.json",
+      "CITATION.cff",
+      ".zenodo.json"
+    ]
   },
   "supplementary": {
-    "main": ["paper/supporting_information.md"],
-    "protocol": ["paper/g2_frozen_benchmark_protocol.json"],
+    "main": [
+      "paper/supporting_information.md"
+    ],
+    "protocol": [
+      "paper/g2_frozen_benchmark_protocol.json"
+    ],
     "frozen_results": [
       "paper/results/g2_frozen_v2_summary.json",
       "paper/results/submission_validation_summary.json",
@@ -67,12 +82,13 @@
     ]
   },
   "external_companion": {
-    "repository": "https://github.com/zuizui0223/boundary",
-    "role": "separate mechanistic-evidence identification-boundary Perspective",
-    "submission_dependency": false
+    "repository": "zuizui0223/boundary",
+    "role": "mechanistic-evidence and identification-boundary Perspective",
+    "submission_blocker_for_mee": false,
+    "local_active_copy_allowed": false
   },
   "excluded_from_primary": {
-    "ecological_projection_and_prospective_case": [
+    "prospective_natural_system_material": [
       "causal_model/campanula_real_data.py",
       "paper/campanula_primary_literature_audit.md"
     ],
@@ -81,9 +97,15 @@
       "causal_model/ecological_rules_validation.py",
       "causal_model/converse_bergmann.py"
     ],
-    "future_method_extension": ["causal_model/structure_discovery.py"],
-    "support_backend_not_evidence": ["attraction_trait_model"],
-    "application_not_evidence": ["apps/streamlit_app.py"],
+    "future_method_extension": [
+      "causal_model/structure_discovery.py"
+    ],
+    "support_backend_not_evidence": [
+      "attraction_trait_model"
+    ],
+    "application_not_evidence": [
+      "apps/streamlit_app.py"
+    ],
     "external_program": {
       "owner_repository": "zuizui0223/eco-genetic-criticality",
       "local_policy": "reference_only_no_code_docs_examples_or_tests"
