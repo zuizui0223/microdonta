@@ -19,4 +19,5 @@ def test_boundary_submission_gate_passes_current_candidate():
     )
     assert completed.returncode == 0, completed.stdout
     assert "candidate venue: Ecology Letters Perspective" in completed.stdout
+    assert "mechanistic evidence axes: pass" in completed.stdout
     assert "paper separation: pass" in completed.stdout
