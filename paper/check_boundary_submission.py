@@ -15,6 +15,7 @@ MANUSCRIPT = ROOT / "paper/boundary_manuscript_submission.md"
 PROPOSAL = ROOT / "paper/ecology_letters_perspective_proposal.md"
 PROPOSAL_EMAIL = ROOT / "paper/ecology_letters_perspective_email.md"
 EDITORIAL_AUDIT = ROOT / "paper/EL_PERSPECTIVE_EDITORIAL_AUDIT.md"
+EVIDENCE_AXIS = ROOT / "paper/mechanistic_evidence_identification_axis.md"
 STRATEGY = ROOT / "paper/TWO_PAPER_STRATEGY.md"
 
 WORD_RE = re.compile(r"\b[\w*<>/=+.-]+\b", re.UNICODE)
@@ -52,6 +53,7 @@ def main() -> None:
     proposal = PROPOSAL.read_text(encoding="utf-8")
     proposal_email = PROPOSAL_EMAIL.read_text(encoding="utf-8")
     editorial_audit = EDITORIAL_AUDIT.read_text(encoding="utf-8")
+    evidence_axis = EVIDENCE_AXIS.read_text(encoding="utf-8")
     strategy = STRATEGY.read_text(encoding="utf-8")
 
     abstract = section(manuscript, "Abstract")
@@ -74,17 +76,18 @@ def main() -> None:
             f"Ecology Letters Perspective proposal exceeds 300 words: {proposal_words}"
         )
 
-    # Current proposal guidance plus the desk-rejection audit: nature, novelty,
-    # broad disciplinary contribution, author qualification, Perspective-vs-Method
-    # distinction, cross-domain scope and direct operational consequences.
+    # Conceptual headline plus the quantitative and operational consequences.
     for token, label in (
-        ("structural measurement boundary", "nature of proposed Perspective"),
-        ("The novelty is a quantitative ecological measurement framework", "positive novelty positioning"),
+        ("conflates two different properties", "two-axis problem statement"),
+        ("proximity to biological machinery", "mechanistic-proximity axis"),
+        ("identification among competing mechanisms", "identification-strength axis"),
+        ("The novelty is a quantitative ecological framework", "positive novelty positioning"),
         ("k-1-r", "quantitative anchor consequence"),
         ("breakdown factor", "calibration consequence"),
         ("cannot be reported independently", "joint reporting consequence"),
         ("seed dispersal", "independent cross-domain architecture"),
         ("before any estimator is chosen", "Perspective-vs-Method distinction"),
+        ("two axes", "explicit replacement of one-dimensional hierarchy"),
         ("The author works on ecological measurement", "author qualification"),
     ):
         require(proposal_body, token, label)
@@ -104,12 +107,27 @@ def main() -> None:
         "Why is this a Perspective rather than a Method?",
         "What is genuinely new if the algebra is elementary?",
         "Is the scope broad enough for general ecology?",
+        "Does this attack molecular or genomic ecology?",
         "What changes for a field ecologist tomorrow?",
+        "Is this just causal-inference relabelling?",
     ):
         require(editorial_audit, token, "editorial desk-rejection audit")
 
-    # Boundary-paper scientific spine.
+    # The conceptual governance note must retain both the positive claim and the
+    # scope guard against ranking biological levels intrinsically.
+    for token in (
+        "Mechanistic evidence should be classified by what it identifies",
+        "Measurement level and identification strength are orthogonal properties",
+        "molecular and genomic measurements can provide mechanistic proximity",
+        "field observations need not remain merely descriptive",
+    ):
+        require(evidence_axis, token, "mechanistic-evidence governance")
+
+    # Boundary-paper scientific and conceptual spine.
     for token, label in (
+        ("Mechanistic evidence should be classified by what it identifies", "conceptual headline"),
+        ("biological measurement level or proximity", "measurement-level axis"),
+        ("identification strength", "identification-strength axis"),
         ("Theorem N1-k", "k-channel theorem"),
         ("k - 1 - r", "anchor dimension rule"),
         ("1/Gamma <= kappa <= Gamma", "Gamma transport family"),
@@ -120,6 +138,15 @@ def main() -> None:
         ("S_m = V_m E_m", "pollination effective-service example"),
     ):
         require(manuscript, token, label)
+
+    # Reject regressions to either extreme: molecular-level triumphalism or an
+    # anti-molecular framing that the Perspective does not support.
+    for token in (
+        "molecular data are not mechanistic",
+        "genomics cannot identify mechanisms",
+        "biological scale is irrelevant",
+    ):
+        forbid(manuscript, token, "intrinsic biological-level ranking")
 
     # The boundary candidate must not become a second copy of the RACH methods paper.
     for token in (
@@ -138,8 +165,8 @@ def main() -> None:
     print(f"abstract words: {abstract_words}")
     print(f"proposal words: {proposal_words}")
     print("proposal paragraphs: 1")
-    print("proposal editorial audit: pass")
     print("proposal email recipients: 2")
+    print("mechanistic evidence axes: pass")
     print("paper separation: pass")
 
 
