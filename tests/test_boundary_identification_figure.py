@@ -1,5 +1,5 @@
 from importlib.util import module_from_spec, spec_from_file_location
-from math import isclose
+from math import exp, isclose
 from pathlib import Path
 
 from causal_model.bounded_proxy_drift import identify_under_bounded_proxy_drift
@@ -26,8 +26,19 @@ def test_joint_log_geometry_and_breakdown_values_used_by_boundary_figure():
     impossible_product = result.fecundity.upper * result.establishment.upper
     assert not isclose(impossible_product, rho_w)
 
-    # The actual joint endpoints preserve the observed net ratio exactly.
-    for rho_f, rho_e in result.joint_ratio_endpoints:
+    # The two actual joint endpoints are the exponentiated log-segment endpoints
+    # and preserve the observed net ratio exactly.
+    endpoints = (
+        (
+            exp(segment.log_fecundity_at_kappa_lower),
+            exp(segment.log_establishment_at_kappa_lower),
+        ),
+        (
+            exp(segment.log_fecundity_at_kappa_upper),
+            exp(segment.log_establishment_at_kappa_upper),
+        ),
+    )
+    for rho_f, rho_e in endpoints:
         assert isclose(rho_f * rho_e, rho_w)
 
 
