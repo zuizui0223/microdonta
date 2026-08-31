@@ -4,7 +4,7 @@
 
 ## Publication paths
 
-microdonta now supports two deliberately separate papers.
+microdonta supports two deliberately separate papers.
 
 ### MEE method paper
 
@@ -29,18 +29,33 @@ selections, while using 2.673 versus 1.518 observations.
 The companion boundary programme is:
 
 ```text
-N1 net-only non-identifiability
-→ N2 exact-channel sufficiency
-→ N3 stable-proxy point identification
-→ bounded calibration-drift identified intervals
-→ directional breakdown points and design rules
-→ N4 unbounded-drift non-identifiability
+net-only quotient / k-channel equivalence dimension
+→ channel anchors reduce residual dimension: k-1-r
+→ two-channel calibration-transport family
+     Gamma=1          : point identification (N3)
+     1<Gamma<infinity : sharp partial identification + breakdown
+     Gamma->infinity  : non-identification (N4)
+→ calibration-anchor ladder
+→ joint-set reporting rule
 ```
 
-If `q_1/q_0 in [1-delta,1+delta]`, the complementary-channel ratio lies in
-`[rho_hat(1-delta),rho_hat(1+delta)]`, with multiplicative width
-`(1+delta)/(1-delta)`. This theory is maintained separately and does not block the
-MEE method submission.
+For a declared positive chain `W=prod_j F_j`, net-only observation leaves a
+`(k-1)`-dimensional product-preserving equivalence class in log coordinates. If
+`r` independent channel values or channel ratios are directly anchored, the
+residual unidentified dimension is `k-1-r`; `k-1` channel anchors suffice for
+point identification of the final factor from the product.
+
+For the common two-channel proxy case, the canonical transport restriction is
+
+```text
+1/Gamma <= kappa=q_1/q_0 <= Gamma,   Gamma>=1.
+```
+
+The complementary-channel marginal is `[rho_hat/Gamma,rho_hat*Gamma]`, and the
+sharp joint set preserves `rho_F rho_E=rho_W`. Directional robustness is reported
+with the reference-invariant factor `Gamma*=max(rho_hat,1/rho_hat)` (or
+`eta*=|log rho_hat|`). The worked decline has `Gamma*=1.34`; 34% upward drift is
+a directional translation rather than the canonical robustness scale.
 
 The normative split is in [`paper/TWO_PAPER_STRATEGY.md`](paper/TWO_PAPER_STRATEGY.md).
 The active MEE evidence boundary is
@@ -89,40 +104,47 @@ results into empirical proof.
 
 ```text
 causal_model/
-  causal_admissibility.py          admissible regions, CA, D_RACH, R_RACH
-  causal_replaceability.py         causal replaceability / CRC
-  mechanism_equivalence.py         residual equivalence structure
-  nov_evsi.py                      validated NOV / EVSI
-  rach_seq.py                      sequential observation selection
-  generality_sweep.py              frozen G2 policy benchmark generator
-  bounded_proxy_drift.py           separate boundary-paper partial identification
+  causal_admissibility.py            admissible regions, CA, D_RACH, R_RACH
+  causal_replaceability.py           causal replaceability / CRC
+  mechanism_equivalence.py           residual equivalence structure
+  nov_evsi.py                        validated NOV / EVSI
+  rach_seq.py                         sequential observation selection
+  generality_sweep.py                frozen G2 policy benchmark generator
+  multichannel_identifiability.py    k-channel quotient dimension / channel anchors
+  calibration_transport_family.py    symmetric Gamma/eta transport family
+  bounded_proxy_drift.py             legacy directional-delta sensitivity
   channel_identifiability_theory.py
-  proxy_calibration_theory.py      separate N1–N4 boundary theory
+  proxy_calibration_theory.py        stable/unrestricted proxy constructions
 
 paper/
-  mee_manuscript_draft.md          active RACH method manuscript
-  supporting_information.md        active method SI
-  boundary_manuscript_draft.md     separate boundary-paper draft
-  TWO_PAPER_STRATEGY.md            no-double-counting governance
-  submission_manifest.json         active MEE evidence inventory
+  mee_manuscript_draft.md            active RACH method manuscript
+  supporting_information.md          active method SI
+  boundary_manuscript_submission.md  compressed boundary-paper candidate
+  boundary_manuscript_draft.md       longer boundary-paper audit draft
+  boundary_submission_spine.md       three-pillar claim governance
+  TWO_PAPER_STRATEGY.md              no-double-counting governance
+  submission_manifest.json           active MEE evidence inventory
 ```
 
 The repository also retains supplementary ABM backends, adapters and archived
 exploratory programmes. They are not primary evidence for the MEE paper unless
 explicitly listed in the submission manifest.
 
-## izu-core translation tracks
+## izu-core questions: resolved publication roles
 
-The three izu-core questions remain nonblocking real-system translation tracks:
+The three izu-core questions no longer share one generic “translation track”.
+Their roles differ.
 
-| Source question | RACH observation contract |
-|---|---|
-| signed functional starting position | freeze `plant_trait - pollinator_functional_center` before outcome inspection |
-| network context to effective service | measure `sum_k(visitor_rate_k * direct_effectiveness_k)` rather than treating degree or abundance as service |
-| complete pollinator-change chain | observe change → service → dependency/assurance → response without inferring missing links |
+| Source question | Publication role | Contract |
+|---|---|---|
+| signed functional starting position | **RACH paper evidence-role example** | freeze `plant_trait - pollinator_functional_center` before outcome inspection; use as `input_context`, not an independent acceptance target |
+| network context to effective service | **boundary paper ecological motivation** | at visitor type `m`, measure `visitor_rate_m * direct_effectiveness_m`; community service is `sum_m` of those contributions; do not treat degree or abundance alone as service |
+| complete pollinator-change chain | **boundary paper k-channel design generalisation** | declare the change → service → dependency/assurance → response observation map; do not infer missing links from endpoints; in a declared positive k-stage product, r independent channel anchors leave dimension `k-1-r` |
 
-Their estimands and evidence gates are specified, but they are not yet empirical
-validation of RACH or of the ecological mechanisms.
+The signed-starting-position example does not validate a natural-system RACH
+mechanism claim. The effective-service and complete-chain questions are now part
+of the boundary paper's measurement-theory motivation and design consequences,
+not deferred empirical validation.
 
 ## Installation and core checks
 
@@ -163,41 +185,46 @@ Hidden-truth false exclusion was zero in every policy-by-budget cell.
 Exact frozen values and provenance are in
 [`paper/results/g2_frozen_v2_summary.json`](paper/results/g2_frozen_v2_summary.json).
 
-## Boundary-theory calculation
+## Boundary-theory calculations
 
 ```python
-from causal_model.bounded_proxy_drift import (
-    design_rule_for_interval,
-    identify_under_bounded_proxy_drift,
+from causal_model.multichannel_identifiability import (
+    residual_equivalence_dimension,
 )
 
-result = identify_under_bounded_proxy_drift(
-    net_ratio=0.60,
-    proxy_ratio=0.80,
-    delta=0.20,
-    proxy_channel="fecundity",
-)
-
-print(result.establishment.lower, result.establishment.upper)
-# 0.60, 0.90
-
-rule = design_rule_for_interval(
-    result.establishment,
-    target_channel="establishment",
-)
-print(rule.status)
-# sign_identified
+chain = residual_equivalence_dimension(channels=4, independent_anchors=2)
+print(chain.residual_dimension)
+# 1
 ```
 
-This calculation reports the identified set implied by a declared calibration
-bound. It does not estimate `delta` or certify the proxy.
+For proxy transport:
+
+```python
+from causal_model.calibration_transport_family import (
+    breakdown_factor,
+    symmetric_interval,
+)
+
+interval = symmetric_interval(1 / 1.34, gamma=1.20)
+print(interval.lower, interval.upper)
+
+gamma_star, eta_star = breakdown_factor(1 / 1.34)
+print(gamma_star)
+# 1.34
+```
+
+These calculations report structural consequences of declared observation maps
+and transport bounds. They do not estimate the calibration bound or certify a
+proxy from the same net/proxy observations.
 
 ## Documentation
 
 - `docs/mainline.md` — normative MEE RACH/NOV/RACH-SEQ boundary
 - `paper/TWO_PAPER_STRATEGY.md` — two-paper split and no-double-counting rules
-- `paper/boundary_manuscript_draft.md` — N1–N4/bounded-drift paper draft
-- `docs/bounded_proxy_drift_identification.md` — identified sets and breakdowns
+- `paper/boundary_manuscript_submission.md` — compressed boundary-paper candidate
+- `paper/boundary_submission_spine.md` — three-pillar boundary-paper governance
+- `paper/calibration_transport_family.md` — Gamma/eta family and calibration anchors
+- `docs/bounded_proxy_drift_identification.md` — legacy delta identified sets and breakdowns
 - `docs/rach_theory.md` — RACH method definition
 - `docs/rach_mathematical_foundations.md` — NOV information identity and bounds
 - `paper/g2_frozen_benchmark_protocol.json` — frozen selection protocol
@@ -209,5 +236,5 @@ bound. It does not estimate `delta` or certify the proxy.
 The MEE result is a validated observation-selection method over a declared frozen
 synthetic family. It does not establish universal optimality or a natural-system
 mechanism. The boundary theorem is universal only over declared positive
-multiplicative channel models. Neither scope statement should be weakened during
-submission preparation.
+multiplicative channel models and the observation maps explicitly analysed.
+Neither scope statement should be weakened during submission preparation.

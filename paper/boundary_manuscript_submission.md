@@ -1,32 +1,59 @@
-# Calibration transport determines what proxy comparisons can identify
+# From ecological products to mechanisms: identification and calibration transport in multiplicative chains
 
 ## Abstract
 
-Relative proxy comparisons are often treated as robust because unknown absolute calibration cancels in a ratio. That claim is valid only when the proxy-to-channel conversion transports across the regimes being compared. We formalise the resulting identification problem for positive multiplicative ecological responses. Let total performance be `W_i=F_iE_i` and a proxy for one channel be `X_i=q_iF_i`, with between-regime calibration ratio `kappa=q_1/q_0`. Stable, bounded and unrestricted transport are one family under the multiplicatively symmetric restriction `1/Gamma <= kappa <= Gamma`, `Gamma>=1`. `Gamma=1` gives point identification; finite `Gamma>1` gives a sharp joint identified set; and `Gamma->infinity` recovers non-identification. The complementary-channel marginal is `[rho_hat/Gamma,rho_hat*Gamma]`, while the two channels remain exactly coupled by `rho_F rho_E=rho_W`. In log-ratio coordinates the sharp joint set is therefore a line segment of slope `-1`. Directional robustness is summarized by the reference-invariant breakdown factor `Gamma*=max(rho_hat,1/rho_hat)` or `eta*=|log rho_hat|`. In the worked example, `Gamma*=1.34`: the inferred decline first reaches no change at a 1.34-fold calibration distortion, corresponding to 34% upward drift in that direction. The transport bound is not identified from the same net-response and proxy observations; its purpose is to expose assumption dependence. Direct calibration creates an anchor ladder: zero anchors leave unrestricted transport non-identified, one anchor plus an external finite bound gives partial identification and a breakdown factor, and two anchors measure `kappa` directly and restore point identification. A second operational consequence is that channel-specific calibration uncertainty must be reported jointly rather than as independently combinable error bars. The algebra is elementary; the contribution is to close a recurring ecological measurement architecture from information boundary through partial identification to field-design and reporting rules.
+Ecologists often infer mechanism from quantities that multiply several biological stages. Such products can be measured precisely while remaining structurally uninformative about how performance is allocated among their latent channels. We formalise this problem for positive multiplicative ecological chains. For `W=prod_j F_j`, net-only observations are invariant under product-preserving reallocations of the factors; in log coordinates the observational equivalence class has dimension `k-1` for a `k`-channel chain. Each independent direct channel anchor removes one dimension, so `r` anchors leave `k-1-r` unresolved dimensions and `k-1` anchors point-identify the final channel from the product. We then treat the common two-channel proxy case `W_i=F_iE_i`, `X_i=q_iF_i`. Stable, bounded and unrestricted proxy transport form one family under `1/Gamma <= q_1/q_0 <= Gamma`. Finite `Gamma` yields a sharp joint identified set and a reference-invariant breakdown factor; the same calibration ratio couples the two latent channel ratios exactly, producing a slope-`-1` segment in log-ratio coordinates. Direct calibration creates a separate 0/1/2 calibration-anchor ladder, and the joint geometry implies that channel uncertainties must not be reported as independently combinable error bars. The algebra is elementary; the contribution is to close a recurring ecological measurement architecture from information boundary through partial identification to field-design and reporting rules.
 
 ## 1. Introduction
 
-Ecological performance is often represented as a product of biological stages. Pollination studies combine visitation quantity with per-visit effectiveness; seed-dispersal studies explicitly combine quantity with post-dispersal quality; recruitment can combine propagule production with subsequent establishment over a declared census interval. These factorizations are biologically useful because they separate stages that can respond differently to environmental change. They also create an identification problem: the product may be well measured while its components remain unresolved.
+Ecological performance is frequently assembled from multiple biological stages. Pollination offers a concrete example. At visitor-type `m`, effective contribution can be written as
 
-The problem is sharper when a component is observed through a proxy. Relative comparisons are commonly used to avoid unknown absolute calibration. If the proxy is `X_i=q_iF_i`, an unknown constant scale indeed cancels when `q_1=q_0`. But the scientifically relevant question is not whether absolute calibration is known. It is whether calibration transports across the regimes being compared. Fragmented versus connected habitat, urban versus rural sites, warm versus cool years, or communities with different visitor identities are precisely the contrasts in which the proxy-to-channel conversion may change.
+```text
+S_m = V_m E_m,
+```
 
-We develop three linked results. First, apparently rich observations of the net response remain mechanistically non-identifying because they are invariant to reciprocal reallocation between latent channels. Second, stable, bounded and unrestricted proxy transport form one calibration family that yields point identification, sharp partial identification and non-identification as limiting cases; this family also supplies a reference-invariant breakdown factor. Third, the same structure gives two operational rules: direct calibration effort forms an anchor ladder, and uncertainty generated by one calibration ratio must be reported as a coupled joint set rather than two independent marginal error bars.
+where `V_m` is interaction quantity (for example visitation rate) and `E_m` is per-interaction effectiveness. Community service then aggregates those contributions,
 
-The argument belongs to the established traditions of structural identifiability and partial identification. We do not claim new identifiability algebra. The contribution is ecological and operational: to identify a recurring measurement architecture, derive its exact information boundary, and carry that boundary through sensitivity analysis to concrete field-design and reporting consequences.
+```text
+S = sum_m V_m E_m.
+```
 
-## 2. Observation model
+Network degree, visitor abundance or visitation alone may describe or proxy the quantity side of this architecture, but they are not effective service unless the effectiveness term is fixed or otherwise known. The product problem therefore occurs within each interaction type, while summation across types can add a second allocation ambiguity. This is not a special construction for our theorem: pollination studies explicitly combine visitation with per-visit effectiveness, and seed-dispersal theory explicitly combines quantity with post-dispersal quality.
+
+The same logic appears in longer ecological measurement chains. A pollinator-change study may wish to connect change in the visitor community to effective service, dependency or reproductive assurance, and finally a demographic or trait response. Observing only an endpoint does not, by itself, identify which unobserved intermediate stage changed. If a declared endpoint factorises as a product of positive stages, the number of unresolved stages has a precise structural meaning.
+
+A second problem appears when one stage is observed only through a proxy. Relative comparisons are commonly used to avoid unknown absolute calibration. If the proxy is `X_i=q_iF_i`, an unknown constant scale indeed cancels when `q_1=q_0`. But the scientifically relevant question is not whether absolute calibration is known. It is whether calibration transports across the regimes being compared. Fragmented versus connected habitat, urban versus rural sites, warm versus cool years, or communities with different visitor identities are precisely the contrasts in which the proxy-to-channel conversion may change.
+
+We develop three linked results. First, net-only observations define an equivalence class rather than a unique mechanism decomposition. For a `k`-channel product this class has `k-1` free dimensions; each independent direct channel anchor removes one. Second, in the common two-channel proxy case, stable, bounded and unrestricted proxy transport form one calibration family that yields point identification, sharp partial identification and non-identification as limiting cases, together with a reference-invariant breakdown factor. Third, these boundaries generate operational rules: distinguish channel anchors from calibration anchors, match direct measurement effort to the desired identification strength, and report calibration-induced uncertainty as the coupled joint set rather than as independent marginal error bars.
+
+The argument belongs to the established traditions of structural identifiability and partial identification. We do not claim new identifiability algebra. The contribution is ecological and operational: to identify a recurring measurement architecture, quantify the dimension of its unresolved mechanism space, derive a sharp transport-sensitive identified set, and carry those boundaries through sensitivity analysis to concrete field-design and reporting consequences.
+
+## 2. Observation models
+
+### 2.1 A positive multiplicative chain
+
+Let a declared ecological output be
+
+```text
+W(z) = prod_{j=1}^k F_j(z),    F_j(z)>0.
+```
+
+The factorisation must be biologically justified for the chosen output, domain and census interval. The theory does not assert that every ecological response is multiplicative. It asks what follows when investigators already use a multiplicative measurement architecture.
+
+A net-only observation is any deterministic functional
+
+```text
+O = Phi(W).
+```
+
+This includes the full response curve `W(z)`, all threshold-feasible sets `Omega_t={z:W(z)>=t}`, and any geometry or topology derived solely from them.
+
+### 2.2 The two-channel proxy case
 
 For regimes `i in {0,1}`, let
 
 ```text
-W_i(z)=F_i(z)E_i(z),    F_i(z)>0, E_i(z)>0,
-```
-
-where `W` is the declared net output and `F` and `E` are positive channels. The factorisation must be biologically justified for the chosen output and census interval; the theory does not assert that every ecological response is multiplicative.
-
-Suppose a proxy targets `F`:
-
-```text
+W_i(z)=F_i(z)E_i(z),
 X_i(z)=q_i(z)F_i(z),    q_i(z)>0.
 ```
 
@@ -56,9 +83,9 @@ rho_E=(rho_W/rho_X)kappa.
 
 Write `rho_E_hat=rho_W/rho_X` for the value obtained under stable calibration `kappa=1`.
 
-## 3. Net-only observations do not identify the decomposition
+## 3. Net-only observations define a quotient, not a mechanism
 
-### Theorem N1 — net-only invariance
+### Theorem N1 — two-channel net-only invariance
 
 For any positive function `c(z)`, define
 
@@ -67,17 +94,55 @@ F_c(z)=c(z)F(z),
 E_c(z)=E(z)/c(z).
 ```
 
-Then `F_c(z)E_c(z)=F(z)E(z)=W(z)` pointwise. Consequently every deterministic net-only observation `Phi(W)` is invariant under the transformation `(F,E)->(cF,E/c)`.
+Then `F_cE_c=FE=W` pointwise. Consequently every deterministic net-only observation `Phi(W)` is invariant under `(F,E)->(cF,E/c)`.
 
-The positive functions form a multiplicative group acting on latent decompositions, and `W=FE` is invariant under that action. Every net-only observable therefore factors through the quotient by these orbits. The complete performance curve, all threshold-feasible sets
+The positive functions form a multiplicative group acting on latent decompositions, and `W=FE` is invariant under that action. Every net-only observable therefore factors through the quotient by these orbits. Complete performance curves, all threshold-feasible sets and every boundary, width, connected-component count or topological summary derived from them belong to the same invariant class. They can describe the net ecological pattern arbitrarily well while containing no data-based information about how the product is allocated between latent channels.
+
+### Theorem N1-k — a `k`-channel chain leaves `k-1` unresolved dimensions
+
+For
 
 ```text
-Omega_t={z:W(z)>=t},
+W = prod_{j=1}^k F_j,
 ```
 
-and every boundary, width, volume, connected-component count or topological summary derived solely from them belong to the same invariant class. They can describe the net ecological pattern arbitrarily well while containing no data-based information about how the product is allocated between `F` and `E`.
+let positive multipliers `c_1,...,c_k` satisfy
 
-An exact channel observation breaks this equivalence by division. If `W_i` and `F_i` are observed on the same domain and census scale, then `E_i=W_i/F_i`, and symmetrically for an observed `E_i`. The remaining question is whether a calibration learned in one regime can be transported to another.
+```text
+prod_{j=1}^k c_j = 1.
+```
+
+Then the transformation
+
+```text
+F_j -> c_j F_j
+```
+
+leaves `W` unchanged. In log coordinates, product-preserving perturbations satisfy
+
+```text
+sum_{j=1}^k d_j = 0,
+```
+
+which is a `(k-1)`-dimensional subspace. Hence net-only observation of a positive `k`-channel product leaves a `(k-1)`-dimensional mechanism-equivalence class.
+
+The result has an immediate anchor corollary. If `r` independent channel values (or, in a before/after analysis, `r` independent channel ratios) are directly observed, each anchor fixes one independent coordinate. The residual unidentified dimension is
+
+```text
+k - 1 - r,    0 <= r <= k-1.
+```
+
+When `r=k-1`, the final channel is recovered by division:
+
+```text
+F_k = W / prod_{j=1}^{k-1} F_j.
+```
+
+Thus a four-stage chain observed only at its endpoint has three unresolved structural dimensions; one independent channel anchor leaves two; two leave one; and three point-identify the fourth stage from the product.
+
+**Channel-anchor rule.** For a declared positive `k`-stage product, `k-1` independent channel anchors are sufficient for point identification of all stages. Fewer anchors reduce, but do not eliminate, the dimension of the observational equivalence class.
+
+This rule concerns direct information about the latent stages themselves. It is distinct from the calibration-anchor ladder below, which concerns whether a proxy conversion transports between two regimes.
 
 ## 4. Calibration transport is one identification family
 
@@ -121,11 +186,11 @@ Gamma=1          -> kappa=1 -> point identification (stable calibration; N3)
 Gamma->infinity  -> unrestricted kappa -> non-identification (N4)
 ```
 
-This formulation is useful because it removes the need to present stable and unstable calibration as unrelated results. Identification strength changes continuously with the amount of transport information supplied.
+Identification strength therefore changes continuously with the amount of transport information supplied.
 
 ## 5. The joint identified set carries more information than two marginals
 
-The same `kappa` generates both channel ratios. The identified object is therefore one-dimensional, not the Cartesian product of the two marginal intervals. In the original ratio plane it lies on
+The same `kappa` generates both channel ratios. The identified object is one-dimensional, not the Cartesian product of the two marginal intervals. In the original ratio plane it lies on
 
 ```text
 rho_E=rho_W/rho_F.
@@ -175,19 +240,29 @@ The strict decline holds below this boundary, not at equality. The earlier addit
 
 The breakdown factor changes the role of the external assumption. The analyst need not assert one uniquely correct `Gamma` in order to communicate robustness. Instead, the analysis reports the minimum calibration distortion sufficient to overturn the conclusion, and readers can compare that threshold with independent calibration experiments, instrument knowledge, biological prior information or direct validation data.
 
-## 7. Direct calibration creates an anchor ladder
+## 7. Two different anchor ladders answer two different design questions
 
-An anchor is a regime in which the proxy and the corresponding mathematical channel are both directly measured on the same comparison domain, so the local conversion `q_i` is observed.
+The word *anchor* can refer to two distinct measurements and they should not be conflated.
 
-Direct calibration effort produces a graded identification ladder:
+### 7.1 Channel anchors reduce the dimension of a `k`-stage chain
 
-| Direct anchors | Transport information | Consequence |
+A channel anchor directly observes one latent stage (or one stage ratio in a before/after comparison). For `W=prod_j F_j`, `r` independent channel anchors leave `k-1-r` unresolved dimensions. This is the quantitative extension of the instruction to observe missing links rather than inferring them from endpoints.
+
+A change -> service -> dependency/assurance -> response study, for example, should first declare which stages enter the endpoint map. If the declared map is multiplicative and contains `k` positive stages, endpoint-only observation leaves `k-1` free dimensions. Each directly measured intermediate stage removes one. If the biological map is not multiplicative, the same design question remains but requires the appropriate observation map rather than the product theorem.
+
+### 7.2 Calibration anchors measure proxy transport across regimes
+
+A calibration anchor is a regime in which the proxy and the mathematical channel it targets are both directly measured on the same comparison domain, so the local conversion `q_i` is observed.
+
+Direct calibration effort produces a separate ladder:
+
+| Calibration anchors | Transport information | Consequence |
 |---:|---|---|
 | 0 | no direct information on `q_1/q_0` | unrestricted transport gives non-identification |
 | 1 | one local `q_i` observed; cross-regime transport remains unknown | an external finite `Gamma/eta` gives sharp partial identification and a breakdown factor |
 | 2 | `q_0` and `q_1` observed, hence `kappa=q_1/q_0` measured | point identification without an external transport bound |
 
-With two anchors,
+With two calibration anchors,
 
 ```text
 q_0=X_0/F_0,
@@ -197,45 +272,47 @@ kappa=q_1/q_0,
 
 and substituting the observed `kappa` into the equations for `rho_F` and `rho_E` point-identifies both channel ratios.
 
-**Design Rule 1 — Graded anchor and transport.** Match direct calibration effort to the strength of inference required. With no transport calibration, unrestricted drift does not support a channel-specific conclusion. With one anchor, use a prespecified external transport bound and report the sharp joint set plus its breakdown factor. With two anchors, measure transport directly and dispense with the sensitivity bound.
+**Design Rule 1 — Measure the missing identification information.** Match direct measurement effort to the inference required. For a `k`-stage product, each independent channel anchor removes one structural degree of freedom and `k-1` suffice for point identification. For proxy transport across two regimes, one calibration anchor supports externally bounded partial identification, whereas two calibration anchors measure `kappa` directly and remove the transport sensitivity assumption.
 
-This converts the question “where does the calibration bound come from?” into an experimental-design question: how much direct calibration is the investigator willing to measure?
+The question “where does the calibration bound come from?” and the question “which intermediate link is unresolved?” are therefore both experimental-design questions, but they concern different missing information.
 
 ## 8. Why the multiplicative architecture is ecologically relevant
-
-The theory applies only when a multiplicative measurement architecture is scientifically justified. Such architectures are already established in multiple ecological literatures.
 
 Schupp, Jordano & Gómez (2010) provide the clearest cross-domain example: seed dispersal effectiveness is explicitly decomposed as `Quantity × Quality`, with quantity determined by the number of dispersed seeds and quality by the probability that a dispersed seed ultimately contributes to recruitment. Pollination provides an independent lineage. Rader et al. (2012) combine pollen-transfer efficiency with visitation frequency; Ballantyne et al. (2017) combine visitation frequency with single-visit pollen deposition effectiveness; and Reynolds & Fenster (2008) define pollinator importance as visitation rate multiplied by pollinator effectiveness.
 
 These studies do not imply identical channel semantics across ecological systems. They establish the narrower point required here: rate-by-effectiveness and quantity-by-quality products are recurring ecological measurement architectures. The theorem audits the inferential consequences of an existing practice rather than introducing multiplication solely to create an identifiability result.
 
+The pollinator-service example also clarifies the relation between product and aggregation. The present theorems apply directly to each positive contribution `V_m E_m`. If only the aggregate `sum_m V_mE_m` is observed, attribution among visitor types adds further ambiguity that is not removed by the within-type product theorem. Treating network degree or abundance as service therefore risks two distinct collapses: a proxy can replace the quantity channel, and aggregation can hide which visitor types supplied the measured service.
+
 ## 9. Relation to identification theory and scope
 
 Structural identifiability has long studied whether internal model components are recoverable from input-output observations (Bellman & Åström 1970), and general parametric identification theory is classical (Rothenberg 1971). Partial-identification theory formalises the case in which data and assumptions restrict a target to a set rather than a point (Manski 2003). The algebra used here is elementary relative to those literatures.
 
-The contribution has three parts: a net-only ecological observation class that remains closed under reciprocal channel reallocation; a calibration-transport family that supplies a sharp joint set and reference-invariant breakdown factor; and operational consequences that connect direct calibration effort to identification strength and preserve the exact dependence structure when uncertainty is reported. The paper is therefore about coverage and closure—from information boundary to sensitivity, field design and reporting—rather than mathematical depth.
+The contribution has three parts: a net-only ecological observation class whose `k`-channel equivalence dimension is explicitly quantified; a calibration-transport family that supplies a sharp joint set and reference-invariant breakdown factor; and operational consequences that connect both channel and calibration anchors to identification strength while preserving the exact dependence structure when uncertainty is reported. The paper is therefore about coverage and closure—from information boundary to sensitivity, field design and reporting—rather than mathematical depth.
 
-The current result assumes positive multiplicative channels. Zeros require separate treatment because ratios and division fail. More than two latent channels creates a higher-dimensional identified set unless enough components are measured or bounded. Nonmultiplicative interactions require a different observation map. The result is pointwise in `z`; uniform statements over a trait domain require a predeclared aggregate estimand or exclusion of one throughout the domain. The transport bound must be prespecified or externally informed rather than chosen after seeing the desired conclusion.
+The results assume positive multiplicative stages where the product map is declared. Zeros require separate treatment because ratios and division fail. Sum-of-products architectures, additive interactions and other nonlinear maps can create additional equivalence structures and require their own observation maps. The transport result is pointwise in `z`; uniform statements over a trait domain require a predeclared aggregate estimand or exclusion of one throughout the domain. Transport bounds must be prespecified or externally informed rather than chosen after seeing the desired conclusion.
 
 ## 10. Discussion
 
-Relative proxy comparisons are not automatically protected by taking ratios. They are protected only by transport of the proxy-to-channel conversion. Once that hidden assumption is written as `kappa=q_1/q_0`, stable calibration, bounded uncertainty and unrestricted drift become one identification family rather than three disconnected cases.
+The practical problem is not merely that a product has several factors. It is that ecological measurement routinely collapses mechanistically distinct stages into products, proxies and aggregates, then asks those collapsed quantities to support channel-specific conclusions. The `k`-channel theorem makes the information loss quantitative: endpoint-only observation of a positive `k`-stage product leaves `k-1` structural degrees of freedom, and each independent direct channel measurement removes one.
 
-The partial-identification region is useful precisely because it does not pretend to estimate transportability from data that cannot identify it. A finite `Gamma` is an external tolerance; the breakdown factor reports how strong that tolerance must become before the ecological conclusion fails. The 0/1/2-anchor ladder then shows how the assumption can be progressively replaced by measurement. One anchor supports a sensitivity analysis; two anchors measure transport itself.
+This dimension rule gives a precise version of a common field recommendation. A complete change -> service -> dependency/assurance -> response chain cannot be reconstructed simply because its endpoints covary. The investigator must either observe enough intermediate stages, impose scientifically defended restrictions, or report the remaining equivalence set rather than silently filling missing links.
 
-The same algebra also constrains how uncertainty should be communicated. Because one calibration ratio moves the two channel ratios in opposite directions while preserving the observed net ratio, structural calibration uncertainty is one-dimensional. Two independently drawn error bars throw away that information and admit impossible channel combinations. The correct object is the joint identified set.
+Relative proxy comparisons add a different identification problem. They are not automatically protected by taking ratios; they are protected only by transport of the proxy-to-channel conversion. Once that hidden assumption is written as `kappa=q_1/q_0`, stable calibration, bounded uncertainty and unrestricted drift become one identification family rather than three disconnected cases.
 
-Finally, N1 explains why arbitrarily detailed measurement of the net response does not substitute for channel information. Complete response curves and all of their threshold geometry remain invariant within the same latent equivalence orbit. Better description of the product is not automatically better identification of its factors. Resolving the mechanism requires either direct channel information or a defensible restriction on proxy transport.
+The partial-identification region is useful precisely because it does not pretend to estimate transportability from data that cannot identify it. A finite `Gamma` is an external tolerance; the breakdown factor reports how strong that tolerance must become before the ecological conclusion fails. The calibration-anchor ladder then shows how the assumption can be progressively replaced by measurement. One calibration anchor supports a sensitivity analysis; two measure transport itself.
 
-The resulting workflow is therefore simple: identify whether the available measurements are net-only; state or measure the calibration information connecting regimes; report the corresponding sharp joint set and breakdown factor; and preserve that joint structure when results are communicated. This closes an elementary identification problem into an operational ecological method.
+The same algebra constrains how uncertainty should be communicated. Because one calibration ratio moves the two channel ratios in opposite directions while preserving the observed net ratio, structural calibration uncertainty is one-dimensional. Two independently drawn error bars throw away that information and admit impossible channel combinations. The correct object is the joint identified set.
+
+The resulting workflow is therefore: identify the declared observation map; count the unresolved dimensions or transport parameters it leaves; measure channel or calibration anchors according to the strength of inference required; report the corresponding sharp set or point estimate; and preserve the identified dependence structure when results are communicated. Better description of an ecological product is not automatically better identification of the mechanisms that generated it.
 
 ## Figure 1 caption
 
-**Figure 1. Calibration transport determines identification strength.** Stable conversion (`Gamma=1`) gives point identification. A finite multiplicative transport bound (`1/Gamma <= kappa <= Gamma`) produces a sharp one-dimensional joint identified set. Because the same `kappa` moves both channel ratios, every admissible pair preserves `rho_F rho_E=rho_W`; after log transformation the set is a line segment of slope `-1`. In the worked example the directional conclusion first reaches no change at the reference-invariant breakdown factor `Gamma*=1.34` (`eta*=log 1.34`), corresponding to 34% upward calibration-ratio drift in that direction. Removing the finite transport restriction recovers N4 non-identification.
+**Figure 1. Calibration transport determines identification strength in the two-channel proxy case.** Stable conversion (`Gamma=1`) gives point identification. A finite multiplicative transport bound (`1/Gamma <= kappa <= Gamma`) produces a sharp one-dimensional joint identified set. Because the same `kappa` moves both channel ratios, every admissible pair preserves `rho_F rho_E=rho_W`; after log transformation the set is a line segment of slope `-1`. In the worked example the directional conclusion first reaches no change at the reference-invariant breakdown factor `Gamma*=1.34` (`eta*=log 1.34`), corresponding to 34% upward calibration-ratio drift in that direction. Removing the finite transport restriction recovers N4 non-identification.
 
 ## Code availability
 
-Deterministic symmetric transport calculations, reference-invariant breakdown factors and the anchor ladder are implemented in `causal_model.calibration_transport_family`. The legacy additive-around-one drift calculations remain in `causal_model.bounded_proxy_drift` for reproducibility and directional percentage translation. Regression tests verify stable-endpoint recovery, finite-bound sharp intervals, reference-reversal invariance of `Gamma*`, direct recovery of `kappa` from two anchors, exact joint-product consistency, slope-`-1` log geometry, rejection of impossible marginal endpoint combinations, and deterministic Figure 1 generation. The implementation does not estimate a calibration bound from the observations whose identifying power is under assessment.
+The `k`-channel quotient dimension and channel-anchor rule are implemented in `causal_model.multichannel_identifiability`. Symmetric transport calculations, reference-invariant breakdown factors and the calibration-anchor ladder are implemented in `causal_model.calibration_transport_family`. The legacy additive-around-one drift calculations remain in `causal_model.bounded_proxy_drift` for reproducibility and directional percentage translation. Regression tests verify the `k-1-r` dimension rule, product-preserving log-gauge basis, final-channel reconstruction under `k-1` anchors, stable-endpoint recovery, finite-bound sharp intervals, reference-reversal invariance of `Gamma*`, direct recovery of `kappa` from two calibration anchors, exact joint-product consistency, slope-`-1` log geometry and rejection of impossible marginal endpoint combinations.
 
 ## References
 

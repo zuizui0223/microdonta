@@ -5,27 +5,42 @@ now governed as separate papers.
 
 ## Paper A — channel-identifiability boundary
 
+Paper A now covers ecological measurement chains generally; the legacy heading is retained verbatim because the MEE submission-boundary checker uses it as a separation marker.
+
 **Core contribution**
 
 ```text
-N1 net-only impossibility
-→ N2 exact-channel sufficiency
-→ N3 stable-proxy ratio identification
-→ bounded calibration-drift identification interval
-→ breakdown point for sign conclusions
-→ N4 unbounded-drift non-identifiability
-→ observation-design rules
+net-only quotient / k-channel equivalence dimension
+→ channel anchors reduce dimension: k-1-r
+→ two-channel proxy calibration-transport family
+     Gamma=1          : N3 point identification
+     1<Gamma<infinity : sharp partial identification + breakdown
+     Gamma->infinity  : N4 non-identification
+→ calibration-anchor ladder
+→ joint-set reporting rule
 ```
 
 This paper is about the boundary between point identification, partial
 identification and non-identification in positive multiplicative ecological
-channels. Its main output is not RACH and not a synthetic policy benchmark. It
-returns an identified interval and a calibration-drift breakdown point whenever
-proxy drift can be bounded.
+measurement chains. Its main output is not RACH and not a synthetic policy
+benchmark.
 
-For a proxy of `F`, write
+For a declared positive chain
 
 ```text
+W = prod_{j=1}^k F_j,
+```
+
+net-only observation leaves a `(k-1)`-dimensional product-preserving equivalence
+class in log coordinates. If `r` independent channel values or channel ratios are
+directly anchored, the residual unidentified dimension is `k-1-r`; `k-1`
+independent channel anchors suffice to recover the final channel from the
+product.
+
+For the common two-channel proxy case,
+
+```text
+W_i = F_i E_i
 X_i = q_i F_i
 kappa = q_1 / q_0
 rho_W = W_1 / W_0
@@ -33,27 +48,48 @@ rho_X = X_1 / X_0
 rho_E_hat = rho_W / rho_X
 ```
 
-If `kappa in [1-delta, 1+delta]`, then
+use the canonical symmetric transport restriction
 
 ```text
-rho_E in [rho_E_hat (1-delta), rho_E_hat (1+delta)]
+1/Gamma <= kappa <= Gamma,   Gamma >= 1.
 ```
 
-and the interval has multiplicative width
+Then
 
 ```text
-(1+delta)/(1-delta).
+rho_E in [rho_E_hat/Gamma, rho_E_hat*Gamma]
 ```
 
-A conclusion `E decreased` is robust while
-`rho_E_hat (1+delta) < 1`; the corresponding breakdown point is
-`delta* = 1/rho_E_hat - 1`, capped to the admissible range `[0,1)`.
-The increasing case is symmetric: `delta* = 1 - 1/rho_E_hat` when
-`rho_E_hat > 1`.
+and the sharp joint set preserves `rho_F rho_E=rho_W`. Stable, bounded and
+unrestricted transport are the same family: `Gamma=1` gives N3 point
+identification, finite `Gamma>1` gives partial identification, and removing the
+finite restriction (`Gamma->infinity`) gives N4.
 
-The design rule is operational: measure the channel directly, calibrate the
-proxy, or report the bounded identified interval and its breakdown point. Do not
-replace unbounded drift with a point estimate.
+For compatibility with the pre-split submission guard, the earlier result name **bounded calibration-drift identification interval** is retained here as an alias for the finite-bound partial-identification result. The canonical formulation is now the symmetric `Gamma/eta` family and sharp joint set.
+
+The primary directional robustness scale is the reference-invariant breakdown
+factor
+
+```text
+Gamma* = max(rho_hat, 1/rho_hat)
+eta*   = |log rho_hat|.
+```
+
+The worked `rho_hat=1/1.34` example has `Gamma*=1.34`; “34% upward drift” is only
+a directional translation.
+
+Two anchor concepts are kept distinct. **Channel anchors** directly observe
+latent stages and reduce the `k`-channel equivalence dimension one coordinate at
+a time. **Calibration anchors** observe proxy/channel conversion within regimes:
+zero calibration anchors leave transport unrestricted unless assumed, one anchor
+plus an external finite `Gamma/eta` supports sharp partial identification, and
+two anchors observe `q_0`, `q_1` and therefore `kappa` directly.
+
+The pollination motivation belongs in Paper A: species-specific effective service
+has the rate-by-effectiveness form `visitor_rate * direct_effectiveness`, whereas
+network degree, abundance or visitation alone are quantity-side descriptors or
+proxies rather than effective service. Community aggregation `sum_m V_m E_m`
+can add a further allocation ambiguity across visitor types.
 
 ## Paper B — RACH observation-selection method
 
@@ -88,14 +124,23 @@ not `noise observation`, because measurement noise is a different concept.
 Always report the absolute values next to the fold ratio; the ratio is descriptive,
 not a preregistered acceptance threshold.
 
+A signed functional starting position such as
+`plant_trait - pollinator_functional_center` may be used in Paper B only as an
+**evidence-role example**: freeze it before outcome inspection, assign it to
+`input_context`, and never recycle the same hypothesis-derived quantity as an
+independent observed target. It is not natural-system validation of RACH.
+
 ## Separation rules
 
 1. The MEE paper may state structural non-identifiability as motivation, but it
-   does not reproduce the N1–N4 proof sequence or bounded-drift theorem.
+   does not reproduce the boundary-paper quotient, `k-1-r` dimension theorem,
+   Gamma family or breakdown results.
 2. The boundary paper may use RACH only as a downstream design implication; it
    does not claim the G2 policy benchmark as theorem evidence.
-3. The exact one-step colonisation projection and prospective Campanula material
-   are supporting examples for the boundary programme, not required evidence for
-   the MEE method paper.
-4. Frozen G2/G5 values and software provenance remain unchanged.
-5. No result is counted in both papers as a primary contribution.
+3. Pollinator effective-service decomposition and complete measurement-chain
+   examples are Paper A motivation/design consequences, not Paper B validation.
+4. Signed functional starting position is a Paper B evidence-role illustration,
+   not an empirical validation result unless independent natural-system data are
+   later collected.
+5. Frozen G2/G5 values and software provenance remain unchanged.
+6. No result is counted in both papers as a primary contribution.
