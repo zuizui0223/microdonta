@@ -46,7 +46,7 @@ The default output is not a best mechanism. It is:
 ```text
 admissible mechanism region
 → observation information value
-→ sequential recomputation
+→ exact condition for adaptive recomputation value
 → controlled truth-peek-free selection challenge
 → G2 policy and observation-budget results
 → reproducible software and anonymous reviewer evidence
@@ -88,6 +88,34 @@ At every step:
 5. recompute all candidate probabilities and information values.
 
 The algorithm stops when the observation budget is exhausted, the declared confounding structure is resolved, or all available validated values are zero.
+
+## Exact condition for when recomputation adds value
+
+Recomputation is not defended merely by saying that rankings *may* change. Fix a first observation `X` and let `U_q(x)` be the second-step mechanism-information value of remaining candidate `q` after outcome branch `X=x`.
+
+The adaptive second-step value is
+
+```text
+V_adapt = E[max_q U_q(X)],
+```
+
+whereas the strongest possible precommitted second measurement achieves
+
+```text
+V_static = max_q E[U_q(X)].
+```
+
+Theorem A1–A2 in `docs/adaptive_recomputation_theorem_2026-09-03.md` proves:
+
+```text
+V_adapt >= V_static,
+```
+
+with equality **if and only if** at least one remaining candidate is branchwise optimal on every positive-probability first-outcome branch. Therefore adaptive recomputation has strict expected value exactly when the intersection of the branchwise argmax sets is empty.
+
+This is stronger than comparison with random ordering. A deterministic four-world witness gives `1.0` bit of adaptive second-step value versus `0.5` bits for the best precommitted candidate; an exhaustive three-world check shows that this two-branch deterministic rank-switch witness is minimal in the declared class.
+
+The result also places a ceiling on the claim: recomputation is not universally useful. If one candidate is best in every branch, a fixed second measurement matches the adaptive value. The theorem does not prove that greedy maximum-current information is globally optimal over arbitrary multi-step trees; that would require additional structural conditions such as adaptive submodularity or a solved dynamic program.
 
 ## Frozen G2 selection challenge
 
