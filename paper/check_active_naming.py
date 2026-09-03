@@ -74,6 +74,7 @@ def main() -> None:
         "expected ΔR (NOV)",
         "microdonta: information-theoretic",
         "microdonta's observation-design method",
+        "https://github.com/zuizui0223/microdonta",
     )
     problems = []
     for path in ACTIVE:
@@ -89,6 +90,8 @@ def main() -> None:
         raise SystemExit("distribution name is not mechanism-resolution-design")
     if 'name = "microdonta"' in pyproject or 'name = "rach"' in pyproject:
         raise SystemExit("retired distribution name remains")
+    if 'Repository = "https://github.com/zuizui0223/mrod"' not in pyproject:
+        raise SystemExit("package repository URL is not the current mrod repository")
 
     manuscript = (ROOT / "paper" / "manuscript.md").read_text(encoding="utf-8").casefold()
     for token in ("admissible mechanism region", "observation information value", "sequential observation design"):
@@ -117,6 +120,7 @@ def main() -> None:
     print("active naming OK")
     print(f"method: {OFFICIAL}")
     print("distribution: mechanism-resolution-design")
+    print("repository: zuizui0223/mrod")
     print("retired backend/test/Figure-1 filenames: absent")
     print("Figure 1 information-value source: canonical and non-heuristic")
     print("historical frozen identifiers: permitted only as machine-level provenance")

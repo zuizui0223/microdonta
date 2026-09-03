@@ -7,7 +7,7 @@ authors:
     given-names: Ruiqi
 version: 0.1.0
 license: MIT
-repository-code: "https://github.com/zuizui0223/microdonta"
+repository-code: "https://github.com/zuizui0223/mrod"
 abstract: >-
   Mechanism-Resolving Observation Design retains ecological mechanism programs
   compatible with declared observations and constraints, quantifies residual
