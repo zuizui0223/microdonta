@@ -1,6 +1,6 @@
 # Mechanism-Resolving Observation Design
 
-[![CI](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml/badge.svg)](https://github.com/zuizui0223/microdonta/actions/workflows/ci.yml)
+[![CI](https://github.com/zuizui0223/mrod/actions/workflows/ci.yml/badge.svg)](https://github.com/zuizui0223/mrod/actions/workflows/ci.yml)
 
 **Mechanism-Resolving Observation Design** is the software and reproducibility project for a *Methods in Ecology and Evolution* methods paper on choosing the next observation that best reduces unresolved ecological mechanism ambiguity.
 
@@ -97,7 +97,7 @@ causal_model/admissible_mechanisms.py
 causal_model/observation_value.py
 causal_model/sequential_design.py
 causal_model/mechanism_equivalence.py
-causal_model/causal_replaceability.py
+causal_model/mechanism_replaceability.py
 ```
 
 Historical implementation labels are retained only where needed for compatibility or frozen benchmark provenance; they are not the advertised scientific vocabulary.
@@ -142,7 +142,7 @@ causal_model/
   observation_value.py           V(Q)=I(S;Q|A_epsilon)/K
   sequential_design.py           adaptive observation selection
   mechanism_equivalence.py       residual equivalence structure
-  causal_replaceability.py       mechanism replaceability
+  mechanism_replaceability.py    mechanism replaceability
   generality_sweep.py            frozen G2 benchmark generator
 
 paper/
