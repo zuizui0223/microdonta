@@ -55,7 +55,7 @@ def main():
 
     portfolio=json.loads((ROOT/registry['portfolio_registry']).read_text(encoding='utf-8'))
     expected_repositories={
-        'hotarubukuro','azami','bita','island','microdonta','boundary','pollipi','insepi','acsp',
+        'hotarubukuro','azami','bita','island','mrod','boundary','pollipi','insepi','acsp',
         'eco-genetic-criticality','ccoc','izu-core','eco-genetic-warning-extensions','mltr','ced','mrm',
         'shimahotarubukuro','fcp','eog','odsp','EAzami','chun','sdmr','crest'
     }
@@ -67,6 +67,7 @@ def main():
     if errors: raise SystemExit('repository boundary check failed:\n- '+'\n- '.join(errors))
     print('repository program boundaries OK')
     print('distribution: '+', '.join(sorted(actual)))
+    print('method repository: zuizui0223/mrod')
     print('boundary paper owner: zuizui0223/boundary')
     print('portfolio repositories: 24')
     print('izu-core adapters: '+', '.join(actual_tracks))
