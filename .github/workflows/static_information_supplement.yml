@@ -1,0 +1,57 @@
+name: Static-information supplement
+
+on:
+  pull_request:
+    paths:
+      - 'paper/run_static_information_supplement.py'
+      - 'tests/test_static_information_supplement.py'
+      - '.github/workflows/static_information_supplement.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: static-info-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  full-frozen-family-supplement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Verify post-frozen supplement unit tests
+        run: pytest -q tests/test_static_information_supplement.py
+
+      - name: Run full frozen-family comparator without changing frozen G2
+        run: |
+          python paper/run_static_information_supplement.py --output outputs/static_information_supplement.json > outputs/static_information_supplement_stdout.json
+          cat outputs/static_information_supplement.json
+
+      - name: Verify frozen G2 protocol remains two-policy preregistration
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('paper/g2_frozen_benchmark_protocol.json').read_text())
+          assert p['selection_validation']['policies'] == ['rach_seq', 'random_order']
+          s = json.loads(Path('outputs/static_information_supplement.json').read_text())
+          assert s['status'] == 'post_frozen_not_part_of_preregistered_g2'
+          assert s['policies'] == ['rach_seq', 'static_initial_information', 'random_order']
+          print('frozen G2 firewall preserved')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: static-information-supplement
+          path: outputs/static_information_supplement.json
