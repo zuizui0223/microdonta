@@ -32,6 +32,20 @@ and wrote the manuscript. The author reviewed and takes responsibility for all
 scientific claims, code, analyses and text, including material developed with AI
 assistance disclosed in the Methods.
 
+## Statement on inclusion
+
+This study develops and validates a general computational method using synthetic
+benchmark systems and does not report place-based empirical research. Regional
+stakeholder collaboration and place-based inclusion considerations are therefore
+not applicable to the study design reported here.
+
+## Ethics and organism/field-study statement
+
+No new empirical work involving animals, plants or field sites is reported. The
+primary validation uses synthetic generators and controlled computational
+benchmarks; no organismal collection, manipulation or field intervention was
+conducted for this study.
+
 ## Data availability
 
 No new empirical data are reported. Synthetic benchmark generators, frozen result

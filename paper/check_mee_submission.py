@@ -17,6 +17,11 @@ def word_count(text: str) -> int:
     return len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[-’'][A-Za-zÀ-ÖØ-öø-ÿ]+)*|\d+(?:\.\d+)?%?", text))
 
 
+def normalize_prose(text: str) -> str:
+    """Collapse Markdown line wrapping before semantic marker checks."""
+    return " ".join(text.split()).casefold()
+
+
 def fail(message: str) -> None:
     raise SystemExit(message)
 
@@ -45,11 +50,29 @@ def main() -> None:
     required_title_fields = (
         "Article type: **Research Article**", "Ruiqi Zhang", "Kyoto University",
         "Corresponding author", "Running headline", "Acknowledgements",
-        "Author contributions", "Data availability", "Funding", "Conflict of interest",
+        "Author contributions", "Statement on inclusion",
+        "Ethics and organism/field-study statement", "Data availability", "Funding",
+        "Conflict of interest",
     )
     missing_title = [x for x in required_title_fields if x not in title_page]
     if missing_title:
         fail("title page missing required fields:\n- " + "\n- ".join(missing_title))
+
+    inclusion_section = title_page.split("## Statement on inclusion", 1)[1].split(
+        "## Ethics and organism/field-study statement", 1
+    )[0]
+    inclusion_prose = normalize_prose(inclusion_section)
+    for marker in ("synthetic benchmark", "does not report place-based empirical research", "not applicable"):
+        if marker.casefold() not in inclusion_prose:
+            fail(f"Statement on inclusion missing scope marker: {marker}")
+
+    ethics_section = title_page.split("## Ethics and organism/field-study statement", 1)[1].split(
+        "## Data availability", 1
+    )[0]
+    ethics_prose = normalize_prose(ethics_section)
+    for marker in ("No new empirical work involving animals, plants or field sites", "synthetic"):
+        if marker.casefold() not in ethics_prose:
+            fail(f"ethics scope statement missing marker: {marker}")
 
     if "## Abstract" not in text or "**Data/Code for peer review:**" not in text:
         fail("Abstract or Data/Code for peer review statement missing")
@@ -124,6 +147,8 @@ def main() -> None:
     print(f"keywords: {len(keywords)}")
     print(f"conservative manuscript words: {words}")
     print(f"Supporting Information words: {word_count(supplement)}")
+    print("title-page inclusion statement: pass")
+    print("title-page ethics scope statement: pass")
     print("anonymous manuscript/SI commit-SHA scan: pass")
 
 
