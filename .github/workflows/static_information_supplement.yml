@@ -36,7 +36,7 @@ jobs:
       - name: Run full 1000-system comparator at headline budgets 2 and 4
         run: |
           mkdir -p outputs
-          python - <<'PY' > outputs/static_information_supplement_stdout.json
+          python - <<'PY'
           import json
           from pathlib import Path
           from paper.run_static_information_supplement import run_supplement
@@ -53,11 +53,14 @@ jobs:
               min_sub_size=int(sweep['min_sub_size']),
               n_distractors=int(protocol['generator']['distractor_candidates']['count']),
           )
-          text = json.dumps(payload, indent=2, sort_keys=True)
-          Path('outputs/static_information_supplement.json').write_text(text + '\n')
-          print(text)
+          Path('outputs/static_information_supplement.json').write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + '\n'
+          )
+          print('STATIC_SUPPLEMENT_AGGREGATE_BEGIN')
+          for row in payload['aggregate']:
+              print(json.dumps(row, sort_keys=True))
+          print('STATIC_SUPPLEMENT_AGGREGATE_END')
           PY
-          cat outputs/static_information_supplement.json
 
       - name: Verify frozen G2 protocol remains two-policy preregistration
         run: |
