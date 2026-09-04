@@ -33,10 +33,30 @@ jobs:
       - name: Verify post-frozen supplement unit tests
         run: pytest -q tests/test_static_information_supplement.py
 
-      - name: Run full frozen-family comparator without changing frozen G2
+      - name: Run full 1000-system comparator at headline budgets 2 and 4
         run: |
           mkdir -p outputs
-          python -m paper.run_static_information_supplement --output outputs/static_information_supplement.json > outputs/static_information_supplement_stdout.json
+          python - <<'PY' > outputs/static_information_supplement_stdout.json
+          import json
+          from pathlib import Path
+          from paper.run_static_information_supplement import run_supplement
+
+          protocol = json.loads(Path('paper/g2_frozen_benchmark_protocol.json').read_text())
+          sweep = protocol['sweep']
+          payload = run_supplement(
+              seeds=sweep['seeds'],
+              budgets=(2, 4),
+              n_systems_per_seed=int(sweep['n_systems_per_seed']),
+              n_attempts=int(sweep['n_attempts']),
+              K_choices=tuple(int(x) for x in sweep['K_choices']),
+              confound_choices=tuple(int(x) for x in sweep['confound_choices']),
+              min_sub_size=int(sweep['min_sub_size']),
+              n_distractors=int(protocol['generator']['distractor_candidates']['count']),
+          )
+          text = json.dumps(payload, indent=2, sort_keys=True)
+          Path('outputs/static_information_supplement.json').write_text(text + '\n')
+          print(text)
+          PY
           cat outputs/static_information_supplement.json
 
       - name: Verify frozen G2 protocol remains two-policy preregistration
@@ -49,7 +69,10 @@ jobs:
           s = json.loads(Path('outputs/static_information_supplement.json').read_text())
           assert s['status'] == 'post_frozen_not_part_of_preregistered_g2'
           assert s['policies'] == ['rach_seq', 'static_initial_information', 'random_order']
-          print('frozen G2 firewall preserved')
+          assert s['budgets'] == [2, 4]
+          assert s['n_systems_per_seed_requested'] == 200
+          assert s['seeds'] == [0, 1, 2, 3, 4]
+          print('frozen G2 firewall preserved; supplemental headline cells complete')
           PY
 
       - uses: actions/upload-artifact@v4
