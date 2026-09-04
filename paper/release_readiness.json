@@ -4,37 +4,37 @@
   "distribution": "mechanism-resolution-design",
   "version": "0.1.0",
   "suggested_release_tag": "v0.1.0",
-  "status": "canonical_figure1_pending_ci_and_new_artifact_freeze",
+  "status": "current_main_refreeze_requested_after_adaptive_theorem_merge",
   "current_change": {
-    "reason": "The former Figure 1 displayed retired project terminology and ranked candidate measurements with a heuristic approximation rather than the publication quantity V(Q)=I(S;Q|A_epsilon)/K.",
-    "replacement_source": "causal_model/controlled_confounding_demo.py",
-    "replacement_output": "outputs/g5/figures/figure1_controlled_confounding.png",
+    "reason": "The canonical Figure-1 correction and its G5/reviewer artifacts were successfully frozen at d44f175, but the publication mainline subsequently gained the proved adaptive-recomputation condition in 689ba17. Frozen G2 systems, policies and numerical results remain unchanged. A final artifact freeze is therefore required from the current theorem-complete main state.",
+    "canonical_figure1_source": "causal_model/controlled_confounding_demo.py",
+    "canonical_figure1_output": "outputs/g5/figures/figure1_controlled_confounding.png",
     "information_value_definition": "V(Q)=I(S;Q|A_epsilon)/K",
-    "candidate_partition": "six equal-width, mutually exclusive and exhaustive predictive bins over the current admissible region",
-    "negative_control": "fixed-seed mechanism-independent continuous nuisance measurement scored by the same partition rule",
-    "science_scope": "Figure-1 analysis and reporting correction only; frozen G2 protocol, systems, policies and numerical results are unchanged"
+    "adaptive_theorem_mainline_sha": "689ba17d14fec2218e9e96f4c9e432eb8b71fb58",
+    "science_scope": "No G2 retuning. The final refreeze records the current theorem-complete manuscript/code state."
   },
-  "superseded_artifact_freeze": {
-    "validated_sha": "4e1c0360cd913ddc2db0179fc5c9feeac7d1daec",
-    "status": "superseded_for_submission_by_figure1_correction",
-    "g5_artifact_id": 9754631345,
-    "g5_artifact_sha256": "8f6c8900658614825455c2f82ce9f87a73f3fc5b624e5320ce77a81ba2c89f47",
-    "reviewer_bundle_artifact_id": 9754628125,
-    "reviewer_bundle_artifact_sha256": "665686e83f2e6d1636c4ce7561e846201d31fe9ebbddb4e16643c13fd582eede",
-    "superseded_figure1": {
-      "filename": "figure1_confound.png",
-      "sha256": "ffc5a63f289cb16074ebec533d58feb4f0380d7b3488777127874d3aee7d7fb3"
-    },
-    "provenance_note": "These artifacts remain valid records of the earlier code state but are not the final submission artifacts after the Figure-1 information-value correction."
+  "previous_corrected_freeze": {
+    "validated_sha": "d44f175bd39fa620929abbbeffcf4f58b809d351",
+    "status": "successful_but_superseded_as_version_of_record_by_later_publication_mainline_commit",
+    "g5_workflow_run_id": 33713121016,
+    "g5_artifact_id": 9882541123,
+    "g5_artifact_digest": "sha256:d9e16e67efc324639cbec749c2e4819c7340652515c76eb76927bebf3e3096cd",
+    "reviewer_workflow_run_id": 33713120974,
+    "reviewer_bundle_artifact_id": 9882599828,
+    "reviewer_bundle_artifact_digest": "sha256:d7a37b01cdf4ef540c720f8e674073d5161f77e8ebdc6c63c4eb245e24e7e894",
+    "g5_conclusion": "success",
+    "reviewer_bundle_conclusion": "success",
+    "provenance_note": "These artifacts prove that the corrected canonical Figure 1 and anonymous reviewer package build successfully. They are not the final version-of-record artifacts because the publication mainline later gained the adaptive-recomputation theorem."
   },
   "ci": {
-    "status": "pending_on_canonical_figure1_branch",
+    "status": "current_main_science_green_refreeze_pending",
     "required_checks": [
       "scientific submission boundary",
       "MEE Research Article format",
       "active method and Figure-1 naming",
       "repository program boundaries",
       "full Python 3.10, 3.11 and 3.12 pytest suites",
+      "adaptive recomputation theorem tests",
       "canonical Figure-1 behavioural regression",
       "publication figure and anonymous reviewer-bundle self-test on Python 3.11",
       "controlled figure smoke tests",
@@ -62,23 +62,23 @@
     "provenance_note": "Frozen protocol/result files retain their historical machine identifiers and policy keys unchanged."
   },
   "g5": {
-    "status": "new_run_required_after_canonical_figure1_merge",
+    "status": "current_main_refreeze_required",
     "trigger_marker": "[g5-final]",
     "requirements": [
       "rebuild figure1_controlled_confounding.png from the canonical information-value source",
       "rebuild all remaining publication figures",
       "reproduce stored frozen-validation summaries",
       "build and audit the mechanism-resolution-design wheel",
-      "upload one clean artifact tied to the exact final main SHA"
+      "upload one clean artifact tied to the exact theorem-complete final main SHA"
     ]
   },
   "reviewer_bundle": {
-    "status": "new_run_required_after_canonical_figure1_merge",
+    "status": "current_main_refreeze_required",
     "trigger_marker": "[reviewer-bundle]",
     "requirements": [
       "include figure1_controlled_confounding.png",
       "include controlled_confounding_demo.py as the Figure-1 reference source",
-      "exclude the retired heuristic Figure-1 source",
+      "include the theorem-complete current review manuscript",
       "self-test the extracted methods-only code snapshot",
       "pass author and commit-SHA anonymity scans"
     ]
@@ -105,27 +105,25 @@
   "public_api": "locked_by_tests/test_mechanism_resolution_public_api.py",
   "release_metadata": {
     "license": "MIT",
-    "repository": "https://github.com/zuizui0223/microdonta",
+    "repository": "https://github.com/zuizui0223/mrod",
     "citation_file": "CITATION.cff",
     "distribution": "mechanism-resolution-design"
   },
   "archival_doi": {
     "status": "not_minted",
-    "reason": "DOI minting is an external archive operation and must follow the corrected final submission-file freeze."
+    "reason": "DOI minting is an external archive operation and must follow the final current-main submission-file freeze."
   },
   "remaining_publication_operations": [
-    "pass canonical Figure-1 pull-request CI",
-    "merge the Figure-1 correction",
-    "run tagged G5 and anonymous reviewer-bundle workflows from one exact corrected main SHA",
-    "record new artifact and figure hashes",
+    "run tagged G5 and anonymous reviewer-bundle workflows from one exact theorem-complete main SHA",
+    "record the final artifact and figure hashes",
     "fill human-supplied title-page metadata",
     "export the journal-ready manuscript and Supporting Information",
     "add the corresponding-author signature to the optional cover letter if it is used",
-    "tag the corrected final artifact-validation SHA as v0.1.0 when submitted files are fixed",
+    "tag the final artifact-validation SHA as v0.1.0 when submitted files are fixed",
     "mint and record an archival DOI after submission files are frozen"
   ],
   "nonblocking_maintenance": [
     "Update pyproject.toml project.license from the deprecated TOML-table form to an SPDX string before the setuptools 2027-02-18 removal deadline; do this outside the validated submission freeze unless a new G5 artifact is intentionally generated."
   ],
-  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics or frozen numerical claims requires a new protocol/version. Figure-generation and reporting corrections require a new G5/reviewer artifact freeze but do not authorize retuning frozen G2 evidence."
+  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics or frozen numerical claims requires a new protocol/version. Reporting/theorem integration on the current publication mainline requires a new G5/reviewer artifact freeze but does not authorize retuning frozen G2 evidence."
 }
