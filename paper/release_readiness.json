@@ -1,34 +1,25 @@
 {
-  "schema_version": 7,
+  "schema_version": 8,
   "method_name": "Mechanism-Resolving Observation Design",
   "distribution": "mechanism-resolution-design",
   "version": "0.1.0",
   "suggested_release_tag": "v0.1.0",
-  "status": "current_main_refreeze_requested_after_adaptive_theorem_merge",
-  "current_change": {
-    "reason": "The canonical Figure-1 correction and its G5/reviewer artifacts were successfully frozen at d44f175, but the publication mainline subsequently gained the proved adaptive-recomputation condition in 689ba17. Frozen G2 systems, policies and numerical results remain unchanged. A final artifact freeze is therefore required from the current theorem-complete main state.",
+  "status": "final_theorem_complete_reproducibility_and_reviewer_artifacts_pass",
+  "artifact_validation_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+  "metadata_note": "Governance metadata written after the validated freeze. This update does not change scientific parameters, package algorithms, manuscript claims or the artifacts produced from artifact_validation_sha; therefore the validated artifact SHA remains unchanged.",
+  "final_freeze": {
+    "validated_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+    "adaptive_theorem_mainline_sha": "689ba17d14fec2218e9e96f4c9e432eb8b71fb58",
     "canonical_figure1_source": "causal_model/controlled_confounding_demo.py",
     "canonical_figure1_output": "outputs/g5/figures/figure1_controlled_confounding.png",
     "information_value_definition": "V(Q)=I(S;Q|A_epsilon)/K",
-    "adaptive_theorem_mainline_sha": "689ba17d14fec2218e9e96f4c9e432eb8b71fb58",
-    "science_scope": "No G2 retuning. The final refreeze records the current theorem-complete manuscript/code state."
-  },
-  "previous_corrected_freeze": {
-    "validated_sha": "d44f175bd39fa620929abbbeffcf4f58b809d351",
-    "status": "successful_but_superseded_as_version_of_record_by_later_publication_mainline_commit",
-    "g5_workflow_run_id": 33713121016,
-    "g5_artifact_id": 9882541123,
-    "g5_artifact_digest": "sha256:d9e16e67efc324639cbec749c2e4819c7340652515c76eb76927bebf3e3096cd",
-    "reviewer_workflow_run_id": 33713120974,
-    "reviewer_bundle_artifact_id": 9882599828,
-    "reviewer_bundle_artifact_digest": "sha256:d7a37b01cdf4ef540c720f8e674073d5161f77e8ebdc6c63c4eb245e24e7e894",
-    "g5_conclusion": "success",
-    "reviewer_bundle_conclusion": "success",
-    "provenance_note": "These artifacts prove that the corrected canonical Figure 1 and anonymous reviewer package build successfully. They are not the final version-of-record artifacts because the publication mainline later gained the adaptive-recomputation theorem."
+    "science_scope": "The theorem-complete publication mainline is frozen without retuning frozen G2 systems, policies or numerical results."
   },
   "ci": {
-    "status": "current_main_science_green_refreeze_pending",
-    "required_checks": [
+    "status": "pass_python_3_10_3_12_on_validated_sha",
+    "workflow_run_id": 33841102122,
+    "validated_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+    "checks": [
       "scientific submission boundary",
       "MEE Research Article format",
       "active method and Figure-1 naming",
@@ -62,25 +53,44 @@
     "provenance_note": "Frozen protocol/result files retain their historical machine identifiers and policy keys unchanged."
   },
   "g5": {
-    "status": "current_main_refreeze_required",
-    "trigger_marker": "[g5-final]",
-    "requirements": [
-      "rebuild figure1_controlled_confounding.png from the canonical information-value source",
-      "rebuild all remaining publication figures",
-      "reproduce stored frozen-validation summaries",
-      "build and audit the mechanism-resolution-design wheel",
-      "upload one clean artifact tied to the exact theorem-complete final main SHA"
-    ]
+    "status": "pass",
+    "validated_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+    "workflow_run_id": 33841102129,
+    "artifact_id": 9924940887,
+    "artifact_name": "g5-reproducibility-3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+    "artifact_digest": "sha256:b094d9b525db453bee902580601a70620dc8108051be329be60761d70098fb91",
+    "python": "3.11.16",
+    "submission_bundle_check": "pass",
+    "repository_boundary_check": "pass",
+    "frozen_validation_reproduction": "pass",
+    "wheel": {
+      "filename": "mechanism_resolution_design-0.1.0-py3-none-any.whl",
+      "sha256": "86bf19c852fd6fe5a9838841b67e786a630fc7ea84f11640396e1d3450ede13d",
+      "forbidden_member_count": 0,
+      "member_count": 86
+    },
+    "figures": {
+      "figure1_controlled_confounding.png": {"bytes": 113862, "sha256": "c5af120afc0aa6c7951e6e8612c289e94d415a39a045f138ec673115c2dd33f5"},
+      "figure2_g2_frozen_v2.png": {"bytes": 223008, "sha256": "03c8de922301b2952bfff82b1ee0382e2fc0db8741654ca5caac8045dbc7201f"},
+      "figure3_information_value_calibration.png": {"bytes": 99907, "sha256": "ef851e0d8b13003a1833c36d8005e1820dabd001801b075d754b36afb796148b"},
+      "figureS1_known_truth.png": {"bytes": 38682, "sha256": "b42cb28b4a150e2cab86988eedadb8cfd32ec7899f167a160ac51001057df739"}
+    }
   },
   "reviewer_bundle": {
-    "status": "current_main_refreeze_required",
-    "trigger_marker": "[reviewer-bundle]",
-    "requirements": [
-      "include figure1_controlled_confounding.png",
-      "include controlled_confounding_demo.py as the Figure-1 reference source",
-      "include the theorem-complete current review manuscript",
-      "self-test the extracted methods-only code snapshot",
-      "pass author and commit-SHA anonymity scans"
+    "status": "pass",
+    "validated_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+    "workflow_run_id": 33841102158,
+    "artifact_id": 9924939413,
+    "artifact_name": "mee-anonymous-mechanism-resolution-design-3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+    "artifact_digest": "sha256:2a0fe9abbbaf5691f24a618a8877e030d4e74b61a1090b27789bf83c5902fd1d",
+    "internal_bundle_sha256": "1097b7215e05cd5f385596863c32936aede517661ea32536fb41653cc64e15da",
+    "checks": [
+      "scientific, naming and repository boundaries",
+      "reviewer figure rebuild",
+      "methods-only allowlisted bundle build",
+      "extracted reviewer snapshot pytest",
+      "author and commit-SHA anonymity scan",
+      "archive digest and artifact upload"
     ]
   },
   "publication_preparation": {
@@ -111,19 +121,17 @@
   },
   "archival_doi": {
     "status": "not_minted",
-    "reason": "DOI minting is an external archive operation and must follow the final current-main submission-file freeze."
+    "reason": "DOI minting is an external archive operation and must follow final submission-file freeze."
   },
   "remaining_publication_operations": [
-    "run tagged G5 and anonymous reviewer-bundle workflows from one exact theorem-complete main SHA",
-    "record the final artifact and figure hashes",
     "fill human-supplied title-page metadata",
     "export the journal-ready manuscript and Supporting Information",
     "add the corresponding-author signature to the optional cover letter if it is used",
-    "tag the final artifact-validation SHA as v0.1.0 when submitted files are fixed",
+    "tag artifact_validation_sha 3219ec40fbc372e003faf4a9d3be1f4e2c25effb as v0.1.0 when the submitted files are fixed",
     "mint and record an archival DOI after submission files are frozen"
   ],
   "nonblocking_maintenance": [
     "Update pyproject.toml project.license from the deprecated TOML-table form to an SPDX string before the setuptools 2027-02-18 removal deadline; do this outside the validated submission freeze unless a new G5 artifact is intentionally generated."
   ],
-  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics or frozen numerical claims requires a new protocol/version. Reporting/theorem integration on the current publication mainline requires a new G5/reviewer artifact freeze but does not authorize retuning frozen G2 evidence."
+  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics, adaptive-recomputation theorem content or frozen numerical claims requires a new protocol/version or an intentional new artifact freeze. Metadata-only readiness updates do not supersede artifact_validation_sha."
 }
