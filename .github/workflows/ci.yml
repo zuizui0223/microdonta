@@ -35,6 +35,9 @@ jobs:
       - name: Check MEE Research Article format
         run: python paper/check_mee_submission.py
 
+      - name: Check ScholarOne upload contract
+        run: python paper/check_scholarone_submission.py
+
       - name: Check active method naming
         run: python paper/check_active_naming.py
 
