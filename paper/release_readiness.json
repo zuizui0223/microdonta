@@ -1,12 +1,13 @@
 {
-  "schema_version": 8,
+  "schema_version": 9,
   "method_name": "Mechanism-Resolving Observation Design",
   "distribution": "mechanism-resolution-design",
   "version": "0.1.0",
   "suggested_release_tag": "v0.1.0",
   "status": "final_theorem_complete_reproducibility_and_reviewer_artifacts_pass",
+  "submission_status": "pre_export_blocked_on_human_metadata",
   "artifact_validation_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
-  "metadata_note": "Governance metadata written after the validated freeze. This update does not change scientific parameters, package algorithms, manuscript claims or the artifacts produced from artifact_validation_sha; therefore the validated artifact SHA remains unchanged.",
+  "metadata_note": "Governance metadata written after the validated freeze. These updates do not change scientific parameters, package algorithms or the artifacts produced from artifact_validation_sha; therefore the validated artifact SHA remains unchanged.",
   "final_freeze": {
     "validated_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
     "adaptive_theorem_mainline_sha": "689ba17d14fec2218e9e96f4c9e432eb8b71fb58",
@@ -103,6 +104,10 @@
     "repository_scope": "paper/REPOSITORY_SCOPE.md",
     "mee_format_gate": "paper/check_mee_submission.py",
     "active_naming_gate": "paper/check_active_naming.py",
+    "submission_system": "ScholarOne Manuscripts",
+    "submission_url": "https://mc.manuscriptcentral.com/mee-besjournals",
+    "scholarone_upload_manifest": "paper/scholarone_upload_manifest.json",
+    "scholarone_upload_gate": "paper/check_scholarone_submission.py",
     "double_anonymous_main_manuscript": true,
     "title_page_separated": true,
     "optional_cover_letter": {
@@ -110,8 +115,17 @@
       "path": "paper/cover_letter_draft.md",
       "policy": "optional_editor_facing_not_for_peer_review"
     },
-    "ai_assistance_disclosed_in_methods": true
+    "ai_assistance_disclosed_in_methods": true,
+    "ai_application_version_confirmation_required_before_submit": true
   },
+  "human_submission_blockers": [
+    "correspondence postal address",
+    "correspondence email",
+    "acknowledgements",
+    "funding statement",
+    "ORCID",
+    "confirm and report the ChatGPT application/model version(s) used for final manuscript preparation"
+  ],
   "public_api": "locked_by_tests/test_mechanism_resolution_public_api.py",
   "release_metadata": {
     "license": "MIT",
@@ -121,17 +135,20 @@
   },
   "archival_doi": {
     "status": "not_minted",
-    "reason": "DOI minting is an external archive operation and must follow final submission-file freeze."
+    "reason": "DOI minting is an external archive operation and must follow final submission-file freeze and the double-anonymous release plan."
   },
   "remaining_publication_operations": [
-    "fill human-supplied title-page metadata",
-    "export the journal-ready manuscript and Supporting Information",
-    "add the corresponding-author signature to the optional cover letter if it is used",
+    "resolve the six human ScholarOne blockers recorded in paper/scholarone_upload_manifest.json",
+    "if the Methods AI disclosure changes, rebuild the anonymous reviewer bundle so its review_manuscript matches the submitted Main Document; a new G5 freeze is unnecessary unless package/scientific content changes",
+    "export the final Main Document PDF with Figures 1-3 and required line/page formatting",
+    "export the final Supporting Information PDF with Figure S1",
+    "export the completed title page as Supplemental Document Not for Review",
+    "finalize the optional cover letter only if it will be used",
     "tag artifact_validation_sha 3219ec40fbc372e003faf4a9d3be1f4e2c25effb as v0.1.0 when the submitted files are fixed",
-    "mint and record an archival DOI after submission files are frozen"
+    "mint and record an archival DOI according to the double-anonymous release plan"
   ],
   "nonblocking_maintenance": [
     "Update pyproject.toml project.license from the deprecated TOML-table form to an SPDX string before the setuptools 2027-02-18 removal deadline; do this outside the validated submission freeze unless a new G5 artifact is intentionally generated."
   ],
-  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics, adaptive-recomputation theorem content or frozen numerical claims requires a new protocol/version or an intentional new artifact freeze. Metadata-only readiness updates do not supersede artifact_validation_sha."
+  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics, adaptive-recomputation theorem content, frozen numerical claims or distributed package source requires a new protocol/version or intentional G5 artifact freeze. A text-only change to the review manuscript requires a refreshed anonymous reviewer bundle but does not by itself require a new G5 freeze. Metadata-only readiness/title-page updates do not supersede artifact_validation_sha."
 }
