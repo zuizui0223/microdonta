@@ -17,6 +17,11 @@ def word_count(text: str) -> int:
     return len(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]+(?:[-’'][A-Za-zÀ-ÖØ-öø-ÿ]+)*|\d+(?:\.\d+)?%?", text))
 
 
+def normalize_prose(text: str) -> str:
+    """Collapse Markdown line wrapping before semantic marker checks."""
+    return " ".join(text.split()).casefold()
+
+
 def fail(message: str) -> None:
     raise SystemExit(message)
 
@@ -56,15 +61,17 @@ def main() -> None:
     inclusion_section = title_page.split("## Statement on inclusion", 1)[1].split(
         "## Ethics and organism/field-study statement", 1
     )[0]
+    inclusion_prose = normalize_prose(inclusion_section)
     for marker in ("synthetic benchmark", "does not report place-based empirical research", "not applicable"):
-        if marker.lower() not in inclusion_section.lower():
+        if marker.casefold() not in inclusion_prose:
             fail(f"Statement on inclusion missing scope marker: {marker}")
 
     ethics_section = title_page.split("## Ethics and organism/field-study statement", 1)[1].split(
         "## Data availability", 1
     )[0]
+    ethics_prose = normalize_prose(ethics_section)
     for marker in ("No new empirical work involving animals, plants or field sites", "synthetic"):
-        if marker.lower() not in ethics_section.lower():
+        if marker.casefold() not in ethics_prose:
             fail(f"ethics scope statement missing marker: {marker}")
 
     if "## Abstract" not in text or "**Data/Code for peer review:**" not in text:
