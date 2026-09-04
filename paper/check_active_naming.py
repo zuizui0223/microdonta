@@ -29,6 +29,13 @@ ACTIVE = [
     ROOT / "causal_model" / "sequential_design.py",
     ROOT / "causal_model" / "controlled_confounding_demo.py",
 ]
+PUBLICATION_MODULES = [
+    ROOT / "causal_model" / "admissible_mechanisms.py",
+    ROOT / "causal_model" / "observation_value.py",
+    ROOT / "causal_model" / "sequential_design.py",
+    ROOT / "causal_model" / "mechanism_replaceability.py",
+    ROOT / "causal_model" / "controlled_confounding_demo.py",
+]
 RETIRED_PATHS = [
     "causal_model/causal_admissibility.py",
     "causal_model/causal_replaceability.py",
@@ -48,6 +55,18 @@ RETIRED_PATHS = [
     "tests/test_replaceability_nov.py",
     "tests/test_confound_demo.py",
 ]
+# Historical module paths remain as private sys.modules aliases in __init__.py so
+# the frozen validation/support code can still import them. They are not files,
+# distribution entry points, public API names, or publication-facing vocabulary.
+COMPATIBILITY_ALIASES = {
+    "causal_admissibility": "mechanism_region",
+    "causal_replaceability": "mechanism_replaceability_core",
+    "rach_seq": "sequential_observation",
+    "nov_evsi": "observation_information",
+    "nov_calibration": "information_value_calibration_core",
+    "rach_set": "joint_observation_set",
+    "replaceability_nov": "replaceability_observation_value",
+}
 
 
 def main() -> None:
@@ -84,6 +103,39 @@ def main() -> None:
                 problems.append(f"{path.relative_to(ROOT)}: {token}")
     if problems:
         raise SystemExit("retired active method branding remains:\n- " + "\n- ".join(problems))
+
+    init_text = (ROOT / "causal_model" / "__init__.py").read_text(encoding="utf-8")
+    for alias, target in COMPATIBILITY_ALIASES.items():
+        target_marker = f"from . import {target} as _"
+        alias_marker = f'__name__ + ".{alias}"'
+        if target_marker not in init_text or alias_marker not in init_text:
+            raise SystemExit(
+                f"private compatibility alias drift: {alias} must map to canonical backend {target}"
+            )
+
+    # Public-facing implementation modules must use descriptive canonical paths;
+    # historical aliases are permitted only in the private compatibility layer or
+    # frozen/support code that depends on it.
+    alias_import_markers = tuple(f"causal_model.{alias}" for alias in COMPATIBILITY_ALIASES)
+    leaked_aliases = []
+    for path in PUBLICATION_MODULES:
+        text = path.read_text(encoding="utf-8")
+        for marker in alias_import_markers:
+            if marker in text:
+                leaked_aliases.append(f"{path.relative_to(ROOT)}: {marker}")
+    if leaked_aliases:
+        raise SystemExit(
+            "historical compatibility alias leaked into publication-facing module:\n- "
+            + "\n- ".join(leaked_aliases)
+        )
+
+    all_block = init_text.split("__all__ = [", 1)[-1]
+    public_aliases = [alias for alias in COMPATIBILITY_ALIASES if f'"{alias}"' in all_block]
+    if public_aliases:
+        raise SystemExit(
+            "historical compatibility alias advertised in public API: "
+            + ", ".join(sorted(public_aliases))
+        )
 
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     if 'name = "mechanism-resolution-design"' not in pyproject:
@@ -122,6 +174,7 @@ def main() -> None:
     print("distribution: mechanism-resolution-design")
     print("repository: zuizui0223/mrod")
     print("retired backend/test/Figure-1 filenames: absent")
+    print("private historical import aliases: isolated and non-advertised")
     print("Figure 1 information-value source: canonical and non-heuristic")
     print("historical frozen identifiers: permitted only as machine-level provenance")
 
