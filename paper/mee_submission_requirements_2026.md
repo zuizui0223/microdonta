@@ -1,9 +1,13 @@
 # Methods in Ecology and Evolution submission requirements snapshot
 
-Snapshot checked: **2026-08-31**
+Snapshot checked: **2026-09-05**
 
-Primary source: Methods in Ecology and Evolution Author Guidelines
+Primary source: Methods in Ecology and Evolution Author Guidelines  
 `https://besjournals.onlinelibrary.wiley.com/hub/journal/2041210x/author-guidelines`
+
+Current ethics-policy cross-check: Iossa et al. (2026), *Methods in Ecology and
+Evolution* editorial on animal and plant ethics in research, DOI
+`10.1111/2041-210x.70290`.
 
 This file records journal requirements enforced locally for the **Mechanism-Resolving Observation Design** submission. It is publication governance, not a scientific protocol.
 
@@ -35,7 +39,29 @@ The active main manuscript must contain, in this order:
 8. Discussion.
 9. Figure captions.
 
-A separate title-page file contains author names, affiliations, correspondence, running headline, acknowledgements, author contributions, data availability, funding and conflict-of-interest information. Fields that require author input (email, ORCID, final funding/acknowledgements) remain explicit placeholders and must not be invented.
+A separate title-page file contains author names, affiliations, correspondence,
+running headline, acknowledgements, author contributions, data availability,
+funding and conflict-of-interest information. The current Author Guidelines also
+state that a **Statement on inclusion is required during submission**. For this
+computational methods paper, the local title page records that the study uses
+synthetic benchmarks and does not report place-based empirical research, so
+regional stakeholder/place-based inclusion considerations are not applicable.
+
+Fields that require author input (correspondence email, ORCID and final
+funding/acknowledgements) remain explicit placeholders and must not be invented.
+
+## Ethics and organism/field-study scope
+
+The 2026 MEE ethics editorial asks authors of methods involving or affecting
+organisms or field sites to make the ethical basis of the work explicit. The
+present submission reports no new organismal collection, manipulation or field
+intervention; its primary validation is synthetic and computational. The title
+page therefore carries an explicit not-applicable statement rather than implying
+that a biological ethics review was performed.
+
+Any future empirical validation added to this paper would require a fresh ethics
+and permits audit before submission; this snapshot does not pre-authorise such an
+addition.
 
 ## Cover letter
 
@@ -53,6 +79,11 @@ The editor-facing draft is `paper/cover_letter_draft.md`. It is not part of the 
 
 The main manuscript and Supporting Information must not obviously identify the author. The title page is a separate `Supplemental Document Not for Review` submission file. Code/data for review should be supplied in anonymised form. The public archival DOI is minted only after the manuscript/submission files are frozen.
 
+The current Author Guidelines permit initial submission in flexible file formats,
+but require a single-column, double-line-spaced review document with continuous
+line and page numbering. Code and/or data needed for peer review must be provided
+as anonymised files or through a suitable private-for-review archive.
+
 ## Code policy
 
 Submitted code must carry an open-source software licence. This repository uses the MIT licence. The anonymous reviewer bundle must preserve the licence while removing unnecessary identifying metadata/links.
@@ -69,6 +100,8 @@ The validated review manuscript currently satisfies the automated MEE gate:
 - numbered Abstract under 350 words;
 - no more than eight keywords;
 - separate title page;
+- Statement on inclusion present on the title page;
+- explicit no-new-organism/no-new-field-work ethics scope statement;
 - anonymised main manuscript and Supporting Information;
 - methods-only anonymous code-review bundle;
 - manuscript length below the Research Article maximum.
