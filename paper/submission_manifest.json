@@ -1,5 +1,5 @@
 {
-  "schema_version": 8,
+  "schema_version": 9,
   "primary_target": "Methods in Ecology and Evolution",
   "manuscript_type": "Research Article",
   "primary_product": "Mechanism-Resolving Observation Design",
@@ -24,7 +24,9 @@
     "CITATION.cff",
     "paper/mee_submission_requirements_2026.md",
     "paper/check_mee_submission.py",
-    "paper/title_page_draft.md"
+    "paper/title_page_draft.md",
+    "paper/scholarone_upload_manifest.json",
+    "paper/check_scholarone_submission.py"
   ],
   "main_text": {
     "manuscript": ["paper/manuscript.md"],
@@ -93,7 +95,7 @@
     ],
     "future_method_extension": ["causal_model/structure_discovery.py"],
     "support_backend_not_evidence": ["attraction_trait_model"],
-    "application_not_evidence": ["apps/streamlit_app.py"],
+    "application_not_evidence": ["legacy/streamlit_app_rach_pre_mrod.py"],
     "external_program": {
       "owner_repository": "zuizui0223/eco-genetic-criticality",
       "local_policy": "reference_only_no_code_docs_examples_or_tests"
@@ -105,6 +107,10 @@
     "paper/archive/mee_manuscript_pre_theorem_2026-08-24.md",
     "paper/archive/g2_frozen_benchmark_protocol_v1_pre_execution.json",
     "paper/archive/g2_protocol_v1_supersession.md",
+    "paper/archive/supplementary_outline_pre_split_2026-08-24.md",
+    "docs/archive/publication_claim_graph_pre_split_2026-08-24.md",
+    "docs/archive/repository_ecosystem_pre_split_2026-08-24.md",
+    "docs/archive/repository_map_pre_mrod_2026-08-24.md",
     "docs/archive/repository_scope_audit_2026-06.md",
     "docs/archive/post_eco_split_triage_2026-06.md"
   ]
