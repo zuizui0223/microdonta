@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "journal": "Methods in Ecology and Evolution",
+  "article_type": "Research Article",
+  "submission_system": "ScholarOne Manuscripts",
+  "submission_url": "https://mc.manuscriptcentral.com/mee-besjournals",
+  "guidance_checked": "2026-09-05",
+  "validated_artifact_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+  "status": "pre_export_blocked_on_human_metadata",
+  "uploads": [
+    {
+      "slot": "main_document",
+      "source": "paper/manuscript.md",
+      "scholarone_designation": "Main Document",
+      "required": true,
+      "reviewer_visible": true,
+      "anonymous": true,
+      "planned_format": "PDF",
+      "export_status": "pending_final_export",
+      "assembly": {
+        "figures_embedded_or_appended": [
+          "figure1_controlled_confounding.png",
+          "figure2_g2_frozen_v2.png",
+          "figure3_information_value_calibration.png"
+        ],
+        "figure_legends_source": "paper/manuscript.md"
+      },
+      "format_requirements": [
+        "single column",
+        "double line spacing",
+        "continuous line numbering",
+        "continuous page numbering"
+      ]
+    },
+    {
+      "slot": "title_page",
+      "source": "paper/title_page_draft.md",
+      "scholarone_designation": "Supplemental Document Not for Review",
+      "required": true,
+      "reviewer_visible": false,
+      "anonymous": false,
+      "planned_format": "DOCX",
+      "export_status": "blocked_on_human_metadata"
+    },
+    {
+      "slot": "supporting_information",
+      "source": "paper/supporting_information.md",
+      "scholarone_designation": "Supporting Information",
+      "designation_note": "Use the review-visible Supporting Information/supplemental designation offered by the MEE ScholarOne upload form.",
+      "required": true,
+      "reviewer_visible": true,
+      "anonymous": true,
+      "planned_format": "PDF",
+      "export_status": "pending_final_export",
+      "assembly": {
+        "figures_embedded_or_appended": ["figureS1_known_truth.png"],
+        "figure_legends_source": "paper/supporting_information.md"
+      }
+    },
+    {
+      "slot": "anonymous_code_for_peer_review",
+      "source_type": "github_actions_artifact",
+      "artifact_id": 9924939413,
+      "artifact_name": "mee-anonymous-mechanism-resolution-design-3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+      "artifact_digest": "sha256:2a0fe9abbbaf5691f24a618a8877e030d4e74b61a1090b27789bf83c5902fd1d",
+      "internal_bundle_sha256": "1097b7215e05cd5f385596863c32936aede517661ea32536fb41653cc64e15da",
+      "scholarone_designation": "review-visible supplemental/code file",
+      "designation_note": "The public guidelines require code/data to be available to reviewers and editors but do not publish the exact dropdown label for this file type; select the review-visible supplemental/code designation in ScholarOne, not a not-for-review designation.",
+      "required": true,
+      "reviewer_visible": true,
+      "anonymous": true,
+      "planned_format": "ZIP",
+      "export_status": "validated_artifact_ready"
+    },
+    {
+      "slot": "cover_letter",
+      "source": "paper/cover_letter_draft.md",
+      "scholarone_designation": "optional cover letter field/upload",
+      "required": false,
+      "reviewer_visible": false,
+      "anonymous": false,
+      "planned_format": "text or PDF",
+      "export_status": "optional_human_finalize_if_used"
+    }
+  ],
+  "human_blockers": [
+    {
+      "id": "correspondence_postal_address",
+      "source": "paper/title_page_draft.md",
+      "marker": "Correspondence postal address: **[to add before submission]**",
+      "required_before_submit": true
+    },
+    {
+      "id": "correspondence_email",
+      "source": "paper/title_page_draft.md",
+      "marker": "Correspondence email: **[to add before submission]**",
+      "required_before_submit": true
+    },
+    {
+      "id": "acknowledgements",
+      "source": "paper/title_page_draft.md",
+      "marker": "**[To complete before submission.]**",
+      "required_before_submit": true
+    },
+    {
+      "id": "funding",
+      "source": "paper/title_page_draft.md",
+      "marker": "**[To complete before submission.]**",
+      "required_before_submit": true
+    },
+    {
+      "id": "orcid",
+      "source": "paper/title_page_draft.md",
+      "marker": "Ruiqi Zhang — **[to add before submission]**",
+      "required_before_submit": true
+    },
+    {
+      "id": "chatgpt_application_version",
+      "source": "paper/manuscript.md",
+      "reason": "MEE asks LLM-assisted manuscripts to report the application name and version. The current Methods disclosure names OpenAI ChatGPT but does not yet record the model/application version(s) used for the final manuscript preparation.",
+      "required_before_submit": true
+    }
+  ],
+  "submission_confirmations": [
+    "not published or accepted elsewhere and not under consideration elsewhere in whole or substantial part",
+    "all authors and relevant institutions approve submission",
+    "all persons entitled to authorship are included",
+    "work is original and all necessary acknowledgements are made",
+    "work conforms to applicable legal, conservation and welfare requirements",
+    "any third-party datasets are unrestricted for reuse or used with permission"
+  ],
+  "optional_pre_submission_decisions": [
+    {
+      "id": "apc_discretionary_waiver",
+      "instruction": "If a full editorial APC waiver is needed, contact coordinator@methodsinecologyandevolution.org before submission as directed by the current Author Guidelines."
+    },
+    {
+      "id": "translated_abstract",
+      "instruction": "Optional translated abstract may be supplied with the title page; not required for this submission."
+    }
+  ],
+  "post_file_freeze_operations": [
+    "tag artifact_validation_sha as v0.1.0 only when the submitted file set is fixed",
+    "mint and record the archival DOI according to the double-anonymous release plan"
+  ]
+}
