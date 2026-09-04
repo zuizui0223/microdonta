@@ -4,14 +4,15 @@
   "distribution": "mechanism-resolution-design",
   "version": "0.1.0",
   "suggested_release_tag": "v0.1.0",
-  "status": "current_main_refreeze_requested_after_adaptive_theorem_merge",
+  "status": "final_theorem_complete_artifact_freeze_passed_pending_human_submission_metadata",
   "current_change": {
-    "reason": "The canonical Figure-1 correction and its G5/reviewer artifacts were successfully frozen at d44f175, but the publication mainline subsequently gained the proved adaptive-recomputation condition in 689ba17. Frozen G2 systems, policies and numerical results remain unchanged. A final artifact freeze is therefore required from the current theorem-complete main state.",
+    "reason": "The canonical Figure-1 correction and adaptive-recomputation theorem are both present in the publication mainline. The theorem-complete state was frozen successfully from one exact main SHA with G5 reproducibility, ordinary CI and the anonymous MEE reviewer bundle all passing.",
     "canonical_figure1_source": "causal_model/controlled_confounding_demo.py",
     "canonical_figure1_output": "outputs/g5/figures/figure1_controlled_confounding.png",
     "information_value_definition": "V(Q)=I(S;Q|A_epsilon)/K",
     "adaptive_theorem_mainline_sha": "689ba17d14fec2218e9e96f4c9e432eb8b71fb58",
-    "science_scope": "No G2 retuning. The final refreeze records the current theorem-complete manuscript/code state."
+    "final_freeze_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+    "science_scope": "No G2 retuning. This ledger update records completed artifact provenance only and does not supersede the frozen science/code SHA."
   },
   "previous_corrected_freeze": {
     "validated_sha": "d44f175bd39fa620929abbbeffcf4f58b809d351",
@@ -24,10 +25,40 @@
     "reviewer_bundle_artifact_digest": "sha256:d7a37b01cdf4ef540c720f8e674073d5161f77e8ebdc6c63c4eb245e24e7e894",
     "g5_conclusion": "success",
     "reviewer_bundle_conclusion": "success",
-    "provenance_note": "These artifacts prove that the corrected canonical Figure 1 and anonymous reviewer package build successfully. They are not the final version-of-record artifacts because the publication mainline later gained the adaptive-recomputation theorem."
+    "provenance_note": "These artifacts remain valid records of the corrected Figure-1 state but are superseded for submission by the theorem-complete freeze below."
+  },
+  "final_theorem_complete_freeze": {
+    "validated_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+    "status": "pass_version_of_record",
+    "ci_workflow_run_id": 33841102122,
+    "ci_conclusion": "success",
+    "g5_workflow_run_id": 33841102129,
+    "g5_conclusion": "success",
+    "g5_artifact_id": 9924940887,
+    "g5_artifact_digest": "sha256:b094d9b525db453bee902580601a70620dc8108051be329be60761d70098fb91",
+    "reviewer_workflow_run_id": 33841102158,
+    "reviewer_bundle_conclusion": "success",
+    "reviewer_bundle_artifact_id": 9924939413,
+    "reviewer_bundle_artifact_digest": "sha256:2a0fe9abbbaf5691f24a618a8877e030d4e74b61a1090b27789bf83c5902fd1d",
+    "g5_reproducibility_summary_sha256": "aadd4baa709555126fd6d813258ce94d2ef7108348cf16cc9a078f188747057d",
+    "wheel_audit_sha256": "c10ae92a227b78ad54ada2fca7430c0201fce202036ad97848e0ade127a1c804",
+    "wheel_sha256": "86bf19c852fd6fe5a9838841b67e786a630fc7ea84f11640396e1d3450ede13d",
+    "figures": {
+      "figure1_controlled_confounding.png": "c5af120afc0aa6c7951e6e8612c289e94d415a39a045f138ec673115c2dd33f5",
+      "figure2_g2_frozen_v2.png": "03c8de922301b2952bfff82b1ee0382e2fc0db8741654ca5caac8045dbc7201f",
+      "figure3_information_value_calibration.png": "ef851e0d8b13003a1833c36d8005e1820dabd001801b075d754b36afb796148b",
+      "figureS1_known_truth.png": "b42cb28b4a150e2cab86988eedadb8cfd32ec7899f167a160ac51001057df739"
+    },
+    "g5_checks": {
+      "frozen_validation_reproduction": "pass",
+      "repository_boundary_check": "pass",
+      "submission_bundle_check": "pass",
+      "forbidden_wheel_member_count": 0
+    },
+    "provenance_note": "This is the exact theorem-complete science/code SHA for submission artifacts. The subsequent ledger-only commit records these identifiers and does not alter the frozen manuscript, algorithms, figures or G2 evidence."
   },
   "ci": {
-    "status": "current_main_science_green_refreeze_pending",
+    "status": "pass_on_final_freeze_sha",
     "required_checks": [
       "scientific submission boundary",
       "MEE Research Article format",
@@ -62,26 +93,20 @@
     "provenance_note": "Frozen protocol/result files retain their historical machine identifiers and policy keys unchanged."
   },
   "g5": {
-    "status": "current_main_refreeze_required",
+    "status": "pass_final_theorem_complete_freeze",
     "trigger_marker": "[g5-final]",
-    "requirements": [
-      "rebuild figure1_controlled_confounding.png from the canonical information-value source",
-      "rebuild all remaining publication figures",
-      "reproduce stored frozen-validation summaries",
-      "build and audit the mechanism-resolution-design wheel",
-      "upload one clean artifact tied to the exact theorem-complete final main SHA"
-    ]
+    "validated_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+    "workflow_run_id": 33841102129,
+    "artifact_id": 9924940887,
+    "artifact_digest": "sha256:b094d9b525db453bee902580601a70620dc8108051be329be60761d70098fb91"
   },
   "reviewer_bundle": {
-    "status": "current_main_refreeze_required",
+    "status": "pass_final_theorem_complete_freeze",
     "trigger_marker": "[reviewer-bundle]",
-    "requirements": [
-      "include figure1_controlled_confounding.png",
-      "include controlled_confounding_demo.py as the Figure-1 reference source",
-      "include the theorem-complete current review manuscript",
-      "self-test the extracted methods-only code snapshot",
-      "pass author and commit-SHA anonymity scans"
-    ]
+    "validated_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+    "workflow_run_id": 33841102158,
+    "artifact_id": 9924939413,
+    "artifact_digest": "sha256:2a0fe9abbbaf5691f24a618a8877e030d4e74b61a1090b27789bf83c5902fd1d"
   },
   "publication_preparation": {
     "journal": "Methods in Ecology and Evolution",
@@ -111,13 +136,11 @@
   },
   "archival_doi": {
     "status": "not_minted",
-    "reason": "DOI minting is an external archive operation and must follow the final current-main submission-file freeze."
+    "reason": "DOI minting is an external archive operation and must follow final submitted-file fixation."
   },
   "remaining_publication_operations": [
-    "run tagged G5 and anonymous reviewer-bundle workflows from one exact theorem-complete main SHA",
-    "record the final artifact and figure hashes",
     "fill human-supplied title-page metadata",
-    "export the journal-ready manuscript and Supporting Information",
+    "export the journal-ready manuscript and Supporting Information from the frozen submission state",
     "add the corresponding-author signature to the optional cover letter if it is used",
     "tag the final artifact-validation SHA as v0.1.0 when submitted files are fixed",
     "mint and record an archival DOI after submission files are frozen"
@@ -125,5 +148,5 @@
   "nonblocking_maintenance": [
     "Update pyproject.toml project.license from the deprecated TOML-table form to an SPDX string before the setuptools 2027-02-18 removal deadline; do this outside the validated submission freeze unless a new G5 artifact is intentionally generated."
   ],
-  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics or frozen numerical claims requires a new protocol/version. Reporting/theorem integration on the current publication mainline requires a new G5/reviewer artifact freeze but does not authorize retuning frozen G2 evidence."
+  "science_freeze_policy": "Any change to G2 scientific parameters, observation-information semantics or frozen numerical claims requires a new protocol/version. Ledger-only recording of already-generated workflow/artifact provenance does not supersede the exact frozen science/code SHA."
 }
