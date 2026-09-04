@@ -45,11 +45,27 @@ def main() -> None:
     required_title_fields = (
         "Article type: **Research Article**", "Ruiqi Zhang", "Kyoto University",
         "Corresponding author", "Running headline", "Acknowledgements",
-        "Author contributions", "Data availability", "Funding", "Conflict of interest",
+        "Author contributions", "Statement on inclusion",
+        "Ethics and organism/field-study statement", "Data availability", "Funding",
+        "Conflict of interest",
     )
     missing_title = [x for x in required_title_fields if x not in title_page]
     if missing_title:
         fail("title page missing required fields:\n- " + "\n- ".join(missing_title))
+
+    inclusion_section = title_page.split("## Statement on inclusion", 1)[1].split(
+        "## Ethics and organism/field-study statement", 1
+    )[0]
+    for marker in ("synthetic benchmark", "does not report place-based empirical research", "not applicable"):
+        if marker.lower() not in inclusion_section.lower():
+            fail(f"Statement on inclusion missing scope marker: {marker}")
+
+    ethics_section = title_page.split("## Ethics and organism/field-study statement", 1)[1].split(
+        "## Data availability", 1
+    )[0]
+    for marker in ("No new empirical work involving animals, plants or field sites", "synthetic"):
+        if marker.lower() not in ethics_section.lower():
+            fail(f"ethics scope statement missing marker: {marker}")
 
     if "## Abstract" not in text or "**Data/Code for peer review:**" not in text:
         fail("Abstract or Data/Code for peer review statement missing")
@@ -124,6 +140,8 @@ def main() -> None:
     print(f"keywords: {len(keywords)}")
     print(f"conservative manuscript words: {words}")
     print(f"Supporting Information words: {word_count(supplement)}")
+    print("title-page inclusion statement: pass")
+    print("title-page ethics scope statement: pass")
     print("anonymous manuscript/SI commit-SHA scan: pass")
 
 
