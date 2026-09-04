@@ -1,14 +1,17 @@
 # Applications
 
-Interactive interfaces live here so that repository-root entry points cannot be
-mistaken for scientific evidence or package APIs.
+No interactive application is part of the active **Mechanism-Resolving Observation Design** submission or public package API.
 
-The current Streamlit app is an exploratory interface over RACH and provisional
-worked examples:
+The former exploratory Streamlit interface was tied to retired pre-rename terminology and provisional worked examples. It has been moved to `legacy/` for provenance rather than maintained as an active interface.
 
-```bash
-streamlit run apps/streamlit_app.py
+Use the publication-facing Python API instead:
+
+```python
+from causal_model import (
+    compute_admissible_mechanisms,
+    observation_information_value,
+    sequential_observation_design,
+)
 ```
 
-Its outputs are demonstrations. They are not part of the primary manuscript's
-evidence bundle.
+Applications added here in the future must use the current method vocabulary and remain outside the manuscript evidence bundle unless explicitly promoted by the submission manifest.
