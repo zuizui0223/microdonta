@@ -35,6 +35,7 @@ jobs:
 
       - name: Run full frozen-family comparator without changing frozen G2
         run: |
+          mkdir -p outputs
           python paper/run_static_information_supplement.py --output outputs/static_information_supplement.json > outputs/static_information_supplement_stdout.json
           cat outputs/static_information_supplement.json
 
