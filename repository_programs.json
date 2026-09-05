@@ -1,11 +1,11 @@
 {
-  "schema_version": 3,
-  "repository": "zuizui0223/microdonta",
+  "schema_version": 4,
+  "repository": "zuizui0223/mrod",
   "primary_program": "mechanism_resolving_observation_design",
   "programs": {
     "mechanism_resolving_observation_design": {
       "status": "primary MEE submission and installable method",
-      "roots": ["causal_model", "paper"]
+      "roots": ["mechanism_resolution_design", "causal_model", "paper"]
     },
     "abm_robustness": {
       "status": "supplementary evidence only",
@@ -90,7 +90,11 @@
       ]
     }
   },
-  "distribution_packages": ["causal_model", "attraction_trait_model"],
+  "distribution_packages": [
+    "mechanism_resolution_design",
+    "causal_model",
+    "attraction_trait_model"
+  ],
   "forbidden_imports": [
     {"from_root": "causal_model", "to_module": "eco_genetic_criticality"},
     {"from_root": "causal_model", "to_module": "boundary_model"}
