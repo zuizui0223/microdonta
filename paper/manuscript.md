@@ -144,7 +144,7 @@ for t = 0,1,... until stopping:
     recompute all predictive probabilities and scores
 ```
 
-Recomputation is not assumed to be uniformly beneficial. For a two-step finite design, let `X` be the first observation and let `U_q(x)=I(S;Q_q|X=x)` denote the information value of a remaining candidate `q` on branch `x`. The adaptive and strongest precommitted-static second-step values are
+Recomputation is not assumed to be uniformly beneficial. For a two-step finite design, let `X` be the first observation and let `U_q(x)=V(Q_q | X=x)` denote the normalized information value of a remaining candidate `q` on branch `x`. The adaptive and strongest precommitted-static second-step values are
 
 ```text
 V_adapt  = E[max_q U_q(X)],
@@ -161,7 +161,7 @@ OpenAI ChatGPT was used interactively to assist with code review, draft editing 
 
 ### 2.5 Controlled validation design
 
-We used four complementary controlled checks. None is presented as natural-system causal validation.
+We used four complementary controlled checks for the primary method validation, plus one post-frozen claim-ceiling diagnostic. None is presented as natural-system causal validation.
 
 #### 2.5.1 Confounding demonstration
 
@@ -294,7 +294,7 @@ This reframes mechanistic ambiguity from a reason to force a winner or postpone 
 - Beaumont, M.A. 2010. Approximate Bayesian computation in evolution and ecology. *Annual Review of Ecology, Evolution, and Systematics* 41: 379–406.
 - Canessa, S., Guillera-Arroita, G., Lahoz-Monfort, J.J., Southwell, D.M., Armstrong, D.P., Chadès, I., Lacy, R.C. & Converse, S.J. 2015. When do we need more data? A primer on calculating the value of information for applied ecologists. *Methods in Ecology and Evolution* 6: 1219–1228.
 - Chaloner, K. & Verdinelli, I. 1995. Bayesian experimental design: a review. *Statistical Science* 10: 273–304.
-- Csilléry, K., Blum, M.G.B., Gaggiotti, O.E. & François, O. 2010. Approximate Bayesian computation in practice. *Trends in Ecology & Evolution* 25: 271–418.
+- Csilléry, K., Blum, M.G.B., Gaggiotti, O.E. & François, O. 2010. Approximate Bayesian computation in practice. *Trends in Ecology & Evolution* 25: 410–418.
 - Grimm, V., Revilla, E., Berger, U., Jeltsch, F., Mooij, W.M., Railsback, S.F., Thulke, H.-H., Weiner, J., Wiegand, T. & DeAngelis, D.L. 2005. Pattern-oriented modelling of agent-based complex systems: lessons from ecology. *Science* 310: 987–991.
 - Hartig, F., Calabrese, J.M., Reineking, B., Wiegand, T. & Huth, A. 2011. Statistical inference for stochastic simulation models: theory and application. *Ecology Letters* 14: 816–827.
 - Raiffa, H. & Schlaifer, H. 1961. *Applied Statistical Decision Theory.* Harvard University Press, Boston.
