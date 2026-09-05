@@ -10,20 +10,21 @@ from . import mechanism_region as _backend
 
 CandidateObservation = _backend.CandidateObservation
 CandidateOutcome = _backend.CandidateOutcome
-MechanismAdmissibilityResult = _backend.CausalAdmissibilityResult
+MechanismAdmissibilityResult = _backend.MechanismAdmissibilityResult
 ObservationContribution = _backend.ObservationContribution
-CandidateInformationValueResult = _backend.NextObservationValueResult
-MechanismResolutionSummary = _backend.RACHSummary
+CandidateInformationValueResult = _backend.CandidateInformationValueResult
+MechanismResolutionSummary = _backend.MechanismResolutionSummary
 
-compute_admissible_mechanisms = _backend.causal_admissibility
-mechanism_entropy = _backend.causal_degeneracy
-mechanism_resolvability = _backend.causal_resolvability
+compute_admissible_mechanisms = _backend.compute_admissible_mechanisms
+mechanism_entropy = _backend.mechanism_entropy
+mechanism_resolvability = _backend.mechanism_resolvability
 observation_contribution = _backend.observation_contribution
-mechanism_resolution_summary = _backend.rach_summary
+mechanism_resolution_summary = _backend.mechanism_resolution_summary
 
-# Retained only as an explicitly labelled compatibility calculation. The
-# publication-level candidate quantity is defined in observation_value.py.
-heuristic_observation_value = _backend.next_observation_value
+# Explicit compatibility calculation. The publication-level candidate quantity
+# is defined in observation_value.py.
+heuristic_observation_value = _backend.heuristic_observation_value
+
 
 __all__ = [
     "CandidateInformationValueResult",
