@@ -78,8 +78,10 @@ The procedure stops when the budget is exhausted, the declared ambiguity is reso
 
 ## Public Python API
 
+The official import namespace matches the method and distribution name:
+
 ```python
-from causal_model import (
+from mechanism_resolution_design import (
     compute_admissible_mechanisms,
     mechanism_entropy,
     mechanism_resolvability,
@@ -90,17 +92,9 @@ from causal_model import (
 )
 ```
 
-Publication-facing modules are:
+`causal_model` is retained as an internal compatibility/implementation namespace during the migration; new code should not depend on it as the public API.
 
-```text
-causal_model/admissible_mechanisms.py
-causal_model/observation_value.py
-causal_model/sequential_design.py
-causal_model/mechanism_equivalence.py
-causal_model/mechanism_replaceability.py
-```
-
-Historical implementation labels are retained only where needed for compatibility or frozen benchmark provenance; they are not the advertised scientific vocabulary.
+Publication-facing implementation modules currently live under `causal_model/`, while `mechanism_resolution_design/` is the stable user-facing namespace. Historical implementation labels are retained only in explicit private compatibility modules or frozen benchmark provenance.
 
 ## Controlled validation
 
@@ -137,13 +131,17 @@ A signed functional starting position such as `plant_trait - pollinator_function
 ## Repository roles
 
 ```text
+mechanism_resolution_design/
+  __init__.py                    official public Python namespace
+
 causal_model/
-  admissible_mechanisms.py       publication-facing admissible-region API
+  admissible_mechanisms.py       admissible-region implementation facade
   observation_value.py           V(Q)=I(S;Q|A_epsilon)/K
-  sequential_design.py           adaptive observation selection
+  sequential_design.py           adaptive observation-selection facade
   mechanism_equivalence.py       residual equivalence structure
   mechanism_replaceability.py    mechanism replaceability
   generality_sweep.py            frozen G2 benchmark generator
+  _compat_*.py                   private historical implementation compatibility
 
 paper/
   manuscript.md                  active methods manuscript
@@ -160,6 +158,7 @@ Supplementary ABM backends, adapters and archived exploratory material are not p
 
 ```bash
 pip install -e ".[dev]"
+python -c "import mechanism_resolution_design as mrod; print(mrod.__version__)"
 python paper/check_submission_bundle.py
 python paper/check_mee_submission.py
 python scripts/check_repository_boundaries.py
