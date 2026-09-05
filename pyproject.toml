@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Mechanism-Resolving Observation Design: information-theoretic selection of observations that reduce residual mechanistic ambiguity."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { file = "LICENSE" }
+license = "MIT"
 authors = [
     { name = "Ruiqi Zhang" },
 ]
@@ -47,7 +47,7 @@ Repository = "https://github.com/zuizui0223/mrod"
 BoundaryPerspective = "https://github.com/zuizui0223/boundary"
 
 [tool.setuptools]
-packages = ["causal_model", "attraction_trait_model"]
+packages = ["mechanism_resolution_design", "causal_model", "attraction_trait_model"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "causal_model", "examples"]
