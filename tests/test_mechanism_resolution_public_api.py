@@ -1,7 +1,7 @@
 """Publication-facing tests for Mechanism-Resolving Observation Design."""
 
-import causal_model as method
-from causal_model import CandidateObservation, CandidateOutcome
+import mechanism_resolution_design as method
+from mechanism_resolution_design import CandidateObservation, CandidateOutcome
 
 
 EXPECTED = {
@@ -81,6 +81,7 @@ def _candidate():
 def test_public_api_is_descriptive_surface():
     assert set(method.__all__) == EXPECTED
     assert all(hasattr(method, name) for name in EXPECTED)
+    assert method.__version__ == "0.1.0"
     assert not {"run_rach_seq", "next_observation_evsi", "rach_summary"} & set(method.__all__)
 
 
