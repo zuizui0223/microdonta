@@ -11,7 +11,11 @@ coordinates.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from .observation_information import candidate_mutual_information_bits, next_observation_evsi
+from .observation_information import (
+    candidate_mutual_information_bits,
+    compute_observation_information_values,
+)
+
 
 @dataclass(frozen=True)
 class InformationValueResult:
@@ -31,7 +35,7 @@ class InformationValueResult:
 
 def observation_information_value(accepted_rows, switches, candidates, *, min_sub_size: int = 1):
     """Return publication-facing information-value records for candidates."""
-    backend_rows = next_observation_evsi(
+    backend_rows = compute_observation_information_values(
         accepted_rows,
         switches,
         candidates,
@@ -54,6 +58,7 @@ def observation_information_value(accepted_rows, switches, candidates, *, min_su
         )
         for row in backend_rows
     ]
+
 
 __all__ = [
     "InformationValueResult",

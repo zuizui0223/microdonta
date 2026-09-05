@@ -1,26 +1,23 @@
-"""Validated next-observation EVSI from the current RACH admissible region.
+"""Observation information value from the current admissible mechanism region.
 
-The publication-level NOV is a preposterior expected gain in causal
-resolvability, not the older target-switch heuristic score. For a candidate
-observation ``Q`` whose listed outcomes form a verified mutually exclusive and
-exhaustive partition of the current ``A_epsilon``:
+For a candidate observation ``Q`` whose listed outcomes form a verified mutually
+exclusive and exhaustive partition of the current ``A_epsilon``:
 
-    NOV(Q)
+    V(Q)
       = E_Q[R(S | Q)] - R(S)
       = [H(S) - H(S | Q)] / K
       = I(S; Q) / K.
 
-Thus validated NOV is exactly the mechanism-observation mutual information,
-normalised by the number of binary mechanism switches. It is non-negative and is
-zero exactly when the candidate observation is conditionally independent of the
-remaining mechanism vector under the current admissible region.
+The validated publication quantity is therefore normalized mechanism-observation
+mutual information. It is non-negative and is zero exactly when the candidate
+observation is conditionally independent of the remaining mechanism vector under
+the current admissible region.
 
-The predictive probabilities and conditional regions are computed from exactly
-the same row-level observation maps used by RACH-SEQ. If those maps do not
-partition the current admissible region, this module refuses to call the score a
-validated EVSI; declared outcome priors remain available to legacy/sequential
-fallback workflows but are not substituted silently into the publication-level
-quantity.
+Predictive probabilities and conditional regions are computed from exactly the
+same row-level observation maps used by sequential observation design. If those
+maps do not partition the current admissible region, this module reports the
+candidate as non-estimable for the validated information-value quantity; declared
+outcome priors remain available only to explicitly labelled fallback workflows.
 """
 from __future__ import annotations
 
@@ -28,13 +25,13 @@ from collections import Counter
 from dataclasses import dataclass, field
 import math
 
-from causal_model.causal_admissibility import CandidateObservation, causal_resolvability
-from causal_model.rach_seq import filter_by_outcome, predictive_outcome_distribution
+from causal_model.mechanism_region import CandidateObservation, causal_resolvability
+from causal_model.sequential_observation import filter_by_outcome, predictive_outcome_distribution
 
 
 @dataclass(frozen=True)
-class EVSIResult:
-    """One candidate's admissible-region EVSI and provenance."""
+class ObservationInformationResult:
+    """One candidate's admissible-region information value and provenance."""
 
     candidate: str
     current_R: float
@@ -59,8 +56,8 @@ def _nonestimable(
     probabilities: dict[str, float] | None = None,
     sizes: dict[str, int] | None = None,
     reason: str,
-) -> EVSIResult:
-    return EVSIResult(
+) -> ObservationInformationResult:
+    return ObservationInformationResult(
         candidate=candidate.name,
         current_R=current_R,
         expected_R=None,
@@ -128,24 +125,24 @@ def candidate_mutual_information_bits(
     return mi
 
 
-def next_observation_evsi(
+def compute_observation_information_values(
     accepted_rows: list[dict],
     switches,
     candidates: list[CandidateObservation],
     *,
     min_sub_size: int = 1,
-) -> list[EVSIResult]:
-    """Compute publication-level NOV/EVSI for explicit candidate outcomes.
+) -> list[ObservationInformationResult]:
+    """Compute validated observation information values for explicit outcomes.
 
     Only candidates whose outcome maps partition the *current* admissible region
-    are estimable by this cheap filtering identity. This is the same condition
-    under which RACH-SEQ uses ``Pr(v | current A_epsilon)`` rather than a declared
-    fallback prior.
+    are estimable by the filtering identity. This is the same condition under
+    which sequential observation design can use ``Pr(v | current A_epsilon)``
+    rather than a declared fallback prior.
 
-    For every estimable candidate, the implementation checks the information
-    identity ``NOV = I(S;Q)/K`` against the direct expected-resolvability
-    calculation. Their only allowed discrepancy is the existing four-decimal
-    rounding of ``R_RACH``.
+    For every estimable candidate, the implementation checks
+    ``V(Q) = I(S;Q)/K`` against the direct expected-resolvability calculation.
+    Their only allowed discrepancy is the existing four-decimal rounding of the
+    resolvability display quantity.
 
     ``min_sub_size`` is a numerical reliability guard, not a scientific success
     threshold. If any positive-probability outcome has fewer rows than the guard,
@@ -157,7 +154,7 @@ def next_observation_evsi(
 
     switch_list = list(switches)
     current_R = causal_resolvability(accepted_rows, switch_list)
-    results: list[EVSIResult] = []
+    results: list[ObservationInformationResult] = []
 
     for candidate in candidates:
         if not candidate.outcomes:
@@ -181,7 +178,7 @@ def next_observation_evsi(
                 probabilities=probabilities,
                 reason=(
                     "outcome maps do not form a verified partition of current A_epsilon; "
-                    "validated admissible-region EVSI is unavailable"
+                    "validated admissible-region information value is unavailable"
                 ),
             ))
             continue
@@ -225,26 +222,26 @@ def next_observation_evsi(
         if mi_bits is None:
             raise RuntimeError("verified predictive partition lost its information measure")
         K = len(switch_list)
-        information_evsi = (mi_bits / K) if K > 0 else 0.0
-        resolvability_evsi = expected_R - current_R
-        identity_error = resolvability_evsi - information_evsi
+        information_value = (mi_bits / K) if K > 0 else 0.0
+        resolvability_gain = expected_R - current_R
+        identity_error = resolvability_gain - information_value
         # causal_resolvability currently rounds each R value to four decimals;
         # two rounded terms can differ from the exact MI identity by ~1e-4.
         if abs(identity_error) > 2.5e-4:
             raise RuntimeError(
-                f"NOV information identity failed for {candidate.name!r}: "
-                f"expected-R gain={resolvability_evsi:.8f}, I(S;Q)/K={information_evsi:.8f}"
+                f"information identity failed for {candidate.name!r}: "
+                f"expected-R gain={resolvability_gain:.8f}, I(S;Q)/K={information_value:.8f}"
             )
 
-        # Use the information-theoretic value as the canonical validated NOV. It
-        # is exact for the empirical partition and cannot become spuriously
-        # negative because of R_RACH display rounding.
-        evsi = max(0.0, information_evsi)
-        results.append(EVSIResult(
+        # Use the information-theoretic value as the canonical score. It is exact
+        # for the empirical partition and cannot become spuriously negative
+        # because of display rounding in the resolvability statistic.
+        value = max(0.0, information_value)
+        results.append(ObservationInformationResult(
             candidate=candidate.name,
             current_R=current_R,
             expected_R=round(expected_R, 4),
-            evsi=round(evsi, 4),
+            evsi=round(value, 4),
             estimable=True,
             probability_source=distribution.source,
             partition_verified=True,
@@ -255,8 +252,8 @@ def next_observation_evsi(
             reason="",
         ))
 
-    # Estimable observations first, ordered by validated EVSI. Non-estimable
-    # candidates are retained for transparency instead of disappearing.
+    # Estimable observations first, ordered by validated information value.
+    # Non-estimable candidates are retained for transparency.
     results.sort(
         key=lambda result: (
             result.estimable,
@@ -267,8 +264,15 @@ def next_observation_evsi(
     return results
 
 
+# Historical backend aliases remain available for frozen/support code only.
+EVSIResult = ObservationInformationResult
+next_observation_evsi = compute_observation_information_values
+
+
 __all__ = [
-    "EVSIResult",
+    "ObservationInformationResult",
     "candidate_mutual_information_bits",
+    "compute_observation_information_values",
+    "EVSIResult",
     "next_observation_evsi",
 ]
