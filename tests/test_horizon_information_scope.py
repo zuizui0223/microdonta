@@ -16,12 +16,14 @@ def test_horizon_note_preserves_internal_claim_ceiling():
     text = DOC.read_text(encoding="utf-8")
     for marker in (
         "Status: **internal audit only**",
+        "fixed-bundle horizon",
         "J_1=0",
         "J_2=1",
         "J_|C|=0",
+        "first positive bundle size",
+        "not the minimum number of steps required by an adaptive policy",
         "controlled claim-ceiling diagnostic",
         "not the publication method",
-        "non-myopic / bundle-level design is required",
     ):
         assert marker in text, marker
 
@@ -36,4 +38,4 @@ def test_horizon_audit_is_not_public_or_submission_evidence():
 
     manuscript = MANUSCRIPT.read_text(encoding="utf-8")
     assert "horizon_information_profile" not in manuscript
-    assert "first positive information horizon" not in manuscript
+    assert "first positive bundle size" not in manuscript
