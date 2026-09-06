@@ -1,18 +1,19 @@
 """Prototype reporting layer that turns MROD limitations into explicit actions.
 
-This module does not define a new scientific score.  It composes quantities that
+This module does not define a new scientific score. It composes quantities that
 MROD already reports: current mechanism entropy, whether candidate observation
 values are estimable, whether any candidate has positive mechanism information,
 and whether the identity of the best candidate is stable across a declared
 specification set.
 
 The result deliberately preserves several axes instead of collapsing every
-limitation into one number.
+limitation into one number. Stability labels are descriptive sensitivity labels,
+not robust-design objectives.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Sequence
+from typing import Sequence
 
 
 @dataclass(frozen=True)
@@ -151,7 +152,13 @@ def classify_specification(
             recommended_action="report_information_limit",
         )
 
-    best = tuple(sorted(name for name, value in values.items() if abs(value - maximum) <= 1e-12))
+    best = tuple(
+        sorted(
+            name
+            for name, value in values.items()
+            if abs(value - maximum) <= 1e-12
+        )
+    )
     return SpecificationStatus(
         name=spec.name,
         current_entropy_bits=spec.current_entropy_bits,
@@ -176,39 +183,48 @@ def build_limitation_action_report(
         raise ValueError("at least one specification is required")
 
     statuses = tuple(
-        classify_specification(spec, entropy_tol=entropy_tol, value_tol=value_tol)
+        classify_specification(
+            spec, entropy_tol=entropy_tol, value_tol=value_tol
+        )
         for spec in specifications
     )
 
     resolved_flags = {status.mechanism_status == "resolved" for status in statuses}
     if resolved_flags == {True}:
-        resolution_stability = "robust_resolved"
+        resolution_stability = "stable_resolved"
     elif resolved_flags == {False}:
-        resolution_stability = "robust_unresolved"
+        resolution_stability = "stable_unresolved"
     else:
         resolution_stability = "specification_sensitive"
 
-    actionable_flags = {status.candidate_status == "actionable" for status in statuses if status.mechanism_status == "unresolved"}
+    unresolved = [status for status in statuses if status.mechanism_status == "unresolved"]
+    actionable_flags = {
+        status.candidate_status == "actionable" for status in unresolved
+    }
     if not actionable_flags:
         actionability_stability = "not_required"
     elif actionable_flags == {True}:
-        actionability_stability = "robust_actionable"
+        actionability_stability = "stable_actionable"
     elif actionable_flags == {False}:
-        actionability_stability = "robust_not_actionable"
+        actionability_stability = "stable_not_actionable"
     else:
         actionability_stability = "specification_sensitive"
 
-    actionable = [status for status in statuses if status.candidate_status == "actionable"]
-    common: set[str] = set(actionable[0].best_candidates) if actionable else set()
+    actionable = [
+        status for status in statuses if status.candidate_status == "actionable"
+    ]
+    common: set[str] = (
+        set(actionable[0].best_candidates) if actionable else set()
+    )
     for status in actionable[1:]:
         common &= set(status.best_candidates)
 
     if not actionable:
         recommendation_stability = "not_available"
-    elif len(actionable) != len([s for s in statuses if s.mechanism_status == "unresolved"]):
+    elif len(actionable) != len(unresolved):
         recommendation_stability = "specification_sensitive_actionability"
     elif common:
-        recommendation_stability = "robust"
+        recommendation_stability = "stable_common_best"
     else:
         recommendation_stability = "specification_sensitive_ranking"
 
