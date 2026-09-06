@@ -63,6 +63,8 @@ R = 1 - D/K.
 
 `D` is residual mechanism entropy and `R` is normalized mechanism resolvability. Here `residual` means ambiguity remaining inside the admissible mechanism region; it is not a regression residual or an unexplained-variance term. Mechanism-equivalence and replaceability summaries describe additional structure within the same retained region.
 
+`R` summarizes the concentration of the current declared mechanism distribution. Because that distribution already reflects the declared priors, pre-data constraints, context and accepted observations, `R` does not by itself attribute that concentration to the observations. Evidence attribution requires a declared pre-observation baseline and an entropy or mutual-information contrast relative to it.
+
 ## Observation information value
 
 For a candidate observation `Q` whose outcomes form a verified mutually exclusive and exhaustive partition of the current admissible region,
@@ -72,6 +74,8 @@ V(Q) = I(S;Q | A_epsilon) / K.
 ```
 
 This is the publication-level **observation information value**. It is zero exactly when the candidate carries no information about residual mechanism identity represented in the current region.
+
+Unlike current `R`, `V(Q)` is incremental conditional information: it asks what the candidate is expected to add beyond everything already encoded in the current admissible region. Candidate values can therefore depend on scientifically different prior or constraint specifications; when alternatives are plausible, ranking stability is a sensitivity-analysis result.
 
 A candidate whose predictive outcome partition is unavailable is reported as non-estimable for this quantity. An external outcome prior is not silently substituted and relabelled as validated information value.
 
