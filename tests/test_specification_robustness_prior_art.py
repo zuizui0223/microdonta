@@ -18,6 +18,8 @@ def test_scope_note_concedes_robust_design_prior_art():
         "does **not** claim to invent robust experimental design",
         "sensitivity-reporting diagnostic, not a new decision-theory optimum",
         "does not silently choose a maximin, averaged, regret-minimizing or robust-EIG replacement",
+        "share the **same declared mechanism target `S` and the same candidate-observation vocabulary**",
+        "common-best comparisons remain interpretable when the mechanism target or candidate vocabulary itself changes",
     ):
         assert marker in text, marker
 
