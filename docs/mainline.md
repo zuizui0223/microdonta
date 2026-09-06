@@ -38,8 +38,9 @@ The default output is not a best mechanism. It is:
 - the surviving explanation set and mechanism-admissibility profile;
 - joint entropy/resolvability and replaceability diagnostics;
 - unresolved mechanism-equivalence structure;
-- the next candidate measurement and its validated observation information value;
-- a stopping state when the budget is exhausted, the declared ambiguity is resolved, or no available candidate carries further identified mechanism information.
+- validated candidate information values where predictive partitions are estimable;
+- a best next candidate when the complete declared candidate set is estimable and contains positive validated information;
+- an explicit limitation state when the declared target is resolved, the budget is exhausted, candidate predictive coverage is incomplete, no candidate vocabulary is declared, or the complete declared candidate vocabulary is information-limited.
 
 ## Publication spine
 
@@ -79,15 +80,22 @@ An explicit normalized edge-cut fallback can remain available for sequential ste
 
 ## Sequential design rule
 
-At every step:
+At every validated-information step:
 
-1. compute `I(S;Q|current A_epsilon)/K` for each verified remaining candidate;
-2. select the candidate with maximum positive current information value;
+1. compute `I(S;Q|current A_epsilon)/K` for each estimable remaining candidate;
+2. select the candidate with maximum positive current validated information value when the relevant candidate comparison is fully identified;
 3. reveal or collect its outcome only after selection;
 4. condition the accepted region;
 5. recompute all candidate probabilities and information values.
 
-The algorithm stops when the observation budget is exhausted, the declared confounding structure is resolved, or all available validated values are zero.
+Stopping and limitation states are not interchangeable:
+
+- the **declared design target** may be resolved even while residual entropy remains in mechanism dimensions outside that target;
+- the **observation budget** may be exhausted even though a best future candidate is known;
+- a **validated information limit** is licensed only when every declared remaining candidate is estimable and all validated values are zero;
+- if one or more declared remaining candidates are non-estimable, the full candidate comparison is **prediction-limited**. Zero values among the estimable subset do not establish an information limit for the full candidate vocabulary, and any positive candidate is only provisionally best among the estimable subset.
+
+Compatibility fallback selection can still occur in historical/backend workflows, but fallback availability remains a separately labelled operational layer and does not alter the validated-information claim.
 
 ## Exact condition for when recomputation adds value
 
