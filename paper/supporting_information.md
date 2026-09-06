@@ -231,6 +231,33 @@ The pre-data information ranking is therefore `Q_A > Q_B*`. Current evidence is 
 
 Thus the candidate ranking reverses after current evidence restricts the admissible mechanism region. The result is an existence witness only: it does not imply that pre-data multiple-working-hypotheses analysis is inferior, that any named prior-art method keeps a ranking fixed after data arrive, or that ranking reversal is universal. It demonstrates why MROD's **post-current-data** candidate values must be computed from the current mechanism region rather than inherited unchanged from a broader pre-data state distribution.
 
+### S4.4 Mechanism-vocabulary normalization audit
+
+A representation audit checks whether the `K` normalization can manufacture raw mechanism information or change the next-observation decision. The baseline vocabulary is `S=(A,B)` with four equally represented states. A redundant vocabulary appends `A_copy=A`, which is deterministically fixed by the existing state and therefore adds no scientific mechanism distinction.
+
+For any deterministic redundant coordinate `U=g(S)`, the chain rules give
+
+```text
+H(S,U|A_epsilon)=H(S|A_epsilon),
+I((S,U);Q|A_epsilon)=I(S;Q|A_epsilon).
+```
+
+The executable audit reproduces the following values:
+
+| Quantity | Original `(A,B)` | Redundant `(A,B,A_copy)` |
+|---|---:|---:|
+| raw entropy `H(S)` | 2.0000 bit | 2.0000 bit |
+| normalized `R` | 0.0000 | 0.3333 |
+| raw MI `observe_A` | 1.000000 bit | 1.000000 bit |
+| normalized `V(observe_A)` | 0.5000 | 0.3333 |
+| raw MI `observe_A_and_B` | 0.811278 bit | 0.811278 bit |
+| normalized `V(observe_A_and_B)` | 0.4056 | 0.2704 |
+| candidate ranking | `observe_A` > `observe_A_and_B` | unchanged |
+
+Thus a deterministic duplicate cannot create raw entropy or raw candidate information and cannot change the candidate ranking. It can change the displayed bounded values because the denominator changes from `K=2` to `K=3`. Normalized `R` and `V` are therefore interpreted within a predeclared mechanism vocabulary rather than as universal cross-vocabulary scales.
+
+For reporting, residual entropy `D` is paired with `K`, candidate `I(S;Q|A_epsilon)` is reported in bits alongside normalized `V(Q)`, and absolute normalized scores are not compared across differently encoded mechanism vocabularies without an explicit vocabulary-sensitivity argument. This invariance applies to one-to-one recodings and deterministic redundant coordinates only; a genuinely uncertain subdivision or new mechanism changes the scientific target and may legitimately change raw information and candidate ranking. The audit is a representation diagnostic, not part of frozen G2 performance evidence.
+
 ---
 
 ## S5. Reproducibility and reviewer bundle
@@ -239,7 +266,7 @@ Thus the candidate ranking reverses after current evidence restricts the admissi
 
 The anonymised reviewer bundle contains the manuscript and Supporting Information, frozen G2 protocol and result summary, frozen auxiliary-validation summary, figure inventory and generated figures, publication-facing observation-design implementation modules, benchmark generators, tests and a per-file SHA-256 manifest.
 
-The static initial-information comparison is a post-frozen claim-ceiling diagnostic rather than preregistered G2 evidence. Its purpose is to constrain interpretation: the frozen G2 random-order contrast establishes information-guided screening, while the adaptive-recomputation theorem states the conditions under which recomputation itself has strict expected value. The S4.3 ranking-reversal witness is a separate controlled conceptual diagnostic and is not part of the frozen G2 performance evidence.
+The static initial-information comparison is a post-frozen claim-ceiling diagnostic rather than preregistered G2 evidence. Its purpose is to constrain interpretation: the frozen G2 random-order contrast establishes information-guided screening, while the adaptive-recomputation theorem states the conditions under which recomputation itself has strict expected value. The S4.3 ranking-reversal witness and S4.4 vocabulary-normalization audit are separate controlled conceptual diagnostics and are not part of the frozen G2 performance evidence.
 
 ### S5.2 Explicit exclusions
 
