@@ -1,8 +1,8 @@
 """Public-surface tests for Mechanism-Resolving Observation Design.
 
 The mechanism-information API remains the validated publication core.  The
-additional target-aware names are explicitly separate utilities; their presence
-must not remove or rename the mechanism-facing surface.
+additional target-aware and Pareto names are explicitly separate utilities;
+their presence must not remove or rename the mechanism-facing surface.
 """
 
 import causal_model as method
@@ -24,6 +24,7 @@ EXPECTED = {
     "TargetInformationValueResult",
     "TargetSequentialDesignResult",
     "TargetSequentialStep",
+    "TaskParetoResult",
     "candidate_mutual_information_bits",
     "candidate_target_mutual_information_bits",
     "compute_admissible_mechanisms",
@@ -40,12 +41,14 @@ EXPECTED = {
     "mechanism_resolution_summary",
     "observation_contribution",
     "observation_information_value",
+    "pareto_front_candidates",
     "predictive_outcome_distribution",
     "sequential_candidate_value",
     "sequential_observation_design",
     "target_entropy_bits",
     "target_observation_information_value",
     "target_sequential_observation_design",
+    "task_pareto_values",
     "validated_information_value",
 }
 
