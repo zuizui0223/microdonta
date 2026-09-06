@@ -1,8 +1,6 @@
 """Controlled tests for the internal horizon-information limitation audit."""
 from __future__ import annotations
 
-import math
-
 import pytest
 
 from causal_model.horizon_information_profile import horizon_information_profile
@@ -84,10 +82,13 @@ def test_normalization_does_not_change_first_positive_horizon():
     assert profile.best_normalized_value_by_horizon[1] == pytest.approx(0.25)
 
 
-def test_invalid_alignment_and_horizon_are_rejected():
+def test_invalid_alignment_horizon_and_normalization_are_rejected():
     with pytest.raises(ValueError):
         horizon_information_profile((0, 1), {"Q": (0,)}, mechanism_bits=1)
     with pytest.raises(ValueError):
         horizon_information_profile((0, 1), {"Q": (0, 1)}, mechanism_bits=1, max_horizon=2)
     with pytest.raises(ValueError):
         horizon_information_profile((0, 1), {"Q": (0, 1)}, mechanism_bits=0)
+    # Four equiprobable states have H(S)=2 bits, inconsistent with K=1.
+    with pytest.raises(ValueError, match="entropy exceeds"):
+        horizon_information_profile((0, 1, 2, 3), {"Q": (0, 1, 2, 3)}, mechanism_bits=1)
