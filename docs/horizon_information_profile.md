@@ -16,7 +16,7 @@ The executable XOR witness shows that
 V(Q)=0 for every singleton Q
 ```
 
-does not imply that combinations of those observations are uninformative. The limitation question can therefore be indexed by **observation horizon** rather than collapsed into one generic zero-information label.
+does not imply that combinations of those observations are uninformative. The limitation question can therefore be indexed by a **fixed-bundle horizon** rather than collapsed into one generic zero-information label.
 
 ## Definition
 
@@ -27,7 +27,7 @@ J_b(A)
 = max_{B subseteq C, 1 <= |B| <= b} I(S;Q_B|A)/K.
 ```
 
-`J_b` is called the **horizon information profile** here only as an internal diagnostic label. It is not proposed as a new information-theory quantity or optimization method.
+`J_b` is called the **horizon information profile** here only as an internal diagnostic label. It is not proposed as a new information-theory quantity or optimization method. The maximization is over fixed bundles; it is not an optimization over outcome-dependent adaptive trees.
 
 The exhaustive implementation is
 
@@ -41,13 +41,13 @@ and is intentionally restricted to small controlled systems.
 
 ### H1. Monotonicity
 
-Because the feasible bundle set for horizon `b` is contained in the feasible bundle set for `b+1`,
+Because the feasible fixed-bundle set for horizon `b` is contained in the feasible set for `b+1`,
 
 ```text
 J_1 <= J_2 <= ... <= J_|C|.
 ```
 
-Thus later horizons cannot contain less *best available bundle information* than earlier horizons.
+Thus later bundle horizons cannot contain less *best available fixed-bundle information* than earlier horizons.
 
 ### H2. Entropy bound
 
@@ -63,7 +63,9 @@ so
 0 <= J_b <= H(S|A)/K = 1-R(A).
 ```
 
-### H3. One-step stop versus delayed information
+The implementation also rejects inputs whose empirical mechanism entropy exceeds the declared `K`-bit normalization.
+
+### H3. One-step stop versus delayed fixed-bundle information
 
 If
 
@@ -77,7 +79,9 @@ but
 J_b>0
 ```
 
-for some `b>1`, then the current positive-singleton greedy rule has no informative immediate move but the declared candidate vocabulary is not sequence-information-limited. The smallest such `b` is the **first positive information horizon** for the exhaustive diagnostic.
+for some `b>1`, then the current positive-singleton greedy rule has no informative immediate move but the declared candidate vocabulary is not sequence-information-limited. The smallest such `b` is recorded as the **first positive bundle size** for this exhaustive fixed-bundle diagnostic.
+
+It is not the minimum number of steps required by an adaptive policy. An outcome-dependent policy can choose different later candidates on different branches and is a different optimization problem.
 
 The XOR witness gives exactly
 
@@ -96,7 +100,7 @@ At the maximum horizon,
 J_|C| = I(S;Q_C|A)/K,
 ```
 
-because the full candidate vector is one of the admissible bundles and no smaller bundle can exceed its information under deterministic projection/data processing.
+because the full candidate vector is one of the admissible bundles and every smaller fixed bundle is a projection of that vector.
 
 Therefore
 
@@ -115,7 +119,7 @@ J_1 > 0
     immediate singleton actionability
 
 J_1 = 0 but J_b > 0 for some b > 1
-    non-myopic / bundle-level design is required
+    some informative fixed bundle exists; non-myopic/bundle-level design should be considered
 
 J_|C| = 0
     declared candidate vector is sequence-information-limited
@@ -130,6 +134,7 @@ Do not interpret this audit as proving or supplying:
 - a new non-myopic Bayesian experimental-design algorithm;
 - a scalable optimizer for large candidate vocabularies;
 - an acquisition order from a high-information bundle;
+- a minimum adaptive step count;
 - cost-optimal or management-optimal design;
 - global optimality of the current MROD greedy policy;
 - adaptive submodularity or any other structural guarantee;
@@ -148,11 +153,11 @@ so the implementation is a **controlled claim-ceiling diagnostic**, not the publ
 The internal reporting layer can use the horizon result only to refine a zero-singleton state:
 
 ```text
-singleton zero + horizon not audited
+singleton zero + bundle horizon not audited
     -> audit joint/bundle information before claiming sequence impossibility
 
-singleton zero + first positive horizon b>1
-    -> report non-myopic bundle requirement
+singleton zero + first positive bundle size b>1
+    -> report existence of an informative fixed bundle; do not infer an adaptive order
 
 full-horizon zero
     -> report sequence-information limit relative to the declared candidate vector
