@@ -83,8 +83,6 @@ def test_mechanism_and_target_objectives_reverse_first_choice():
         "measure_target": 1.0,
     }
 
-    # Only the selected target candidate receives a realised-outcome entry. This
-    # also guards the rule that outcomes of unselected candidates are not read.
     result = target_sequential_observation_design(
         rows,
         [mechanism_candidate, target_candidate],
@@ -100,16 +98,31 @@ def test_mechanism_and_target_objectives_reverse_first_choice():
     assert result.stop_reason == "target_identified_at_budget"
 
 
-def test_target_policy_stops_without_spending_budget_when_target_is_already_identified():
-    rows = [{"pop_trait": 0.75, "target": "same"} for _ in range(20)]
-    candidate = _candidate("measure_target", "trait", [])
+def test_target_policy_stops_even_when_one_bit_of_mechanism_learning_remains_available():
+    rows = [
+        {
+            "A": bool(i % 2),
+            "pop_mech": 0.75 if i % 2 else 0.25,
+            "target": "same",
+        }
+        for i in range(40)
+    ]
+    mechanism_candidate = _candidate("measure_mechanism", "mech", ["A"])
+    assert candidate_mutual_information_bits(
+        rows, [_SW("A")], mechanism_candidate
+    ) == 1.0
+
+    # Target is already point-resolved. No realised outcome is supplied, proving
+    # that target stopping occurs before the mechanism-informative observation is
+    # acquired or even queried for its hidden result.
     result = target_sequential_observation_design(
         rows,
-        [candidate],
+        [mechanism_candidate],
         target_columns=["target"],
         realised_outcomes={},
         budget=3,
     )
+    assert result.initial_target_entropy_bits == 0.0
     assert result.target_identified
     assert result.stop_reason == "target_identified"
     assert result.steps == ()
