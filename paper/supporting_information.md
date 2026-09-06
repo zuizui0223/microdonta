@@ -90,15 +90,22 @@ Therefore
 
 ### S2.3 Sequential recomputation
 
-At step `t`, the information-guided policy scores every verified remaining candidate by
+At step `t`, the information-guided policy scores every candidate whose predictive partition is estimable by
 
 ```text
 V_t(Q)=I(S;Q|A_t)/K.
 ```
 
-It selects the largest positive current value, obtains the realised outcome only after selection, conditions `A_t` on that outcome, and recomputes all remaining predictive probabilities and information values. The sequence stops when the budget is exhausted, the declared confounding structure is resolved, or all available validated values are zero.
+It selects the largest positive current validated value when the relevant candidate comparison is identified, obtains the realised outcome only after selection, conditions `A_t` on that outcome, and recomputes all remaining predictive probabilities and information values.
 
-An explicitly named normalized edge-cut fallback is retained only for candidates whose predictive partition is unavailable. Every step records its score source; fallback scores are not reported as validated observation information values.
+The stopping interpretation depends on why no validated selection is made:
+
+- **declared target resolved:** the predeclared confounding or mechanism distinction has been resolved; this does not necessarily imply that all switch-vector entropy is zero;
+- **budget exhausted:** observation cannot continue for a resource reason, which is distinct from an information limit;
+- **validated information limit:** every declared remaining candidate has an estimable predictive partition and all validated values satisfy `V_t(Q)=0`; only then does the complete declared candidate vocabulary contain no expected mechanism information about the remaining ambiguity;
+- **prediction limit:** one or more declared remaining candidates are non-estimable. In this case zero values among the estimable subset do not establish an information limit for the full candidate vocabulary, and a positive value identifies only a provisional best among the estimable candidates until the remaining outcome maps are supplied or the candidate set is explicitly narrowed.
+
+An explicitly named normalized edge-cut fallback is retained for compatibility workflows when a predictive partition is unavailable. Every step records its score source; fallback scores are not reported as validated observation information values and do not by themselves establish zero or positive candidate mutual information.
 
 ### S2.4 When recomputation has strict value
 
