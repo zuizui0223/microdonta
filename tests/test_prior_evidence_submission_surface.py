@@ -34,7 +34,7 @@ def test_foundations_state_baseline_relative_information_identity():
     text = FOUNDATIONS.read_text(encoding="utf-8")
     for marker in (
         "## Proposition 9 — current resolvability is not evidence attribution",
-        "R_{B,o} is an **absolute current-state concentration measure",
+        "`R_{B,o}` is an **absolute current-state concentration measure",
         "Delta_R(o)",
         "E_O[Delta_R(O)]",
         "I(S;O|B)/K",
