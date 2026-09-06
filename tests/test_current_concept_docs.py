@@ -37,7 +37,7 @@ def test_current_concept_documents_do_not_restore_retired_publication_branding()
 def test_literature_comparison_keeps_claim_ceiling():
     text = (ROOT / "docs" / "literature_comparison.md").read_text(encoding="utf-8")
     for marker in (
-        "MROD did not invent",
+        "not that MROD invented EVSI or mutual information",
         "rank gain with positive MROD value",
         "More data never help",
         "Adaptive recomputation always outperforms",
