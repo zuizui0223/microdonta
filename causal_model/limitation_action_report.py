@@ -1,16 +1,21 @@
 """Prototype reporting layer that turns MROD limitations into explicit actions.
 
-This module does not define a new scientific score. It composes quantities that
-MROD already reports and deliberately keeps several axes separate:
+No new scientific score is defined here. The module composes existing MROD
+quantities into orthogonal reporting axes so that different reasons for stopping
+or continuing are not collapsed into one generic limitation label.
 
-* concentration of the full declared mechanism vector;
-* completion of a narrower predeclared design target, such as a confounding graph;
-* validated candidate-information estimability and actionability;
+The axes distinguish:
+
+* whether the current mechanism-information state is estimable;
+* full mechanism-vector ambiguity versus a narrower declared design target;
 * observation budget;
-* stability of those statements across a declared specification set.
+* coverage of the declared candidate vocabulary by validated predictive models;
+* whether validated candidate information is positive;
+* whether a global best candidate is identified;
+* stability of those statements over a declared specification set.
 
-The result is an internal reporting prototype, not a robust-design objective and
-not a replacement for the publication-level observation-selection algorithm.
+Compatibility fallbacks are outside the validated-information axis and must remain
+separately labelled.
 """
 from __future__ import annotations
 
@@ -32,10 +37,6 @@ class SpecificationInput:
     current_entropy_bits: float
     candidates: tuple[CandidateScore, ...]
     budget_remaining: bool = True
-    # Optional narrower stopping target supplied by the analysis, e.g. whether
-    # the predeclared confounding graph has been resolved. ``None`` means that
-    # only full mechanism-vector resolution (D=0 within tolerance) counts as
-    # target resolution for this prototype.
     declared_target_resolved: bool | None = None
 
 
@@ -43,14 +44,18 @@ class SpecificationInput:
 class SpecificationStatus:
     name: str
     current_entropy_bits: float
+    current_state_status: str
     full_mechanism_status: str
     declared_target_status: str
-    candidate_status: str
+    budget_status: str
+    candidate_coverage: str
+    validated_information_status: str
+    recommendation_status: str
     best_candidates: tuple[str, ...]
     max_information_value: float | None
     estimable_candidates: tuple[str, ...]
     nonestimable_candidates: tuple[str, ...]
-    recommended_action: str
+    recommended_actions: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -58,13 +63,12 @@ class LimitationActionReport:
     per_specification: tuple[SpecificationStatus, ...]
     full_resolution_stability: str
     target_resolution_stability: str
-    actionability_stability: str
+    validated_actionability_stability: str
     recommendation_stability: str
     common_best_candidates: tuple[str, ...]
 
 
 def _candidate_score_from_object(item) -> CandidateScore:
-    """Adapt publication result objects or explicit CandidateScore records."""
     if isinstance(item, CandidateScore):
         return item
     value = getattr(item, "information_value", None)
@@ -75,71 +79,43 @@ def _candidate_score_from_object(item) -> CandidateScore:
     )
 
 
-def _status(
-    spec: SpecificationInput,
-    *,
-    full_mechanism_status: str,
-    declared_target_status: str,
-    candidate_status: str,
-    best_candidates: tuple[str, ...] = (),
-    max_information_value: float | None = None,
-    estimable: tuple[CandidateScore, ...] = (),
-    nonestimable: tuple[CandidateScore, ...] = (),
-    recommended_action: str,
-) -> SpecificationStatus:
-    return SpecificationStatus(
-        name=spec.name,
-        current_entropy_bits=spec.current_entropy_bits,
-        full_mechanism_status=full_mechanism_status,
-        declared_target_status=declared_target_status,
-        candidate_status=candidate_status,
-        best_candidates=best_candidates,
-        max_information_value=max_information_value,
-        estimable_candidates=tuple(item.candidate for item in estimable),
-        nonestimable_candidates=tuple(item.candidate for item in nonestimable),
-        recommended_action=recommended_action,
-    )
-
-
 def classify_specification(
     spec: SpecificationInput,
     *,
     entropy_tol: float = 0.0,
     value_tol: float = 0.0,
 ) -> SpecificationStatus:
-    """Classify one declared current-state specification without hiding why it stops.
-
-    ``full_mechanism_status`` and ``declared_target_status`` are intentionally
-    different. A sequential benchmark may resolve a predeclared confounding
-    graph while residual entropy in other mechanism dimensions remains positive.
-
-    Candidate actionability is based only on validated information values. An
-    explicit compatibility fallback can be reported elsewhere, but it does not
-    convert non-estimable mutual information into validated actionability.
-    """
+    """Return orthogonal status axes for one declared specification."""
     if entropy_tol < 0 or value_tol < 0:
         raise ValueError("tolerances must be non-negative")
 
     candidates = tuple(_candidate_score_from_object(item) for item in spec.candidates)
     estimable = tuple(item for item in candidates if item.estimable)
     nonestimable = tuple(item for item in candidates if not item.estimable)
+    estimable_names = tuple(item.candidate for item in estimable)
+    nonestimable_names = tuple(item.candidate for item in nonestimable)
+    budget_status = "available" if spec.budget_remaining else "exhausted"
 
     if not math.isfinite(spec.current_entropy_bits) or spec.current_entropy_bits < 0:
-        return _status(
-            spec,
+        return SpecificationStatus(
+            name=spec.name,
+            current_entropy_bits=spec.current_entropy_bits,
+            current_state_status="nonestimable",
             full_mechanism_status="nonestimable",
             declared_target_status="nonestimable",
-            candidate_status="current_state_nonestimable",
-            estimable=estimable,
-            nonestimable=nonestimable,
-            recommended_action="repair_or_reestimate_current_admissible_region",
+            budget_status=budget_status,
+            candidate_coverage="not_evaluable",
+            validated_information_status="not_evaluable",
+            recommendation_status="not_evaluable",
+            best_candidates=(),
+            max_information_value=None,
+            estimable_candidates=estimable_names,
+            nonestimable_candidates=nonestimable_names,
+            recommended_actions=("repair_or_reestimate_current_admissible_region",),
         )
 
     fully_resolved = spec.current_entropy_bits <= entropy_tol
     full_mechanism_status = "fully_resolved" if fully_resolved else "ambiguous"
-
-    # Full mechanism resolution necessarily satisfies any narrower target. When
-    # ambiguity remains, the caller may still declare a narrower target resolved.
     target_resolved = fully_resolved or bool(spec.declared_target_resolved)
     declared_target_status = "resolved" if target_resolved else "unresolved"
 
@@ -149,44 +125,63 @@ def classify_specification(
             if fully_resolved
             else "stop_declared_target_resolved_report_residual_ambiguity"
         )
-        return _status(
-            spec,
+        return SpecificationStatus(
+            name=spec.name,
+            current_entropy_bits=spec.current_entropy_bits,
+            current_state_status="estimable",
             full_mechanism_status=full_mechanism_status,
             declared_target_status=declared_target_status,
-            candidate_status="not_required",
-            estimable=estimable,
-            nonestimable=nonestimable,
-            recommended_action=action,
+            budget_status=budget_status,
+            candidate_coverage="not_required",
+            validated_information_status="not_required",
+            recommendation_status="not_required",
+            best_candidates=(),
+            max_information_value=None,
+            estimable_candidates=estimable_names,
+            nonestimable_candidates=nonestimable_names,
+            recommended_actions=(action,),
         )
 
-    if not spec.budget_remaining:
-        return _status(
-            spec,
-            full_mechanism_status=full_mechanism_status,
-            declared_target_status=declared_target_status,
-            candidate_status="budget_limited",
-            estimable=estimable,
-            nonestimable=nonestimable,
-            recommended_action="report_budget_limit",
-        )
+    actions: list[str] = []
+    if budget_status == "exhausted":
+        actions.append("report_budget_limit")
 
     if not candidates:
-        return _status(
-            spec,
+        actions.append("expand_candidate_vocabulary")
+        return SpecificationStatus(
+            name=spec.name,
+            current_entropy_bits=spec.current_entropy_bits,
+            current_state_status="estimable",
             full_mechanism_status=full_mechanism_status,
             declared_target_status=declared_target_status,
-            candidate_status="candidate_limited",
-            recommended_action="expand_candidate_vocabulary",
+            budget_status=budget_status,
+            candidate_coverage="none_declared",
+            validated_information_status="not_available",
+            recommendation_status="unavailable",
+            best_candidates=(),
+            max_information_value=None,
+            estimable_candidates=(),
+            nonestimable_candidates=(),
+            recommended_actions=tuple(actions),
         )
 
     if not estimable:
-        return _status(
-            spec,
+        actions.append("identify_candidate_outcome_models")
+        return SpecificationStatus(
+            name=spec.name,
+            current_entropy_bits=spec.current_entropy_bits,
+            current_state_status="estimable",
             full_mechanism_status=full_mechanism_status,
             declared_target_status=declared_target_status,
-            candidate_status="prediction_limited",
-            nonestimable=nonestimable,
-            recommended_action="identify_candidate_outcome_models",
+            budget_status=budget_status,
+            candidate_coverage="none_estimable",
+            validated_information_status="nonestimable",
+            recommendation_status="unavailable",
+            best_candidates=(),
+            max_information_value=None,
+            estimable_candidates=(),
+            nonestimable_candidates=nonestimable_names,
+            recommended_actions=tuple(actions),
         )
 
     values = {
@@ -201,40 +196,72 @@ def classify_specification(
             if abs(value - maximum) <= 1e-12
         )
     )
+    information_status = "positive" if maximum > value_tol else "zero"
 
     if nonestimable:
-        return _status(
-            spec,
+        actions.append("resolve_nonestimable_candidates_before_global_ranking")
+        if information_status == "positive":
+            actions.append("report_provisional_best_among_estimable_candidates")
+        return SpecificationStatus(
+            name=spec.name,
+            current_entropy_bits=spec.current_entropy_bits,
+            current_state_status="estimable",
             full_mechanism_status=full_mechanism_status,
             declared_target_status=declared_target_status,
-            candidate_status="partial_prediction_limited",
-            best_candidates=best_verified if maximum > value_tol else (),
+            budget_status=budget_status,
+            candidate_coverage="partial",
+            validated_information_status=information_status,
+            recommendation_status=(
+                "provisional_best_among_estimable"
+                if information_status == "positive"
+                else "unavailable"
+            ),
+            best_candidates=best_verified if information_status == "positive" else (),
             max_information_value=maximum,
-            estimable=estimable,
-            nonestimable=nonestimable,
-            recommended_action="resolve_nonestimable_candidates_before_global_ranking",
+            estimable_candidates=estimable_names,
+            nonestimable_candidates=nonestimable_names,
+            recommended_actions=tuple(actions),
         )
 
-    if maximum <= value_tol:
-        return _status(
-            spec,
+    # Complete candidate coverage: now a zero-information or global-best claim is licensed.
+    if information_status == "zero":
+        actions.extend(("report_information_limit", "redesign_or_expand_measurement_vocabulary"))
+        return SpecificationStatus(
+            name=spec.name,
+            current_entropy_bits=spec.current_entropy_bits,
+            current_state_status="estimable",
             full_mechanism_status=full_mechanism_status,
             declared_target_status=declared_target_status,
-            candidate_status="information_limited",
+            budget_status=budget_status,
+            candidate_coverage="complete",
+            validated_information_status="zero",
+            recommendation_status="unavailable",
+            best_candidates=(),
             max_information_value=maximum,
-            estimable=estimable,
-            recommended_action="report_information_limit",
+            estimable_candidates=estimable_names,
+            nonestimable_candidates=(),
+            recommended_actions=tuple(actions),
         )
 
-    return _status(
-        spec,
+    if budget_status == "available":
+        actions.append("measure_best_candidate")
+    else:
+        actions.append("retain_best_candidate_for_future_budget")
+    return SpecificationStatus(
+        name=spec.name,
+        current_entropy_bits=spec.current_entropy_bits,
+        current_state_status="estimable",
         full_mechanism_status=full_mechanism_status,
         declared_target_status=declared_target_status,
-        candidate_status="actionable",
+        budget_status=budget_status,
+        candidate_coverage="complete",
+        validated_information_status="positive",
+        recommendation_status="validated_best",
         best_candidates=best_verified,
         max_information_value=maximum,
-        estimable=estimable,
-        recommended_action="measure_best_candidate",
+        estimable_candidates=estimable_names,
+        nonestimable_candidates=(),
+        recommended_actions=tuple(actions),
     )
 
 
@@ -250,7 +277,7 @@ def build_limitation_action_report(
     entropy_tol: float = 0.0,
     value_tol: float = 0.0,
 ) -> LimitationActionReport:
-    """Return orthogonal limitation and action states across declared specifications."""
+    """Combine single-specification axes without replacing them by one score."""
     if not specifications:
         raise ValueError("at least one specification is required")
 
@@ -269,26 +296,31 @@ def build_limitation_action_report(
     unresolved = [
         status for status in statuses if status.declared_target_status == "unresolved"
     ]
-    actionable_flags = {
-        status.candidate_status == "actionable" for status in unresolved
-    }
-    if not unresolved:
-        actionability_stability = "not_required"
-    elif actionable_flags == {True}:
-        actionability_stability = "stable_actionable"
-    elif actionable_flags == {False}:
-        actionability_stability = "stable_not_actionable"
-    else:
-        actionability_stability = "specification_sensitive"
+    fully_actionable = [
+        status
+        for status in unresolved
+        if status.candidate_coverage == "complete"
+        and status.validated_information_status == "positive"
+    ]
 
-    actionable = [status for status in unresolved if status.candidate_status == "actionable"]
-    common: set[str] = set(actionable[0].best_candidates) if actionable else set()
-    for status in actionable[1:]:
+    if not unresolved:
+        validated_actionability_stability = "not_required"
+    elif len(fully_actionable) == len(unresolved):
+        validated_actionability_stability = "stable_actionable"
+    elif not fully_actionable:
+        validated_actionability_stability = "stable_not_fully_actionable"
+    else:
+        validated_actionability_stability = "specification_sensitive"
+
+    common: set[str] = (
+        set(fully_actionable[0].best_candidates) if fully_actionable else set()
+    )
+    for status in fully_actionable[1:]:
         common &= set(status.best_candidates)
 
-    if not unresolved or not actionable:
+    if not unresolved or not fully_actionable:
         recommendation_stability = "not_available"
-    elif len(actionable) != len(unresolved):
+    elif len(fully_actionable) != len(unresolved):
         recommendation_stability = "specification_sensitive_actionability"
     elif common:
         recommendation_stability = "stable_common_best"
@@ -299,7 +331,7 @@ def build_limitation_action_report(
         per_specification=statuses,
         full_resolution_stability=full_resolution_stability,
         target_resolution_stability=target_resolution_stability,
-        actionability_stability=actionability_stability,
+        validated_actionability_stability=validated_actionability_stability,
         recommendation_stability=recommendation_stability,
         common_best_candidates=tuple(sorted(common)),
     )
