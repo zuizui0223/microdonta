@@ -28,6 +28,7 @@ RUNNABLE_SEEDS = [
     "causal_model/mechanism_replaceability.py",
     "causal_model/mechanism_equivalence.py",
     "causal_model/postdata_reprioritization_witness.py",
+    "causal_model/vocabulary_normalization_witness.py",
 ]
 REFERENCE_SOURCES = [
     "causal_model/generality_sweep.py",
@@ -101,6 +102,7 @@ from pathlib import Path
 import causal_model as method
 from causal_model import CandidateObservation, CandidateOutcome
 from causal_model.postdata_reprioritization_witness import evaluate_reprioritization
+from causal_model.vocabulary_normalization_witness import evaluate_vocabulary_normalization
 
 class _SW:
     def __init__(self, name): self.name=name
@@ -130,6 +132,19 @@ def test_postdata_reprioritization_witness():
     assert result.prior_information_bits["observe_B_when_A0"] == 0.811278
     assert result.current_information_bits["observe_A"] == 0.0
     assert result.current_information_bits["observe_B_when_A0"] == 1.0
+
+def test_vocabulary_normalization_witness():
+    result=evaluate_vocabulary_normalization()
+    assert result.original_entropy_bits == 2.0
+    assert result.redundant_entropy_bits == 2.0
+    assert result.original_resolvability == 0.0
+    assert result.redundant_resolvability == 0.3333
+    assert result.original_information_bits == result.redundant_information_bits
+    assert result.original_information_bits["observe_A"] == 1.0
+    assert result.original_information_bits["observe_A_and_B"] == 0.811278
+    assert result.original_values["observe_A"] == 0.5
+    assert result.redundant_values["observe_A"] == 0.3333
+    assert result.original_ranking == result.redundant_ranking
 
 def test_bundle_preserves_frozen_headline_values():
     data=json.loads(Path("frozen/g2_summary.json").read_text())
