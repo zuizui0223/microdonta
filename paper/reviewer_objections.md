@@ -143,6 +143,30 @@ Reporting rule: call `R` current resolvability/current mechanism concentration; 
 
 The current publication quantity is information value, not net monetary utility. Costs can be added in a downstream decision layer or used as budget constraints, but the paper does not claim cost-optimal field design. Keeping mechanism information separate from monetary/management utility is deliberate and distinguishes the current target from management VoI.
 
+## 21. “Is your specification-robust recommendation just robust Bayesian experimental design?”
+
+No new robust-design objective is claimed. Robust experimental design, maximin design and prior-robust expected-information-gain methods already address uncertainty in the design model or prior by modifying the optimization objective. In particular, Go & Isaac (2022) explicitly show that EIG experiment rankings can be sensitive to prior perturbations and propose Robust Expected Information Gain over a KL-divergence ambiguity set.
+
+MROD's common-best diagnostic is deliberately weaker. For every declared specification `lambda` it keeps the ordinary conditional mechanism-information objective unchanged,
+
+```text
+B_lambda = argmax_Q V_lambda(Q).
+```
+
+It then reports
+
+```text
+B_common = intersection_lambda B_lambda.
+```
+
+If `B_common` is nonempty, at least one candidate is optimal under every specification in the declared sensitivity set. If it is empty, MROD reports that the **recommendation itself is specification-sensitive**. It does not silently replace the criterion with maximin, model averaging, minimax regret or robust EIG.
+
+The controlled tolerance witness shows why this matters. A strict admissible region is nested inside a loose region while the same evaluated pool and candidate set are retained, yet `observe_A` is best at the strict tolerance and `observe_B` is best at the loose tolerance. Thus set nesting does not guarantee stable next-observation ranking.
+
+Claim guard: do not present the common-best set as a new robust optimal-design solution. Its role is reporting and sensitivity diagnosis: it tells the reader whether the ordinary MROD next-observation recommendation survives the declared specification set. If not, the unresolved specification dependence belongs in the limitation statement for the recommendation itself.
+
+Key closest precedent: Go, J. & Isaac, T. (2022), *Robust expected information gain for optimal Bayesian experimental design using ambiguity sets*, PMLR 180:728–737.
+
 ## Minimum defensible contribution
 
 Even after conceding the closest prior art, the paper retains:
@@ -152,12 +176,13 @@ Even after conceding the closest prior art, the paper retains:
 3. explicit separation of context, observed targets, diagnostics and future observations;
 4. exact normalized mechanism–observation information for verified predictive partitions derived from the same current admissible region, with raw information bits exposed for representation audits;
 5. explicit separation of current mechanism concentration from baseline-relative evidence gain;
-6. a one-way structural redundancy screen with an explicit false converse and executable witness;
-7. sequential conditioning of the admissible region after the realised measurement and recomputation of remaining candidate values;
-8. a precise two-step strict-value condition for adaptive recomputation;
-9. frozen controlled evidence that information-guided screening avoids mechanism-independent measurements under limited budget without hidden-truth leakage;
-10. a negative stronger-comparator result that narrows the empirical adaptive claim rather than being hidden.
+6. sensitivity reporting for whether the ordinary next-observation recommendation is stable across a declared specification set, without silently changing the design utility;
+7. a one-way structural redundancy screen with an explicit false converse and executable witness;
+8. sequential conditioning of the admissible region after the realised measurement and recomputation of remaining candidate values;
+9. a precise two-step strict-value condition for adaptive recomputation;
+10. frozen controlled evidence that information-guided screening avoids mechanism-independent measurements under limited budget without hidden-truth leakage;
+11. a negative stronger-comparator result that narrows the empirical adaptive claim rather than being hidden.
 
 ## Submission stop conditions
 
-Do not submit if the manuscript says or implies that MROD invented multiple working hypotheses, strong inference, pre-data hypothesis vetting, design revision under hypothesis degeneracy, mutual information, EVSI, Bayesian experimental design, model discrimination, active learning or structural identifiability; that ecology previously lacked any method for using ambiguity to revise design; that rank gain guarantees positive mechanism value; that more data never help; that accepted-row switch filtering identifies intervention counterfactuals; that adaptive recomputation empirically beats static information ordering on G2; that the declared mechanism vocabulary is exhaustive of nature; that normalized `R` or `V` is universally comparable across arbitrary mechanism vocabularies; that a deterministic redundant switch changes raw mechanism information or candidate ranking; that positive current `R` by itself is information supplied by the observations; that candidate ranking is prior-invariant; or that the frozen benchmark validates a natural ecological mechanism.
+Do not submit if the manuscript says or implies that MROD invented multiple working hypotheses, strong inference, pre-data hypothesis vetting, design revision under hypothesis degeneracy, mutual information, EVSI, Bayesian experimental design, model discrimination, active learning, structural identifiability or robust experimental design; that ecology previously lacked any method for using ambiguity to revise design; that rank gain guarantees positive mechanism value; that more data never help; that accepted-row switch filtering identifies intervention counterfactuals; that adaptive recomputation empirically beats static information ordering on G2; that the declared mechanism vocabulary is exhaustive of nature; that normalized `R` or `V` is universally comparable across arbitrary mechanism vocabularies; that a deterministic redundant switch changes raw mechanism information or candidate ranking; that positive current `R` by itself is information supplied by the observations; that candidate ranking is prior- or tolerance-invariant; that the common-best diagnostic is a new maximin or robust-EIG optimum; or that the frozen benchmark validates a natural ecological mechanism.

@@ -12,9 +12,32 @@ V_epsilon(Q) = I(S;Q | A_epsilon) / K.
 
 The acceptance tolerance `epsilon` is therefore part of the conditioning state. If more than one tolerance is scientifically plausible, the relevant question is not only whether `R` or marginal mechanism support changes, but whether the **recommended next observation itself** changes.
 
-The same issue applies more generally to a declared sensitivity set of priors, tolerances, discrepancies or other predeclared specifications.
+The same issue applies more generally to a declared sensitivity set of priors, tolerances, discrepancies or other predeclared specifications that preserve the same scientific mechanism target and candidate-observation vocabulary.
 
-## 2. Proposition T1 — nested admissible regions do not imply monotone mechanism information
+## 2. Relationship to robust experimental design
+
+Robust experimental design is not new. Maximin and Bayesian robust-design traditions explicitly optimize designs under parameter, prior or model uncertainty. More directly, Go & Isaac (2022) showed that expected-information-gain rankings can be sensitive to prior perturbations and proposed **Robust Expected Information Gain**, which replaces the nominal EIG objective by a worst-case objective over a KL-divergence ambiguity set.
+
+MROD does **not** claim to invent robust experimental design, prior-robust EIG or an ambiguity-set optimum. The diagnostic below is deliberately weaker and has a different reporting role. It leaves the ordinary MROD value `V_lambda(Q)` unchanged under each declared specification `lambda`, then asks whether the identity of the best candidate is stable across a finite, scientifically justified sensitivity set.
+
+Thus:
+
+```text
+robust design optimization
+    -> chooses a design using an additional robustness objective or ambiguity model
+
+MROD common-best diagnostic
+    -> reports whether the unmodified current recommendation is invariant
+       across declared specifications
+```
+
+If the common-best set is empty, this note does not silently choose a maximin, averaged, regret-minimizing or robust-EIG replacement. It reports the recommendation itself as specification-sensitive. A downstream robust decision rule can be added, but that is an extra assumption and a different methodological layer.
+
+Closest explicit information-gain precedent:
+
+- Go, J. & Isaac, T. 2022. *Robust expected information gain for optimal Bayesian experimental design using ambiguity sets.* Proceedings of Machine Learning Research 180:728–737.
+
+## 3. Proposition T1 — nested admissible regions do not imply monotone mechanism information
 
 For `epsilon_1 < epsilon_2`, standard threshold acceptance gives nested regions
 
@@ -44,7 +67,7 @@ argmax_Q V_epsilon(Q).
 
 A candidate that is optimal under one defensible tolerance need not remain optimal under another.
 
-## 3. Controlled ranking-reversal witness
+## 4. Controlled ranking-reversal witness
 
 `causal_model/tolerance_sensitivity_witness.py` uses one fixed evaluated pool with a row-level discrepancy score. The strict region at `epsilon=0.10` contains 10 rows and is nested inside the loose region at `epsilon=0.20`, which contains 18 rows.
 
@@ -88,9 +111,9 @@ and the ranking reverses to `observe_B`.
 
 The data-generating pool and candidate observations are unchanged; only the acceptance tolerance changes.
 
-## 4. Specification-robust optimality diagnostic
+## 5. Specification-robust recommendation diagnostic
 
-Let `Lambda` be a finite, predeclared sensitivity set of scientifically defensible specifications. A specification can encode a prior, tolerance, discrepancy rule or another modelling choice that changes the current admissible mechanism distribution.
+Let `Lambda` be a finite, predeclared sensitivity set of scientifically defensible specifications that share the **same declared mechanism target `S` and the same candidate-observation vocabulary**. A specification can vary a prior, tolerance, discrepancy rule or another modelling choice that changes the current admissible mechanism distribution without redefining what counts as the mechanism target or what candidate is being compared.
 
 For each `lambda in Lambda`, define the set of current best candidates
 
@@ -104,9 +127,9 @@ Then define the **common-best set**
 B_common = intersection_{lambda in Lambda} B_lambda.
 ```
 
-This is a diagnostic, not a new decision-theory optimum.
+This is a sensitivity-reporting diagnostic, not a new decision-theory optimum.
 
-- If `B_common` is nonempty, every candidate in it is optimal under every specification in the declared sensitivity set. The next-observation recommendation is specification-robust over that set.
+- If `B_common` is nonempty, every candidate in it is optimal under every specification in the declared sensitivity set. The next-observation recommendation is specification-stable over that set.
 - If `B_common` is empty, no available candidate is uniformly best over the declared specifications. The scientifically correct output is that the next-observation recommendation is specification-sensitive, unless an additional decision rule is declared.
 
 The tolerance witness has
@@ -117,38 +140,44 @@ B_0.20 = {observe_B},
 B_common = empty.
 ```
 
-## 5. What this diagnostic does not do
+If the biological mechanism vocabulary itself changes, or candidates are added/removed or redefined, the scientific target or action space has changed. In that case a simple common-best comparison is not a representation-invariance claim and should not be interpreted as the same sensitivity problem.
 
-An empty common-best set does not imply that observation design is impossible. It says that a unique recommendation requires an additional choice about specification uncertainty. Possible downstream rules include model averaging, minimax or regret criteria, but those introduce extra decision assumptions and are not silently added to the current MROD publication claim.
+## 6. What this diagnostic does not do
 
-Likewise, a nonempty common-best set establishes robustness only over the declared sensitivity set; it does not prove robustness to undeclared model misspecification.
+An empty common-best set does not imply that observation design is impossible. It says that a unique recommendation requires an additional choice about specification uncertainty. Possible downstream rules include Bayesian model averaging, maximin, minimax-regret or robust-EIG criteria, but those introduce extra decision assumptions and are not silently added to the current MROD publication claim.
 
-## 6. Reporting rule
+Likewise, a nonempty common-best set establishes stability only over the declared sensitivity set with the common scientific target and action vocabulary; it does not prove robustness to undeclared model misspecification or to a redefinition of the mechanism target itself.
+
+## 7. Reporting rule
 
 When prior, tolerance or another specification is not scientifically fixed:
 
-1. predeclare a plausible sensitivity set;
-2. report current mechanism ambiguity under each specification;
-3. recompute raw candidate mutual information and normalized `V(Q)` under each specification;
-4. report whether the common-best set is nonempty;
-5. if it is empty, label the next-observation recommendation as specification-sensitive rather than presenting one candidate as uniquely warranted.
+1. hold the declared mechanism target and candidate vocabulary fixed;
+2. predeclare a plausible sensitivity set;
+3. report current mechanism ambiguity under each specification;
+4. recompute raw candidate mutual information and normalized `V(Q)` under each specification;
+5. report whether the common-best set is nonempty;
+6. if it is empty, label the next-observation recommendation as specification-sensitive rather than presenting one candidate as uniquely warranted.
 
 This turns specification uncertainty into an auditable limitation of the **observation recommendation itself**.
 
-## 7. Claim guard
+## 8. Claim guard
 
 Do not claim that:
 
 - candidate information is monotone in the acceptance tolerance;
-- a next observation selected under one tolerance is automatically robust to another;
-- a nonempty common-best set proves robustness to specifications outside the declared sensitivity set;
+- a next observation selected under one tolerance is automatically stable under another;
+- MROD invented robust experimental design or robust expected information gain;
+- the common-best diagnostic is itself a maximin, ambiguity-set or Bayesian robust-design objective;
+- common-best comparisons remain interpretable when the mechanism target or candidate vocabulary itself changes;
+- a nonempty common-best set proves stability to specifications outside the declared sensitivity set;
 - MROD supplies a universal rule for resolving specification disagreement.
 
 The demonstrated result is narrower:
 
-> **Nested admissible regions can reverse the information ranking of candidate observations; robustness of the next-observation recommendation should therefore be assessed over a predeclared sensitivity set when the specification is uncertain.**
+> **Nested admissible regions can reverse the information ranking of candidate observations; stability of the next-observation recommendation should therefore be reported over a predeclared sensitivity set when the scientific target and candidate vocabulary are held fixed.**
 
-## 8. Reproduce
+## 9. Reproduce
 
 ```bash
 python -m causal_model.tolerance_sensitivity_witness
