@@ -68,13 +68,41 @@ def _candidate_score_from_object(item) -> CandidateScore:
     )
 
 
+def _base_status(
+    spec: SpecificationInput,
+    *,
+    candidate_status: str,
+    best_candidates: tuple[str, ...] = (),
+    max_information_value: float | None = None,
+    estimable: tuple[CandidateScore, ...] = (),
+    nonestimable: tuple[CandidateScore, ...] = (),
+    recommended_action: str,
+) -> SpecificationStatus:
+    return SpecificationStatus(
+        name=spec.name,
+        current_entropy_bits=spec.current_entropy_bits,
+        mechanism_status=("resolved" if candidate_status == "not_required" else "unresolved"),
+        candidate_status=candidate_status,
+        best_candidates=best_candidates,
+        max_information_value=max_information_value,
+        estimable_candidates=tuple(item.candidate for item in estimable),
+        nonestimable_candidates=tuple(item.candidate for item in nonestimable),
+        recommended_action=recommended_action,
+    )
+
+
 def classify_specification(
     spec: SpecificationInput,
     *,
     entropy_tol: float = 0.0,
     value_tol: float = 0.0,
 ) -> SpecificationStatus:
-    """Classify one declared current-state specification without hiding why it stops."""
+    """Classify one declared current-state specification without hiding why it stops.
+
+    An information limit is reported only when every declared candidate is
+    estimable.  If any candidate is non-estimable, the candidate vocabulary has
+    not been completely valued and the result remains prediction-limited.
+    """
     if entropy_tol < 0 or value_tol < 0:
         raise ValueError("tolerances must be non-negative")
 
@@ -83,54 +111,35 @@ def classify_specification(
     nonestimable = tuple(item for item in candidates if not item.estimable)
 
     if spec.current_entropy_bits <= entropy_tol:
-        return SpecificationStatus(
-            name=spec.name,
-            current_entropy_bits=spec.current_entropy_bits,
-            mechanism_status="resolved",
+        return _base_status(
+            spec,
             candidate_status="not_required",
-            best_candidates=(),
-            max_information_value=None,
-            estimable_candidates=tuple(item.candidate for item in estimable),
-            nonestimable_candidates=tuple(item.candidate for item in nonestimable),
+            estimable=estimable,
+            nonestimable=nonestimable,
             recommended_action="stop_resolved",
         )
 
     if not spec.budget_remaining:
-        return SpecificationStatus(
-            name=spec.name,
-            current_entropy_bits=spec.current_entropy_bits,
-            mechanism_status="unresolved",
+        return _base_status(
+            spec,
             candidate_status="budget_limited",
-            best_candidates=(),
-            max_information_value=None,
-            estimable_candidates=tuple(item.candidate for item in estimable),
-            nonestimable_candidates=tuple(item.candidate for item in nonestimable),
+            estimable=estimable,
+            nonestimable=nonestimable,
             recommended_action="report_budget_limit",
         )
 
     if not candidates:
-        return SpecificationStatus(
-            name=spec.name,
-            current_entropy_bits=spec.current_entropy_bits,
-            mechanism_status="unresolved",
+        return _base_status(
+            spec,
             candidate_status="candidate_limited",
-            best_candidates=(),
-            max_information_value=None,
-            estimable_candidates=(),
-            nonestimable_candidates=(),
             recommended_action="expand_candidate_vocabulary",
         )
 
     if not estimable:
-        return SpecificationStatus(
-            name=spec.name,
-            current_entropy_bits=spec.current_entropy_bits,
-            mechanism_status="unresolved",
+        return _base_status(
+            spec,
             candidate_status="prediction_limited",
-            best_candidates=(),
-            max_information_value=None,
-            estimable_candidates=(),
-            nonestimable_candidates=tuple(item.candidate for item in nonestimable),
+            nonestimable=nonestimable,
             recommended_action="identify_candidate_outcome_models",
         )
 
@@ -139,35 +148,40 @@ def classify_specification(
         for item in estimable
     }
     maximum = max(values.values())
-    if maximum <= value_tol:
-        return SpecificationStatus(
-            name=spec.name,
-            current_entropy_bits=spec.current_entropy_bits,
-            mechanism_status="unresolved",
-            candidate_status="information_limited",
-            best_candidates=(),
-            max_information_value=maximum,
-            estimable_candidates=tuple(item.candidate for item in estimable),
-            nonestimable_candidates=tuple(item.candidate for item in nonestimable),
-            recommended_action="report_information_limit",
-        )
-
-    best = tuple(
+    best_verified = tuple(
         sorted(
             name
             for name, value in values.items()
             if abs(value - maximum) <= 1e-12
         )
     )
-    return SpecificationStatus(
-        name=spec.name,
-        current_entropy_bits=spec.current_entropy_bits,
-        mechanism_status="unresolved",
+
+    if nonestimable:
+        return _base_status(
+            spec,
+            candidate_status="partial_prediction_limited",
+            best_candidates=(best_verified if maximum > value_tol else ()),
+            max_information_value=maximum,
+            estimable=estimable,
+            nonestimable=nonestimable,
+            recommended_action="resolve_nonestimable_candidates_before_global_ranking",
+        )
+
+    if maximum <= value_tol:
+        return _base_status(
+            spec,
+            candidate_status="information_limited",
+            max_information_value=maximum,
+            estimable=estimable,
+            recommended_action="report_information_limit",
+        )
+
+    return _base_status(
+        spec,
         candidate_status="actionable",
-        best_candidates=best,
+        best_candidates=best_verified,
         max_information_value=maximum,
-        estimable_candidates=tuple(item.candidate for item in estimable),
-        nonestimable_candidates=tuple(item.candidate for item in nonestimable),
+        estimable=estimable,
         recommended_action="measure_best_candidate",
     )
 
