@@ -1,11 +1,11 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "journal": "Methods in Ecology and Evolution",
   "article_type": "Research Article",
   "submission_system": "ScholarOne Manuscripts",
   "submission_url": "https://mc.manuscriptcentral.com/mee-besjournals",
   "guidance_checked": "2026-09-05",
-  "validated_artifact_sha": "3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
+  "validated_artifact_sha": "a8d21b30646df4dc337f1455ca7d89662b4d7ba3",
   "status": "pre_export_blocked_on_human_metadata",
   "uploads": [
     {
@@ -60,10 +60,10 @@
     {
       "slot": "anonymous_code_for_peer_review",
       "source_type": "github_actions_artifact",
-      "artifact_id": 9924939413,
-      "artifact_name": "mee-anonymous-mechanism-resolution-design-3219ec40fbc372e003faf4a9d3be1f4e2c25effb",
-      "artifact_digest": "sha256:2a0fe9abbbaf5691f24a618a8877e030d4e74b61a1090b27789bf83c5902fd1d",
-      "internal_bundle_sha256": "1097b7215e05cd5f385596863c32936aede517661ea32536fb41653cc64e15da",
+      "artifact_id": 9980987768,
+      "artifact_name": "mee-anonymous-mechanism-resolution-design-a8d21b30646df4dc337f1455ca7d89662b4d7ba3",
+      "artifact_digest": "sha256:e86bfab94723416c5f8ef0ca1a40b5b0a457f76d666bf6eccf5a7720c56ccc03",
+      "internal_bundle_sha256": "083a17fc547429da4c24901ff15fbfb264da0111919a4302f5f1d72d9ffd9ef7",
       "scholarone_designation": "review-visible supplemental/code file",
       "designation_note": "The public guidelines require code/data to be available to reviewers and editors but do not publish the exact dropdown label for this file type; select the review-visible supplemental/code designation in ScholarOne, not a not-for-review designation.",
       "required": true,
