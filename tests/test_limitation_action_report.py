@@ -34,12 +34,13 @@ def test_unresolved_positive_value_is_actionable():
     assert status.recommended_action == "measure_best_candidate"
 
 
-def test_unresolved_zero_values_are_information_limited():
+def test_unresolved_zero_values_are_information_limited_only_when_all_candidates_estimable():
     status = classify_specification(
         SpecificationInput("base", 1.0, (score("Q1", 0.0), score("Q2", 0.0)))
     )
     assert status.candidate_status == "information_limited"
     assert status.best_candidates == ()
+    assert status.nonestimable_candidates == ()
     assert status.recommended_action == "report_information_limit"
 
 
@@ -54,6 +55,35 @@ def test_no_estimable_candidate_is_prediction_limited():
     assert status.candidate_status == "prediction_limited"
     assert status.nonestimable_candidates == ("Q1", "Q2")
     assert status.recommended_action == "identify_candidate_outcome_models"
+
+
+def test_zero_verified_values_plus_nonestimable_candidate_is_not_information_limited():
+    status = classify_specification(
+        SpecificationInput(
+            "base",
+            1.0,
+            (score("Q1", 0.0), score("Q2", None, estimable=False)),
+        )
+    )
+    assert status.candidate_status == "partial_prediction_limited"
+    assert status.best_candidates == ()
+    assert status.nonestimable_candidates == ("Q2",)
+    assert status.recommended_action == "resolve_nonestimable_candidates_before_global_ranking"
+
+
+def test_positive_verified_value_plus_nonestimable_candidate_is_only_partial_ranking():
+    status = classify_specification(
+        SpecificationInput(
+            "base",
+            1.0,
+            (score("Q1", 0.4), score("Q2", None, estimable=False)),
+        )
+    )
+    assert status.candidate_status == "partial_prediction_limited"
+    assert status.best_candidates == ("Q1",)
+    assert status.max_information_value == 0.4
+    assert status.nonestimable_candidates == ("Q2",)
+    assert status.recommended_action == "resolve_nonestimable_candidates_before_global_ranking"
 
 
 def test_no_candidate_is_candidate_limited():
@@ -99,6 +129,21 @@ def test_actionability_can_itself_be_specification_sensitive():
         [
             SpecificationInput("s1", 1.0, (score("Q1", 0.4),)),
             SpecificationInput("s2", 1.0, (score("Q1", 0.0),)),
+        ]
+    )
+    assert report.actionability_stability == "specification_sensitive"
+    assert report.recommendation_stability == "specification_sensitive_actionability"
+
+
+def test_partial_prediction_limit_counts_as_not_fully_actionable():
+    report = build_limitation_action_report(
+        [
+            SpecificationInput("complete", 1.0, (score("Q1", 0.4),)),
+            SpecificationInput(
+                "partial",
+                1.0,
+                (score("Q1", 0.4), score("Q2", None, estimable=False)),
+            ),
         ]
     )
     assert report.actionability_stability == "specification_sensitive"
