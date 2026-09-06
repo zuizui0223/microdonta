@@ -223,7 +223,6 @@ def classify_specification(
             recommended_actions=tuple(actions),
         )
 
-    # Complete candidate coverage: now a zero-information or global-best claim is licensed.
     if information_status == "zero":
         actions.extend(("report_information_limit", "redesign_or_expand_measurement_vocabulary"))
         return SpecificationStatus(
@@ -289,43 +288,51 @@ def build_limitation_action_report(
     full_resolution_stability = _stability_label(
         {status.full_mechanism_status for status in statuses}, prefix="mechanism"
     )
-    target_resolution_stability = _stability_label(
-        {status.declared_target_status for status in statuses}, prefix="target"
-    )
+    target_states = {status.declared_target_status for status in statuses}
+    target_resolution_stability = _stability_label(target_states, prefix="target")
 
-    unresolved = [
-        status for status in statuses if status.declared_target_status == "unresolved"
-    ]
-    fully_actionable = [
-        status
-        for status in unresolved
-        if status.candidate_coverage == "complete"
-        and status.validated_information_status == "positive"
-    ]
-
-    if not unresolved:
+    # Recommendation comparison is downstream of the target state itself. Do not
+    # ignore specifications in which the target is resolved or non-estimable.
+    if target_states == {"resolved"}:
         validated_actionability_stability = "not_required"
-    elif len(fully_actionable) == len(unresolved):
-        validated_actionability_stability = "stable_actionable"
-    elif not fully_actionable:
-        validated_actionability_stability = "stable_not_fully_actionable"
-    else:
-        validated_actionability_stability = "specification_sensitive"
-
-    common: set[str] = (
-        set(fully_actionable[0].best_candidates) if fully_actionable else set()
-    )
-    for status in fully_actionable[1:]:
-        common &= set(status.best_candidates)
-
-    if not unresolved or not fully_actionable:
         recommendation_stability = "not_available"
-    elif len(fully_actionable) != len(unresolved):
-        recommendation_stability = "specification_sensitive_actionability"
-    elif common:
-        recommendation_stability = "stable_common_best"
+        common: set[str] = set()
+    elif target_states == {"nonestimable"}:
+        validated_actionability_stability = "not_evaluable"
+        recommendation_stability = "not_evaluable"
+        common = set()
+    elif target_states != {"unresolved"}:
+        validated_actionability_stability = "specification_sensitive_target_state"
+        recommendation_stability = "specification_sensitive_target_state"
+        common = set()
     else:
-        recommendation_stability = "specification_sensitive_ranking"
+        unresolved = list(statuses)
+        fully_actionable = [
+            status
+            for status in unresolved
+            if status.candidate_coverage == "complete"
+            and status.validated_information_status == "positive"
+        ]
+
+        if len(fully_actionable) == len(unresolved):
+            validated_actionability_stability = "stable_actionable"
+        elif not fully_actionable:
+            validated_actionability_stability = "stable_not_fully_actionable"
+        else:
+            validated_actionability_stability = "specification_sensitive"
+
+        common = set(fully_actionable[0].best_candidates) if fully_actionable else set()
+        for status in fully_actionable[1:]:
+            common &= set(status.best_candidates)
+
+        if not fully_actionable:
+            recommendation_stability = "not_available"
+        elif len(fully_actionable) != len(unresolved):
+            recommendation_stability = "specification_sensitive_actionability"
+        elif common:
+            recommendation_stability = "stable_common_best"
+        else:
+            recommendation_stability = "specification_sensitive_ranking"
 
     return LimitationActionReport(
         per_specification=statuses,
