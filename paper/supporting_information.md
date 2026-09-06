@@ -258,6 +258,50 @@ Thus a deterministic duplicate cannot create raw entropy or raw candidate inform
 
 For reporting, residual entropy `D` is paired with `K`, candidate `I(S;Q|A_epsilon)` is reported in bits alongside normalized `V(Q)`, and absolute normalized scores are not compared across differently encoded mechanism vocabularies without an explicit vocabulary-sensitivity argument. This invariance applies to one-to-one recodings and deterministic redundant coordinates only; a genuinely uncertain subdivision or new mechanism changes the scientific target and may legitimately change raw information and candidate ranking. The audit is a representation diagnostic, not part of frozen G2 performance evidence.
 
+### S4.5 Current resolvability versus evidence-gain audit
+
+A separate audit checks whether positive current `R` can be interpreted as information supplied by the current observations. It cannot without a declared baseline, because the current admissible mechanism distribution already inherits its prior and pre-data constraints.
+
+The controlled baseline contains one binary mechanism with
+
+```text
+P(S=1)=0.9,
+P(S=0)=0.1
+```
+
+before any current observed target is applied. Its entropy is `H_2(0.9)=0.468996...` bit, so with `K=1` the absolute current resolvability is
+
+```text
+R=1-H_2(0.9)=0.5310.
+```
+
+The positive value is prior concentration rather than observational evidence. Two future candidates evaluated from exactly this current state separate current concentration from incremental information:
+
+| Candidate | Raw MI | Normalized V | Expected R after observation |
+|---|---:|---:|---:|
+| direct observation of `S` | 0.468996 bit | 0.4690 | 1.0000 |
+| mechanism-independent noise | 0.000000 bit | 0.0000 | 0.5310 |
+
+Thus a current region can have `R>0` while a new observation has zero value. Candidate `V` is incremental because it is `I(S;Q|A_current)/K` relative to the current state.
+
+The same audit shows that next-observation ranking can be prior-sensitive. With independent mechanisms `A` and `B`, a direct observation of a balanced coordinate has one bit of information, whereas a coordinate with prior `P(ON)=0.9` has `0.468996` bit. Under `P(A=1)=0.5, P(B=1)=0.9`, `observe_A` ranks first; after swapping these prior concentrations, `observe_B` ranks first.
+
+This is not a claim that priors should be tuned to change the recommended observation. It is the opposite: the prior and pre-data constraint specification are part of the declared current knowledge state and should be fixed before candidate outcomes are inspected. When several prior specifications are scientifically plausible, ranking stability across them is a sensitivity-analysis result.
+
+For current-evidence attribution, let `B` denote the declared pre-observation baseline and `O=o` the realised observation. The realised change is
+
+```text
+Delta_R(o)={H(S|B)-H(S|B,O=o)}/K,
+```
+
+which may be negative for a surprising outcome. Its expectation is
+
+```text
+E[Delta_R(O)]=I(S;O|B)/K>=0.
+```
+
+Accordingly, `R` is reported as **current resolvability**, not as information supplied by the observations unless a baseline contrast is explicitly defined. The audit is a conceptual sensitivity diagnostic and is not part of frozen G2 performance evidence.
+
 ---
 
 ## S5. Reproducibility and reviewer bundle
@@ -266,7 +310,7 @@ For reporting, residual entropy `D` is paired with `K`, candidate `I(S;Q|A_epsil
 
 The anonymised reviewer bundle contains the manuscript and Supporting Information, frozen G2 protocol and result summary, frozen auxiliary-validation summary, figure inventory and generated figures, publication-facing observation-design implementation modules, benchmark generators, tests and a per-file SHA-256 manifest.
 
-The static initial-information comparison is a post-frozen claim-ceiling diagnostic rather than preregistered G2 evidence. Its purpose is to constrain interpretation: the frozen G2 random-order contrast establishes information-guided screening, while the adaptive-recomputation theorem states the conditions under which recomputation itself has strict expected value. The S4.3 ranking-reversal witness and S4.4 vocabulary-normalization audit are separate controlled conceptual diagnostics and are not part of the frozen G2 performance evidence.
+The static initial-information comparison is a post-frozen claim-ceiling diagnostic rather than preregistered G2 evidence. Its purpose is to constrain interpretation: the frozen G2 random-order contrast establishes information-guided screening, while the adaptive-recomputation theorem states the conditions under which recomputation itself has strict expected value. The S4.3 ranking-reversal witness, S4.4 vocabulary-normalization audit and S4.5 prior/evidence separation audit are separate controlled conceptual diagnostics and are not part of the frozen G2 performance evidence.
 
 ### S5.2 Explicit exclusions
 
