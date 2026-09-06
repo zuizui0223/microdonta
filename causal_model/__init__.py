@@ -9,9 +9,9 @@ Publication-facing vocabulary is deliberately descriptive:
 
 The validated MROD publication score remains mechanism information
 ``I(S;Q|A_epsilon)/K``.  A separate target-aware surface is exported for
-prospective analyses that predeclare a target ``T``.  Target information is not
-silently substituted for mechanism information, and neither quantity by itself
-licenses a scientific report.
+prospective analyses that predeclare a target ``T``.  Target information and
+its sequential policy are not silently substituted for mechanism information,
+and neither quantity by itself licenses a scientific report.
 
 Historical import paths are mapped privately to descriptive backend modules so
 frozen validation code remains reproducible without keeping retired filenames.
@@ -70,6 +70,11 @@ from .target_observation_value import (
     target_entropy_bits,
     target_observation_information_value,
 )
+from .target_sequential_design import (
+    TargetSequentialDesignResult,
+    TargetSequentialStep,
+    target_sequential_observation_design,
+)
 from .sequential_design import (
     PredictiveOutcomeDistribution,
     SequentialDesignResult,
@@ -124,6 +129,8 @@ __all__ = [
     "SequentialDesignResult",
     "SequentialDesignStep",
     "TargetInformationValueResult",
+    "TargetSequentialDesignResult",
+    "TargetSequentialStep",
     "candidate_mutual_information_bits",
     "candidate_target_mutual_information_bits",
     "compute_admissible_mechanisms",
@@ -145,5 +152,6 @@ __all__ = [
     "sequential_observation_design",
     "target_entropy_bits",
     "target_observation_information_value",
+    "target_sequential_observation_design",
     "validated_information_value",
 ]
