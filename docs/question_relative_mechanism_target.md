@@ -195,7 +195,7 @@ I(T;Q|A) <= I(S;Q|A).
 
 Candidate rankings should be compared separately within each declared task, or through the existing Pareto representation when both tasks are relevant.
 
-## 7. Target validity is not supplied by information theory
+## 7. Target validity and metadata guard
 
 Declaring `T=tau(S)` does not prove that the partition is biologically correct, causally sufficient, normatively important or exhaustive of nature. A target can be perfectly resolved and still be the wrong target.
 
@@ -206,11 +206,26 @@ Therefore a question-relative target must be:
 3. kept separate from undeclared deeper mechanisms that are irrelevant to that claim;
 4. revised only as a scientific-model change, not because a different partition gives a more convenient result.
 
+`CandidateObservation.target_switches` does **not** define `T`. That field is candidate-level rationale metadata. Candidate values must all be evaluated against one fixed target declaration (the existing API uses one fixed `target_columns` set for the candidate set). Allowing the target to change candidate by candidate would make the comparison circular.
+
 This is a target-definition contract, not a data-driven clustering step.
 
-## 8. Scope
+## 8. Prior-art / novelty ceiling
 
-This note does **not** change the active MEE paper's primary estimand, frozen G2 policy or figures. It does not claim novelty for data processing, sufficient statistics, hierarchical latent variables or task-specific information gain.
+The identities
+
+```text
+H(T|A) <= H(S|A)
+I(T;Q|A) <= I(S;Q|A)
+```
+
+are standard consequences of deterministic coarsening, entropy/mutual-information chain rules and data processing. MROD does not claim novelty for those identities, hierarchical latent variables, sufficient/coarsened targets or task-specific information gain.
+
+The repository-level contribution is narrower: connect the already implemented target-aware observation utilities to the biological design rule that a study need only resolve the predeclared mechanism distinction it actually claims, and make the possible ranking reversal executable.
+
+## 9. Scope
+
+This note does **not** change the active MEE paper's primary estimand, frozen G2 policy or figures. It does not add a new public utility.
 
 Its contribution to the repository is narrower: it identifies the exact special case of the existing target-aware layer that formalizes the project's biological principle
 
