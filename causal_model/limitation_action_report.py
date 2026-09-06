@@ -1,18 +1,21 @@
 """Prototype reporting layer that turns MROD limitations into explicit actions.
 
 This module does not define a new scientific score. It composes quantities that
-MROD already reports: current mechanism entropy, whether candidate observation
-values are estimable, whether any candidate has positive mechanism information,
-and whether the identity of the best candidate is stable across a declared
-specification set.
+MROD already reports and deliberately keeps several axes separate:
 
-The result deliberately preserves several axes instead of collapsing every
-limitation into one number. Stability labels are descriptive sensitivity labels,
-not robust-design objectives.
+* concentration of the full declared mechanism vector;
+* completion of a narrower predeclared design target, such as a confounding graph;
+* validated candidate-information estimability and actionability;
+* observation budget;
+* stability of those statements across a declared specification set.
+
+The result is an internal reporting prototype, not a robust-design objective and
+not a replacement for the publication-level observation-selection algorithm.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from typing import Sequence
 
 
@@ -29,13 +32,19 @@ class SpecificationInput:
     current_entropy_bits: float
     candidates: tuple[CandidateScore, ...]
     budget_remaining: bool = True
+    # Optional narrower stopping target supplied by the analysis, e.g. whether
+    # the predeclared confounding graph has been resolved. ``None`` means that
+    # only full mechanism-vector resolution (D=0 within tolerance) counts as
+    # target resolution for this prototype.
+    declared_target_resolved: bool | None = None
 
 
 @dataclass(frozen=True)
 class SpecificationStatus:
     name: str
     current_entropy_bits: float
-    mechanism_status: str
+    full_mechanism_status: str
+    declared_target_status: str
     candidate_status: str
     best_candidates: tuple[str, ...]
     max_information_value: float | None
@@ -47,7 +56,8 @@ class SpecificationStatus:
 @dataclass(frozen=True)
 class LimitationActionReport:
     per_specification: tuple[SpecificationStatus, ...]
-    resolution_stability: str
+    full_resolution_stability: str
+    target_resolution_stability: str
     actionability_stability: str
     recommendation_stability: str
     common_best_candidates: tuple[str, ...]
@@ -57,20 +67,19 @@ def _candidate_score_from_object(item) -> CandidateScore:
     """Adapt publication result objects or explicit CandidateScore records."""
     if isinstance(item, CandidateScore):
         return item
+    value = getattr(item, "information_value", None)
     return CandidateScore(
         candidate=str(getattr(item, "candidate")),
         estimable=bool(getattr(item, "estimable")),
-        information_value=(
-            None
-            if getattr(item, "information_value", None) is None
-            else float(getattr(item, "information_value"))
-        ),
+        information_value=None if value is None else float(value),
     )
 
 
-def _base_status(
+def _status(
     spec: SpecificationInput,
     *,
+    full_mechanism_status: str,
+    declared_target_status: str,
     candidate_status: str,
     best_candidates: tuple[str, ...] = (),
     max_information_value: float | None = None,
@@ -81,7 +90,8 @@ def _base_status(
     return SpecificationStatus(
         name=spec.name,
         current_entropy_bits=spec.current_entropy_bits,
-        mechanism_status=("resolved" if candidate_status == "not_required" else "unresolved"),
+        full_mechanism_status=full_mechanism_status,
+        declared_target_status=declared_target_status,
         candidate_status=candidate_status,
         best_candidates=best_candidates,
         max_information_value=max_information_value,
@@ -99,9 +109,13 @@ def classify_specification(
 ) -> SpecificationStatus:
     """Classify one declared current-state specification without hiding why it stops.
 
-    An information limit is reported only when every declared candidate is
-    estimable.  If any candidate is non-estimable, the candidate vocabulary has
-    not been completely valued and the result remains prediction-limited.
+    ``full_mechanism_status`` and ``declared_target_status`` are intentionally
+    different. A sequential benchmark may resolve a predeclared confounding
+    graph while residual entropy in other mechanism dimensions remains positive.
+
+    Candidate actionability is based only on validated information values. An
+    explicit compatibility fallback can be reported elsewhere, but it does not
+    convert non-estimable mutual information into validated actionability.
     """
     if entropy_tol < 0 or value_tol < 0:
         raise ValueError("tolerances must be non-negative")
@@ -110,18 +124,46 @@ def classify_specification(
     estimable = tuple(item for item in candidates if item.estimable)
     nonestimable = tuple(item for item in candidates if not item.estimable)
 
-    if spec.current_entropy_bits <= entropy_tol:
-        return _base_status(
+    if not math.isfinite(spec.current_entropy_bits) or spec.current_entropy_bits < 0:
+        return _status(
             spec,
+            full_mechanism_status="nonestimable",
+            declared_target_status="nonestimable",
+            candidate_status="current_state_nonestimable",
+            estimable=estimable,
+            nonestimable=nonestimable,
+            recommended_action="repair_or_reestimate_current_admissible_region",
+        )
+
+    fully_resolved = spec.current_entropy_bits <= entropy_tol
+    full_mechanism_status = "fully_resolved" if fully_resolved else "ambiguous"
+
+    # Full mechanism resolution necessarily satisfies any narrower target. When
+    # ambiguity remains, the caller may still declare a narrower target resolved.
+    target_resolved = fully_resolved or bool(spec.declared_target_resolved)
+    declared_target_status = "resolved" if target_resolved else "unresolved"
+
+    if target_resolved:
+        action = (
+            "stop_fully_resolved"
+            if fully_resolved
+            else "stop_declared_target_resolved_report_residual_ambiguity"
+        )
+        return _status(
+            spec,
+            full_mechanism_status=full_mechanism_status,
+            declared_target_status=declared_target_status,
             candidate_status="not_required",
             estimable=estimable,
             nonestimable=nonestimable,
-            recommended_action="stop_resolved",
+            recommended_action=action,
         )
 
     if not spec.budget_remaining:
-        return _base_status(
+        return _status(
             spec,
+            full_mechanism_status=full_mechanism_status,
+            declared_target_status=declared_target_status,
             candidate_status="budget_limited",
             estimable=estimable,
             nonestimable=nonestimable,
@@ -129,15 +171,19 @@ def classify_specification(
         )
 
     if not candidates:
-        return _base_status(
+        return _status(
             spec,
+            full_mechanism_status=full_mechanism_status,
+            declared_target_status=declared_target_status,
             candidate_status="candidate_limited",
             recommended_action="expand_candidate_vocabulary",
         )
 
     if not estimable:
-        return _base_status(
+        return _status(
             spec,
+            full_mechanism_status=full_mechanism_status,
+            declared_target_status=declared_target_status,
             candidate_status="prediction_limited",
             nonestimable=nonestimable,
             recommended_action="identify_candidate_outcome_models",
@@ -157,10 +203,12 @@ def classify_specification(
     )
 
     if nonestimable:
-        return _base_status(
+        return _status(
             spec,
+            full_mechanism_status=full_mechanism_status,
+            declared_target_status=declared_target_status,
             candidate_status="partial_prediction_limited",
-            best_candidates=(best_verified if maximum > value_tol else ()),
+            best_candidates=best_verified if maximum > value_tol else (),
             max_information_value=maximum,
             estimable=estimable,
             nonestimable=nonestimable,
@@ -168,22 +216,32 @@ def classify_specification(
         )
 
     if maximum <= value_tol:
-        return _base_status(
+        return _status(
             spec,
+            full_mechanism_status=full_mechanism_status,
+            declared_target_status=declared_target_status,
             candidate_status="information_limited",
             max_information_value=maximum,
             estimable=estimable,
             recommended_action="report_information_limit",
         )
 
-    return _base_status(
+    return _status(
         spec,
+        full_mechanism_status=full_mechanism_status,
+        declared_target_status=declared_target_status,
         candidate_status="actionable",
         best_candidates=best_verified,
         max_information_value=maximum,
         estimable=estimable,
         recommended_action="measure_best_candidate",
     )
+
+
+def _stability_label(values: set[str], *, prefix: str) -> str:
+    if len(values) == 1:
+        return f"stable_{prefix}_{next(iter(values))}"
+    return "specification_sensitive"
 
 
 def build_limitation_action_report(
@@ -197,25 +255,24 @@ def build_limitation_action_report(
         raise ValueError("at least one specification is required")
 
     statuses = tuple(
-        classify_specification(
-            spec, entropy_tol=entropy_tol, value_tol=value_tol
-        )
+        classify_specification(spec, entropy_tol=entropy_tol, value_tol=value_tol)
         for spec in specifications
     )
 
-    resolved_flags = {status.mechanism_status == "resolved" for status in statuses}
-    if resolved_flags == {True}:
-        resolution_stability = "stable_resolved"
-    elif resolved_flags == {False}:
-        resolution_stability = "stable_unresolved"
-    else:
-        resolution_stability = "specification_sensitive"
+    full_resolution_stability = _stability_label(
+        {status.full_mechanism_status for status in statuses}, prefix="mechanism"
+    )
+    target_resolution_stability = _stability_label(
+        {status.declared_target_status for status in statuses}, prefix="target"
+    )
 
-    unresolved = [status for status in statuses if status.mechanism_status == "unresolved"]
+    unresolved = [
+        status for status in statuses if status.declared_target_status == "unresolved"
+    ]
     actionable_flags = {
         status.candidate_status == "actionable" for status in unresolved
     }
-    if not actionable_flags:
+    if not unresolved:
         actionability_stability = "not_required"
     elif actionable_flags == {True}:
         actionability_stability = "stable_actionable"
@@ -224,16 +281,12 @@ def build_limitation_action_report(
     else:
         actionability_stability = "specification_sensitive"
 
-    actionable = [
-        status for status in statuses if status.candidate_status == "actionable"
-    ]
-    common: set[str] = (
-        set(actionable[0].best_candidates) if actionable else set()
-    )
+    actionable = [status for status in unresolved if status.candidate_status == "actionable"]
+    common: set[str] = set(actionable[0].best_candidates) if actionable else set()
     for status in actionable[1:]:
         common &= set(status.best_candidates)
 
-    if not actionable:
+    if not unresolved or not actionable:
         recommendation_stability = "not_available"
     elif len(actionable) != len(unresolved):
         recommendation_stability = "specification_sensitive_actionability"
@@ -244,7 +297,8 @@ def build_limitation_action_report(
 
     return LimitationActionReport(
         per_specification=statuses,
-        resolution_stability=resolution_stability,
+        full_resolution_stability=full_resolution_stability,
+        target_resolution_stability=target_resolution_stability,
         actionability_stability=actionability_stability,
         recommendation_stability=recommendation_stability,
         common_best_candidates=tuple(sorted(common)),
