@@ -130,6 +130,8 @@ Boundary therefore supplies a necessary condition for a candidate to add informa
 
 The clean implication `Q=h(O) => I(S;Q|O)=0` is exact. MROD generally works with a tolerance-thickened region `A_epsilon`, where finite precision and approximate predictions matter. A measurement that is exactly redundant at the structural level remains structurally redundant, but measurements that are only approximately redundant can gain practical discrimination as precision improves.
 
+In particular, conditioning on membership in `A_epsilon` is not the same as conditioning on an exact value of `O`. If `O` varies within that accepted region, `h(O)` may also vary and can have positive conditional information there. The exact row-span screen must not silently force this tolerant-region value to zero.
+
 Accordingly:
 
 - Boundary should not claim that replication or precision never helps;
@@ -141,3 +143,11 @@ Accordingly:
 This bridge sharpens the practical question behind a limitations section. The first question is not `what expensive variable did we fail to measure?` but `which distinctions are collapsed by the current observation map?` Once a candidate is known to add a genuinely new observation direction, the second question is `does that direction actually separate the mechanisms we care about?`
 
 A molecular assay, fitness measurement or field observation can fail at either stage. Conversely, a relatively simple observational measurement can be useful when it both adds a new observation direction and separates the residual mechanism projection.
+
+## 8. Target factorization and the finite-support handoff
+
+The [target-factorization adapter](target_factorization_bridge.md) connects Boundary's structural target image with the existing MROD target-aware API, including the question-relative special case `T=tau(S)`.
+
+Global identification is equivalent to `T=g(O)` only when the target is constant on every relevant observation fibre; identification on one realised fibre is a local statement. The corresponding entropy-zero equivalence requires finite full-support weights. A shared, versioned fixture checks reconstruction/conflict certificates in Boundary against target-information values and actual conditioning in MROD without importing either repository into the other.
+
+This interface reports partial progress separately from complete target repair. It does not change the full-mechanism publication objective or imply that identifying a process contrast establishes adaptation or intervention causality.
