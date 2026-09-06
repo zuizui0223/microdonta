@@ -54,6 +54,7 @@
       "causal_model/generality_sweep.py",
       "causal_model/observation_value_calibration.py",
       "causal_model/postdata_reprioritization_witness.py",
+      "causal_model/vocabulary_normalization_witness.py",
       "paper/g2_frozen_benchmark_protocol.json",
       "paper/run_g2_frozen_benchmark.py",
       "paper/results/g2_frozen_v2_summary.json",

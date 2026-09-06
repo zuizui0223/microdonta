@@ -103,6 +103,8 @@ Because a `K`-bit vector has at most `K` bits of entropy,
 
 The denominator is maximum switch entropy, not realised prior entropy. This preserves a fixed interpretation across priors: `R=1` means the switch vector is completely resolved inside the accepted region, while lower values retain joint ambiguity. Pairwise or higher-order mechanism-equivalence summaries can be constructed from the same accepted switch rows. Replaceability measures whether one mechanism's accepted contribution can be substituted by alternative programs rather than merely whether its marginal admissibility is high.
 
+The normalization is conditional on the declared mechanism vocabulary. A one-to-one recoding of `S`, or augmentation by a deterministic redundant coordinate `U=g(S)`, leaves raw residual entropy unchanged because `H(S,U|A_epsilon)=H(S|A_epsilon)`, but it can change the displayed value of `R` by changing the coordinate count `K`. We therefore treat `R` as a within-vocabulary scale, report residual entropy `D` in bits together with `K`, and do not compare absolute `R` values across differently encoded mechanism vocabularies without an explicit vocabulary-sensitivity argument.
+
 ### 2.2 Observation information value
 
 Let `Q` be a candidate future measurement with finite outcomes `q`. For validated stored-region calculation, the outcome maps must form a mutually exclusive and exhaustive partition of current `A_epsilon`. The predictive probability is then the pushforward of the restricted current region:
@@ -133,6 +135,8 @@ Therefore
 ```
 
 `V(Q)=0` exactly when `Q` is conditionally independent of residual mechanism identity under the current accepted region. The upper bound is attained when the observation removes all remaining switch entropy. An individual realised outcome may increase conditional entropy, but expected gain under the coherent predictive distribution cannot be negative.
+
+Raw mechanism–observation mutual information and normalized observation value have different representation properties. Bijective recoding and deterministic redundant augmentation leave `I(S;Q|A_epsilon)` unchanged, whereas normalized `V(Q)` is rescaled when `K` changes. For a fixed vocabulary the denominator is common to every candidate, so `argmax_Q V(Q)=argmax_Q I(S;Q|A_epsilon)` and deterministic redundancy cannot change candidate ordering or zero-value status. The implementation therefore exposes `mutual_information_bits` alongside normalized `V(Q)`; cross-vocabulary reporting uses the raw bits and declared `K`, while normalized values are interpreted within a fixed vocabulary.
 
 A candidate is reported as non-estimable when its outcomes overlap, fail to cover the current region or depend on simulator outputs absent from stored rows. A declared external outcome prior is not silently substituted and labelled as validated information value. A structural edge-cut score remains available only as an explicitly labelled fallback when the predictive partition cannot be computed; every selection step records which score source was used.
 
@@ -279,6 +283,8 @@ V(Q)=I(S;Q|A_epsilon)/K
 ```
 
 provides a direct interpretation for observation value. A measurement is useful exactly to the extent that it carries information about the mechanism distinctions still unresolved inside the current admissible region. This differs from ranking candidates by general precision, sample size or ecological prominence. A measurement can be scientifically interesting and still have zero information value for the ambiguity at hand.
+
+The `K` normalization is deliberately a bounded reporting scale, not a representation-free scientific quantity. Adding a deterministic duplicate mechanism coordinate cannot create raw entropy or raw mechanism information: if `U=g(S)`, then `H(S,U|A_epsilon)=H(S|A_epsilon)` and `I((S,U);Q|A_epsilon)=I(S;Q|A_epsilon)`. It can nevertheless change the numerical values of `R` and normalized `V` because the denominator changes. Importantly, this representation-only change cannot alter the candidate ranking, since all candidates are divided by the same positive coordinate count. We therefore interpret normalized scores only within a predeclared vocabulary and report raw entropy and mutual information in bits for representation audits or comparisons involving alternative encodings. A genuinely new or subdivided mechanism that is not determined by the old state changes the scientific target and is not covered by this invariance.
 
 The structural zero-value result gives this distinction a sharper boundary. If a candidate is already determined by the current observation map, it is constant within the exact compatible fibre and cannot inform `S`; in the exact log-linear case this includes candidate rows already in the current row span. But structural novelty alone is insufficient. A genuinely new measurement may partition nuisance variation while remaining independent of mechanism identity. Observation design can therefore be viewed as two nested screens: remove candidates that are provably redundant when the observation architecture permits such a diagnosis, then use `I(S;Q|A_epsilon)` to determine which remaining candidates actually resolve the mechanism target. The second screen is indispensable because MROD values mechanism discrimination, not latent-state refinement in general.
 

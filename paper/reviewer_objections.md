@@ -86,9 +86,27 @@ Yes. No set-valued method can recover an undeclared mechanism solely by retainin
 
 The paper validates an observation-selection algorithm, not a discovered natural mechanism. Controlled systems are needed to know hidden mechanism truth, candidate information structure and whether truth was inspected before selection. A natural application can show usability and ecological plausibility but cannot reveal global optimality relative to unknown causal truth. Do not convert synthetic validation into a natural-system claim.
 
-## 18. “Your normalization `R=1-H(S|A)/K` depends on a chosen switch vocabulary.”
+## 18. “Your normalization depends on the chosen switch vocabulary. Could I inflate resolvability by duplicating a switch?”
 
-Yes. `K` is the maximum entropy of the declared binary mechanism vector, not a universal ecological scale. This gives a fixed 0–1 interpretation within a declared vocabulary but does not make values directly comparable across arbitrary vocabularies without care. Prior and vocabulary sensitivity remain part of scope.
+The normalized magnitude can change; the underlying raw information and observation choice cannot be manufactured by a deterministic duplicate. Let `U=g(S)` be any mechanism coordinate determined by the existing mechanism vector. Then
+
+```text
+H(S,U|A_epsilon)=H(S|A_epsilon),
+I((S,U);Q|A_epsilon)=I(S;Q|A_epsilon).
+```
+
+A duplicate therefore creates neither raw residual mechanism entropy nor raw mechanism–observation information. However, the reported bounded scales use the declared coordinate count:
+
+```text
+R = 1-H/K,
+V(Q)=I/K.
+```
+
+Appending a deterministic redundant binary coordinate changes `K`, so it can raise the displayed `R` and lower the displayed normalized `V`. Those absolute normalized values are therefore **vocabulary-internal**, not universal cross-vocabulary quantities.
+
+Crucially, the observation-selection decision is invariant to this representation-only change. Within a vocabulary, every candidate is divided by the same positive `K`; after deterministic redundant augmentation, every raw candidate MI is unchanged and every candidate is divided by the same new `K+m`. Thus candidate ranking, zero-value status and positive-value status are preserved. The executable vocabulary-normalization witness checks exactly this case.
+
+Reporting rule: predeclare the biological mechanism vocabulary; report `D=H(S|A_epsilon)` in bits together with `K`; report raw `I(S;Q|A_epsilon)` in bits alongside normalized `V(Q)`; and do not compare absolute normalized `R` or `V` across differently encoded vocabularies without a vocabulary-sensitivity argument. If a mechanism is genuinely split into uncertain submechanisms or a new non-redundant mechanism is added, the scientific target has changed and no representation-invariance claim applies.
 
 ## 19. “The method could recommend an expensive observation for a tiny gain.”
 
@@ -101,7 +119,7 @@ Even after conceding the closest prior art, the paper retains:
 1. a reproducible **post-current-data** set-valued ecological mechanism target rather than forced winner selection;
 2. support for non-exclusive, jointly active mechanisms rather than only one mutually exclusive model label;
 3. explicit separation of context, observed targets, diagnostics and future observations;
-4. exact normalized mechanism–observation information for verified predictive partitions derived from the same current admissible region;
+4. exact normalized mechanism–observation information for verified predictive partitions derived from the same current admissible region, with raw information bits exposed for representation audits;
 5. a one-way structural redundancy screen with an explicit false converse and executable witness;
 6. sequential conditioning of the admissible region after the realised measurement and recomputation of remaining candidate values;
 7. a precise two-step strict-value condition for adaptive recomputation;
@@ -110,4 +128,4 @@ Even after conceding the closest prior art, the paper retains:
 
 ## Submission stop conditions
 
-Do not submit if the manuscript says or implies that MROD invented multiple working hypotheses, strong inference, pre-data hypothesis vetting, design revision under hypothesis degeneracy, mutual information, EVSI, Bayesian experimental design, model discrimination, active learning or structural identifiability; that ecology previously lacked any method for using ambiguity to revise design; that rank gain guarantees positive mechanism value; that more data never help; that accepted-row switch filtering identifies intervention counterfactuals; that adaptive recomputation empirically beats static information ordering on G2; that the declared mechanism vocabulary is exhaustive of nature; or that the frozen benchmark validates a natural ecological mechanism.
+Do not submit if the manuscript says or implies that MROD invented multiple working hypotheses, strong inference, pre-data hypothesis vetting, design revision under hypothesis degeneracy, mutual information, EVSI, Bayesian experimental design, model discrimination, active learning or structural identifiability; that ecology previously lacked any method for using ambiguity to revise design; that rank gain guarantees positive mechanism value; that more data never help; that accepted-row switch filtering identifies intervention counterfactuals; that adaptive recomputation empirically beats static information ordering on G2; that the declared mechanism vocabulary is exhaustive of nature; that normalized `R` or `V` is universally comparable across arbitrary mechanism vocabularies; that a deterministic redundant switch changes raw mechanism information or candidate ranking; or that the frozen benchmark validates a natural ecological mechanism.
