@@ -161,6 +161,8 @@ def score_likelihood_candidates(
     if (not isinstance(support_reference,str) or not support_reference.strip()
             or not isinstance(weight_reference,str) or not weight_reference.strip()):
         raise ValueError("support and weight provenance must be declared")
+    if isinstance(target_columns, (str, bytes)):
+        raise ValueError("target_columns must be a sequence, not a bare string")
     columns=tuple(target_columns)
     states=tuple(target_state(row,columns) for row in accepted_rows)
     w=_weights(weights,len(states))
