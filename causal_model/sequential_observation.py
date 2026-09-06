@@ -11,7 +11,7 @@ and remain reachable only for support/provenance code.
 """
 from __future__ import annotations
 
-from . import _compat_sequential_observation as _impl
+import causal_model._compat_sequential_observation as _impl
 
 PredictiveOutcomeDistribution = _impl.PredictiveOutcomeDistribution
 SequentialDesignStep = _impl.SeqStep

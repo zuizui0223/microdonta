@@ -7,7 +7,7 @@ uses the method vocabulary below.
 """
 from __future__ import annotations
 
-from . import _compat_mechanism_region as _impl
+import causal_model._compat_mechanism_region as _impl
 
 CandidateObservation = _impl.CandidateObservation
 CandidateOutcome = _impl.CandidateOutcome
