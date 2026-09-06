@@ -26,6 +26,26 @@ def test_manuscript_separates_neighboring_inferential_targets():
         assert marker in text, marker
 
 
+def test_manuscript_concedes_multiple_working_hypotheses_prior_art():
+    text = MANUSCRIPT.read_text(encoding="utf-8")
+    for marker in (
+        "Betini et al. (2017)",
+        "Yanco et al. (2020)",
+        "pre-data workflow",
+        "does not claim to originate multiple-hypothesis reasoning",
+        "starting point is later in the inferential cycle",
+        "closed-loop combination of these steps for a post-data ecological mechanism target",
+    ):
+        assert marker in text, marker
+
+    for forbidden in (
+        "ecology has no procedure",
+        "ecology lacked a procedure",
+        "first method to use multiple working hypotheses",
+    ):
+        assert forbidden not in text.lower(), forbidden
+
+
 def test_manuscript_does_not_overclaim_structural_novelty_as_mechanism_value():
     text = MANUSCRIPT.read_text(encoding="utf-8")
     assert "Structural novelty is therefore a necessary screen" in text
