@@ -83,3 +83,9 @@ def test_bare_string_columns_rejected_and_large_integer_target_is_valid():
     with pytest.raises(ValueError,match="sequence"):
         target_state({"t":0},"t")
     assert target_state({"target":10**1000},["target"]) == (10**1000,)
+
+
+def test_public_scoring_also_rejects_bare_string_target_columns():
+    meta=dict(META); meta["target_columns"]="t"
+    with pytest.raises(ValueError, match="sequence"):
+        score_likelihood_candidates([{"t":0},{"t":1}], [noisy()], **meta)
