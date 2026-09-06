@@ -70,18 +70,22 @@ def test_target_value_can_be_high_when_mechanism_value_is_zero():
     assert result.normalized_target_value == 1.0
 
 
-def test_already_identified_target_has_zero_additional_value():
+def test_target_can_be_already_identified_while_mechanism_learning_remains_one_bit():
     rows = [
         {"A": bool(i % 2), "pop_trait": 0.25 if i % 2 else 0.75, "target": "same"}
         for i in range(40)
     ]
-    result = target_observation_information_value(
-        rows, [_candidate()], target_columns=["target"]
+    candidate = _candidate()
+    target = target_observation_information_value(
+        rows, [candidate], target_columns=["target"]
     )[0]
-    assert result.estimable
-    assert result.target_already_identified
-    assert result.current_target_entropy_bits == 0.0
-    assert result.normalized_target_value == 0.0
+    mechanism_bits = candidate_mutual_information_bits(rows, [_SW("A")], candidate)
+
+    assert target.estimable
+    assert target.target_already_identified
+    assert target.current_target_entropy_bits == 0.0
+    assert target.normalized_target_value == 0.0
+    assert mechanism_bits == 1.0
 
 
 def test_target_entropy_requires_declared_target_columns():
