@@ -240,7 +240,7 @@ The within-seed information-guided minus random-order contrast was therefore `+0
 
 Budget four isolates measurement efficiency after both policies had resolved all initial confounding edges on average. Information-guided design converged in 0.999 of systems and used 1.518 observations, whereas random order converged in 0.940 and used 2.673. Most visibly, random order selected 1.169 mechanism-independent nuisance measurements per system versus 0.014 under information-guided design. The absolute difference was 1.155 nuisance measurements; the ratio was `1.169/0.014=83.5`, equivalent to an approximately 98.8% reduction relative to random order.
 
-The fold ratio is descriptive and is reported with its absolute values because ratios become unstable when the selected count approaches zero. At budget two the aggregate ratio is much larger because the information-guided mean is 0.001, but the budget-four comparison provides the more conservative headline after both policies have enough budget to resolve all edges on average.
+The fold ratio is descriptive and is reported with its absolute values because ratios become unstable when the selected count approaches zero. At budget two the aggregate ratio is much larger because the information-guided mean is 0.001, but the budget-four comparison provides the more conservative headline after both policies have enough budget to resolve the edge structure on average.
 
 Hidden-truth false exclusion was zero in every policy-by-budget cell. All 10,000 system–policy–budget records retained the hidden generating explanation. Thus the selection advantage was not obtained by narrowing the accepted set so aggressively that the truth was discarded.
 
@@ -324,7 +324,7 @@ This reframes mechanistic ambiguity from a reason to force a winner or postpone 
 - Correia, H.E., Dee, L.E. & Ferraro, P.J. 2025. Designing causal mediation analyses to quantify intermediary processes in ecology. *Biological Reviews* 100: 1512–1533.
 - Csilléry, K., Blum, M.G.B., Gaggiotti, O.E. & François, O. 2010. Approximate Bayesian computation in practice. *Trends in Ecology & Evolution* 25: 410–418.
 - Grace, J.B. et al. 2025. Causal effects versus causal mechanisms: two traditions with different requirements and contributions towards causal understanding. *Ecology Letters* 28: e70029.
-- Grimm, V., Revilla, E., Berger, U., Jeltsch, F., Mooij, W.M., Railsback, S.F., Thulke, F.-H., Weiner, J., Wiegand, T. & DeAngelis, D.L. 2005. Pattern-oriented modelling of agent-based complex systems: lessons from ecology. *Science* 310: 987–991.
+- Grimm, V., Revilla, E., Berger, U., Jeltsch, F., Mooij, W.M., Railsback, S.F., Thulke, H.-H., Weiner, J., Wiegand, T. & DeAngelis, D.L. 2005. Pattern-oriented modelling of agent-based complex systems: lessons from ecology. *Science* 310: 987–991.
 - Hartig, F., Calabrese, J.M., Reineking, B., Wiegand, T. & Huth, A. 2011. Statistical inference for stochastic simulation models: theory and application. *Ecology Letters* 14: 816–827.
 - Raiffa, H. & Schlaifer, H. 1961. *Applied Statistical Decision Theory.* Harvard University Press, Boston.
 - Robert, C.P., Cornuet, J.-M., Marin, J.-M. & Pillai, N.S. 2011. Lack of confidence in approximate Bayesian computation model choice. *Proceedings of the National Academy of Sciences* 108: 15112–15117.
