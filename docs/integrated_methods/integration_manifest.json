@@ -1,0 +1,88 @@
+{
+  "schema_version": "boundary-mrod-integrated-methods.v1",
+  "status": "development_draft_without_superseding_frozen_submission",
+  "target_journal": "Methods in Ecology and Evolution",
+  "article_type": "Research Article",
+  "working_title": "From Identifiability Limits to Mechanism-Resolving Observation Design",
+  "editorial_principle": "One measurement-design pipeline with two gates: first ask whether an observation can change structural identification; then rank verified candidates by information about the remaining declared mechanism ambiguity.",
+  "source_modules": [
+    {
+      "module": "Boundary",
+      "repository": "zuizui0223/boundary",
+      "snapshot": "6ddcaf8bc14c1270749f833546b782cb5f9256a4",
+      "theorem_snapshot": "2919842f19bdd93221363b9f39f2ba1ebb146d17",
+      "field_witness_snapshot": "b3c687084a3594e93a4b49417a8d1ea0deb46eb9",
+      "role": "structural-identification gate and interpretable field-like measurement witness",
+      "headline_condition": "An added exact scalar log-linear observation reduces unidentified dimension iff its row lies outside the current observation row span.",
+      "main_text_use": [
+        "general rank/nullspace criterion",
+        "one pollination-style W=VED witness with two latent mechanisms producing the same current observations",
+        "distinction between precision gain and structural identification gain"
+      ],
+      "si_use": [
+        "calibration-transport identified sets",
+        "breakdown factor",
+        "extended multichannel examples"
+      ]
+    },
+    {
+      "module": "MROD",
+      "repository": "zuizui0223/mrod",
+      "science_artifact_validation_sha": "a8d21b30646df4dc337f1455ca7d89662b4d7ba3",
+      "current_metadata_sha": "91800453e712541a82e229c7ad2beae04c23231f",
+      "adaptive_theorem_snapshot": "689ba17d14fec2218e9e96f4c9e432eb8b71fb58",
+      "role": "admissible-mechanism region, observation information value, sequential design, and frozen controlled validation",
+      "headline_method": "For verified candidate outcome partitions, V(Q)=I(S;Q|A_epsilon)/K ranks current mechanism information; after a selected outcome the admissible region may be conditioned and values recomputed.",
+      "adaptive_claim_ceiling": "The theorem gives V_adapt >= V_static and exact strictness under absence of a common branchwise maximizer, but the frozen G2 benchmark does not provide material empirical evidence that adaptive recomputation beats a static initial-information ranking on those benchmark systems.",
+      "frozen_validation": {
+        "budget_2_edge_resolution": [1.0, 0.6045],
+        "budget_2_convergence": [0.99, 0.435],
+        "budget_2_nuisance": [0.001, 0.974],
+        "budget_4_nuisance": [0.014, 1.169],
+        "budget_4_nuisance_fold_difference": 83.5,
+        "hidden_truth_false_exclusion": 0.0
+      }
+    }
+  ],
+  "dependency_contract": {
+    "hard_theorem_dependency": false,
+    "handoff": "Boundary is a structural design gate; MROD is a conditional information-allocation method over a declared admissible mechanism region. MROD is not restricted to Boundary's multiplicative/log-linear model.",
+    "forbidden_implications": [
+      "Boundary theorem validates the MROD algorithm",
+      "MROD benchmark validates the Boundary ecological factorization",
+      "structural non-identifiability means more replication is statistically useless",
+      "frozen G2 proves adaptive recomputation is empirically superior to static initial-information ranking",
+      "MROD is globally optimal among all sequential experimental-design methods",
+      "synthetic validation identifies a natural ecological mechanism"
+    ]
+  },
+  "main_text_spine": [
+    "mechanism ambiguity is a measurement-design problem, not only a model-ranking problem",
+    "Gate 1: does a candidate observation change structural identification?",
+    "Gate 2: among verified informative candidates, which has the greatest current mechanism information?",
+    "conditional theorem for when outcome-dependent recomputation has strict value",
+    "frozen controlled benchmark validates information-guided candidate screening against random order",
+    "post-frozen diagnostic limits the empirical adaptivity claim",
+    "practical stopping and claim-boundary rules"
+  ],
+  "word_budget": {
+    "target_main_words": 7600,
+    "abstract": 300,
+    "introduction": 1100,
+    "structural_identification_gate": 1200,
+    "mrod_method": 1800,
+    "controlled_validation": 1400,
+    "discussion": 1400,
+    "note": "Boundary calibration transport and extended proof material move to Supporting Information."
+  },
+  "development_firewall": {
+    "frozen_mrod_submission_remains_version_of_record": true,
+    "frozen_science_sha": "a8d21b30646df4dc337f1455ca7d89662b4d7ba3",
+    "current_paper_manuscript_is_not_modified_by_this_integration": true,
+    "promotion_rule": "The integrated draft may replace the standalone MROD submission only after its own format, prior-art, source-provenance, and reviewer-bundle checks pass."
+  },
+  "priority_firewall": [
+    "Do not claim novelty for structural identifiability, rank-nullity, mutual information, value of information, approximate Bayesian computation, or adaptive experimental design as generic subjects.",
+    "The integrated contribution is the two-gate ecological measurement-design pipeline plus source-owned exact conditions and controlled validation under explicit claim ceilings."
+  ]
+}
