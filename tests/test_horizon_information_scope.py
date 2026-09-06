@@ -22,6 +22,9 @@ def test_horizon_note_preserves_internal_claim_ceiling():
         "J_|C|=0",
         "first positive bundle size",
         "not the minimum number of steps required by an adaptive policy",
+        "Joint-prediction coherence is a prerequisite",
+        "order-specific transition or potential-outcome model",
+        "joint vector not licensed because candidates interfere or change state",
         "controlled claim-ceiling diagnostic",
         "not the publication method",
     ):
