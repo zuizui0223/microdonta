@@ -37,6 +37,12 @@ causal_model/horizon_information_profile.py
 
 and is intentionally restricted to small controlled systems.
 
+### Joint-prediction coherence is a prerequisite
+
+The aligned columns used by this audit must genuinely represent a joint random vector on the same current state. That is natural for compatible passive measurements or simulator outputs that can coexist on one accepted row. It is **not automatic** for destructive assays, mutually exclusive interventions or measurements whose first acquisition changes the distribution of later outcomes.
+
+If order, interference or state transition matters, concatenating separately defined singleton predictions into `Q_C` does not create a licensed joint predictive model. Such candidates require an order-specific transition or potential-outcome model before bundle or sequence information is interpreted. In that case the simple horizon profile is not estimable from the singleton stored-region columns alone.
+
 ## Immediate properties
 
 ### H1. Monotonicity
@@ -92,7 +98,7 @@ J_2=1
 
 for a one-bit mechanism target.
 
-### H4. Full-vocabulary zero is a sequence-information limit
+### H4. Full-vocabulary zero is a sequence-information limit when the joint vector is licensed
 
 At the maximum horizon,
 
@@ -100,9 +106,9 @@ At the maximum horizon,
 J_|C| = I(S;Q_C|A)/K,
 ```
 
-because the full candidate vector is one of the admissible bundles and every smaller fixed bundle is a projection of that vector.
+because the full coherent candidate vector is one of the admissible bundles and every smaller fixed bundle is a projection of that vector.
 
-Therefore
+Therefore, **when `Q_C` is a licensed coherent joint prediction**,
 
 ```text
 J_|C|=0
@@ -121,11 +127,11 @@ J_1 > 0
 J_1 = 0 but J_b > 0 for some b > 1
     some informative fixed bundle exists; non-myopic/bundle-level design should be considered
 
-J_|C| = 0
+J_|C| = 0 with a licensed coherent Q_C
     declared candidate vector is sequence-information-limited
 ```
 
-This diagnosis is distinct from **prediction limitation**. `J_b` is defined only when the candidate outcomes have a coherent joint predictive representation on the current state. Missing or incompatible outcome models must be repaired before a horizon profile is interpreted.
+This diagnosis is distinct from **prediction limitation**. `J_b` is defined only when the candidate outcomes have a coherent joint predictive representation on the current state. Missing, incompatible or intervention-order-dependent outcome models must be repaired before a horizon profile is interpreted.
 
 ## Claim ceiling
 
@@ -135,6 +141,7 @@ Do not interpret this audit as proving or supplying:
 - a scalable optimizer for large candidate vocabularies;
 - an acquisition order from a high-information bundle;
 - a minimum adaptive step count;
+- a joint distribution for incompatible interventions merely by stacking singleton predictions;
 - cost-optimal or management-optimal design;
 - global optimality of the current MROD greedy policy;
 - adaptive submodularity or any other structural guarantee;
@@ -159,8 +166,11 @@ singleton zero + bundle horizon not audited
 singleton zero + first positive bundle size b>1
     -> report existence of an informative fixed bundle; do not infer an adaptive order
 
-full-horizon zero
+full-horizon zero + licensed coherent joint vector
     -> report sequence-information limit relative to the declared candidate vector
+
+joint vector not licensed because candidates interfere or change state
+    -> report sequence-prediction limitation; build an order-specific transition model
 ```
 
 The active paper remains a positive-singleton information-guided method. This audit exists to stop its limitation language from exceeding what the algorithm has established.
