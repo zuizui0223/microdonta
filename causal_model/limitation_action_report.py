@@ -10,12 +10,15 @@ The axes distinguish:
 * full mechanism-vector ambiguity versus a narrower declared design target;
 * observation budget;
 * coverage of the declared candidate vocabulary by validated predictive models;
-* whether validated candidate information is positive;
-* whether a global best candidate is identified;
+* whether any single candidate has positive immediate mechanism information;
+* whether joint/bundle information has been audited when all singleton values are zero;
+* whether a global best single candidate is identified;
 * stability of those statements over a declared specification set.
 
 Compatibility fallbacks are outside the validated-information axis and must remain
-separately labelled.
+separately labelled.  Likewise, zero immediate information for every singleton
+candidate is a one-step greedy stopping condition, not by itself a proof that
+candidate combinations contain no mechanism information.
 """
 from __future__ import annotations
 
@@ -38,6 +41,7 @@ class SpecificationInput:
     candidates: tuple[CandidateScore, ...]
     budget_remaining: bool = True
     declared_target_resolved: bool | None = None
+    joint_candidate_information_value: float | None = None
 
 
 @dataclass(frozen=True)
@@ -50,6 +54,7 @@ class SpecificationStatus:
     budget_status: str
     candidate_coverage: str
     validated_information_status: str
+    joint_information_status: str
     recommendation_status: str
     best_candidates: tuple[str, ...]
     max_information_value: float | None
@@ -79,6 +84,14 @@ def _candidate_score_from_object(item) -> CandidateScore:
     )
 
 
+def _joint_information_status(value: float | None, *, value_tol: float) -> str:
+    if value is None:
+        return "not_audited"
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("joint_candidate_information_value must be finite and non-negative")
+    return "positive" if value > value_tol else "zero"
+
+
 def classify_specification(
     spec: SpecificationInput,
     *,
@@ -90,6 +103,16 @@ def classify_specification(
         raise ValueError("tolerances must be non-negative")
 
     candidates = tuple(_candidate_score_from_object(item) for item in spec.candidates)
+    names = [item.candidate for item in candidates]
+    if len(names) != len(set(names)):
+        raise ValueError("candidate names must be unique")
+    for item in candidates:
+        if item.estimable:
+            if item.information_value is None:
+                raise ValueError(f"estimable candidate {item.candidate!r} has no information value")
+            if not math.isfinite(float(item.information_value)) or float(item.information_value) < 0:
+                raise ValueError("estimable candidate information values must be finite and non-negative")
+
     estimable = tuple(item for item in candidates if item.estimable)
     nonestimable = tuple(item for item in candidates if not item.estimable)
     estimable_names = tuple(item.candidate for item in estimable)
@@ -106,6 +129,7 @@ def classify_specification(
             budget_status=budget_status,
             candidate_coverage="not_evaluable",
             validated_information_status="not_evaluable",
+            joint_information_status="not_evaluable",
             recommendation_status="not_evaluable",
             best_candidates=(),
             max_information_value=None,
@@ -134,6 +158,7 @@ def classify_specification(
             budget_status=budget_status,
             candidate_coverage="not_required",
             validated_information_status="not_required",
+            joint_information_status="not_required",
             recommendation_status="not_required",
             best_candidates=(),
             max_information_value=None,
@@ -157,6 +182,7 @@ def classify_specification(
             budget_status=budget_status,
             candidate_coverage="none_declared",
             validated_information_status="not_available",
+            joint_information_status="not_available",
             recommendation_status="unavailable",
             best_candidates=(),
             max_information_value=None,
@@ -176,6 +202,7 @@ def classify_specification(
             budget_status=budget_status,
             candidate_coverage="none_estimable",
             validated_information_status="nonestimable",
+            joint_information_status="not_evaluable",
             recommendation_status="unavailable",
             best_candidates=(),
             max_information_value=None,
@@ -184,10 +211,7 @@ def classify_specification(
             recommended_actions=tuple(actions),
         )
 
-    values = {
-        item.candidate: float(item.information_value or 0.0)
-        for item in estimable
-    }
+    values = {item.candidate: float(item.information_value) for item in estimable}
     maximum = max(values.values())
     best_verified = tuple(
         sorted(
@@ -211,6 +235,7 @@ def classify_specification(
             budget_status=budget_status,
             candidate_coverage="partial",
             validated_information_status=information_status,
+            joint_information_status="not_evaluable",
             recommendation_status=(
                 "provisional_best_among_estimable"
                 if information_status == "positive"
@@ -223,8 +248,39 @@ def classify_specification(
             recommended_actions=tuple(actions),
         )
 
+    joint_status = _joint_information_status(
+        spec.joint_candidate_information_value,
+        value_tol=value_tol,
+    )
+    if spec.joint_candidate_information_value is not None:
+        if float(spec.joint_candidate_information_value) + 1e-12 < maximum:
+            raise ValueError("joint candidate information cannot be below a singleton information value")
+
     if information_status == "zero":
-        actions.extend(("report_information_limit", "redesign_or_expand_measurement_vocabulary"))
+        if joint_status == "not_audited":
+            actions.extend(
+                (
+                    "report_zero_singleton_values",
+                    "audit_joint_candidate_information_before_sequence_limit",
+                )
+            )
+            recommendation_status = "unavailable"
+        elif joint_status == "zero":
+            actions.extend(
+                (
+                    "report_sequence_information_limit",
+                    "redesign_or_expand_measurement_vocabulary",
+                )
+            )
+            recommendation_status = "unavailable"
+        else:
+            actions.extend(
+                (
+                    "report_joint_information_despite_zero_singletons",
+                    "use_nonmyopic_bundle_or_sequence_design",
+                )
+            )
+            recommendation_status = "nonmyopic_bundle_required"
         return SpecificationStatus(
             name=spec.name,
             current_entropy_bits=spec.current_entropy_bits,
@@ -234,7 +290,8 @@ def classify_specification(
             budget_status=budget_status,
             candidate_coverage="complete",
             validated_information_status="zero",
-            recommendation_status="unavailable",
+            joint_information_status=joint_status,
+            recommendation_status=recommendation_status,
             best_candidates=(),
             max_information_value=maximum,
             estimable_candidates=estimable_names,
@@ -255,6 +312,7 @@ def classify_specification(
         budget_status=budget_status,
         candidate_coverage="complete",
         validated_information_status="positive",
+        joint_information_status=joint_status,
         recommendation_status="validated_best",
         best_candidates=best_verified,
         max_information_value=maximum,
@@ -307,6 +365,9 @@ def build_limitation_action_report(
         common = set()
     else:
         unresolved = list(statuses)
+        # This axis intentionally describes the current positive-singleton greedy
+        # policy. A zero-singleton/joint-positive specification can be sequence-
+        # actionable while still not being one-step actionable.
         fully_actionable = [
             status
             for status in unresolved
