@@ -4,15 +4,15 @@ Status: **internal MROD prototype.** This note composes existing MROD outputs in
 
 ## 1. Motivation
 
-A conventional Discussion limitation often ends with a sentence such as
+A conventional Discussion limitation often ends with
 
 > alternative mechanisms cannot be excluded; future work is needed.
 
-MROD can be more explicit because several distinct reasons for stopping or continuing are already observable from the current analysis. These reasons should not be collapsed into one generic `uncertainty` number.
+MROD can be more explicit because distinct reasons for stopping or continuing are already observable from the current analysis. Those reasons should not be collapsed into one generic uncertainty number.
 
-The prototype therefore reports **orthogonal limitation axes** and an associated action.
+The prototype therefore reports **orthogonal limitation axes** and derives actions from their combination.
 
-## 2. First separate full mechanism resolution from the declared design target
+## 2. Full mechanism resolution is not the same as the declared design target
 
 Let
 
@@ -20,11 +20,11 @@ Let
 D = H(S | A_current)
 ```
 
-be current residual entropy in the full declared mechanism vector.
+be residual entropy in the full declared mechanism vector.
 
-`D=0` means the current declared mechanism distribution is concentrated on one switch vector. That is a strong form of **full mechanism resolution** under the declared model family.
+`D=0` means the current declared mechanism distribution is concentrated on one switch vector: **full mechanism resolution** under the declared family. A sequential study can legitimately have a narrower predeclared target, however. Frozen G2, for example, stops when its declared confounding-edge structure is resolved; other switch uncertainty may remain.
 
-A sequential observation study can legitimately have a narrower predeclared target, however. For example, frozen G2 stops when the declared confounding-edge structure is resolved; other switch uncertainty may remain. Therefore:
+Therefore:
 
 ```text
 full mechanism resolution
@@ -32,58 +32,138 @@ full mechanism resolution
 declared design target resolution
 ```
 
-The reporting layer records both. If the narrower target is resolved while `D>0`, the correct output is not `all mechanisms resolved`; it is
+If the narrower target is resolved while `D>0`, report both:
 
 ```text
 declared target: resolved
-full mechanism state: still ambiguous
+full mechanism state: ambiguous
 ```
 
-and the residual ambiguity remains reportable.
+rather than writing `all mechanisms resolved`.
 
-If the current entropy itself is non-estimable—for example because no admissible rows survive—this is a separate `current_state_nonestimable` state. It must not be relabelled as either resolved or information-limited.
+If the current entropy itself is non-estimable—for example because no admissible rows survive—that is a separate `current_state_nonestimable` state. It is neither resolution nor an information-limit result.
 
-## 3. Validated candidate-information states
+## 3. Orthogonal single-specification axes
 
-For a target that remains unresolved, let candidate observations have validated values
+For a target that remains unresolved, verified candidates have
 
 ```text
 V(Q) = I(S;Q | A_current)/K.
 ```
 
-For one declared specification:
+The prototype keeps the following axes separate.
 
-| State | Diagnostic | Meaning | Action |
-|---|---|---|---|
-| `not_required` | full mechanism or narrower declared target already resolved | the predeclared stopping target has been met | stop; if `D>0`, report remaining out-of-target ambiguity |
-| `current_state_nonestimable` | current `D` is not estimable | no coherent current mechanism-information state exists | repair/re-estimate the admissible region before observation design |
-| `actionable` | target unresolved, **all declared candidates estimable**, some `V(Q)>0` | ambiguity remains and the full declared candidate set can be ranked | measure a best current candidate |
-| `information_limited` | target unresolved, **all declared candidates estimable**, all `V(Q)=0` | current candidate vocabulary contains no mechanism information | report information limit; redesign/expand observations |
-| `prediction_limited` | candidates exist but none has an identified predictive partition | candidate values cannot yet be estimated | identify/model candidate outcome distributions first |
-| `partial_prediction_limited` | some candidates estimable and some not | verified candidates can be described, but a global ranking over the declared set is not licensed | resolve non-estimable candidates or explicitly narrow the candidate set |
-| `candidate_limited` | no candidate observations declared | no follow-up vocabulary exists | expand candidate vocabulary |
-| `budget_limited` | informative candidates may exist but budget exhausted | ambiguity remains for a resource reason | report budget limit explicitly |
-
-No information-limit claim is allowed while declared candidates remain non-estimable.
-
-### 3.1 Validated actionability versus compatibility fallback
-
-The current sequential compatibility backend can assign an explicitly labelled `normalized_edge_cut_fallback` to a candidate whose predictive partition is not identified. That fallback can be useful operationally, but it is **not** `I(S;Q|A_current)/K` and must not be used to convert a `prediction_limited` state into validated mechanism-information actionability.
-
-This prototype therefore classifies only the **validated-information layer**. If a fallback is used in an application, report it on a separate axis such as
+### 3.1 Current state
 
 ```text
-validated candidate state: prediction_limited
+estimable
+nonestimable
+```
+
+A non-estimable current state must be repaired before candidate information is interpreted.
+
+### 3.2 Full mechanism state
+
+```text
+fully_resolved
+ambiguous
+nonestimable
+```
+
+### 3.3 Declared design target
+
+```text
+resolved
+unresolved
+nonestimable
+```
+
+A resolved target can coexist with an ambiguous full mechanism state.
+
+### 3.4 Budget
+
+```text
+available
+exhausted
+```
+
+Budget is deliberately not a candidate-information label. A study can be budget-exhausted while the most informative future candidate is already known.
+
+### 3.5 Candidate predictive coverage
+
+```text
+not_required       target already resolved
+not_evaluable      current state not estimable
+none_declared      no candidate vocabulary
+none_estimable     candidate outcomes cannot be valued
+partial            some candidates valued, others non-estimable
+complete           every declared candidate valued
+```
+
+### 3.6 Validated candidate information
+
+```text
+not_required
+not_evaluable
+not_available
+nonestimable
+zero
+positive
+```
+
+A global information-limit claim requires `candidate_coverage=complete` and `validated_information_status=zero`.
+
+### 3.7 Recommendation status
+
+```text
+not_required
+not_evaluable
+unavailable
+provisional_best_among_estimable
+validated_best
+```
+
+A verified positive candidate under partial predictive coverage is only provisional among the estimable subset. It is not globally optimal over the declared candidate vocabulary.
+
+## 4. Derived actions
+
+The axes imply different actions without being collapsed into one severity score.
+
+| Situation | Licensed action |
+|---|---|
+| current state non-estimable | repair/re-estimate the admissible region |
+| full mechanism or declared target resolved | stop the predeclared sequence; report residual out-of-target ambiguity if present |
+| no candidate vocabulary | expand candidate observations |
+| no candidate predictive model | identify/model candidate outcome distributions |
+| partial predictive coverage | resolve non-estimable candidates before a global ranking; optionally report a provisional best among estimable candidates |
+| complete coverage, all `V=0` | report an information limit and redesign/expand the measurement vocabulary |
+| complete coverage, positive `V`, budget available | measure a best current candidate |
+| complete coverage, positive `V`, budget exhausted | report budget limitation **and retain the identified best candidate for future budget** |
+
+The last case illustrates why budget and information should be separate axes.
+
+### 4.1 Validated actionability versus compatibility fallback
+
+The sequential compatibility backend can assign an explicitly labelled `normalized_edge_cut_fallback` when a predictive partition is unavailable. That may be operationally useful, but it is **not** `I(S;Q|A_current)/K`.
+
+Thus a report may say
+
+```text
+validated candidate coverage: none_estimable
 compatibility fallback: available, normalized_edge_cut_fallback
 ```
 
-rather than writing `actionable by mechanism information` when candidate MI is not estimable.
+but must not translate that into
 
-## 4. Specification axes
+```text
+actionable by validated mechanism information
+```
 
-When several scientifically defensible priors, tolerances or other specifications are predeclared, compute the single-specification state separately for each one.
+The fallback remains a separately labelled heuristic layer.
 
-The prototype reports four stability axes. These are descriptive sensitivity labels, not robust-design objectives.
+## 5. Sensitivity axes across specifications
+
+For a predeclared set of defensible priors, tolerances or other specifications, compute the single-specification axes separately and then report:
 
 ### Full-mechanism-resolution stability
 
@@ -94,8 +174,6 @@ stable_mechanism_nonestimable
 specification_sensitive
 ```
 
-This asks whether the complete declared mechanism vector has the same resolution status across specifications.
-
 ### Declared-target-resolution stability
 
 ```text
@@ -105,34 +183,27 @@ stable_target_nonestimable
 specification_sensitive
 ```
 
-This is a different statement. A target can be stably resolved while full mechanism ambiguity remains.
-
 ### Validated actionability stability
 
 ```text
 stable_actionable
-stable_not_actionable
+stable_not_fully_actionable
 specification_sensitive
 not_required
 ```
 
-This asks whether every specification whose target remains unresolved agrees that the **complete declared candidate set is estimable and contains a positive-value candidate**.
+`stable_actionable` requires complete candidate coverage and positive validated information under every target-unresolved specification.
 
 ### Recommendation stability
 
-For fully actionable target-unresolved specifications let
+For fully actionable target-unresolved specifications,
 
 ```text
-B_lambda = argmax_Q V_lambda(Q).
+B_lambda = argmax_Q V_lambda(Q)
+B_common = intersection_lambda B_lambda
 ```
 
-The intersection
-
-```text
-B_common = intersection B_lambda
-```
-
-gives:
+and report
 
 ```text
 stable_common_best
@@ -141,71 +212,87 @@ specification_sensitive_actionability
 not_available
 ```
 
-This is the same sensitivity-reporting logic used in `docs/tolerance_and_specification_robustness.md`; it does not optimize a maximin, robust-EIG or other replacement objective.
+These are descriptive sensitivity labels, not a maximin, robust-EIG or other robust-design objective.
 
-## 5. Why keep the axes separate?
+## 6. Why keep the axes separate?
 
 A single `limitation severity` score would destroy information needed for the next scientific action.
 
-For example:
+Examples:
 
 - declared confounding edges can be resolved while residual switch entropy remains positive;
 - no admissible current region means re-estimate the state before ranking observations;
-- `D>0, max V=0` **with every candidate estimable** means change what can be observed, not merely collect more replicates;
+- `D>0, max V=0` with every candidate estimable means change **what can be observed**, not merely collect more replicates;
 - non-estimable `V` means improve the predictive observation model, not reject the candidate as uninformative;
-- a positive verified candidate does not justify a global `best next observation` claim while other declared candidates remain non-estimable;
+- a positive verified candidate does not justify a global `best next observation` claim while declared alternatives remain non-estimable;
 - an available structural fallback does not turn non-estimable mechanism information into validated information;
-- an empty common-best set means the recommendation depends on the analysis specification, not that every candidate has low value;
-- exhausted budget means the observation may be known and useful but currently infeasible.
+- exhausted budget does not erase knowledge of which candidate would be best if resources become available;
+- an empty common-best set means the recommendation depends on specification, not that every candidate has low value.
 
-Preserving these distinctions is consistent with the wider project principle: do not manufacture certainty by coarsening unresolved structure.
+Preserving these distinctions follows the wider project rule: **do not manufacture certainty by coarsening unresolved structure.**
 
-## 6. Practical outputs
+## 7. Example outputs
 
-A target-resolved but fully ambiguous analysis could end with
+### Target resolved, full mechanism still ambiguous
 
 ```text
-Declared design target: resolved
+Current state: estimable
 Full mechanism state: ambiguous, D=1.2 bits
-Action: stop the predeclared design sequence and report residual out-of-target mechanism ambiguity
+Declared design target: resolved
+Action: stop the predeclared sequence and report residual out-of-target ambiguity
 ```
 
-An actionable but specification-sensitive analysis could end with
+### Actionable but recommendation-sensitive
 
 ```text
+Current state: estimable
 Declared design target: unresolved
-Validated candidate-information state: actionable
+Candidate coverage: complete
+Validated information: positive
+Budget: available
 Recommendation stability: specification-sensitive ranking
-Best candidate under strict epsilon: pollen deposition
-Best candidate under loose epsilon: common-garden phenotype
+Strict epsilon best: pollen deposition
+Loose epsilon best: common-garden phenotype
 Common-best set: empty
 Action: report recommendation sensitivity or declare an additional decision rule
 ```
 
-An information-limited analysis could end with
+### Information-limited
 
 ```text
 Declared design target: unresolved
-Validated candidate-information state: information-limited
-Verified candidate values: all zero
+Candidate coverage: complete
+Validated information: zero
 Non-estimable candidates: none
 Action: current measurement vocabulary cannot resolve the remaining mechanism ambiguity
 ```
 
-A partial-prediction analysis could end with
+### Partial predictive coverage
 
 ```text
 Declared design target: unresolved
-Validated candidate-information state: partial prediction limit
-Best verified candidate: pollen deposition
+Candidate coverage: partial
+Validated information among estimable candidates: positive
+Provisional best: pollen deposition
 Non-estimable candidate: reciprocal transplant
 Compatibility fallback: available but non-information-theoretic
-Action: do not call pollen deposition globally optimal until the remaining candidate can be valued or is explicitly removed from scope
+Action: do not call pollen deposition globally optimal until the remaining candidate is valued or explicitly removed from scope
+```
+
+### Budget-limited but epistemically actionable
+
+```text
+Declared design target: unresolved
+Candidate coverage: complete
+Validated information: positive
+Validated best: pollen deposition
+Budget: exhausted
+Action: report budget limitation; retain pollen deposition as the identified next measurement if budget becomes available
 ```
 
 This is more informative than a generic `future work is needed` statement.
 
-## 7. Claim guard
+## 8. Claim guard
 
 Do not interpret the prototype as:
 
@@ -216,16 +303,16 @@ Do not interpret the prototype as:
 - a replacement for cost/utility decisions;
 - evidence that non-estimable candidates have zero information;
 - permission to relabel a structural fallback as validated mechanism information;
-- permission to call a verified candidate globally optimal while declared alternatives remain non-estimable;
+- permission to call a provisional verified candidate globally optimal while declared alternatives remain non-estimable;
 - evidence that an undeclared mechanism has been ruled out.
 
-The prototype only classifies **why the declared MROD validated-information workflow stops or continues and what kind of next action is licensed by its current outputs**. Compatibility fallbacks, when used, remain a separately labelled operational layer.
+The prototype classifies **why the declared validated-information workflow stops or continues and what kind of next action is licensed by its current outputs**. Compatibility fallbacks remain a separate operational layer.
 
-## 8. Implementation
+## 9. Implementation
 
 ```text
 causal_model/limitation_action_report.py
 tests/test_limitation_action_report.py
 ```
 
-The module is intentionally not added to the publication-facing public API yet. Its role is to test whether the `limitations -> next action` framing can be made precise without changing the underlying inference or candidate-selection algorithm.
+The module is intentionally not added to the publication-facing API yet. Its role is to test whether the `limitations -> next action` framing can be made precise without changing the underlying inference or candidate-selection algorithm.
