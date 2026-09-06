@@ -30,7 +30,7 @@ jobs:
       - name: Run full matched diagnostic
         run: |
           mkdir -p outputs
-          python paper/run_static_information_diagnostic.py --output outputs/static_information_diagnostic.json > /dev/null
+          PYTHONPATH=. python paper/run_static_information_diagnostic.py --output outputs/static_information_diagnostic.json > /dev/null
       - name: Verify claim-ceiling cells and frozen G2 firewall
         run: |
           python - <<'PY'
