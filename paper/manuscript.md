@@ -26,7 +26,7 @@ Ecological studies frequently seek mechanisms from patterns. A trait shift may b
 
 A common response is model selection: define candidate models and rank them by posterior probability, likelihood or an information criterion. This is useful when the observations actually separate the candidates. Under strong mechanism ambiguity, however, a modal explanation can appear more decisive than the information in the data warrants. Approximate Bayesian computation model choice is one prominent setting in which reliability concerns have been demonstrated (Robert et al. 2011). The broader issue is not specific to ABC: if several mechanism programs make effectively indistinguishable predictions for the observed targets, ranking alone does not remove the underlying ambiguity.
 
-Ecology already contains stronger alternatives to single-hypothesis practice. Betini et al. (2017) documented the rarity of evaluating multiple competing hypotheses despite a long tradition of multiple working hypotheses and strong inference. Yanco et al. (2020) then formalised a pre-data workflow in which candidate hypotheses are written as models, their sampling distributions are simulated and compared for degeneracy or noisiness, and hypotheses or study design are revised before data collection when the candidates are not distinguishable. Mechanism-Resolving Observation Design does not claim to originate multiple-hypothesis reasoning, simulation-based identifiability checks or design revision. Its starting point is later in the inferential cycle: a current evidence set has already been observed and restricted to an admissible, potentially non-exclusive mechanism region, and the task is to value feasible follow-up measurements against the residual joint mechanism distribution.
+Ecology already contains stronger alternatives to single-hypothesis practice. Betini et al. (2017) documented the rarity of evaluating multiple competing hypotheses despite a long tradition of multiple working hypotheses and strong inference. Yanco et al. (2020) then formalised a pre-data workflow in which candidate hypotheses are written as models, their sampling distributions are simulated and compared for degeneracy or noisiness, and hypotheses or study design are revised before data collection when the candidates are not distinguishishable. Mechanism-Resolving Observation Design does not claim to originate multiple-hypothesis reasoning, simulation-based identifiability checks or design revision. Its starting point is later in the inferential cycle: a current evidence set has already been observed and restricted to an admissible, potentially non-exclusive mechanism region, and the task is to value feasible follow-up measurements against the residual joint mechanism distribution.
 
 A second response is to collect more data. Yet `more data` is not a complete design specification. Value-of-information analysis already gives ecology a rigorous framework for asking whether further information is worth collecting and where learning should be directed when management objectives, actions and expected outcomes are explicit (Canessa et al. 2015). MROD does not replace that decision-analytic framework. Instead it uses mechanism resolution itself as the internal target: field observations, experiments, assays and genetic measurements are compared by the information they carry about the mechanism distinctions that remain admissible. When observation budgets are limited, the scientific task addressed here is therefore not simply to reduce variance or maximize downstream management utility, but to identify which feasible measurement most reduces the declared mechanism ambiguity.
 
@@ -39,7 +39,7 @@ Mechanism-Resolving Observation Design changes the inferential target. Rather th
 1. which parameter–mechanism combinations remain compatible with the declared evidence;
 2. how much uncertainty remains about mechanism identity;
 3. which candidate observation is predicted to reduce that uncertainty most;
-4. when the available candidate vocabulary contains no further resolving information.
+4. whether the complete declared candidate vocabulary contains further resolving information, or whether unresolved candidate values remain non-estimable.
 
 The contribution is the closed-loop combination of these steps for a post-data ecological mechanism target, not the invention of any constituent statistical tool. The current admissible non-exclusive mechanism region is retained as a scientific output; its residual joint mechanism uncertainty is quantified; candidate outcome partitions are verified against that same current region; candidates are ranked by normalized mechanism–observation mutual information; and the region is conditioned on the realised outcome before values are recomputed. This converts residual mechanism multiplicity from a limitation statement into a reproducible follow-up observation problem while preserving the conditional nature of every claim.
 
@@ -169,8 +169,8 @@ The design is adaptive because candidate value depends on the current admissible
 ```text
 A_0 = current admissible region
 for t = 0,1,... until stopping:
-    score each verified remaining Q by I(S;Q|A_t)/K
-    select the maximum positive current score
+    score each estimable remaining Q by I(S;Q|A_t)/K
+    select the maximum positive current validated score when the comparison is identified
     obtain the realised outcome only after selection
     condition A_t on that outcome to form A_{t+1}
     recompute all predictive probabilities and scores
@@ -185,7 +185,7 @@ V_static = max_q E[U_q(X)].
 
 Therefore `V_adapt>=V_static`. Equality holds if and only if at least one candidate is branchwise optimal on every positive-probability first-outcome branch; strict adaptive advantage occurs exactly when the intersection of those branchwise argmax sets is empty. This result characterizes the value of recomputation in the declared finite two-step setting. It does not establish global optimality of the full multi-step greedy policy.
 
-The procedure stops when the observation budget is exhausted, the declared confounding structure is resolved, or every available verified candidate has zero current information value. The last condition is substantive: unresolved mechanisms may remain, but the declared measurement vocabulary contains no additional information about them.
+The sequence can stop because the observation budget is exhausted or the declared confounding/design target is resolved; neither condition implies that the full mechanism vector has entropy zero. A **validated information-limited** stop is licensed only when every declared remaining candidate has an estimable predictive partition and all current values satisfy `V_t(Q)=0`. Only in that complete-coverage case does the declared candidate vocabulary contain no expected information about the remaining mechanism distinctions. If one or more declared remaining candidates are non-estimable, the validated calculation is instead **prediction-limited** for the full candidate set: zero values among the estimable subset do not establish an all-candidate information limit, and a positive value identifies only a provisional best among the estimable candidates until the remaining outcome maps are supplied or the candidate set is explicitly narrowed. Any structural or edge-cut fallback remains separately labelled and is not treated as validated mutual information.
 
 ### 2.4 AI-assisted development disclosure
 
@@ -264,7 +264,7 @@ Thus the frozen G2 family provides strong evidence for information-guided candid
 
 Expected resolvability gain and independently computed `I(S;Q|A_epsilon)/K` agreed to the implementation's display tolerance. For six directly checked quantitative observations, conditioning the stored deterministic admissible region and performing fresh re-inference produced identical resolvability gains; the maximum absolute difference was zero.
 
-Across eight candidate observations and four controlled truths per observation, predicted information value correlated positively with mean realised resolvability gain (`r=0.7664`). The mean absolute difference between prediction and mean realised gain was 0.0739. Individual outcomes remained variable, as expected for preposterior quantities. These results support the intended average information interpretation rather than a claim that the value predicts every realised gain exactly.
+Across eight candidate observations and four controlled truths per observation, predicted observation information value correlated positively with mean realised resolvability gain (`r=0.7664`). The mean absolute difference between prediction and mean realised gain was 0.0739. Individual outcomes remained variable, as expected for preposterior quantities. These results support the intended average information interpretation rather than a claim that the value predicts every realised gain exactly.
 
 ## 4. Software and reproducibility
 
@@ -302,7 +302,7 @@ The G2 benchmark was designed to test selection rather than observation sufficie
 
 The benchmark nevertheless defines a narrow claim. Information-guided design outperformed uniform random order over one frozen family of random confounded systems, while the stronger post-frozen static-information comparator essentially matched the adaptive policy. We therefore interpret the benchmark as validation of information-guided candidate screening, not as empirical proof that recomputation adds value in every system. The theorem supplies the conditional adaptive claim; neither result proves global optimality, superiority to every Bayesian design method, or performance under every stochastic ecological simulator. Candidate vocabularies were finite and explicitly represented. The nuisance measurements were independent of mechanisms rather than subtly correlated proxies. Broader misspecification challenges remain future work.
 
-Admissibility is always relative to a declared mechanism vocabulary, parameter prior, constraint grammar, observation map, discrepancy and tolerance. An omitted mechanism cannot be recovered by retaining the accepted set. A predictive partition must also be identified before stored-region information value can be computed. When outcomes overlap, are incomplete or require an unmodelled process, the honest result is non-estimability until an additional predictive model is supplied.
+Admissibility is always relative to a declared mechanism vocabulary, parameter prior, constraint grammar, observation map, discrepancy and tolerance. An omitted mechanism cannot be recovered by retaining the accepted set. A predictive partition must also be identified before stored-region information value can be computed. When outcomes overlap, are incomplete or require an unmodelled process, the honest result is non-estimability until an additional predictive model is supplied. Accordingly, a zero value among currently estimable candidates does not establish an information limit for the full declared candidate vocabulary while other candidates remain non-estimable; nor does a positive estimable value establish a global best in that case. Such a state is prediction-limited rather than information-limited for the full candidate set.
 
 Synthetic validation is appropriate to the present claim because the hidden mechanism, candidate information structure and outcome timing must be controlled to test truth leakage and selection behaviour. A natural-system application could demonstrate usability but could not reveal whether the selected measurement was optimal relative to an unknown causal truth. The absence of new empirical data is therefore a boundary, not a missing validation layer: this paper validates an observation-selection algorithm under known controlled conditions and does not claim empirical discovery.
 
@@ -314,12 +314,14 @@ declare mechanisms and constraints
 → quantify residual mechanism uncertainty
 → screen exact structural redundancies where the observation architecture permits
 → verify candidate predictive outcomes
-→ select the maximum-current-information measurement
+→ select the maximum-current-information measurement when the candidate comparison is identified
 → condition and repeat
-→ stop when resolved, budget-limited or information-limited.
+→ stop if the declared target is resolved or the budget is exhausted
+→ report a validated information limit only when every declared remaining candidate is estimable and all V(Q)=0
+→ report prediction limitation when declared candidate values remain non-estimable
 ```
 
-This reframes mechanistic ambiguity from a reason to force a winner or postpone inference into a quantitative experimental-design problem. A limitation is no longer only a disclaimer that another explanation cannot be excluded: when the candidate vocabulary is adequate, it becomes a statement about which distinction remains and which observation is expected to resolve it; when no candidate carries such information, the unresolved state itself is the result.
+This reframes mechanistic ambiguity from a reason to force a winner or postpone inference into a quantitative experimental-design problem. A limitation is no longer only a disclaimer that another explanation cannot be excluded: when the candidate vocabulary is adequately specified and valued, it becomes a statement about which distinction remains and which observation is expected to resolve it; when every declared candidate is estimable and none carries such information, the unresolved state is a validated information limit relative to that vocabulary; when predictive partitions remain unidentified, the limitation is prediction rather than mechanism information.
 
 ## Figure captions
 
