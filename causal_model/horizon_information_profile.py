@@ -1,20 +1,20 @@
 """Internal exhaustive horizon-information diagnostic for MROD limitations.
 
-This module is deliberately *not* a new sequential-design optimizer.  It asks a
+This module is deliberately *not* a new sequential-design optimizer. It asks a
 narrow diagnostic question after a declared current mechanism state and a coherent
 set of candidate-outcome predictions have already been specified:
 
-    how large must an observation bundle be before the declared candidate
+    how large must a *fixed observation bundle* be before the declared candidate
     vocabulary contains mechanism information?
 
-For candidate set C and horizon b, define
+For candidate set C and bundle horizon b, define
 
     J_b = max_{B subseteq C, 1 <= |B| <= b} I(S; Q_B) / K.
 
 The exhaustive implementation here is intended only for small controlled audits.
-Its cost is combinatorial in the number of candidates.  Positive bundle
-information does not identify an acquisition order, a cost-optimal policy, or a
-globally optimal adaptive strategy.
+Its cost is combinatorial in the number of candidates. Positive bundle information
+does not identify an acquisition order, a minimum adaptive step count, a
+cost-optimal policy, or a globally optimal adaptive strategy.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ class HorizonInformationProfile:
     best_information_bits_by_horizon: tuple[float, ...]
     best_normalized_value_by_horizon: tuple[float, ...]
     best_bundles_by_horizon: tuple[tuple[tuple[str, ...], ...], ...]
-    first_positive_horizon: int | None
+    first_positive_bundle_size: int | None
     full_vector_information_bits: float
 
 
@@ -74,11 +74,12 @@ def horizon_information_profile(
     max_horizon: int | None = None,
     value_tol: float = 1e-12,
 ) -> HorizonInformationProfile:
-    """Exhaustively compute the cumulative best bundle information through horizon b.
+    """Exhaustively compute cumulative best fixed-bundle information through b.
 
     ``candidate_outcomes`` must be a coherent joint prediction: every candidate
-    sequence is aligned to the same accepted-state rows.  The returned horizon-b
-    value maximizes over all nonempty bundles of size *at most* b.
+    sequence is aligned to the same accepted-state rows. The returned horizon-b
+    value maximizes over all nonempty fixed bundles of size *at most* b. It does
+    not optimize an outcome-dependent adaptive acquisition tree.
     """
     if mechanism_bits <= 0:
         raise ValueError("mechanism_bits must be positive")
@@ -135,15 +136,13 @@ def horizon_information_profile(
         best_values.append(cumulative_best / mechanism_bits)
         best_bundles.append(cumulative_ties)
 
-    first_positive = next(
+    first_positive_bundle_size = next(
         (index + 1 for index, value in enumerate(best_bits) if value > value_tol),
         None,
     )
     full_joint = tuple(tuple(aligned[name][i] for name in names) for i in range(len(states)))
     full_information = _mutual_information_bits(states, full_joint)
 
-    # Mutual information cannot exceed current mechanism entropy, aside from
-    # numerical roundoff.  Keep this as an executable invariant of the audit.
     if any(value > entropy + 1e-10 for value in best_bits):
         raise RuntimeError("bundle information exceeded mechanism entropy")
 
@@ -153,7 +152,7 @@ def horizon_information_profile(
         best_information_bits_by_horizon=tuple(best_bits),
         best_normalized_value_by_horizon=tuple(best_values),
         best_bundles_by_horizon=tuple(best_bundles),
-        first_positive_horizon=first_positive,
+        first_positive_bundle_size=first_positive_bundle_size,
         full_vector_information_bits=full_information,
     )
 
