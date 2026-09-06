@@ -63,14 +63,20 @@ Observation value is state-dependent. After one realised observation, the admiss
 ```text
 A_0 = current admissible region
 for t = 0,1,...:
-    compute V_t(Q)=I(S;Q | A_t)/K
-    select the largest positive current value
+    compute V_t(Q)=I(S;Q | A_t)/K for each estimable candidate
+    select the largest positive current validated value
     reveal the selected outcome only after selection
     condition A_t on that outcome
     recompute all remaining values
 ```
 
-Stop when the mechanism ambiguity is resolved, the observation budget is exhausted, or every available verified candidate has zero current information value. The last state is an information-limited stopping condition: unresolved alternatives remain, but the declared candidate vocabulary cannot distinguish them.
+Three stopping or continuation states must be kept distinct.
+
+1. **Declared target resolved or budget exhausted.** The sequence can stop because its predeclared target has been met or because no further observation can currently be afforded. Neither statement implies that the full mechanism vector has entropy zero.
+2. **Validated information limit.** If every declared remaining candidate has an estimable validated value and all satisfy `V_t(Q)=0`, then unresolved alternatives remain but the **complete declared candidate vocabulary** contains no expected information about those residual distinctions. This licenses an information-limited stop relative to that vocabulary.
+3. **Prediction limit.** If any declared remaining candidate is non-estimable, zero values among the estimable subset do **not** establish an information limit for the full candidate vocabulary, and a positive value identifies only a provisional best among the estimable subset. The honest validated-information result is prediction limitation until the missing candidate outcome map is supplied or the candidate set is explicitly narrowed.
+
+An explicitly labelled structural or edge-cut fallback may remain available for compatibility workflows, but fallback availability is not relabelled as validated `I(S;Q|A_t)/K` and does not by itself establish either zero or positive candidate mutual information.
 
 ## 6. Validation boundary
 
