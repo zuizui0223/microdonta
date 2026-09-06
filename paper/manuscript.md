@@ -28,6 +28,10 @@ A common response is model selection: define candidate models and rank them by p
 
 A second response is to collect more data. Yet `more data` is not a design. Field observations, experiments, assays and genetic measurements differ greatly in cost and in the particular mechanism distinctions they can resolve. A measurement can be precise and biologically important while carrying almost no information about the ambiguity that remains. When observation budgets are limited, the scientific task is therefore not simply to reduce variance but to select measurements that discriminate among the currently admissible mechanisms.
 
+The ambiguity targeted here is not generic statistical uncertainty. Rejecting a designated null hypothesis can leave several non-null mechanisms compatible with the same observation. Small residual error, or even exact fit, can coexist with multiple mechanism programs when the observation map sends them to the same target. Additional replication can reduce sampling uncertainty without adding a new mechanism distinction when it repeats an observation type that is structurally redundant. Counterfactual causal identification is different again: identifying an intervention or mediation contrast under its assumptions does not automatically identify a complete biological mechanism decomposition, and observational discrimination does not replace intervention when the estimand itself is causal (Grace et al. 2025; Correia et al. 2025; Siegel & Dee 2025). The present target is narrower: given a declared mechanism family and current evidence, which mechanism distinctions remain unresolved, and which feasible observation is informative about those distinctions?
+
+This separation also clarifies why a structurally new measurement is not automatically a useful mechanism measurement. In an exact observation class, a candidate already determined by the current observation map cannot add information about any latent mechanism label. But a candidate that genuinely refines the latent state can still separate only nuisance parameters while leaving mechanism identity unchanged. Mechanism-Resolving Observation Design therefore uses structural redundancy only as a possible zero-value screen; the publication-level candidate value remains target-specific information about the residual mechanism vector.
+
 Mechanism-Resolving Observation Design changes the inferential target. Rather than asking which single mechanism currently ranks first, it asks four sequential questions:
 
 1. which parameter–mechanism combinations remain compatible with the declared evidence;
@@ -37,7 +41,7 @@ Mechanism-Resolving Observation Design changes the inferential target. Rather th
 
 The method combines prior restriction, explicit biological constraints, entropy and value-of-information logic. Its novelty lies in their joint use for a specific ecological target: preservation and sequential reduction of mechanism ambiguity. The compatible set and its uncertainty are scientific outputs rather than intermediate objects discarded after a best-model decision. When the predictive outcomes of a candidate measurement are identified by the current admissible region, candidate value is exactly the normalized mutual information between that measurement and the remaining mechanism vector.
 
-This paper makes four contributions. First, it defines a reproducible admissible mechanism region and separates observed targets from context, diagnostics and future measurements. Second, it derives a normalized observation information value with a direct mutual-information interpretation. Third, it closes the loop through sequential recomputation after each realised observation and gives an exact two-step condition for when recomputation has strict expected value over the best precommitted next measurement. Fourth, it tests observation selection itself in a controlled truth-peek-free benchmark where informative candidates compete with valid but mechanism-independent nuisance measurements.
+This paper makes four contributions. First, it defines a reproducible admissible mechanism region and separates observed targets from context, diagnostics and future measurements. Second, it derives a normalized observation information value with a direct mutual-information interpretation and states a structural zero-value condition for observations already determined by the current evidence. Third, it closes the loop through sequential recomputation after each realised observation and gives an exact two-step condition for when recomputation has strict expected value over the best precommitted next measurement. Fourth, it tests observation selection itself in a controlled truth-peek-free benchmark where informative candidates compete with valid but mechanism-independent nuisance measurements.
 
 The validation claim is intentionally algorithmic and conditional. We do not use a natural system to claim discovery of a true ecological mechanism. Instead, we test whether, in a declared family of confounded systems with known hidden truth, information-guided design chooses informative measurements without seeing their outcomes in advance, reduces ambiguity under a limited budget, and avoids excluding the generating explanation. This makes the synthetic benchmark—not an illustrative field narrative—the principal evidence for the observation-selection method.
 
@@ -130,6 +134,24 @@ Therefore
 
 A candidate is reported as non-estimable when its outcomes overlap, fail to cover the current region or depend on simulator outputs absent from stored rows. A declared external outcome prior is not silently substituted and labelled as validated information value. A structural edge-cut score remains available only as an explicitly labelled fallback when the predictive partition cannot be computed; every selection step records which score source was used.
 
+#### 2.2.1 Structural redundancy as a zero-value screen
+
+The information criterion admits a useful structural sufficient condition for zero value. Let the full declared state be `Z=(theta,S)` and let `O` denote the current exact observation map. If a deterministic candidate observation is already determined by the current observation, so that
+
+```text
+Q = h(O)
+```
+
+on the relevant model support, then after conditioning on `O=o` the value of `Q` is constant on the compatible fibre. Hence
+
+```text
+I(S;Q | O=o) = 0.
+```
+
+The candidate cannot distinguish any latent mechanism label represented on that fibre. In the exact positive log-linear class, current observations can be written `Mx=y`; if a scalar candidate has row `a^T` lying in `rowspan(M)`, then `a^T=c^TM` for some `c`, so `a^Tx=c^Ty` is already determined by the current observations. Such a candidate is therefore structurally guaranteed to have zero mechanism information.
+
+The converse is false and is important for observation design. A candidate outside the current observation span can refine continuous or nuisance parameter variation while leaving the distribution of `S` unchanged across its outcomes. Structural novelty is therefore a necessary screen against exact redundancy in that restricted class, not a replacement for mechanism-targeted value. MROD retains `I(S;Q|A_epsilon)/K` as the operative criterion because it asks whether the candidate partitions the *mechanism projection* of the admissible region, not merely whether it partitions the full latent state. For tolerant or stochastic observation maps, no general rank shortcut is assumed; candidate information is evaluated from the verified predictive partition of the current `A_epsilon`.
+
 ### 2.3 Sequential observation design
 
 The design is adaptive because candidate value depends on the current admissible region:
@@ -218,7 +240,7 @@ The within-seed information-guided minus random-order contrast was therefore `+0
 
 Budget four isolates measurement efficiency after both policies had resolved all initial confounding edges on average. Information-guided design converged in 0.999 of systems and used 1.518 observations, whereas random order converged in 0.940 and used 2.673. Most visibly, random order selected 1.169 mechanism-independent nuisance measurements per system versus 0.014 under information-guided design. The absolute difference was 1.155 nuisance measurements; the ratio was `1.169/0.014=83.5`, equivalent to an approximately 98.8% reduction relative to random order.
 
-The fold ratio is descriptive and is reported with its absolute values because ratios become unstable when the selected count approaches zero. At budget two the aggregate ratio is much larger because the information-guided mean is 0.001, but the budget-four comparison provides the more conservative headline after both policies have enough budget to resolve all edges on average.
+The fold ratio is descriptive and is reported with its absolute values because ratios become unstable when the selected count approaches zero. At budget two the aggregate ratio is much larger because the information-guided mean is 0.001, but the budget-four comparison provides the more conservative headline after both policies have enough budget to resolve the edge structure on average.
 
 Hidden-truth false exclusion was zero in every policy-by-budget cell. All 10,000 system–policy–budget records retained the hidden generating explanation. Thus the selection advantage was not obtained by narrowing the accepted set so aggressively that the truth was discarded.
 
@@ -254,6 +276,10 @@ V(Q)=I(S;Q|A_epsilon)/K
 
 provides a direct interpretation for observation value. A measurement is useful exactly to the extent that it carries information about the mechanism distinctions still unresolved inside the current admissible region. This differs from ranking candidates by general precision, sample size or ecological prominence. A measurement can be scientifically interesting and still have zero information value for the ambiguity at hand.
 
+The structural zero-value result gives this distinction a sharper boundary. If a candidate is already determined by the current observation map, it is constant within the exact compatible fibre and cannot inform `S`; in the exact log-linear case this includes candidate rows already in the current row span. But structural novelty alone is insufficient. A genuinely new measurement may partition nuisance variation while remaining independent of mechanism identity. Observation design can therefore be viewed as two nested screens: remove candidates that are provably redundant when the observation architecture permits such a diagnosis, then use `I(S;Q|A_epsilon)` to determine which remaining candidates actually resolve the mechanism target. The second screen is indispensable because MROD values mechanism discrimination, not latent-state refinement in general.
+
+This also locates MROD relative to common limitation statements. A rejected null does not choose among surviving non-null mechanisms; a small model residual does not imply a unique mechanism; and increased precision is not the same operation as changing what is observed. Counterfactual causal estimands likewise retain their own identification requirements. MROD neither replaces those analyses nor requires the deepest molecular or fitness-level measurement by default. It asks which feasible observation separates the explanations that remain relevant to the scientific question. A field measurement can therefore be more mechanism-resolving than a biologically proximal assay when the former divides the current mechanism set and the latter is shared across alternatives.
+
 Sequential recomputation is conditionally valuable rather than uniformly necessary. After one observation, the admissible region changes and the value of every remaining candidate can change, but a static information ordering can be equally effective when one candidate remains branchwise optimal across all positive-probability outcomes. The two-step theorem makes this distinction exact: adaptive expected value is never smaller than the best precommitted second measurement, and it is strictly larger exactly when the branchwise argmax sets have no common candidate. The post-frozen static-information diagnostic is consistent with the equality side of this result for the present G2 family. Sequential observation design therefore recomputes by default because the relevant branch structure is generally unknown in advance, not because every problem is asserted to gain from adaptation.
 
 The G2 benchmark was designed to test selection rather than observation sufficiency. A candidate set containing only direct resolvers would show that informative measurements can solve confounds, but not that the method distinguishes them from wasted measurements. Adding valid mechanism-independent nuisance candidates created a controlled competition for budget. The resulting approximately 84-fold difference at budget four measures how often the uninformed policy spent scarce observations on candidates that had no designed mechanism information after both policies had enough budget to resolve the edge structure on average.
@@ -270,13 +296,14 @@ The practical output for ecologists is a disciplined sequence:
 declare mechanisms and constraints
 → retain compatible explanations
 → quantify residual mechanism uncertainty
+→ screen exact structural redundancies where the observation architecture permits
 → verify candidate predictive outcomes
 → select the maximum-current-information measurement
 → condition and repeat
 → stop when resolved, budget-limited or information-limited.
 ```
 
-This reframes mechanistic ambiguity from a reason to force a winner or postpone inference into a quantitative experimental-design problem.
+This reframes mechanistic ambiguity from a reason to force a winner or postpone inference into a quantitative experimental-design problem. A limitation is no longer only a disclaimer that another explanation cannot be excluded: when the candidate vocabulary is adequate, it becomes a statement about which distinction remains and which observation is expected to resolve it; when no candidate carries such information, the unresolved state itself is the result.
 
 ## Figure captions
 
@@ -294,8 +321,11 @@ This reframes mechanistic ambiguity from a reason to force a winner or postpone 
 - Beaumont, M.A. 2010. Approximate Bayesian computation in evolution and ecology. *Annual Review of Ecology, Evolution, and Systematics* 41: 379–406.
 - Canessa, S., Guillera-Arroita, G., Lahoz-Monfort, J.J., Southwell, D.M., Armstrong, D.P., Chadès, I., Lacy, R.C. & Converse, S.J. 2015. When do we need more data? A primer on calculating the value of information for applied ecologists. *Methods in Ecology and Evolution* 6: 1219–1228.
 - Chaloner, K. & Verdinelli, I. 1995. Bayesian experimental design: a review. *Statistical Science* 10: 273–304.
+- Correia, H.E., Dee, L.E. & Ferraro, P.J. 2025. Designing causal mediation analyses to quantify intermediary processes in ecology. *Biological Reviews* 100: 1512–1533.
 - Csilléry, K., Blum, M.G.B., Gaggiotti, O.E. & François, O. 2010. Approximate Bayesian computation in practice. *Trends in Ecology & Evolution* 25: 410–418.
+- Grace, J.B. et al. 2025. Causal effects versus causal mechanisms: two traditions with different requirements and contributions towards causal understanding. *Ecology Letters* 28: e70029.
 - Grimm, V., Revilla, E., Berger, U., Jeltsch, F., Mooij, W.M., Railsback, S.F., Thulke, H.-H., Weiner, J., Wiegand, T. & DeAngelis, D.L. 2005. Pattern-oriented modelling of agent-based complex systems: lessons from ecology. *Science* 310: 987–991.
 - Hartig, F., Calabrese, J.M., Reineking, B., Wiegand, T. & Huth, A. 2011. Statistical inference for stochastic simulation models: theory and application. *Ecology Letters* 14: 816–827.
 - Raiffa, H. & Schlaifer, H. 1961. *Applied Statistical Decision Theory.* Harvard University Press, Boston.
 - Robert, C.P., Cornuet, J.-M., Marin, J.-M. & Pillai, N.S. 2011. Lack of confidence in approximate Bayesian computation model choice. *Proceedings of the National Academy of Sciences* 108: 15112–15117.
+- Siegel, K. & Dee, L.E. 2025. Foundations and future directions for causal inference in ecological research. *Ecology Letters* 28: e70053.
