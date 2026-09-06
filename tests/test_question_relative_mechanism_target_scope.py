@@ -21,7 +21,10 @@ def test_question_relative_target_note_contains_theorem_and_claim_ceiling():
         "H(T)=0",
         "H(S)=2 bits",
         "Mechanistic depth is not question-relevant identifying power",
-        "Target validity is not supplied by information theory",
+        "Target validity and metadata guard",
+        "CandidateObservation.target_switches",
+        "does **not** define `T`",
+        "standard consequences of deterministic coarsening",
         "internal theory / claim-ceiling audit",
     ):
         assert marker in text, marker
