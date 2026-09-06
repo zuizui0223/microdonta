@@ -1,40 +1,46 @@
-"""Causal Replaceability Cost (CRC) — the primary output of RACH.
+"""Mechanism replaceability inside a declared admissible region.
 
-CRC_j quantifies how much "adjustment" is required to reproduce the observed
-pattern when mechanism j is counterfactually removed.  Formally:
+Historical implementations called the main quantity ``Causal Replaceability
+Cost (CRC)`` and described switch-OFF filtering as a counterfactual ablation.
+The publication-facing interpretation is narrower: the calculation asks how
+much of the already accepted region remains when a declared mechanism switch is
+restricted to OFF.
 
-    CRC_j = inf_{θ, s_{-j}} [ L_constraint(θ, s_{-j}) ]
-            s.t.  s_j = 0,  d(P_sim, P_obs) ≤ ε
+For switch ``j``, the informational component is
 
-Two additive components:
+    -log2 P(s_j = 0 | A_epsilon).
 
-  Informational cost
-      -log₂ P(s_j = 0 | A_ε)
-      How rare is the ablated world in the accepted region?
-      CRC = 0 when mechanism j is never active (CA_j = 0; freely droppable).
-      CRC → ∞ when j is always active (CA_j → 1; no accepted draws have j off).
+An optional constraint component records the least external-constraint penalty
+among accepted rows with ``s_j=0``.  The calculation is therefore a
+set-membership / replaceability diagnostic conditional on the declared model,
+prior, constraints, discrepancy and tolerance.  It does **not** by itself
+identify a potential outcome, do-intervention effect or other causal
+counterfactual distribution.
 
-  Constraint penalty  (optional; zero in Tier-A runs without explicit priors)
-      min_{r ∈ A_ε ∩ {s_j=0}} L_constraint(r)
-      The minimum ecological/statistical strain required to replace j.
-      Computed from ``external_constraints.total_penalty`` applied to each
-      ablated row, then minimised.
+Two additive components
+-----------------------
 
-In Tier-A (randomised-coefficient) runs the constraint penalty is 0 by
-construction: every accepted row draws weights uniformly from [weight_lo,
-weight_hi], so the hard constraint L = 0 is always satisfied. CRC reduces
-to the pure informational cost.
+Informational cost
+    ``-log2 P(s_j = 0 | A_epsilon)``
+    How rare are accepted rows in which mechanism ``j`` is already OFF?
+
+Constraint penalty
+    ``min_{r in A_epsilon ∩ {s_j=0}} L_constraint(r)``
+    The minimum declared external-constraint strain among those rows.
+
+In Tier-A randomised-coefficient runs the constraint penalty is zero by
+construction when every accepted row already satisfies the hard constraints,
+so the quantity reduces to the informational cost.
 
 Interpretation
 --------------
-CRC = 0 bits      mechanism j is freely replaceable (always absent in A_ε)
-CRC = 1 bit       ablating j halves the admissible region (CA_j ≈ 0.5)
-CRC = 1.6 bits    typical disjunction-confound member (CA_j ≈ 0.67)
-CRC = ∞           mechanism j is indispensable — no accepted draw has j off
 
-A full CRC profile ``{j: CRC_j}`` over all switches shows, at a glance,
-which mechanisms are informationally load-bearing and which are freely
-substitutable.
+- 0 bits: the mechanism is freely droppable inside the accepted region;
+- finite positive value: accepted OFF rows exist but occupy a smaller share;
+- infinity: no accepted row has the mechanism OFF under the declared region.
+
+None of these states proves a causal intervention effect.  They describe
+replaceability within ``A_epsilon``.
 """
 from __future__ import annotations
 
@@ -47,14 +53,14 @@ from causal_model.external_constraints import Constraint, total_penalty
 
 @dataclass
 class CRCResult:
-    """Causal replaceability cost for a single mechanism."""
+    """Historical result container for one mechanism-replaceability calculation."""
     switch_name: str
-    CRC: float                         # total cost (informational + constraint)
-    info_cost: float                   # -log₂ P(s_j=0 | A_ε)
-    constraint_penalty: float          # min constraint penalty in ablated region
-    n_ablated: int                     # |A_ε ∩ {s_j=0}|
-    n_total: int                       # |A_ε|
-    fraction_ablated: float            # n_ablated / n_total
+    CRC: float
+    info_cost: float
+    constraint_penalty: float
+    n_ablated: int
+    n_total: int
+    fraction_ablated: float
 
     def describe(self) -> str:
         frac = f"{self.fraction_ablated:.3f}"
@@ -72,25 +78,12 @@ def causal_replaceability_cost(
     accepted_rows: list[dict],
     constraints: list[Constraint] | None = None,
 ) -> float:
-    """CRC_j: informational + constraint cost of ablating mechanism j.
+    """Historical API name for mechanism-replaceability cost inside ``A_epsilon``.
 
-    Parameters
-    ----------
-    switch_name:
-        The mechanism to ablate (must appear as a key in accepted row dicts).
-    accepted_rows:
-        Current admissible region A_ε.
-    constraints:
-        Optional list of :class:`~external_constraints.Constraint` objects
-        for computing the constraint-penalty component.  Pass ``None`` (the
-        default) for Tier-A runs where no external parameter priors exist.
-
-    Returns
-    -------
-    float
-        CRC_j in bits.  ``float("inf")`` when the ablated region is empty.
-        ``float("nan")`` when ``accepted_rows`` is empty.
-        ``0.0`` when mechanism j is always absent (CA_j = 0).
+    The value is informational cost plus an optional external-constraint
+    penalty.  The function name is preserved for frozen provenance and internal
+    compatibility; publication-facing code should use the descriptive
+    ``mechanism_replaceability_*`` aliases.
     """
     res = causal_replaceability_cost_full(switch_name, accepted_rows, constraints)
     return res.CRC
@@ -101,7 +94,7 @@ def causal_replaceability_cost_full(
     accepted_rows: list[dict],
     constraints: list[Constraint] | None = None,
 ) -> CRCResult:
-    """Full CRC computation returning a :class:`CRCResult` with diagnostics."""
+    """Return the full replaceability calculation and diagnostics."""
     n_total = len(accepted_rows)
     if n_total == 0:
         return CRCResult(
@@ -123,7 +116,6 @@ def causal_replaceability_cost_full(
         )
 
     p_off = n_ablated / n_total
-    # -log₂(1) = 0 when all rows have s_j=0 (mechanism always absent)
     info_cost = -math.log2(p_off) if p_off < 1.0 else 0.0
 
     if constraints:
@@ -152,16 +144,10 @@ def crc_profile(
     switches,
     constraints: list[Constraint] | None = None,
 ) -> dict[str, float]:
-    """CRC for every switch in *switches*.
-
-    Returns
-    -------
-    dict
-        ``{switch_name: CRC_j}``
-    """
+    """Historical backend profile over all declared switches."""
     names = [sw.name for sw in switches]
     return {name: causal_replaceability_cost(name, accepted_rows, constraints)
-            for name in names}
+            for name in names]
 
 
 def crc_profile_full(
@@ -169,7 +155,7 @@ def crc_profile_full(
     switches,
     constraints: list[Constraint] | None = None,
 ) -> list[CRCResult]:
-    """Full CRC computation for every switch, returning :class:`CRCResult` objects."""
+    """Historical backend full profile over all declared switches."""
     names = [sw.name for sw in switches]
     return [causal_replaceability_cost_full(name, accepted_rows, constraints)
             for name in names]
