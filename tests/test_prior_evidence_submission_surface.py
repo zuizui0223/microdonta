@@ -13,6 +13,7 @@ FOUNDATIONS = ROOT / "docs" / "observation_information_foundations.md"
 MANIFEST = ROOT / "paper" / "submission_manifest.json"
 BUNDLE = ROOT / "paper" / "build_reviewer_bundle.py"
 README = ROOT / "README.md"
+PUBLIC_API = ROOT / "causal_model" / "admissible_mechanisms.py"
 WITNESS = "causal_model/prior_evidence_separation_witness.py"
 
 
@@ -63,6 +64,18 @@ def test_readme_separates_current_resolvability_from_incremental_information():
         "`R` summarizes the concentration of the current declared mechanism distribution",
         "does not by itself attribute that concentration to the observations",
         "`V(Q)` is incremental conditional information",
+    ):
+        assert marker in text, marker
+
+
+def test_public_api_docstring_does_not_call_R_data_information_gain():
+    text = PUBLIC_API.read_text(encoding="utf-8")
+    for marker in (
+        "Return current normalized mechanism concentration",
+        "must not be interpreted by itself as",
+        "Evidence attribution requires an",
+        "Candidate observation value is",
+        "incremental conditional mutual information",
     ):
         assert marker in text, marker
 
