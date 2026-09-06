@@ -1,4 +1,4 @@
-name: PR128 one-shot typo fix
+name: PR128 one-shot claim fix
 
 on:
   push:
@@ -16,22 +16,66 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix-information-limit-stop-claim-20260906
-      - name: Fix manuscript edit accident
+      - name: Apply idempotent manuscript and SI fixes
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('paper/manuscript.md')
-          text = p.read_text(encoding='utf-8')
-          old = 'distinguishishable'
-          assert text.count(old) == 1, text.count(old)
-          text = text.replace(old, 'distinguishable')
-          p.write_text(text.rstrip('\n') + '\n', encoding='utf-8')
-          Path('.github/workflows/pr128_autofix.yml').unlink()
+
+          def replace_once(text, old, new, label):
+              if old in text:
+                  count = text.count(old)
+                  if count != 1:
+                      raise RuntimeError(f"{label}: expected one old occurrence, got {count}")
+                  return text.replace(old, new), True
+              if new in text:
+                  return text, False
+              raise RuntimeError(f"{label}: neither old nor new text found")
+
+          manuscript = Path('paper/manuscript.md')
+          text = manuscript.read_text(encoding='utf-8')
+          text = text.replace('distinguishishable', 'distinguishable')
+
+          old_intro = "4. whether the complete declared candidate vocabulary contains further resolving information, or whether unresolved candidate values remain non-estimable."
+          new_intro = "4. whether the current greedy policy has an informative immediate move, whether candidate values remain non-estimable, and whether any stronger sequence-level information claim has been audited."
+          text, _ = replace_once(text, old_intro, new_intro, 'manuscript intro question 4')
+
+          old_methods = "The sequence can stop because the observation budget is exhausted or the declared confounding/design target is resolved; neither condition implies that the full mechanism vector has entropy zero. A **validated information-limited** stop is licensed only when every declared remaining candidate has an estimable predictive partition and all current values satisfy `V_t(Q)=0`. Only in that complete-coverage case does the declared candidate vocabulary contain no expected information about the remaining mechanism distinctions. If one or more declared remaining candidates are non-estimable, the validated calculation is instead **prediction-limited** for the full candidate set: zero values among the estimable subset do not establish an all-candidate information limit, and a positive value identifies only a provisional best among the estimable candidates until the remaining outcome maps are supplied or the candidate set is explicitly narrowed. Any structural or edge-cut fallback remains separately labelled and is not treated as validated mutual information."
+          new_methods = "The sequence can stop because the observation budget is exhausted or the declared confounding/design target is resolved; neither condition implies that the full mechanism vector has entropy zero. If one or more declared remaining singleton candidates are non-estimable, the validated calculation is **prediction-limited** for the full singleton candidate set: zero values among the estimable subset do not establish a complete one-step zero result, and a positive value identifies only a provisional best among the estimable candidates until the remaining outcome maps are supplied or the candidate set is explicitly narrowed. If every declared remaining singleton candidate is estimable and every current `V_t(Q)=0`, the current positive-singleton greedy rule has a **validated one-step information stop**: no individual immediate candidate has positive mechanism information. Zero singleton values alone do not establish a sequence-level information limit, because complementary observations can each have zero marginal information while carrying positive information jointly. A **sequence-information limit** for the declared candidate vocabulary requires a coherent joint predictive vector `Q_C` and zero joint information `I(S;Q_C|A_t)=0`; by data processing, no transcript formed solely from those candidate outcomes can then inform `S`. Positive joint information despite zero singleton values instead indicates a non-myopic bundle/sequence-design problem. Any structural or edge-cut fallback remains separately labelled and is not treated as validated mutual information."
+          text, _ = replace_once(text, old_methods, new_methods, 'manuscript methods stop paragraph')
+
+          old_discussion = "Admissibility is always relative to a declared mechanism vocabulary, parameter prior, constraint grammar, observation map, discrepancy and tolerance. An omitted mechanism cannot be recovered by retaining the accepted set. A predictive partition must also be identified before stored-region information value can be computed. When outcomes overlap, are incomplete or require an unmodelled process, the honest result is non-estimability until an additional predictive model is supplied. Accordingly, a zero value among currently estimable candidates does not establish an information limit for the full declared candidate vocabulary while other candidates remain non-estimable; nor does a positive estimable value establish a global best in that case. Such a state is prediction-limited rather than information-limited for the full candidate set."
+          new_discussion = "Admissibility is always relative to a declared mechanism vocabulary, parameter prior, constraint grammar, observation map, discrepancy and tolerance. An omitted mechanism cannot be recovered by retaining the accepted set. A predictive partition must also be identified before stored-region information value can be computed. When outcomes overlap, are incomplete or require an unmodelled process, the honest result is non-estimability until an additional predictive model is supplied. Accordingly, a zero value among currently estimable singleton candidates does not establish even a complete one-step zero result while other declared candidates remain non-estimable; nor does a positive estimable value establish a global singleton best in that case. Even when every singleton candidate is estimable, all singleton values equal to zero imply only that the current positive-singleton greedy policy has no informative immediate move. A stronger sequence-level information-limit claim requires a coherent joint candidate predictive model and zero joint mechanism information; otherwise complementary observations may contain information only in combination."
+          text, _ = replace_once(text, old_discussion, new_discussion, 'manuscript discussion limitation paragraph')
+
+          old_block = "→ stop if the declared target is resolved or the budget is exhausted\n→ report a validated information limit only when every declared remaining candidate is estimable and all V(Q)=0\n→ report prediction limitation when declared candidate values remain non-estimable"
+          new_block = "→ stop if the declared target is resolved or the budget is exhausted\n→ report prediction limitation when declared singleton candidate values remain non-estimable\n→ if every singleton V(Q)=0, report a validated one-step information stop\n→ call the declared candidate vocabulary sequence-information-limited only after joint candidate information is identified and equals zero"
+          text, _ = replace_once(text, old_block, new_block, 'manuscript practical output block')
+
+          old_final = "This reframes mechanistic ambiguity from a reason to force a winner or postpone inference into a quantitative experimental-design problem. A limitation is no longer only a disclaimer that another explanation cannot be excluded: when the candidate vocabulary is adequately specified and valued, it becomes a statement about which distinction remains and which observation is expected to resolve it; when every declared candidate is estimable and none carries such information, the unresolved state is a validated information limit relative to that vocabulary; when predictive partitions remain unidentified, the limitation is prediction rather than mechanism information."
+          new_final = "This reframes mechanistic ambiguity from a reason to force a winner or postpone inference into a quantitative experimental-design problem. A limitation is no longer only a disclaimer that another explanation cannot be excluded: when the candidate vocabulary is adequately specified and a singleton candidate has positive value, the analysis identifies an informative immediate measurement; when predictive partitions remain unidentified, the limitation is prediction rather than mechanism information; and when every singleton value is zero, the honest result is a one-step greedy stop unless a joint candidate audit also establishes a sequence-level information limit."
+          text, _ = replace_once(text, old_final, new_final, 'manuscript final paragraph')
+
+          manuscript.write_text(text.rstrip('\n') + '\n', encoding='utf-8')
+
+          si = Path('paper/supporting_information.md')
+          stext = si.read_text(encoding='utf-8')
+          old_si = "The stopping interpretation depends on why no validated selection is made:\n\n- **declared target resolved:** the predeclared confounding or mechanism distinction has been resolved; this does not necessarily imply that all switch-vector entropy is zero;\n- **budget exhausted:** observation cannot continue for a resource reason, which is distinct from an information limit;\n- **validated information limit:** every declared remaining candidate has an estimable predictive partition and all validated values satisfy `V_t(Q)=0`; only then does the complete declared candidate vocabulary contain no expected mechanism information about the remaining ambiguity;\n- **prediction limit:** one or more declared remaining candidates are non-estimable. In this case zero values among the estimable subset do not establish an information limit for the full candidate vocabulary, and a positive value identifies only a provisional best among the estimable candidates until the remaining outcome maps are supplied or the candidate set is explicitly narrowed.\n\nAn explicitly named normalized edge-cut fallback is retained for compatibility workflows when a predictive partition is unavailable. Every step records its score source; fallback scores are not reported as validated observation information values and do not by themselves establish zero or positive candidate mutual information."
+          new_si = "The stopping interpretation depends on why no validated singleton selection is made:\n\n- **declared target resolved:** the predeclared confounding or mechanism distinction has been resolved; this does not necessarily imply that all switch-vector entropy is zero;\n- **budget exhausted:** observation cannot continue for a resource reason, which is distinct from an information limit;\n- **prediction limit:** one or more declared remaining singleton candidates are non-estimable. Zero values among the estimable subset do not establish a complete one-step zero result for the full singleton candidate set, and a positive value identifies only a provisional best among the estimable candidates until the remaining outcome maps are supplied or the candidate set is explicitly narrowed;\n- **validated one-step information stop:** every declared remaining singleton candidate has an estimable predictive partition and every validated `V_t(Q)=0`. This means the current positive-singleton greedy rule has no informative immediate move, not that candidate combinations are necessarily uninformative;\n- **sequence-information limit:** this stronger statement requires a coherent joint predictive vector for the declared candidate outcomes and `I(S;Q_C|A_t)=0`. Zero singleton values alone are insufficient because complementary observations may carry mechanism information only jointly.\n\nAn explicitly named normalized edge-cut fallback is retained for compatibility workflows when a predictive partition is unavailable. Every step records its score source; fallback scores are not reported as validated observation information values and do not by themselves establish zero or positive candidate mutual information. Positive joint information among zero-valued singleton candidates indicates a non-myopic bundle/sequence problem rather than an in-principle information limit."
+          stext, _ = replace_once(stext, old_si, new_si, 'SI stopping paragraph')
+          si.write_text(stext.rstrip('\n') + '\n', encoding='utf-8')
+
+          helper = Path('.github/workflows/pr128_autofix.yml')
+          if helper.exists():
+              helper.unlink()
           PY
       - name: Commit one-shot fix and remove helper
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Fix manuscript typo and newline [pr128-autofix]"
-          git push origin HEAD:fix-information-limit-stop-claim-20260906
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+          else
+            git commit -m "Apply XOR-safe stopping claims [pr128-autofix]"
+            git push origin HEAD:fix-information-limit-stop-claim-20260906
+          fi
