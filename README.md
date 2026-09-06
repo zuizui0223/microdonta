@@ -22,9 +22,9 @@ declare mechanisms, parameters, constraints and evidence roles
 → select the maximum-current-value candidate
 → reveal its outcome only after selection
 → condition the region and recompute
-→ stop when the declared target is resolved, budget-limited,
-  information-limited under complete candidate coverage,
-  or prediction-limited because candidate values remain non-estimable
+→ stop when the declared target is resolved or budget is exhausted,
+  pause the positive-singleton greedy policy when every estimable singleton value is zero,
+  and report prediction limits when candidate values remain non-estimable
 ```
 
 ## What kind of uncertainty is this?
@@ -95,14 +95,15 @@ for t = 0,1,...:
     recompute all remaining values
 ```
 
-The stopping interpretation is conditional on candidate coverage:
+The stopping interpretation has several distinct levels:
 
 - **declared target resolved:** stop the predeclared sequence; this need not imply full switch-vector entropy is zero;
 - **budget exhausted:** stop for a resource reason, which is distinct from an information limit;
-- **validated information-limited:** every declared remaining candidate is estimable and all have `V_t(Q)=0`; then the complete declared candidate vocabulary contains no expected mechanism information about the remaining ambiguity;
-- **prediction-limited:** one or more declared remaining candidates are non-estimable; zero values among the estimable subset do not establish an information limit for the full candidate vocabulary, and a positive value is only a provisional best among the estimable subset.
+- **prediction-limited:** one or more declared remaining candidates are non-estimable; zero values among the estimable subset do not establish a limit for the full candidate vocabulary, and a positive value is only a provisional best among the estimable subset;
+- **validated one-step information stop:** every declared remaining singleton candidate is estimable and all have `V_t(Q)=0`; then the current positive-singleton greedy rule has no informative immediate move;
+- **sequence-information limit:** this stronger statement requires a coherent joint predictive model for the declared candidate vector and zero joint information `I(S;Q_C|A_t)=0`. Zero singleton values alone are not sufficient, because complementary measurements can each have zero marginal information yet carry positive information jointly.
 
-An explicitly labelled structural or edge-cut fallback can remain available for compatibility workflows, but it is not relabelled as validated `I(S;Q|A_t)/K`.
+An explicitly labelled structural or edge-cut fallback can remain available for compatibility workflows, but it is not relabelled as validated `I(S;Q|A_t)/K`. Likewise, positive joint information among zero-valued singletons indicates a non-myopic bundle/sequence problem; it does not by itself identify the best acquisition order.
 
 ## Public Python API
 
