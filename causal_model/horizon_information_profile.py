@@ -103,6 +103,11 @@ def horizon_information_profile(
         raise ValueError("max_horizon must be between 1 and the candidate count")
 
     entropy = _entropy_bits(states)
+    if entropy > mechanism_bits + 1e-10:
+        raise ValueError(
+            "mechanism state entropy exceeds the declared mechanism_bits normalization"
+        )
+
     best_bits: list[float] = []
     best_values: list[float] = []
     best_bundles: list[tuple[tuple[str, ...], ...]] = []
