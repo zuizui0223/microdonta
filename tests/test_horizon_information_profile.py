@@ -24,6 +24,28 @@ def test_xor_requires_bundle_size_two_even_though_every_singleton_is_zero():
     assert profile.best_bundles_by_horizon[1] == (("Q1", "Q2"),)
 
 
+def test_three_bit_parity_requires_bundle_size_three():
+    q1 = []
+    q2 = []
+    q3 = []
+    states = []
+    for a in (0, 1):
+        for b in (0, 1):
+            for c in (0, 1):
+                q1.append(a)
+                q2.append(b)
+                q3.append(c)
+                states.append(a ^ b ^ c)
+    profile = horizon_information_profile(
+        tuple(states),
+        {"Q1": tuple(q1), "Q2": tuple(q2), "Q3": tuple(q3)},
+        mechanism_bits=1,
+    )
+    assert profile.best_information_bits_by_horizon == pytest.approx((0.0, 0.0, 1.0))
+    assert profile.first_positive_bundle_size == 3
+    assert profile.full_vector_information_bits == pytest.approx(1.0)
+
+
 def test_direct_measurement_is_already_actionable_at_bundle_size_one():
     states = (0, 0, 1, 1)
     direct = states
