@@ -27,6 +27,7 @@ RUNNABLE_SEEDS = [
     "causal_model/sequential_design.py",
     "causal_model/mechanism_replaceability.py",
     "causal_model/mechanism_equivalence.py",
+    "causal_model/postdata_reprioritization_witness.py",
 ]
 REFERENCE_SOURCES = [
     "causal_model/generality_sweep.py",
@@ -99,6 +100,7 @@ REVIEW_TEST = '''import json
 from pathlib import Path
 import causal_model as method
 from causal_model import CandidateObservation, CandidateOutcome
+from causal_model.postdata_reprioritization_witness import evaluate_reprioritization
 
 class _SW:
     def __init__(self, name): self.name=name
@@ -119,6 +121,15 @@ def test_information_value_public_surface():
     assert result.estimable and result.partition_verified
     assert result.mutual_information_bits == 1.0
     assert result.information_value == 1.0
+
+def test_postdata_reprioritization_witness():
+    result=evaluate_reprioritization()
+    assert result.prior_best == "observe_A"
+    assert result.current_best == "observe_B_when_A0"
+    assert result.prior_information_bits["observe_A"] == 1.0
+    assert result.prior_information_bits["observe_B_when_A0"] == 0.811278
+    assert result.current_information_bits["observe_A"] == 0.0
+    assert result.current_information_bits["observe_B_when_A0"] == 1.0
 
 def test_bundle_preserves_frozen_headline_values():
     data=json.loads(Path("frozen/g2_summary.json").read_text())
