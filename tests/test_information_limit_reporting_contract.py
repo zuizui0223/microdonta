@@ -35,8 +35,8 @@ def test_active_surfaces_label_all_zero_singletons_as_one_step_not_sequence_impo
         "theory": ("Validated one-step information stop", "Zero singleton values alone are insufficient"),
         "tutorial": ("validated one-step information stop", "do **not** promote that one-step stop"),
         "mainline": ("validated one-step information stop", "zero singleton values do **not** prove sequence-level impossibility"),
-        "si": ("validated one-step information stop", "zero singleton values alone"),
-        "manuscript": ("validated one-step information stop", "zero singleton values alone"),
+        "si": ("validated one-step information stop", "Zero singleton values alone"),
+        "manuscript": ("validated one-step information stop", "Zero singleton values alone"),
     }
     for name, markers in required.items():
         text = SURFACES[name].read_text(encoding="utf-8")
