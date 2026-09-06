@@ -46,8 +46,6 @@ from causal_model import (
     mechanism_resolvability,
 )
 
-# accepted_rows contains one dict per accepted (theta, mechanism) draw.
-# Each dict includes Boolean columns named by the mechanism definitions.
 admissibility = compute_admissible_mechanisms(accepted_rows, mechanisms)
 D = mechanism_entropy(accepted_rows, mechanisms)
 R = mechanism_resolvability(accepted_rows, mechanisms)
@@ -104,18 +102,20 @@ result = sequential_observation_design(
 )
 ```
 
-At each step the design ranks candidates before the outcome is revealed,
-conditions the admissible region on the realised outcome, and recomputes all
-remaining values.
+At each step the current implementation ranks singleton candidates before the
+outcome is revealed, conditions the admissible region on the realised outcome,
+and recomputes remaining singleton values.
 
 Interpret stopping states carefully:
 
 - if the **declared design target** is resolved, stop the predeclared sequence; this does not automatically mean the full mechanism vector has entropy zero;
 - if the **budget is exhausted**, stop for a resource reason, not because candidate information vanished;
-- call the state **validated information-limited** only when every declared remaining candidate has an estimable validated value and all those values are zero;
-- if any declared remaining candidate is non-estimable, the validated calculation is **prediction-limited** for the full candidate set. Zero values among estimable candidates do not establish an all-candidate information limit, and a positive estimable candidate is only provisionally best until the remaining candidates are valued or explicitly removed from scope.
+- if any declared remaining candidate is non-estimable, the validated calculation is **prediction-limited** for the full singleton candidate set. Zero values among estimable candidates do not establish a complete one-step zero result, and a positive estimable candidate is only provisionally best until the remaining candidates are valued or explicitly removed from scope;
+- if every declared remaining singleton candidate is estimable and all have `V(Q)=0`, the current positive-singleton greedy algorithm has a **validated one-step information stop**: no individual immediate candidate is informative;
+- do **not** promote that one-step stop to a sequence-level impossibility statement without a joint predictive audit. Complementary observations can each have zero singleton MI and still be informative together;
+- a **sequence-information limit** for the declared candidate vocabulary is licensed when a coherent joint candidate vector `Q_C` is available and `I(S;Q_C|A)=0`. If joint information is positive despite zero singleton values, a non-myopic bundle/sequence objective is required instead.
 
-Compatibility fallback scores can remain available, but they are reported under their own score source rather than as validated mechanism mutual information.
+Compatibility fallback scores can remain available, but they are reported under their own score source rather than as validated mechanism mutual information. Positive joint information does not by itself determine a unique or cost-optimal acquisition order.
 
 ## 6. Adapt the method to another ecological system
 
@@ -130,8 +130,9 @@ Provide four ingredients:
 
 The method is simulator-agnostic after the admissible rows are constructed. Its
 scientific claim is conditional on the declared model and candidate families: it
-quantifies residual mechanism ambiguity and designs the next observation; it does
-not convert a synthetic benchmark into a natural-system mechanism discovery.
+quantifies residual mechanism ambiguity and designs the next immediate
+observation; it does not convert a synthetic benchmark into a natural-system
+mechanism discovery or solve arbitrary non-myopic sequence design.
 
 Historical identifiers retained in frozen G2 machine-readable artifacts are
 provenance keys only. They are not the current method name or recommended API.
