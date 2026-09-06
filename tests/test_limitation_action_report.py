@@ -70,16 +70,16 @@ def test_budget_limit_remains_distinct_from_information_limit():
     assert status.recommended_action == "report_budget_limit"
 
 
-def test_common_best_candidate_yields_robust_recommendation():
+def test_common_best_candidate_yields_stable_recommendation():
     report = build_limitation_action_report(
         [
             SpecificationInput("s1", 1.0, (score("Q1", 0.4), score("Q2", 0.2))),
             SpecificationInput("s2", 0.8, (score("Q1", 0.3), score("Q2", 0.1))),
         ]
     )
-    assert report.resolution_stability == "robust_unresolved"
-    assert report.actionability_stability == "robust_actionable"
-    assert report.recommendation_stability == "robust"
+    assert report.resolution_stability == "stable_unresolved"
+    assert report.actionability_stability == "stable_actionable"
+    assert report.recommendation_stability == "stable_common_best"
     assert report.common_best_candidates == ("Q1",)
 
 
