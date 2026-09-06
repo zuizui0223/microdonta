@@ -178,6 +178,67 @@ I(S;Q|A) in bits, together with normalized V(Q).
 
 Do not compare absolute `R` or normalized `V` values across differently encoded mechanism vocabularies without a vocabulary-sensitivity argument. The public observation-information result already exposes `mutual_information_bits`, so this rule does not alter the selection algorithm or the frozen G2 policy.
 
+## Proposition 9 — current resolvability is not evidence attribution
+
+Let `B` denote a declared **pre-observation baseline state**: the mechanism family, prior, parameter support, pre-data biological constraints and fixed context that are in place before a particular observed target `O` is used. The baseline mechanism entropy and normalized resolvability are
+
+```text
+D_B = H(S|B),
+R_B = 1 - H(S|B)/K.
+```
+
+After observing `O=o`, the current state is
+
+```text
+D_{B,o} = H(S|B,O=o),
+R_{B,o} = 1 - H(S|B,O=o)/K.
+```
+
+`R_{B,o}` is an **absolute current-state concentration measure relative to the K-bit maximum entropy**. It is not, by itself, the amount of information supplied by `O`. If the prior or pre-data constraints already concentrate mechanism probability, then `R_B` can be positive before any current observed target is applied.
+
+The realised change attributable to this observation relative to the declared baseline is
+
+```text
+Delta_R(o)
+= R_{B,o} - R_B
+= {H(S|B)-H(S|B,O=o)}/K.
+```
+
+For a particular realised `o`, this change need not be non-negative: conditioning on a surprising outcome can increase entropy. Averaging over the coherent predictive distribution gives
+
+```text
+E_O[Delta_R(O)]
+= {H(S|B)-H(S|B,O)}/K
+= I(S;O|B)/K
+>= 0.
+```
+
+Thus three quantities should not be conflated:
+
+```text
+R_current                absolute concentration of the current mechanism state
+Delta_R(realised data)   realised change relative to a declared baseline
+I(S;O|B)/K               expected information supplied by observation O
+```
+
+MROD's next-observation value is already the third kind of quantity, with the **current admissible region** playing the role of baseline:
+
+```text
+V(Q)=I(S;Q|A_current)/K.
+```
+
+This is why a non-uniform current mechanism distribution can have positive `R` while an independent candidate still has `V(Q)=0`.
+
+### Prior sensitivity of candidate ranking
+
+Because `I(S;Q|A_current)` is conditional on the current mechanism distribution, a scientifically different prior or constraint specification can change candidate information and its ranking. This is expected rather than a contradiction: the next observation should target the distinctions that are uncertain under the declared current state. It does mean that priors and constraints must be predeclared and that candidate rankings should be sensitivity-checked when several prior specifications are scientifically plausible.
+
+## Reporting consequence of Proposition 9
+
+Use `R` to describe **how concentrated the current declared mechanism distribution is**, not as a standalone estimate of how much information the current observations contributed. When evidence attribution matters, state the baseline explicitly and report an entropy difference or mutual-information contrast relative to that baseline.
+
+For observation design, report the current prior/constraint specification or sensitivity set because candidate MI can be prior-sensitive. No new score is required for the frozen G2 policy: `V(Q)` is already an incremental conditional-information quantity.
+
 ## Monte Carlo implementation
 
 The implementation represents `A` by accepted samples. Entropies, predictive outcome frequencies and mutual information are empirical finite-sample quantities on that retained sample. Numerical convergence of those estimates depends on Monte Carlo coverage; the algebraic identities above are properties of the declared conditional distribution, not guarantees about finite-sample approximation quality.
