@@ -56,33 +56,36 @@ The candidate is useful only to the extent that it carries information about the
 
 If the candidate outcome map does not identify a predictive partition of the current region, the validated information value is reported as non-estimable. An external outcome prior is not silently substituted and relabelled as the validated quantity.
 
-## 5. Sequential closure
+## 5. Sequential closure and stopping depth
 
-Observation value is state-dependent. After one realised observation, the admissible region changes and candidate rankings may change. The adaptive rule is
+Observation value is state-dependent. After one realised observation, the admissible region changes and candidate rankings may change. The current publication algorithm is a positive-singleton greedy rule:
 
 ```text
 A_0 = current admissible region
 for t = 0,1,...:
-    compute V_t(Q)=I(S;Q | A_t)/K for each estimable candidate
+    compute V_t(Q)=I(S;Q | A_t)/K for each estimable singleton candidate
     select the largest positive current validated value
     reveal the selected outcome only after selection
     condition A_t on that outcome
     recompute all remaining values
 ```
 
-Three stopping or continuation states must be kept distinct.
+Stopping statements have different logical strength and must remain distinct.
 
 1. **Declared target resolved or budget exhausted.** The sequence can stop because its predeclared target has been met or because no further observation can currently be afforded. Neither statement implies that the full mechanism vector has entropy zero.
-2. **Validated information limit.** If every declared remaining candidate has an estimable validated value and all satisfy `V_t(Q)=0`, then unresolved alternatives remain but the **complete declared candidate vocabulary** contains no expected information about those residual distinctions. This licenses an information-limited stop relative to that vocabulary.
-3. **Prediction limit.** If any declared remaining candidate is non-estimable, zero values among the estimable subset do **not** establish an information limit for the full candidate vocabulary, and a positive value identifies only a provisional best among the estimable subset. The honest validated-information result is prediction limitation until the missing candidate outcome map is supplied or the candidate set is explicitly narrowed.
+2. **Prediction limit.** If any declared remaining singleton candidate is non-estimable, zero values among the estimable subset do not establish a complete one-step statement for the candidate vocabulary, and a positive value identifies only a provisional best among the estimable subset.
+3. **Validated one-step information stop.** If every declared remaining singleton candidate is estimable and all satisfy `V_t(Q)=0`, then the current positive-singleton greedy rule has no informative immediate move. This is a myopic stopping statement, not a proof that combinations of those observations contain no mechanism information.
+4. **Sequence-information limit.** A stronger candidate-vocabulary limit requires a coherent joint predictive distribution for the declared candidate vector `Q_C`. If `I(S;Q_C|A_t)=0`, then any transcript formed solely from those candidate outcomes has zero mechanism information by the data-processing inequality. Only this stronger audit licenses a sequence-level information-limit statement for the declared candidate vocabulary.
 
-An explicitly labelled structural or edge-cut fallback may remain available for compatibility workflows, but fallback availability is not relabelled as validated `I(S;Q|A_t)/K` and does not by itself establish either zero or positive candidate mutual information.
+Zero singleton values alone are insufficient because complementary measurements can be jointly informative. An XOR construction gives `I(S;Q1)=I(S;Q2)=0` but `I(S;Q1,Q2)=1` bit; after observing either first component, the second has one conditional bit. In such a state the current greedy policy stops, yet a non-myopic two-observation plan can resolve the mechanism target.
+
+An explicitly labelled structural or edge-cut fallback may remain available for compatibility workflows, but fallback availability is not relabelled as validated `I(S;Q|A_t)/K` and does not by itself establish either zero or positive candidate mutual information. Likewise, positive joint information does not by itself identify the best acquisition order or a cost-optimal policy.
 
 ## 6. Validation boundary
 
 The primary validation is synthetic because hidden mechanism truth, candidate information structure and outcome timing must be controlled to test information leakage and selection behaviour. The frozen G2 benchmark compares an information-guided sequential policy with uniform random ordering on matched generated systems. Historical machine-readable protocol labels are retained unchanged for provenance but are not the active method name.
 
-The method does not claim universal optimality, recovery under arbitrary simulator misspecification, or empirical discovery of a natural mechanism.
+The method does not claim universal optimality, recovery under arbitrary simulator misspecification, empirical discovery of a natural mechanism, or global optimality of its positive-singleton greedy stopping rule.
 
 ## 7. Public vocabulary
 
