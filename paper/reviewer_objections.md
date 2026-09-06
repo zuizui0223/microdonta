@@ -108,7 +108,38 @@ Crucially, the observation-selection decision is invariant to this representatio
 
 Reporting rule: predeclare the biological mechanism vocabulary; report `D=H(S|A_epsilon)` in bits together with `K`; report raw `I(S;Q|A_epsilon)` in bits alongside normalized `V(Q)`; and do not compare absolute normalized `R` or `V` across differently encoded vocabularies without a vocabulary-sensitivity argument. If a mechanism is genuinely split into uncertain submechanisms or a new non-redundant mechanism is added, the scientific target has changed and no representation-invariance claim applies.
 
-## 19. “The method could recommend an expensive observation for a tiny gain.”
+## 19. “Does positive R mean the data supplied that much information? Could I get high R just by choosing a strong prior?”
+
+Positive `R` describes concentration of the **current declared mechanism distribution**, not a decomposition of where that concentration came from. A non-uniform prior or pre-data biological constraint can make `H(S|A_epsilon)` small before a particular observed target is applied. In the limiting case, a degenerate prior could give `R=1` without new observational evidence. The manuscript therefore must not equate current `R` with information supplied by the data alone.
+
+To attribute information to an observation `O`, declare a pre-observation baseline `B` and compare entropies:
+
+```text
+Delta_R(o)
+= {H(S|B)-H(S|B,O=o)}/K.
+```
+
+A realised `Delta_R(o)` can be negative for surprising evidence. Its expectation is
+
+```text
+E[Delta_R(O)] = I(S;O|B)/K >= 0.
+```
+
+This is the same distinction used for future observations. MROD's candidate quantity
+
+```text
+V(Q)=I(S;Q|A_current)/K
+```
+
+is already expected **incremental** information relative to the current state. Thus `R_current>0` and `V(Q)=0` for an irrelevant next measurement are fully compatible.
+
+The controlled prior/evidence witness makes the point numerically. With `P(S=1)=0.9` before any current observed target, `H(S)=0.4690` bit and `R=0.5310`. A direct observation of `S` has `0.468996` bit of incremental information, while an independent nuisance observation has zero. The positive baseline `R` is prior concentration, not data evidence.
+
+Candidate rankings can also be prior-sensitive because candidate MI is conditional on the current distribution. With `A` balanced and `B` concentrated at 0.9, direct observation of `A` is worth 1 bit versus 0.468996 bit for `B`; swapping the prior concentrations swaps the ranking. This is intended conditional design behaviour, but it requires the prior/constraint specification to be predeclared and sensitivity-checked when alternatives are scientifically plausible.
+
+Reporting rule: call `R` current resolvability/current mechanism concentration; do not label it “information gained from data” without a baseline contrast. Report priors and pre-data constraints, and report ranking stability across plausible prior specifications when that choice is consequential.
+
+## 20. “The method could recommend an expensive observation for a tiny gain.”
 
 The current publication quantity is information value, not net monetary utility. Costs can be added in a downstream decision layer or used as budget constraints, but the paper does not claim cost-optimal field design. Keeping mechanism information separate from monetary/management utility is deliberate and distinguishes the current target from management VoI.
 
@@ -120,12 +151,13 @@ Even after conceding the closest prior art, the paper retains:
 2. support for non-exclusive, jointly active mechanisms rather than only one mutually exclusive model label;
 3. explicit separation of context, observed targets, diagnostics and future observations;
 4. exact normalized mechanism–observation information for verified predictive partitions derived from the same current admissible region, with raw information bits exposed for representation audits;
-5. a one-way structural redundancy screen with an explicit false converse and executable witness;
-6. sequential conditioning of the admissible region after the realised measurement and recomputation of remaining candidate values;
-7. a precise two-step strict-value condition for adaptive recomputation;
-8. frozen controlled evidence that information-guided screening avoids mechanism-independent measurements under limited budget without hidden-truth leakage;
-9. a negative stronger-comparator result that narrows the empirical adaptive claim rather than being hidden.
+5. explicit separation of current mechanism concentration from baseline-relative evidence gain;
+6. a one-way structural redundancy screen with an explicit false converse and executable witness;
+7. sequential conditioning of the admissible region after the realised measurement and recomputation of remaining candidate values;
+8. a precise two-step strict-value condition for adaptive recomputation;
+9. frozen controlled evidence that information-guided screening avoids mechanism-independent measurements under limited budget without hidden-truth leakage;
+10. a negative stronger-comparator result that narrows the empirical adaptive claim rather than being hidden.
 
 ## Submission stop conditions
 
-Do not submit if the manuscript says or implies that MROD invented multiple working hypotheses, strong inference, pre-data hypothesis vetting, design revision under hypothesis degeneracy, mutual information, EVSI, Bayesian experimental design, model discrimination, active learning or structural identifiability; that ecology previously lacked any method for using ambiguity to revise design; that rank gain guarantees positive mechanism value; that more data never help; that accepted-row switch filtering identifies intervention counterfactuals; that adaptive recomputation empirically beats static information ordering on G2; that the declared mechanism vocabulary is exhaustive of nature; that normalized `R` or `V` is universally comparable across arbitrary mechanism vocabularies; that a deterministic redundant switch changes raw mechanism information or candidate ranking; or that the frozen benchmark validates a natural ecological mechanism.
+Do not submit if the manuscript says or implies that MROD invented multiple working hypotheses, strong inference, pre-data hypothesis vetting, design revision under hypothesis degeneracy, mutual information, EVSI, Bayesian experimental design, model discrimination, active learning or structural identifiability; that ecology previously lacked any method for using ambiguity to revise design; that rank gain guarantees positive mechanism value; that more data never help; that accepted-row switch filtering identifies intervention counterfactuals; that adaptive recomputation empirically beats static information ordering on G2; that the declared mechanism vocabulary is exhaustive of nature; that normalized `R` or `V` is universally comparable across arbitrary mechanism vocabularies; that a deterministic redundant switch changes raw mechanism information or candidate ranking; that positive current `R` by itself is information supplied by the observations; that candidate ranking is prior-invariant; or that the frozen benchmark validates a natural ecological mechanism.

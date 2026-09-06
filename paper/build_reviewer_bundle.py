@@ -29,6 +29,7 @@ RUNNABLE_SEEDS = [
     "causal_model/mechanism_equivalence.py",
     "causal_model/postdata_reprioritization_witness.py",
     "causal_model/vocabulary_normalization_witness.py",
+    "causal_model/prior_evidence_separation_witness.py",
 ]
 REFERENCE_SOURCES = [
     "causal_model/generality_sweep.py",
@@ -103,6 +104,10 @@ import causal_model as method
 from causal_model import CandidateObservation, CandidateOutcome
 from causal_model.postdata_reprioritization_witness import evaluate_reprioritization
 from causal_model.vocabulary_normalization_witness import evaluate_vocabulary_normalization
+from causal_model.prior_evidence_separation_witness import (
+    evaluate_prior_evidence_separation,
+    evaluate_prior_ranking_sensitivity,
+)
 
 class _SW:
     def __init__(self, name): self.name=name
@@ -145,6 +150,25 @@ def test_vocabulary_normalization_witness():
     assert result.original_values["observe_A"] == 0.5
     assert result.redundant_values["observe_A"] == 0.3333
     assert result.original_ranking == result.redundant_ranking
+
+def test_prior_evidence_separation_witness():
+    result=evaluate_prior_evidence_separation()
+    assert result.baseline_entropy_bits == 0.469
+    assert result.baseline_resolvability == 0.531
+    assert result.signal_information_bits == 0.468996
+    assert result.signal_value == 0.469
+    assert result.noise_information_bits == 0.0
+    assert result.noise_value == 0.0
+    assert result.expected_resolvability_after_signal == 1.0
+
+def test_prior_ranking_sensitivity_witness():
+    result=evaluate_prior_ranking_sensitivity()
+    assert result.first_prior_information_bits["observe_A"] == 1.0
+    assert result.first_prior_information_bits["observe_B"] == 0.468996
+    assert result.first_best == "observe_A"
+    assert result.second_prior_information_bits["observe_A"] == 0.468996
+    assert result.second_prior_information_bits["observe_B"] == 1.0
+    assert result.second_best == "observe_B"
 
 def test_bundle_preserves_frozen_headline_values():
     data=json.loads(Path("frozen/g2_summary.json").read_text())
