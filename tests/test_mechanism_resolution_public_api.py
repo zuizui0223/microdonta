@@ -1,4 +1,9 @@
-"""Publication-facing tests for Mechanism-Resolving Observation Design."""
+"""Public-surface tests for Mechanism-Resolving Observation Design.
+
+The mechanism-information API remains the validated publication core.  The
+additional target-aware names are explicitly separate utilities; their presence
+must not remove or rename the mechanism-facing surface.
+"""
 
 import causal_model as method
 from causal_model import CandidateObservation, CandidateOutcome
@@ -16,7 +21,9 @@ EXPECTED = {
     "ReplaceabilityResult",
     "SequentialDesignResult",
     "SequentialDesignStep",
+    "TargetInformationValueResult",
     "candidate_mutual_information_bits",
+    "candidate_target_mutual_information_bits",
     "compute_admissible_mechanisms",
     "expected_edge_cuts",
     "filter_by_outcome",
@@ -34,6 +41,8 @@ EXPECTED = {
     "predictive_outcome_distribution",
     "sequential_candidate_value",
     "sequential_observation_design",
+    "target_entropy_bits",
+    "target_observation_information_value",
     "validated_information_value",
 }
 
