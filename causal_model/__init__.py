@@ -11,7 +11,9 @@ The validated MROD publication score remains mechanism information
 ``I(S;Q|A_epsilon)/K``.  A separate target-aware surface is exported for
 prospective analyses that predeclare a target ``T``.  Target information and
 its sequential policy are not silently substituted for mechanism information,
-and neither quantity by itself licenses a scientific report.
+and neither quantity by itself licenses a scientific report.  When both tasks
+matter, ``task_pareto_values`` reports the two-dimensional non-dominated set
+rather than imposing an undeclared scalar weighting.
 
 Historical import paths are mapped privately to descriptive backend modules so
 frozen validation code remains reproducible without keeping retired filenames.
@@ -21,9 +23,6 @@ from __future__ import annotations
 
 import sys
 
-# Descriptive backend modules are canonical.  Private aliases preserve imports
-# embedded in frozen validation/support code while retired source filenames are
-# removed from the repository.
 from . import mechanism_region as _mechanism_region_backend
 sys.modules.setdefault(__name__ + ".causal_admissibility", _mechanism_region_backend)
 
@@ -75,6 +74,11 @@ from .target_sequential_design import (
     TargetSequentialStep,
     target_sequential_observation_design,
 )
+from .task_pareto import (
+    TaskParetoResult,
+    pareto_front_candidates,
+    task_pareto_values,
+)
 from .sequential_design import (
     PredictiveOutcomeDistribution,
     SequentialDesignResult,
@@ -95,8 +99,6 @@ from .mechanism_replaceability import (
 )
 from .mechanism_equivalence import mechanism_equivalence_structure
 
-# General simulator/application schemas retained for compatibility, but not part
-# of the publication-facing scientific surface below.
 from .latent_parameters import LatentParameter
 from .pattern_targets import PatternTarget
 from .scoring import (
@@ -131,6 +133,7 @@ __all__ = [
     "TargetInformationValueResult",
     "TargetSequentialDesignResult",
     "TargetSequentialStep",
+    "TaskParetoResult",
     "candidate_mutual_information_bits",
     "candidate_target_mutual_information_bits",
     "compute_admissible_mechanisms",
@@ -147,11 +150,13 @@ __all__ = [
     "mechanism_resolution_summary",
     "observation_contribution",
     "observation_information_value",
+    "pareto_front_candidates",
     "predictive_outcome_distribution",
     "sequential_candidate_value",
     "sequential_observation_design",
     "target_entropy_bits",
     "target_observation_information_value",
     "target_sequential_observation_design",
+    "task_pareto_values",
     "validated_information_value",
 ]
