@@ -25,6 +25,21 @@ declare mechanisms, parameters, constraints and evidence roles
 → stop when resolved, budget-limited or information-limited
 ```
 
+## What kind of uncertainty is this?
+
+MROD targets **multiplicity of compatible mechanism explanations**, not generic uncertainty.
+
+```text
+rejecting a null hypothesis        != resolving which non-null mechanism remains
+small residuals / excellent fit    != unique mechanism identity
+more replication                   != a new identification direction
+causal counterfactual identification != complete mechanism decomposition
+```
+
+Replication and precision can reduce sampling uncertainty, and causal estimands retain their own identification requirements. MROD asks a different question: conditional on the declared model family and current evidence, which candidate observation is predicted to separate the mechanism distinctions that still remain?
+
+The detailed scope audit is in `docs/conceptual_scope_mechanism_ambiguity.md`.
+
 ## Admissible mechanism region
 
 For fixed context `x_obs`, observed targets `y_obs`, parameters `theta`, mechanism vector `s`, biological constraints `G`, simulator `f`, pattern maps `P_sim,P_obs`, discrepancy `d` and tolerance `epsilon`,
@@ -46,7 +61,7 @@ D = H(S | A_epsilon)
 R = 1 - D/K.
 ```
 
-`D` is residual mechanism entropy and `R` is normalized mechanism resolvability. Mechanism-equivalence and replaceability summaries describe additional structure within the same retained region.
+`D` is residual mechanism entropy and `R` is normalized mechanism resolvability. Here `residual` means ambiguity remaining inside the admissible mechanism region; it is not a regression residual or an unexplained-variance term. Mechanism-equivalence and replaceability summaries describe additional structure within the same retained region.
 
 ## Observation information value
 
@@ -100,7 +115,7 @@ causal_model/mechanism_equivalence.py
 causal_model/mechanism_replaceability.py
 ```
 
-Historical implementation labels are retained only where needed for compatibility or frozen benchmark provenance; they are not the advertised scientific vocabulary.
+Historical implementation labels are retained only where needed for compatibility or frozen benchmark provenance; they are not the advertised scientific vocabulary. In particular, historical `counterfactual_ablation` helpers perform switch-OFF filtering inside an already computed admissible region; they do not by themselves identify causal intervention counterfactuals.
 
 ## Controlled validation
 
@@ -168,4 +183,4 @@ pytest -q
 
 ## Scope
 
-The methods paper validates observation selection over a declared frozen family of controlled confounded systems. It does not establish universal optimality, superiority to every Bayesian design method, or a natural-system causal mechanism. Admissibility and observation information value are always conditional on the declared mechanism vocabulary, parameter/prior structure, constraints, observation map, discrepancy and tolerance.
+The methods paper validates observation selection over a declared frozen family of controlled confounded systems. It does not establish universal optimality, superiority to every Bayesian design method, a natural-system causal mechanism, or identification of intervention counterfactuals from accepted-row filtering. Admissibility and observation information value are always conditional on the declared mechanism vocabulary, parameter/prior structure, constraints, observation map, discrepancy and tolerance.
