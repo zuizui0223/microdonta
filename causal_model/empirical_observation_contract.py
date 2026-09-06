@@ -11,12 +11,14 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 import json
 from math import fsum, isfinite, log2
-from numbers import Number
+from numbers import Number, Rational
 from typing import Mapping, Sequence
 
 
 def target_state(row: Mapping, columns: Sequence[str]) -> tuple:
     """Reject absent/null/nonfinite target values instead of creating a null class."""
+    if isinstance(columns, (str, bytes)):
+        raise ValueError("target_columns must be a sequence, not a bare string")
     names=tuple(columns)
     if not names or any(not isinstance(c,str) or not c.strip() for c in names):
         raise ValueError("target_columns must contain non-empty column names")
@@ -25,7 +27,7 @@ def target_state(row: Mapping, columns: Sequence[str]) -> tuple:
     def check(value):
         if value is None:
             raise ValueError("target values must not be missing or null")
-        if isinstance(value,Number):
+        if isinstance(value,Number) and not isinstance(value,Rational):
             try:
                 finite=isfinite(value)
             except (TypeError,ValueError,OverflowError) as exc:
@@ -39,6 +41,12 @@ def target_state(row: Mapping, columns: Sequence[str]) -> tuple:
             hash(value)
         except TypeError as exc:
             raise ValueError("target values must be hashable") from exc
+        try:
+            reflexive = bool(value == value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("target contains a missing/invalid label") from exc
+        if not reflexive:
+            raise ValueError("target contains a missing/invalid label")
     values=[]
     for column in names:
         if column not in row:
