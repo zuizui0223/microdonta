@@ -45,7 +45,7 @@ replaceability within ``A_epsilon``.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from causal_model.counterfactual_ablation import ablate_switch
 from causal_model.external_constraints import Constraint, total_penalty
@@ -147,7 +147,7 @@ def crc_profile(
     """Historical backend profile over all declared switches."""
     names = [sw.name for sw in switches]
     return {name: causal_replaceability_cost(name, accepted_rows, constraints)
-            for name in names]
+            for name in names}
 
 
 def crc_profile_full(
