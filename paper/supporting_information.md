@@ -90,15 +90,23 @@ Therefore
 
 ### S2.3 Sequential recomputation
 
-At step `t`, the information-guided policy scores every verified remaining candidate by
+At step `t`, the information-guided policy scores every candidate whose predictive partition is estimable by
 
 ```text
 V_t(Q)=I(S;Q|A_t)/K.
 ```
 
-It selects the largest positive current value, obtains the realised outcome only after selection, conditions `A_t` on that outcome, and recomputes all remaining predictive probabilities and information values. The sequence stops when the budget is exhausted, the declared confounding structure is resolved, or all available validated values are zero.
+It selects the largest positive current validated value when the relevant candidate comparison is identified, obtains the realised outcome only after selection, conditions `A_t` on that outcome, and recomputes all remaining predictive probabilities and information values.
 
-An explicitly named normalized edge-cut fallback is retained only for candidates whose predictive partition is unavailable. Every step records its score source; fallback scores are not reported as validated observation information values.
+The stopping interpretation depends on why no validated singleton selection is made:
+
+- **declared target resolved:** the predeclared confounding or mechanism distinction has been resolved; this does not necessarily imply that all switch-vector entropy is zero;
+- **budget exhausted:** observation cannot continue for a resource reason, which is distinct from an information limit;
+- **prediction limit:** one or more declared remaining singleton candidates are non-estimable. Zero values among the estimable subset do not establish a complete one-step zero result for the full singleton candidate set, and a positive value identifies only a provisional best among the estimable candidates until the remaining outcome maps are supplied or the candidate set is explicitly narrowed;
+- **validated one-step information stop:** every declared remaining singleton candidate has an estimable predictive partition and every validated `V_t(Q)=0`. This means the current positive-singleton greedy rule has no informative immediate move, not that candidate combinations are necessarily uninformative;
+- **sequence-information limit:** this stronger statement requires a coherent joint predictive vector for the declared candidate outcomes and `I(S;Q_C|A_t)=0`. Zero singleton values alone are insufficient because complementary observations may carry mechanism information only jointly.
+
+An explicitly named normalized edge-cut fallback is retained for compatibility workflows when a predictive partition is unavailable. Every step records its score source; fallback scores are not reported as validated observation information values and do not by themselves establish zero or positive candidate mutual information. Positive joint information among zero-valued singleton candidates indicates a non-myopic bundle/sequence problem rather than an in-principle information limit.
 
 ### S2.4 When recomputation has strict value
 

@@ -127,30 +127,62 @@ MROD does not identify intervention counterfactuals from accepted-row filtering.
 
 Claim guard: `mechanism-resolving` does not mean `counterfactual causal effect identified`.
 
-## 9. What the current paper can defensibly claim
+## 9. Singleton screening, synergistic information and non-myopic design
+
+The active MROD selection rule evaluates immediate singleton observations by
+
+```text
+V(Q_j)=I(S;Q_j|A_epsilon)/K.
+```
+
+This is an auditable one-step information criterion, but a zero value for every singleton does not imply that the full declared candidate vector is uninformative. Complementary observations can exhibit synergistic information. The controlled XOR witness gives
+
+```text
+I(S;Q_1|A_epsilon)=0,
+I(S;Q_2|A_epsilon)=0,
+I(S;Q_1,Q_2|A_epsilon)=1 bit.
+```
+
+Accordingly, complete singleton coverage with all `V(Q_j)=0` licenses only a **validated one-step information stop** for the current positive-singleton greedy policy. A stronger **sequence-information limit** requires a coherent joint predictive vector `Q_C` and zero joint information
+
+```text
+I(S;Q_C|A_epsilon)=0.
+```
+
+If joint information is positive while all singleton values are zero, the limitation is in the myopic acquisition rule, not in the declared measurement vocabulary itself. A non-myopic or bundle-level objective is then needed.
+
+This is a claim ceiling, not a novelty claim. Synergistic information, batch information acquisition, non-myopic Bayesian experimental design and adaptive-submodular design all have established literatures. MROD does not claim to invent them, and positive joint information alone does not determine a unique acquisition order or a cost-optimal adaptive policy.
+
+A further guard concerns interventions and destructive measurements. A joint candidate vector is licensed only when the candidate outcomes have a coherent joint predictive model. If measuring or intervening on one candidate changes the distribution of another, an order-specific transition or potential-outcome model is required; singleton predictions cannot simply be stacked into a valid `Q_C`.
+
+## 10. What the current paper can defensibly claim
 
 1. **Post-data set-valued mechanism reporting.** The compatible, potentially non-exclusive mechanism region is retained rather than hidden behind a modal explanation.
 2. **A mechanism-specific uncertainty target.** `H(S|A_epsilon)` and normalized resolvability quantify ambiguity in the declared joint mechanism vector after current evidence has been applied.
-3. **Verified observation information value from the same current region.** For a predictive outcome partition identified from `A_epsilon`, `V(Q)=I(S;Q|A_epsilon)/K` exactly measures expected mechanism-resolvability gain.
+3. **Verified singleton observation information value from the same current region.** For a predictive outcome partition identified from `A_epsilon`, `V(Q)=I(S;Q|A_epsilon)/K` exactly measures expected immediate mechanism-resolvability gain.
 4. **A structural zero-value condition.** A candidate already determined by the current exact observation map cannot add mechanism information; structural novelty alone is not sufficient.
-5. **A closed sequential conditioning loop.** The selected outcome conditions the same admissible region and all remaining candidate values are recomputed.
-6. **A precise two-step condition for adaptive value.** Adaptive recomputation is weakly better than the best precommitted second measurement and strictly better exactly when positive-probability branches share no common optimal remaining candidate.
-7. **Controlled selection validation and a negative stronger-comparator result.** Frozen G2 supports information-guided screening against random ordering, while static initial-information essentially matches adaptive recomputation on that family and narrows the empirical adaptive claim.
+5. **A closed sequential conditioning loop.** The selected outcome conditions the same admissible region and all remaining singleton candidate values are recomputed.
+6. **A precise two-step condition for adaptive recomputation after a fixed first observation.** Adaptive recomputation is weakly better than the best precommitted second measurement and strictly better exactly when positive-probability branches share no common optimal remaining candidate.
+7. **Controlled selection validation and a negative stronger-comparator result.** Frozen G2 supports information-guided singleton screening against random ordering, while static initial-information essentially matches adaptive recomputation on that family and narrows the empirical adaptive claim.
 8. **Evidence-role discipline.** Observed targets, simulator context, diagnostics and future observations are preassigned distinct inferential roles to reduce circular evidence use.
+9. **A stopping-depth claim ceiling.** Prediction limitation, zero-singleton one-step stopping and coherent-joint sequence-information limits are not interchangeable.
 
-## 10. Claims to avoid
+## 11. Claims to avoid
 
 - MROD invented multiple working hypotheses, strong inference, pre-data hypothesis vetting or design revision under hypothesis degeneracy.
 - MROD proves a natural-system causal mechanism.
 - MROD replaces causal inference or mediation analysis.
-- Mutual information, EVSI, model discrimination or structural identifiability are new inventions of MROD.
+- Mutual information, EVSI, model discrimination, structural identifiability, synergistic information or non-myopic Bayesian design are new inventions of MROD.
 - More data never help.
 - Any biologically proximal measurement is more mechanistic or more resolving than a field observation.
 - Any structurally new measurement has positive mechanism information.
 - Adaptive recomputation always outperforms a static information ordering.
+- All singleton values equal to zero implies that the candidate vocabulary is sequence-information-limited.
+- A joint candidate distribution can be created by stacking order-dependent or mutually incompatible interventions without an additional transition model.
+- Positive joint information identifies the unique best acquisition order.
 - The frozen synthetic benchmark establishes universal optimality.
 
-## 11. Current manuscript framing
+## 12. Current manuscript framing
 
 The cleanest paper-level sequence is
 
@@ -159,17 +191,18 @@ current ecological evidence
 -> retain compatible non-exclusive mechanism programs
 -> diagnose residual joint mechanism ambiguity
 -> exclude provably redundant observations where an exact structural screen exists
--> verify candidate predictive partitions on the same current region
--> value candidates by mechanism information
--> observe the highest-value candidate
--> condition the region on the realised outcome
--> recompute
--> stop when resolved, budget-limited or information-limited.
+-> verify singleton candidate predictive partitions on the same current region
+-> value immediate candidates by mechanism information
+-> if a positive singleton exists, observe a highest-current-value candidate
+-> condition the region on the realised outcome and recompute
+-> if candidate predictions are missing, report prediction limitation
+-> if every estimable singleton is zero, report a validated one-step stop rather than sequence impossibility
+-> claim a sequence-information limit only after a licensed coherent joint candidate vector has zero joint mechanism information.
 ```
 
 The practical rhetorical translation is:
 
-> Multiple working hypotheses and pre-data discriminability checks already tell ecologists not to trust a single unvetted explanation. MROD addresses the later problem: after current evidence has already left a set of mechanism programs admissible, report that set and use it to quantify which feasible follow-up observation would reduce the remaining joint mechanism ambiguity. If no available observation carries mechanism information, report that information limit rather than recommending unspecified additional data.
+> Multiple working hypotheses and pre-data discriminability checks already tell ecologists not to trust a single unvetted explanation. MROD addresses the later problem: after current evidence has already left a set of mechanism programs admissible, report that set and use it to quantify which feasible follow-up observation would reduce the remaining joint mechanism ambiguity. If no immediate singleton carries mechanism information, report that one-step stopping state honestly; do not call the candidate vocabulary information-limited unless a coherent joint-information audit supports the stronger statement.
 
 ## References
 

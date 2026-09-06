@@ -39,7 +39,7 @@ Mechanism-Resolving Observation Design changes the inferential target. Rather th
 1. which parameter–mechanism combinations remain compatible with the declared evidence;
 2. how much uncertainty remains about mechanism identity;
 3. which candidate observation is predicted to reduce that uncertainty most;
-4. when the available candidate vocabulary contains no further resolving information.
+4. whether the current greedy policy has an informative immediate move, whether candidate values remain non-estimable, and whether any stronger sequence-level information claim has been audited.
 
 The contribution is the closed-loop combination of these steps for a post-data ecological mechanism target, not the invention of any constituent statistical tool. The current admissible non-exclusive mechanism region is retained as a scientific output; its residual joint mechanism uncertainty is quantified; candidate outcome partitions are verified against that same current region; candidates are ranked by normalized mechanism–observation mutual information; and the region is conditioned on the realised outcome before values are recomputed. This converts residual mechanism multiplicity from a limitation statement into a reproducible follow-up observation problem while preserving the conditional nature of every claim.
 
@@ -169,8 +169,8 @@ The design is adaptive because candidate value depends on the current admissible
 ```text
 A_0 = current admissible region
 for t = 0,1,... until stopping:
-    score each verified remaining Q by I(S;Q|A_t)/K
-    select the maximum positive current score
+    score each estimable remaining Q by I(S;Q|A_t)/K
+    select the maximum positive current validated score when the comparison is identified
     obtain the realised outcome only after selection
     condition A_t on that outcome to form A_{t+1}
     recompute all predictive probabilities and scores
@@ -185,7 +185,7 @@ V_static = max_q E[U_q(X)].
 
 Therefore `V_adapt>=V_static`. Equality holds if and only if at least one candidate is branchwise optimal on every positive-probability first-outcome branch; strict adaptive advantage occurs exactly when the intersection of those branchwise argmax sets is empty. This result characterizes the value of recomputation in the declared finite two-step setting. It does not establish global optimality of the full multi-step greedy policy.
 
-The procedure stops when the observation budget is exhausted, the declared confounding structure is resolved, or every available verified candidate has zero current information value. The last condition is substantive: unresolved mechanisms may remain, but the declared measurement vocabulary contains no additional information about them.
+The sequence can stop because the observation budget is exhausted or the declared confounding/design target is resolved; neither condition implies that the full mechanism vector has entropy zero. If one or more declared remaining singleton candidates are non-estimable, the validated calculation is **prediction-limited** for the full singleton candidate set: zero values among the estimable subset do not establish a complete one-step zero result, and a positive value identifies only a provisional best among the estimable candidates until the remaining outcome maps are supplied or the candidate set is explicitly narrowed. If every declared remaining singleton candidate is estimable and every current `V_t(Q)=0`, the current positive-singleton greedy rule has a **validated one-step information stop**: no individual immediate candidate has positive mechanism information. Zero singleton values alone do not establish a sequence-level information limit, because complementary observations can each have zero marginal information while carrying positive information jointly. A **sequence-information limit** for the declared candidate vocabulary requires a coherent joint predictive vector `Q_C` and zero joint information `I(S;Q_C|A_t)=0`; by data processing, no transcript formed solely from those candidate outcomes can then inform `S`. Positive joint information despite zero singleton values instead indicates a non-myopic bundle/sequence-design problem. Any structural or edge-cut fallback remains separately labelled and is not treated as validated mutual information.
 
 ### 2.4 AI-assisted development disclosure
 
@@ -264,7 +264,7 @@ Thus the frozen G2 family provides strong evidence for information-guided candid
 
 Expected resolvability gain and independently computed `I(S;Q|A_epsilon)/K` agreed to the implementation's display tolerance. For six directly checked quantitative observations, conditioning the stored deterministic admissible region and performing fresh re-inference produced identical resolvability gains; the maximum absolute difference was zero.
 
-Across eight candidate observations and four controlled truths per observation, predicted information value correlated positively with mean realised resolvability gain (`r=0.7664`). The mean absolute difference between prediction and mean realised gain was 0.0739. Individual outcomes remained variable, as expected for preposterior quantities. These results support the intended average information interpretation rather than a claim that the value predicts every realised gain exactly.
+Across eight candidate observations and four controlled truths per observation, predicted observation information value correlated positively with mean realised resolvability gain (`r=0.7664`). The mean absolute difference between prediction and mean realised gain was 0.0739. Individual outcomes remained variable, as expected for preposterior quantities. These results support the intended average information interpretation rather than a claim that the value predicts every realised gain exactly.
 
 ## 4. Software and reproducibility
 
@@ -302,7 +302,7 @@ The G2 benchmark was designed to test selection rather than observation sufficie
 
 The benchmark nevertheless defines a narrow claim. Information-guided design outperformed uniform random order over one frozen family of random confounded systems, while the stronger post-frozen static-information comparator essentially matched the adaptive policy. We therefore interpret the benchmark as validation of information-guided candidate screening, not as empirical proof that recomputation adds value in every system. The theorem supplies the conditional adaptive claim; neither result proves global optimality, superiority to every Bayesian design method, or performance under every stochastic ecological simulator. Candidate vocabularies were finite and explicitly represented. The nuisance measurements were independent of mechanisms rather than subtly correlated proxies. Broader misspecification challenges remain future work.
 
-Admissibility is always relative to a declared mechanism vocabulary, parameter prior, constraint grammar, observation map, discrepancy and tolerance. An omitted mechanism cannot be recovered by retaining the accepted set. A predictive partition must also be identified before stored-region information value can be computed. When outcomes overlap, are incomplete or require an unmodelled process, the honest result is non-estimability until an additional predictive model is supplied.
+Admissibility is always relative to a declared mechanism vocabulary, parameter prior, constraint grammar, observation map, discrepancy and tolerance. An omitted mechanism cannot be recovered by retaining the accepted set. A predictive partition must also be identified before stored-region information value can be computed. When outcomes overlap, are incomplete or require an unmodelled process, the honest result is non-estimability until an additional predictive model is supplied. Accordingly, a zero value among currently estimable singleton candidates does not establish even a complete one-step zero result while other declared candidates remain non-estimable; nor does a positive estimable value establish a global singleton best in that case. Even when every singleton candidate is estimable, all singleton values equal to zero imply only that the current positive-singleton greedy policy has no informative immediate move. A stronger sequence-level information-limit claim requires a coherent joint candidate predictive model and zero joint mechanism information; otherwise complementary observations may contain information only in combination.
 
 Synthetic validation is appropriate to the present claim because the hidden mechanism, candidate information structure and outcome timing must be controlled to test truth leakage and selection behaviour. A natural-system application could demonstrate usability but could not reveal whether the selected measurement was optimal relative to an unknown causal truth. The absence of new empirical data is therefore a boundary, not a missing validation layer: this paper validates an observation-selection algorithm under known controlled conditions and does not claim empirical discovery.
 
@@ -314,12 +314,15 @@ declare mechanisms and constraints
 → quantify residual mechanism uncertainty
 → screen exact structural redundancies where the observation architecture permits
 → verify candidate predictive outcomes
-→ select the maximum-current-information measurement
+→ select the maximum-current-information measurement when the candidate comparison is identified
 → condition and repeat
-→ stop when resolved, budget-limited or information-limited.
+→ stop if the declared target is resolved or the budget is exhausted
+→ report prediction limitation when declared singleton candidate values remain non-estimable
+→ if every singleton V(Q)=0, report a validated one-step information stop
+→ call the declared candidate vocabulary sequence-information-limited only after joint candidate information is identified and equals zero
 ```
 
-This reframes mechanistic ambiguity from a reason to force a winner or postpone inference into a quantitative experimental-design problem. A limitation is no longer only a disclaimer that another explanation cannot be excluded: when the candidate vocabulary is adequate, it becomes a statement about which distinction remains and which observation is expected to resolve it; when no candidate carries such information, the unresolved state itself is the result.
+This reframes mechanistic ambiguity from a reason to force a winner or postpone inference into a quantitative experimental-design problem. A limitation is no longer only a disclaimer that another explanation cannot be excluded: when the candidate vocabulary is adequately specified and a singleton candidate has positive value, the analysis identifies an informative immediate measurement; when predictive partitions remain unidentified, the limitation is prediction rather than mechanism information; and when every singleton value is zero, the honest result is a one-step greedy stop unless a joint candidate audit also establishes a sequence-level information limit.
 
 ## Figure captions
 

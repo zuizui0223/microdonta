@@ -26,8 +26,8 @@ observation contract
 → A_epsilon: admissible mechanism region
 → marginal admissibility / mechanism entropy D / resolvability R / replaceability
 → mechanism-equivalence structure
-→ observation information value V(Q)=I(S;Q | A_epsilon)/K
-→ maximum-current information-guided selection
+→ singleton observation information value V(Q)=I(S;Q | A_epsilon)/K
+→ information-guided selection: maximum-current positive-singleton validated selection
 → condition A_epsilon and recompute
 ```
 
@@ -38,8 +38,10 @@ The default output is not a best mechanism. It is:
 - the surviving explanation set and mechanism-admissibility profile;
 - joint entropy/resolvability and replaceability diagnostics;
 - unresolved mechanism-equivalence structure;
-- the next candidate measurement and its validated observation information value;
-- a stopping state when the budget is exhausted, the declared ambiguity is resolved, or no available candidate carries further identified mechanism information.
+- validated singleton candidate information values where predictive partitions are estimable;
+- a best immediate candidate when the complete declared singleton candidate set is estimable and contains positive validated information;
+- explicit distinction among target resolution, budget limitation, prediction limitation and zero-singleton greedy stopping;
+- a sequence-level information-limit statement only when a coherent joint candidate predictive model has also shown zero joint mechanism information.
 
 ## Publication spine
 
@@ -58,7 +60,7 @@ The active manuscript contains no natural-system causal claim. Synthetic validat
 
 A candidate outcome distribution is derived from the **current** admissible region when its outcomes form a verified mutually exclusive and exhaustive partition. Hidden benchmark truth is never used as a predictive prior.
 
-For a verified candidate,
+For a verified singleton candidate,
 
 ```text
 V(Q)
@@ -67,27 +69,32 @@ V(Q)
 = I(S;Q | A_epsilon) / K.
 ```
 
-Thus
+Thus `0 <= V(Q) <= 1-R(A_epsilon)`.
 
-```text
-0 <= V(Q) <= 1-R(A_epsilon).
-```
-
-`V(Q)=0` exactly when `Q` carries no information about residual mechanism identity under current `A_epsilon`. If outcomes overlap, are incomplete or require unavailable outputs, validated information value is non-estimable. The method does not silently substitute a declared prior and relabel it as validated value.
+`V(Q)=0` exactly when that singleton candidate carries no information about residual mechanism identity under current `A_epsilon`. If outcomes overlap, are incomplete or require unavailable outputs, validated information value is non-estimable. The method does not silently substitute a declared prior and relabel it as validated value.
 
 An explicit normalized edge-cut fallback can remain available for sequential steps lacking an estimable predictive partition, but every such step must record the fallback source and must not call the score validated observation information value.
 
 ## Sequential design rule
 
-At every step:
+At every validated-information step:
 
-1. compute `I(S;Q|current A_epsilon)/K` for each verified remaining candidate;
-2. select the candidate with maximum positive current information value;
+1. compute `I(S;Q|current A_epsilon)/K` for each estimable remaining singleton candidate;
+2. select the candidate with maximum positive current validated information value when the relevant candidate comparison is fully identified;
 3. reveal or collect its outcome only after selection;
 4. condition the accepted region;
-5. recompute all candidate probabilities and information values.
+5. recompute all singleton candidate probabilities and information values.
 
-The algorithm stops when the observation budget is exhausted, the declared confounding structure is resolved, or all available validated values are zero.
+Stopping and limitation states are not interchangeable:
+
+- the **declared design target** may be resolved even while residual entropy remains in mechanism dimensions outside that target;
+- the **observation budget** may be exhausted even though a best future candidate is known;
+- if one or more declared remaining candidates are non-estimable, the singleton comparison is **prediction-limited**. Zero values among the estimable subset do not establish even a complete one-step result for the full candidate vocabulary, and any positive candidate is only provisionally best among the estimable subset;
+- if every declared remaining singleton candidate is estimable and all validated values are zero, the current positive-singleton greedy policy has a **validated one-step information stop**: no individual next candidate has positive immediate mechanism information;
+- zero singleton values do **not** prove sequence-level impossibility. Complementary candidates can have `I(S;Q1)=I(S;Q2)=0` but `I(S;Q1,Q2)>0`;
+- a **sequence-information limit** for the declared candidate vocabulary requires a coherent joint predictive model and zero joint information `I(S;Q_C|A_epsilon)=0`. By data processing, no transcript composed solely of those candidate outcomes can then inform `S`.
+
+Compatibility fallback selection can still occur in historical/backend workflows, but fallback availability remains a separately labelled operational layer and does not alter the validated-information claim. Positive joint information among zero-valued singleton candidates indicates a non-myopic design problem; it does not by itself choose an acquisition order.
 
 ## Exact condition for when recomputation adds value
 
@@ -105,17 +112,11 @@ whereas the strongest possible precommitted second measurement achieves
 V_static = max_q E[U_q(X)].
 ```
 
-Theorem A1–A2 in `docs/adaptive_recomputation_theorem_2026-09-03.md` proves:
-
-```text
-V_adapt >= V_static,
-```
-
-with equality **if and only if** at least one remaining candidate is branchwise optimal on every positive-probability first-outcome branch. Therefore adaptive recomputation has strict expected value exactly when the intersection of the branchwise argmax sets is empty.
+Theorem A1–A2 in `docs/adaptive_recomputation_theorem_2026-09-03.md` proves `V_adapt >= V_static`, with equality **if and only if** at least one remaining candidate is branchwise optimal on every positive-probability first-outcome branch. Therefore adaptive recomputation has strict expected value exactly when the intersection of the branchwise argmax sets is empty.
 
 This is stronger than comparison with random ordering. A deterministic four-world witness gives `1.0` bit of adaptive second-step value versus `0.5` bits for the best precommitted candidate; an exhaustive three-world check shows that this two-branch deterministic rank-switch witness is minimal in the declared class.
 
-The result also places a ceiling on the claim: recomputation is not universally useful. If one candidate is best in every branch, a fixed second measurement matches the adaptive value. The theorem does not prove that greedy maximum-current information is globally optimal over arbitrary multi-step trees; that would require additional structural conditions such as adaptive submodularity or a solved dynamic program.
+The result also places a ceiling on the claim: recomputation is not universally useful. If one candidate is best in every branch, a fixed second measurement matches the adaptive value. The theorem does not prove that greedy maximum-current information is globally optimal over arbitrary multi-step trees; the zero-singleton XOR witness now also shows that a positive-only singleton rule can stop before an informative multi-observation bundle. Global sequence design would require additional structural conditions or a non-myopic objective.
 
 ## Frozen G2 selection challenge
 
