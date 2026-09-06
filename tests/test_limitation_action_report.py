@@ -1,6 +1,8 @@
 """Tests for the prototype limitation-to-action reporting layer."""
 from __future__ import annotations
 
+from math import nan
+
 from causal_model.limitation_action_report import (
     CandidateScore,
     SpecificationInput,
@@ -13,21 +15,48 @@ def score(name: str, value: float | None, estimable: bool = True) -> CandidateSc
     return CandidateScore(candidate=name, estimable=estimable, information_value=value)
 
 
-def test_resolved_state_stops_without_forcing_candidate_choice():
+def test_full_resolution_stops_without_forcing_candidate_choice():
     status = classify_specification(
         SpecificationInput("base", 0.0, (score("Q1", 0.5),))
     )
-    assert status.mechanism_status == "resolved"
+    assert status.full_mechanism_status == "fully_resolved"
+    assert status.declared_target_status == "resolved"
     assert status.candidate_status == "not_required"
     assert status.best_candidates == ()
-    assert status.recommended_action == "stop_resolved"
+    assert status.recommended_action == "stop_fully_resolved"
+
+
+def test_declared_design_target_can_be_resolved_while_entropy_remains():
+    status = classify_specification(
+        SpecificationInput(
+            "graph_done",
+            1.2,
+            (score("Q1", 0.3),),
+            declared_target_resolved=True,
+        )
+    )
+    assert status.full_mechanism_status == "ambiguous"
+    assert status.declared_target_status == "resolved"
+    assert status.candidate_status == "not_required"
+    assert status.recommended_action == "stop_declared_target_resolved_report_residual_ambiguity"
+
+
+def test_nonestimable_current_state_is_not_called_unresolved_information_limit():
+    status = classify_specification(
+        SpecificationInput("empty_region", nan, (score("Q1", 0.0),))
+    )
+    assert status.full_mechanism_status == "nonestimable"
+    assert status.declared_target_status == "nonestimable"
+    assert status.candidate_status == "current_state_nonestimable"
+    assert status.recommended_action == "repair_or_reestimate_current_admissible_region"
 
 
 def test_unresolved_positive_value_is_actionable():
     status = classify_specification(
         SpecificationInput("base", 1.0, (score("Q1", 0.3), score("Q2", 0.1)))
     )
-    assert status.mechanism_status == "unresolved"
+    assert status.full_mechanism_status == "ambiguous"
+    assert status.declared_target_status == "unresolved"
     assert status.candidate_status == "actionable"
     assert status.best_candidates == ("Q1",)
     assert status.max_information_value == 0.3
@@ -107,7 +136,8 @@ def test_common_best_candidate_yields_stable_recommendation():
             SpecificationInput("s2", 0.8, (score("Q1", 0.3), score("Q2", 0.1))),
         ]
     )
-    assert report.resolution_stability == "stable_unresolved"
+    assert report.full_resolution_stability == "stable_mechanism_ambiguous"
+    assert report.target_resolution_stability == "stable_target_unresolved"
     assert report.actionability_stability == "stable_actionable"
     assert report.recommendation_stability == "stable_common_best"
     assert report.common_best_candidates == ("Q1",)
@@ -150,11 +180,32 @@ def test_partial_prediction_limit_counts_as_not_fully_actionable():
     assert report.recommendation_stability == "specification_sensitive_actionability"
 
 
-def test_resolution_can_itself_be_specification_sensitive():
+def test_full_resolution_and_declared_target_resolution_have_separate_stability_axes():
     report = build_limitation_action_report(
         [
-            SpecificationInput("s1", 0.0, (score("Q1", 0.0),)),
+            SpecificationInput("full", 0.0, (score("Q1", 0.0),)),
+            SpecificationInput(
+                "target_only",
+                1.0,
+                (score("Q1", 0.2),),
+                declared_target_resolved=True,
+            ),
+        ]
+    )
+    assert report.full_resolution_stability == "specification_sensitive"
+    assert report.target_resolution_stability == "stable_target_resolved"
+    assert report.actionability_stability == "not_required"
+    assert report.recommendation_stability == "not_available"
+
+
+def test_declared_target_resolution_can_be_specification_sensitive():
+    report = build_limitation_action_report(
+        [
+            SpecificationInput(
+                "s1", 1.0, (score("Q1", 0.2),), declared_target_resolved=True
+            ),
             SpecificationInput("s2", 1.0, (score("Q1", 0.2),)),
         ]
     )
-    assert report.resolution_stability == "specification_sensitive"
+    assert report.full_resolution_stability == "stable_mechanism_ambiguous"
+    assert report.target_resolution_stability == "specification_sensitive"
