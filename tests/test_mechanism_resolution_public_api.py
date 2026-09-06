@@ -22,6 +22,8 @@ EXPECTED = {
     "SequentialDesignResult",
     "SequentialDesignStep",
     "TargetInformationValueResult",
+    "TargetSequentialDesignResult",
+    "TargetSequentialStep",
     "candidate_mutual_information_bits",
     "candidate_target_mutual_information_bits",
     "compute_admissible_mechanisms",
@@ -43,6 +45,7 @@ EXPECTED = {
     "sequential_observation_design",
     "target_entropy_bits",
     "target_observation_information_value",
+    "target_sequential_observation_design",
     "validated_information_value",
 }
 
