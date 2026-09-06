@@ -1,4 +1,4 @@
-"""Submission guards for validated information-limit and prediction-limit wording."""
+"""Submission guards for prediction, one-step and sequence-limit wording."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,32 +14,14 @@ SURFACES = {
 }
 
 
-def test_active_surfaces_require_complete_candidate_coverage_for_information_limit():
+def test_active_surfaces_separate_prediction_from_complete_singleton_coverage():
     required = {
-        "readme": (
-            "every declared remaining candidate is estimable",
-            "prediction-limited",
-        ),
-        "theory": (
-            "every declared remaining candidate has an estimable validated value",
-            "Prediction limit",
-        ),
-        "tutorial": (
-            "every declared remaining candidate has an estimable validated value",
-            "prediction-limited",
-        ),
-        "mainline": (
-            "every declared remaining candidate is estimable",
-            "prediction-limited",
-        ),
-        "si": (
-            "every declared remaining candidate has an estimable predictive partition",
-            "prediction limit",
-        ),
-        "manuscript": (
-            "every declared remaining candidate",
-            "prediction-limited",
-        ),
+        "readme": ("prediction-limited", "every declared remaining singleton candidate is estimable"),
+        "theory": ("Prediction limit", "every declared remaining singleton candidate is estimable"),
+        "tutorial": ("prediction-limited", "every declared remaining singleton candidate is estimable"),
+        "mainline": ("prediction-limited", "every declared remaining singleton candidate is estimable"),
+        "si": ("prediction limit", "every declared remaining singleton candidate has an estimable predictive partition"),
+        "manuscript": ("prediction-limited", "every declared remaining singleton candidate"),
     }
     for name, markers in required.items():
         text = SURFACES[name].read_text(encoding="utf-8")
@@ -47,10 +29,33 @@ def test_active_surfaces_require_complete_candidate_coverage_for_information_lim
             assert marker in text, f"{name}: {marker}"
 
 
-def test_active_surfaces_do_not_equate_verified_subset_zero_with_full_vocabulary_limit():
+def test_active_surfaces_label_all_zero_singletons_as_one_step_not_sequence_impossibility():
+    required = {
+        "readme": ("validated one-step information stop", "Zero singleton values alone are not sufficient"),
+        "theory": ("Validated one-step information stop", "Zero singleton values alone are insufficient"),
+        "tutorial": ("validated one-step information stop", "do **not** promote that one-step stop"),
+        "mainline": ("validated one-step information stop", "zero singleton values do **not** prove sequence-level impossibility"),
+        "si": ("validated one-step information stop", "zero singleton values alone"),
+        "manuscript": ("validated one-step information stop", "zero singleton values alone"),
+    }
+    for name, markers in required.items():
+        text = SURFACES[name].read_text(encoding="utf-8")
+        for marker in markers:
+            assert marker in text, f"{name}: {marker}"
+
+
+def test_active_surfaces_require_joint_zero_for_sequence_information_limit():
+    for name, path in SURFACES.items():
+        text = path.read_text(encoding="utf-8")
+        assert "sequence-information limit" in text, name
+        assert "I(S;Q_C" in text, name
+
+
+def test_active_surfaces_do_not_use_old_overclaims():
     forbidden = (
         "every available verified candidate has zero current information value",
         "all available validated values are zero",
+        "complete declared candidate vocabulary contains no expected information",
     )
     for name, path in SURFACES.items():
         text = path.read_text(encoding="utf-8")
