@@ -53,8 +53,13 @@ def test_manuscript_does_not_overclaim_structural_novelty_as_mechanism_value():
     assert "MROD retains `I(S;Q|A_epsilon)/K` as the operative criterion" in text
 
 
-def test_cover_letter_uses_limitation_to_observation_decision_frame():
+def test_cover_letter_uses_post_data_prior_art_frame():
     text = COVER.read_text(encoding="utf-8")
-    assert "several mechanisms remain compatible" in text
-    assert "quantitative observation decision rather than a generic call for more data" in text
-    assert "structural novelty is not enough" in text
+    for marker in (
+        "builds on established traditions of multiple working hypotheses",
+        "distinct starting point is post-data",
+        "potentially non-exclusive admissible mechanism region",
+        "pre-data multiple-working-hypotheses workflows",
+        "structural novelty is not enough",
+    ):
+        assert marker in text, marker
