@@ -206,6 +206,31 @@ For six quantitative observations, gains obtained by filtering the stored determ
 
 Across eight candidate observations and four controlled truths per candidate, predicted information value correlated with mean realised gain at `r=0.7664`; mean absolute predictive-minus-realised difference was 0.0739.
 
+### S4.3 Post-data candidate reprioritization witness
+
+A separate minimal diagnostic checks the specific distinction between pre-data hypothesis vetting and a post-data next-observation calculation. This is not a benchmark against a named prior-art method and is not included in the frozen G2 performance claim.
+
+Let the declared mechanism vector be `S=(A,B)` with the four binary states equally represented before current evidence. Candidate `Q_A` observes `A` exactly, so under the pre-data state distribution
+
+```text
+I(S;Q_A)=1 bit.
+```
+
+Candidate `Q_B*` is positive only for state `(A=0,B=1)`. Its positive outcome therefore has pre-data probability `1/4`, giving
+
+```text
+I(S;Q_B*)=H_2(1/4)=0.811278 bit.
+```
+
+The pre-data information ranking is therefore `Q_A > Q_B*`. Current evidence is then introduced that fixes `A=0` while leaving `B` balanced. On this restricted mechanism region, `Q_A` is constant and has zero mechanism information, whereas `Q_B*` becomes an exact observation of `B` and has one bit:
+
+| Candidate | Pre-data MI | Post-data MI | Pre-data V | Post-data V |
+|---|---:|---:|---:|---:|
+| `observe_A` | 1.000000 | 0.000000 | 0.5000 | 0.0000 |
+| `observe_B_when_A0` | 0.811278 | 1.000000 | 0.4056 | 0.5000 |
+
+Thus the candidate ranking reverses after current evidence restricts the admissible mechanism region. The result is an existence witness only: it does not imply that pre-data multiple-working-hypotheses analysis is inferior, that any named prior-art method keeps a ranking fixed after data arrive, or that ranking reversal is universal. It demonstrates why MROD's **post-current-data** candidate values must be computed from the current mechanism region rather than inherited unchanged from a broader pre-data state distribution.
+
 ---
 
 ## S5. Reproducibility and reviewer bundle
@@ -214,7 +239,7 @@ Across eight candidate observations and four controlled truths per candidate, pr
 
 The anonymised reviewer bundle contains the manuscript and Supporting Information, frozen G2 protocol and result summary, frozen auxiliary-validation summary, figure inventory and generated figures, publication-facing observation-design implementation modules, benchmark generators, tests and a per-file SHA-256 manifest.
 
-The static initial-information comparison is a post-frozen claim-ceiling diagnostic rather than preregistered G2 evidence. Its purpose is to constrain interpretation: the frozen G2 random-order contrast establishes information-guided screening, while the adaptive-recomputation theorem states the conditions under which recomputation itself has strict expected value.
+The static initial-information comparison is a post-frozen claim-ceiling diagnostic rather than preregistered G2 evidence. Its purpose is to constrain interpretation: the frozen G2 random-order contrast establishes information-guided screening, while the adaptive-recomputation theorem states the conditions under which recomputation itself has strict expected value. The S4.3 ranking-reversal witness is a separate controlled conceptual diagnostic and is not part of the frozen G2 performance evidence.
 
 ### S5.2 Explicit exclusions
 
