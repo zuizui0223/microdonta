@@ -22,7 +22,9 @@ declare mechanisms, parameters, constraints and evidence roles
 → select the maximum-current-value candidate
 → reveal its outcome only after selection
 → condition the region and recompute
-→ stop when resolved, budget-limited or information-limited
+→ stop when the declared target is resolved or budget is exhausted,
+  pause the positive-singleton greedy policy when every estimable singleton value is zero,
+  and report prediction limits when candidate values remain non-estimable
 ```
 
 ## What kind of uncertainty is this?
@@ -86,14 +88,22 @@ The adaptive policy recomputes candidate value after every realised measurement:
 ```text
 A_0 = current admissible region
 for t = 0,1,...:
-    compute V_t(Q)=I(S;Q | A_t)/K for each verified candidate
-    select the largest positive current value
+    compute V_t(Q)=I(S;Q | A_t)/K for each estimable candidate
+    select the largest positive current validated value
     reveal the selected candidate's outcome
     condition A_t to form A_{t+1}
     recompute all remaining values
 ```
 
-The procedure stops when the budget is exhausted, the declared ambiguity is resolved, or every available verified candidate has zero current information value.
+The stopping interpretation has several distinct levels:
+
+- **declared target resolved:** stop the predeclared sequence; this need not imply full switch-vector entropy is zero;
+- **budget exhausted:** stop for a resource reason, which is distinct from an information limit;
+- **prediction-limited:** one or more declared remaining candidates are non-estimable; zero values among the estimable subset do not establish a limit for the full candidate vocabulary, and a positive value is only a provisional best among the estimable subset;
+- **validated one-step information stop:** every declared remaining singleton candidate is estimable and all have `V_t(Q)=0`; then the current positive-singleton greedy rule has no informative immediate move;
+- **sequence-information limit:** this stronger statement requires a coherent joint predictive model for the declared candidate vector and zero joint information `I(S;Q_C|A_t)=0`. Zero singleton values alone are not sufficient, because complementary measurements can each have zero marginal information yet carry positive information jointly.
+
+An explicitly labelled structural or edge-cut fallback can remain available for compatibility workflows, but it is not relabelled as validated `I(S;Q|A_t)/K`. Likewise, positive joint information among zero-valued singletons indicates a non-myopic bundle/sequence problem; it does not by itself identify the best acquisition order.
 
 ## Public Python API
 
