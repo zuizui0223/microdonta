@@ -31,13 +31,14 @@ For one declared specification:
 | State | Diagnostic | Meaning | Action |
 |---|---|---|---|
 | `resolved` | `D=0` under the declared resolution rule | no residual mechanism distinction remains | stop as resolved |
-| `actionable` | `D>0` and some verified `V(Q)>0` | ambiguity remains and available observations can reduce it | measure a best current candidate |
-| `information_limited` | `D>0`, verified candidates exist, all `V(Q)=0` | current candidate vocabulary contains no mechanism information | report information limit; redesign/expand observations |
-| `prediction_limited` | `D>0`, candidates exist but none has an identified predictive partition | the candidate outcomes cannot yet be valued | identify/model candidate outcome distributions first |
+| `actionable` | `D>0`, **all declared candidates are estimable**, and some `V(Q)>0` | ambiguity remains and the full declared candidate set can be ranked | measure a best current candidate |
+| `information_limited` | `D>0`, **all declared candidates are estimable**, and all `V(Q)=0` | current candidate vocabulary contains no mechanism information | report information limit; redesign/expand observations |
+| `prediction_limited` | `D>0`, candidates exist but none has an identified predictive partition | candidate values cannot yet be estimated | identify/model candidate outcome distributions first |
+| `partial_prediction_limited` | `D>0`, some candidates are estimable and some are not | verified candidates can be described, but a global ranking over the declared candidate set is not licensed | resolve non-estimable candidates or explicitly narrow the candidate set before ranking |
 | `candidate_limited` | `D>0`, no candidate observations declared | no follow-up vocabulary exists | expand candidate vocabulary |
 | `budget_limited` | `D>0`, informative candidates may exist but budget is exhausted | scientific ambiguity remains for a resource reason | report budget limit explicitly |
 
-These states answer different questions. In particular, `information_limited` is not the same as `budget_limited`, and `prediction_limited` is not evidence that all candidate measurements are useless.
+These states answer different questions. In particular, `information_limited` is not the same as `budget_limited`, and no information-limit claim is allowed while declared candidates remain non-estimable.
 
 ## 3. Specification axes
 
@@ -64,11 +65,11 @@ specification_sensitive
 not_required
 ```
 
-This asks whether every unresolved specification agrees that some current candidate contains positive mechanism information.
+This asks whether every unresolved specification agrees that the **complete declared candidate set is estimable and contains a positive-value candidate**.
 
 ### Recommendation stability
 
-For actionable specifications let
+For fully actionable specifications let
 
 ```text
 B_lambda = argmax_Q V_lambda(Q).
@@ -97,9 +98,10 @@ A single `limitation severity` score would destroy information needed for the ne
 
 For example:
 
-- `D>0, max V=0` means **change what can be observed**, not merely collect more replicates;
-- non-estimable `V` means **improve the predictive observation model**, not reject the candidate as uninformative;
-- an empty common-best set means **the recommendation depends on the analysis specification**, not that every candidate has low value;
+- `D>0, max V=0` **with every candidate estimable** means change what can be observed, not merely collect more replicates;
+- non-estimable `V` means improve the predictive observation model, not reject the candidate as uninformative;
+- a positive verified candidate does not justify a global `best next observation` claim while other declared candidates remain non-estimable;
+- an empty common-best set means the recommendation depends on the analysis specification, not that every candidate has low value;
 - exhausted budget means the observation may be known and useful but currently infeasible.
 
 Preserving these distinctions is consistent with the wider project principle: do not manufacture certainty by coarsening unresolved structure.
@@ -124,7 +126,18 @@ or
 Current mechanism state: unresolved
 Candidate-information state: information-limited
 Verified candidate values: all zero
+Non-estimable candidates: none
 Action: current measurement vocabulary cannot resolve the remaining mechanism ambiguity
+```
+
+or
+
+```text
+Current mechanism state: unresolved
+Candidate-information state: partial prediction limit
+Best verified candidate: pollen deposition
+Non-estimable candidate: reciprocal transplant
+Action: do not call pollen deposition globally optimal until the remaining candidate can be valued or is explicitly removed from scope
 ```
 
 This is more informative than a generic `future work is needed` statement.
@@ -138,6 +151,7 @@ Do not interpret the prototype as:
 - a robust Bayesian design optimum;
 - a replacement for cost/utility decisions;
 - evidence that non-estimable candidates have zero information;
+- permission to call a verified candidate globally optimal while declared alternatives remain non-estimable;
 - evidence that an undeclared mechanism has been ruled out.
 
 The prototype only classifies **why the declared MROD workflow stops or continues and what kind of next action is licensed by its current outputs**.
