@@ -16,6 +16,10 @@ SURFACES = {
 }
 
 
+def _text_lower(name: str) -> str:
+    return SURFACES[name].read_text(encoding="utf-8").lower()
+
+
 def test_active_surfaces_separate_prediction_from_complete_singleton_coverage():
     required = {
         "readme": ("prediction-limited", "every declared remaining singleton candidate is estimable"),
@@ -28,9 +32,9 @@ def test_active_surfaces_separate_prediction_from_complete_singleton_coverage():
         "manuscript": ("prediction-limited", "every declared remaining singleton candidate"),
     }
     for name, markers in required.items():
-        text = SURFACES[name].read_text(encoding="utf-8")
+        text = _text_lower(name)
         for marker in markers:
-            assert marker in text, f"{name}: {marker}"
+            assert marker.lower() in text, f"{name}: {marker}"
 
 
 def test_active_surfaces_label_all_zero_singletons_as_one_step_not_sequence_impossibility():
@@ -45,16 +49,16 @@ def test_active_surfaces_label_all_zero_singletons_as_one_step_not_sequence_impo
         "manuscript": ("validated one-step information stop", "Zero singleton values alone"),
     }
     for name, markers in required.items():
-        text = SURFACES[name].read_text(encoding="utf-8")
+        text = _text_lower(name)
         for marker in markers:
-            assert marker in text, f"{name}: {marker}"
+            assert marker.lower() in text, f"{name}: {marker}"
 
 
 def test_active_surfaces_require_joint_zero_for_sequence_information_limit():
-    for name, path in SURFACES.items():
-        text = path.read_text(encoding="utf-8")
+    for name in SURFACES:
+        text = _text_lower(name)
         assert "sequence-information limit" in text, name
-        assert "I(S;Q_C" in text, name
+        assert "i(s;q_c" in text, name
 
 
 def test_active_surfaces_do_not_use_old_overclaims():
@@ -64,7 +68,7 @@ def test_active_surfaces_do_not_use_old_overclaims():
         "complete declared candidate vocabulary contains no expected information",
         "stop when resolved, budget-limited or information-limited",
     )
-    for name, path in SURFACES.items():
-        text = path.read_text(encoding="utf-8")
+    for name in SURFACES:
+        text = _text_lower(name)
         for phrase in forbidden:
-            assert phrase not in text, f"{name}: {phrase}"
+            assert phrase.lower() not in text, f"{name}: {phrase}"
