@@ -40,6 +40,25 @@ For one declared specification:
 
 These states answer different questions. In particular, `information_limited` is not the same as `budget_limited`, and no information-limit claim is allowed while declared candidates remain non-estimable.
 
+### 2.1 Validated actionability versus compatibility fallback
+
+The current sequential compatibility backend can assign an explicitly labelled `normalized_edge_cut_fallback` to a candidate whose predictive partition is not identified. That fallback can be useful operationally, but it is **not** `I(S;Q|A_current)/K` and must not be used to convert a `prediction_limited` state into validated mechanism-information actionability.
+
+This prototype therefore classifies only the **validated-information layer**. If a fallback is used in an application, report it on a separate axis such as
+
+```text
+validated candidate state: prediction_limited
+compatibility fallback: available, normalized_edge_cut_fallback
+```
+
+rather than writing
+
+```text
+actionable by mechanism information
+```
+
+when the candidate MI is not estimable. This separation keeps a practical heuristic from becoming evidence by relabelling.
+
 ## 3. Specification axes
 
 When several scientifically defensible priors, tolerances or other specifications are predeclared, compute the single-specification state separately for each one.
@@ -101,6 +120,7 @@ For example:
 - `D>0, max V=0` **with every candidate estimable** means change what can be observed, not merely collect more replicates;
 - non-estimable `V` means improve the predictive observation model, not reject the candidate as uninformative;
 - a positive verified candidate does not justify a global `best next observation` claim while other declared candidates remain non-estimable;
+- an available structural fallback does not turn non-estimable mechanism information into validated information;
 - an empty common-best set means the recommendation depends on the analysis specification, not that every candidate has low value;
 - exhausted budget means the observation may be known and useful but currently infeasible.
 
@@ -137,6 +157,7 @@ Current mechanism state: unresolved
 Candidate-information state: partial prediction limit
 Best verified candidate: pollen deposition
 Non-estimable candidate: reciprocal transplant
+Compatibility fallback: available but non-information-theoretic
 Action: do not call pollen deposition globally optimal until the remaining candidate can be valued or is explicitly removed from scope
 ```
 
@@ -151,10 +172,11 @@ Do not interpret the prototype as:
 - a robust Bayesian design optimum;
 - a replacement for cost/utility decisions;
 - evidence that non-estimable candidates have zero information;
+- permission to relabel a structural fallback as validated mechanism information;
 - permission to call a verified candidate globally optimal while declared alternatives remain non-estimable;
 - evidence that an undeclared mechanism has been ruled out.
 
-The prototype only classifies **why the declared MROD workflow stops or continues and what kind of next action is licensed by its current outputs**.
+The prototype only classifies **why the declared MROD validated-information workflow stops or continues and what kind of next action is licensed by its current outputs**. Compatibility fallbacks, when used, remain a separately labelled operational layer.
 
 ## 7. Implementation
 
