@@ -33,7 +33,32 @@ This does not make MROD a replacement for ABC model choice or a general causal-d
 
 Key references: Beaumont et al. (2002, 2010); Grimm et al. (2005); Robert et al. (2011).
 
-## 3. Value of information and Bayesian experimental design
+## 3. Multiple working hypotheses and pre-data hypothesis vetting
+
+Multiple-hypothesis reasoning is established ecological methodology, not an MROD invention. Betini et al. (2017) documented that explicit testing of multiple competing hypotheses remained uncommon despite the long-standing multiple-working-hypotheses and strong-inference traditions. Yanco et al. (2020) went further and supplied a formal **pre-data** workflow: candidate hypotheses are made explicit as models, their sampling distributions are simulated, overlap is inspected for degeneracy or noisiness, and the hypothesis set or study design is revised before data collection when the candidates are not distinguishable.
+
+This prior art overlaps directly with the motivation for mechanism-resolving observation design. MROD therefore must not claim that ecology lacked a procedure for asking whether hypotheses are distinguishable or for changing design when they are not.
+
+The narrower difference is the point in the inferential cycle and the object carried forward. Yanco et al. vet candidate hypotheses before new data are collected. MROD begins after a current evidence set has already restricted a declared model family to a **post-data admissible region**, potentially containing non-exclusive mechanism combinations. It then:
+
+```text
+current A_epsilon
+-> retain the joint mechanism projection
+-> quantify residual H(S | A_epsilon)
+-> derive/verify candidate outcome partitions on that same current region
+-> score I(S;Q | A_epsilon)/K
+-> observe Q
+-> condition A_epsilon on the realised outcome
+-> recompute the remaining candidate values.
+```
+
+Thus the defensible contribution is not `use multiple working hypotheses`, `simulate competing hypotheses`, or `revise study design when hypotheses overlap`. It is the closed-loop connection from a **current set-valued, non-exclusive mechanism inference** to mechanism-targeted follow-up observation value and sequential conditioning.
+
+Claim guard: do not write that MROD turns ambiguity into design as though that general idea were absent from ecology. Write that it operationalizes a specific post-current-data mechanism-resolution loop over an admissible joint mechanism region.
+
+Key references: Betini et al. (2017); Yanco et al. (2020).
+
+## 4. Value of information and Bayesian experimental design
 
 Classical Bayesian experimental design asks which experiment maximizes an expected utility or information criterion. Value of Information (VoI) and Expected Value of Sample Information (EVSI) usually value information through improvement in a downstream decision. In applied ecology, Canessa et al. (2015) formulate VoI around explicit management actions, objectives and expected outcomes; Williams et al. (2020) likewise value sample information through management consequences.
 
@@ -50,7 +75,7 @@ Claim guard: do not say `more data is not a design` as if ecology lacks VoI or e
 
 Key references: Raiffa & Schlaifer (1961); Chaloner & Verdinelli (1995); Canessa et al. (2015); Williams et al. (2020).
 
-## 4. Model discrimination and optimal experimental design
+## 5. Model discrimination and optimal experimental design
 
 Designing experiments to discriminate between competing models is a classical statistical problem. Sequential and Bayesian model-discrimination designs therefore predate MROD.
 
@@ -60,7 +85,7 @@ The current controlled validation supports information-guided candidate screenin
 
 Key references: Atkinson & Cox (1974); Chaloner & Verdinelli (1995).
 
-## 5. Structural identifiability and the Boundary interface
+## 6. Structural identifiability and the Boundary interface
 
 Structural identifiability asks whether distinct latent states can generate the same observations. The separate Boundary project develops this observation-map question for restricted ecological measurement classes. The interface to MROD is one-way and exact where applicable.
 
@@ -84,7 +109,7 @@ Claim guard: do not equate rank gain with positive MROD value.
 
 Key references: Bellman & Åström (1970); Rothenberg (1971); Manski (2003).
 
-## 6. Null testing, residual error and sampling precision
+## 7. Null testing, residual error and sampling precision
 
 MROD is not a significance test. Rejecting a null can leave several non-null mechanisms admissible. It is not a residual diagnostic: two mechanism programs can fit the same target exactly. It is also not a claim that replication is useless: replication can reduce sampling error and distinguish mechanisms whose predictions are only approximately equal.
 
@@ -94,7 +119,7 @@ The structural statement is narrower:
 
 When candidate predictions differ approximately rather than exactly, additional replication can be mechanism-informative and should be evaluated through the candidate predictive distribution.
 
-## 7. Causal effects, mediation and mechanistic investigation
+## 8. Causal effects, mediation and mechanistic investigation
 
 Causal-effect estimation, causal mediation and mechanistic investigation answer related but non-identical questions. Grace et al. (2025) explicitly distinguish causal-effect estimation from mechanistic investigation, while Correia et al. (2025) emphasize that mediation effects require their own causal assumptions. Siegel & Dee (2025) review causal-inference design in ecology.
 
@@ -102,18 +127,20 @@ MROD does not identify intervention counterfactuals from accepted-row filtering.
 
 Claim guard: `mechanism-resolving` does not mean `counterfactual causal effect identified`.
 
-## 8. What the current paper can defensibly claim
+## 9. What the current paper can defensibly claim
 
-1. **Set-valued mechanism reporting.** The compatible mechanism region is retained rather than hidden behind a modal explanation.
-2. **A mechanism-specific uncertainty target.** `H(S|A_epsilon)` and normalized resolvability quantify ambiguity in the declared mechanism vector.
-3. **Verified observation information value.** For a predictive outcome partition identified from the current region, `V(Q)=I(S;Q|A_epsilon)/K` exactly measures expected mechanism-resolvability gain.
+1. **Post-data set-valued mechanism reporting.** The compatible, potentially non-exclusive mechanism region is retained rather than hidden behind a modal explanation.
+2. **A mechanism-specific uncertainty target.** `H(S|A_epsilon)` and normalized resolvability quantify ambiguity in the declared joint mechanism vector after current evidence has been applied.
+3. **Verified observation information value from the same current region.** For a predictive outcome partition identified from `A_epsilon`, `V(Q)=I(S;Q|A_epsilon)/K` exactly measures expected mechanism-resolvability gain.
 4. **A structural zero-value condition.** A candidate already determined by the current exact observation map cannot add mechanism information; structural novelty alone is not sufficient.
-5. **Sequential recomputation with a precise two-step condition.** Adaptive recomputation is weakly better than the best precommitted second measurement and strictly better exactly when positive-probability branches disagree on every common optimal remaining candidate.
-6. **Controlled selection validation.** The frozen G2 benchmark shows strong information-guided screening against random ordering, while the stronger static-information diagnostic limits the empirical claim for adaptation itself.
-7. **Evidence-role discipline.** Observed targets, simulator context, diagnostics and future observations are preassigned distinct inferential roles to reduce circular evidence use.
+5. **A closed sequential conditioning loop.** The selected outcome conditions the same admissible region and all remaining candidate values are recomputed.
+6. **A precise two-step condition for adaptive value.** Adaptive recomputation is weakly better than the best precommitted second measurement and strictly better exactly when positive-probability branches share no common optimal remaining candidate.
+7. **Controlled selection validation and a negative stronger-comparator result.** Frozen G2 supports information-guided screening against random ordering, while static initial-information essentially matches adaptive recomputation on that family and narrows the empirical adaptive claim.
+8. **Evidence-role discipline.** Observed targets, simulator context, diagnostics and future observations are preassigned distinct inferential roles to reduce circular evidence use.
 
-## 9. Claims to avoid
+## 10. Claims to avoid
 
+- MROD invented multiple working hypotheses, strong inference, pre-data hypothesis vetting or design revision under hypothesis degeneracy.
 - MROD proves a natural-system causal mechanism.
 - MROD replaces causal inference or mediation analysis.
 - Mutual information, EVSI, model discrimination or structural identifiability are new inventions of MROD.
@@ -123,25 +150,26 @@ Claim guard: `mechanism-resolving` does not mean `counterfactual causal effect i
 - Adaptive recomputation always outperforms a static information ordering.
 - The frozen synthetic benchmark establishes universal optimality.
 
-## 10. Current manuscript framing
+## 11. Current manuscript framing
 
 The cleanest paper-level sequence is
 
 ```text
 current ecological evidence
--> retain compatible mechanism programs
--> diagnose residual mechanism ambiguity
+-> retain compatible non-exclusive mechanism programs
+-> diagnose residual joint mechanism ambiguity
 -> exclude provably redundant observations where an exact structural screen exists
--> verify candidate predictive partitions
+-> verify candidate predictive partitions on the same current region
 -> value candidates by mechanism information
 -> observe the highest-value candidate
--> condition and recompute
+-> condition the region on the realised outcome
+-> recompute
 -> stop when resolved, budget-limited or information-limited.
 ```
 
 The practical rhetorical translation is:
 
-> Do not leave alternative mechanisms only as a limitation statement. State which distinctions remain unresolved and, when the predictive candidate vocabulary permits it, which observation would reduce that ambiguity most. If no available observation carries mechanism information, report that information limit rather than recommending unspecified additional data.
+> Multiple working hypotheses and pre-data discriminability checks already tell ecologists not to trust a single unvetted explanation. MROD addresses the later problem: after current evidence has already left a set of mechanism programs admissible, report that set and use it to quantify which feasible follow-up observation would reduce the remaining joint mechanism ambiguity. If no available observation carries mechanism information, report that information limit rather than recommending unspecified additional data.
 
 ## References
 
@@ -149,6 +177,7 @@ The practical rhetorical translation is:
 - Beaumont, M.A., Zhang, W. & Balding, D.J. (2002). Approximate Bayesian computation in population genetics. *Genetics* 162: 2025–2035.
 - Beaumont, M.A. (2010). Approximate Bayesian computation in evolution and ecology. *Annual Review of Ecology, Evolution, and Systematics* 41: 379–406.
 - Bellman, R. & Åström, K.J. (1970). On structural identifiability. *Mathematical Biosciences* 7: 329–339.
+- Betini, G.S., Avgar, T. & Fryxell, J.M. (2017). Why are we not evaluating multiple competing hypotheses in ecology and evolution? *Royal Society Open Science* 4: 160756.
 - Canessa, S. et al. (2015). When do we need more data? A primer on calculating the value of information for applied ecologists. *Methods in Ecology and Evolution* 6: 1219–1228.
 - Chaloner, K. & Verdinelli, I. (1995). Bayesian experimental design: a review. *Statistical Science* 10: 273–304.
 - Correia, H.E., Dee, L.E. & Ferraro, P.J. (2025). Designing causal mediation analyses to quantify intermediary processes in ecology. *Biological Reviews* 100: 1512–1533.
@@ -160,3 +189,4 @@ The practical rhetorical translation is:
 - Rothenberg, T.J. (1971). Identification in parametric models. *Econometrica* 39: 577–591.
 - Siegel, K. & Dee, L.E. (2025). Foundations and future directions for causal inference in ecological research. *Ecology Letters* 28: e70053.
 - Williams, B.K. et al. (2020). Scenarios for valuing sample information in natural resources. *Methods in Ecology and Evolution* 11.
+- Yanco, S.W., McDevitt, A., Trueman, C.N., Hartley, L. & Wunder, M.B. (2020). A modern method of multiple working hypotheses to improve inference in ecology. *Royal Society Open Science* 7: 200231.
