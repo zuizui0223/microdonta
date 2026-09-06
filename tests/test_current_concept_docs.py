@@ -42,5 +42,23 @@ def test_literature_comparison_keeps_claim_ceiling():
         "More data never help",
         "Adaptive recomputation always outperforms",
         "management action table or external reward function",
+        "Multiple working hypotheses and pre-data hypothesis vetting",
+        "Betini et al. (2017)",
+        "Yanco et al. (2020)",
+        "post-data admissible region",
+        "closed-loop connection",
+        "MROD invented multiple working hypotheses",
     ):
         assert marker in text, marker
+
+
+def test_literature_comparison_does_not_claim_ecology_lacked_ambiguity_design_methods():
+    text = (ROOT / "docs" / "literature_comparison.md").read_text(encoding="utf-8").lower()
+    forbidden = (
+        "ecology has no procedure",
+        "ecology lacked a procedure",
+        "no method for turning ambiguity into design",
+        "first method to use multiple working hypotheses",
+    )
+    for marker in forbidden:
+        assert marker not in text, marker
