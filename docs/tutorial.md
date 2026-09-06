@@ -106,8 +106,16 @@ result = sequential_observation_design(
 
 At each step the design ranks candidates before the outcome is revealed,
 conditions the admissible region on the realised outcome, and recomputes all
-remaining values. It stops when the declared ambiguity is resolved, the budget is
-exhausted, or every available verified candidate has zero current information.
+remaining values.
+
+Interpret stopping states carefully:
+
+- if the **declared design target** is resolved, stop the predeclared sequence; this does not automatically mean the full mechanism vector has entropy zero;
+- if the **budget is exhausted**, stop for a resource reason, not because candidate information vanished;
+- call the state **validated information-limited** only when every declared remaining candidate has an estimable validated value and all those values are zero;
+- if any declared remaining candidate is non-estimable, the validated calculation is **prediction-limited** for the full candidate set. Zero values among estimable candidates do not establish an all-candidate information limit, and a positive estimable candidate is only provisionally best until the remaining candidates are valued or explicitly removed from scope.
+
+Compatibility fallback scores can remain available, but they are reported under their own score source rather than as validated mechanism mutual information.
 
 ## 6. Adapt the method to another ecological system
 
