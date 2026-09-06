@@ -43,13 +43,13 @@ These states answer different questions. In particular, `information_limited` is
 
 When several scientifically defensible priors, tolerances or other specifications are predeclared, compute the single-specification state separately for each one.
 
-The prototype then reports three additional axes.
+The prototype then reports three additional axes. These are **stability labels**, not robust-design objectives.
 
 ### Resolution stability
 
 ```text
-robust_resolved
-robust_unresolved
+stable_resolved
+stable_unresolved
 specification_sensitive
 ```
 
@@ -58,8 +58,8 @@ A mix of resolved and unresolved specifications means that even the claim `mecha
 ### Actionability stability
 
 ```text
-robust_actionable
-robust_not_actionable
+stable_actionable
+stable_not_actionable
 specification_sensitive
 not_required
 ```
@@ -83,13 +83,13 @@ B_common = intersection B_lambda
 gives:
 
 ```text
-robust
+stable_common_best
 specification_sensitive_ranking
 specification_sensitive_actionability
 not_available
 ```
 
-This is the same sensitivity-reporting logic used in `docs/tolerance_and_specification_robustness.md`; it is not a new robust-design objective.
+This is the same sensitivity-reporting logic used in `docs/tolerance_and_specification_robustness.md`; it does not optimize a maximin, robust-EIG or other replacement objective.
 
 ## 4. Why keep the axes separate?
 
@@ -115,7 +115,7 @@ Recommendation stability: specification-sensitive ranking
 Best candidate under strict epsilon: pollen deposition
 Best candidate under loose epsilon: common-garden phenotype
 Common-best set: empty
-Action: report recommendation sensitivity or declare an additional robust decision rule
+Action: report recommendation sensitivity or declare an additional decision rule
 ```
 
 or
