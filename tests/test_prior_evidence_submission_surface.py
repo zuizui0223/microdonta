@@ -12,6 +12,7 @@ REVIEWER = ROOT / "paper" / "reviewer_objections.md"
 FOUNDATIONS = ROOT / "docs" / "observation_information_foundations.md"
 MANIFEST = ROOT / "paper" / "submission_manifest.json"
 BUNDLE = ROOT / "paper" / "build_reviewer_bundle.py"
+README = ROOT / "README.md"
 WITNESS = "causal_model/prior_evidence_separation_witness.py"
 
 
@@ -46,12 +47,22 @@ def test_si_reports_prior_evidence_audit_and_claim_guard():
     text = SI.read_text(encoding="utf-8")
     for marker in (
         "### S4.5 Current resolvability versus evidence-gain audit",
-        "`R=1-H_2(0.9)=0.5310.`",
+        "R=1-H_2(0.9)=0.5310.",
         "direct observation of `S` | 0.468996 bit | 0.4690 | 1.0000",
         "mechanism-independent noise | 0.000000 bit | 0.0000 | 0.5310",
         "Under `P(A=1)=0.5, P(B=1)=0.9`, `observe_A` ranks first",
         "after swapping these prior concentrations, `observe_B` ranks first",
         "not part of frozen G2 performance evidence",
+    ):
+        assert marker in text, marker
+
+
+def test_readme_separates_current_resolvability_from_incremental_information():
+    text = README.read_text(encoding="utf-8")
+    for marker in (
+        "`R` summarizes the concentration of the current declared mechanism distribution",
+        "does not by itself attribute that concentration to the observations",
+        "`V(Q)` is incremental conditional information",
     ):
         assert marker in text, marker
 
