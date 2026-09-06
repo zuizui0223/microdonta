@@ -37,7 +37,7 @@ Key references: Beaumont et al. (2002, 2010); Grimm et al. (2005); Robert et al.
 
 Multiple-hypothesis reasoning is established ecological methodology, not an MROD invention. Betini et al. (2017) documented that explicit testing of multiple competing hypotheses remained uncommon despite the long-standing multiple-working-hypotheses and strong-inference traditions. Yanco et al. (2020) went further and supplied a formal **pre-data** workflow: candidate hypotheses are made explicit as models, their sampling distributions are simulated, overlap is inspected for degeneracy or noisiness, and the hypothesis set or study design is revised before data collection when the candidates are not distinguishable.
 
-This prior art overlaps directly with the motivation for mechanism-resolving observation design. MROD therefore must not claim that ecology lacked a procedure for asking whether hypotheses are distinguishable or for changing design when they are not.
+This prior art overlaps directly with the motivation for mechanism-resolving observation design. MROD must therefore acknowledge that ecology already has procedures for asking whether hypotheses are distinguishable and for changing design when they are not.
 
 The narrower difference is the point in the inferential cycle and the object carried forward. Yanco et al. vet candidate hypotheses before new data are collected. MROD begins after a current evidence set has already restricted a declared model family to a **post-data admissible region**, potentially containing non-exclusive mechanism combinations. It then:
 
